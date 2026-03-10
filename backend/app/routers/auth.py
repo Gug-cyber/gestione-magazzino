@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -108,9 +109,11 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     if not utente:
         raise HTTPException(status_code=404, detail="Nessun account trovato con questa email")
     token_obj = crud_token.create_reset_token(db, utente.id)
-    email_sent = send_reset_password_email(utente.email, token_obj.token)
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    reset_url = f"{frontend_url}/reset-password?token={token_obj.token}"
+    email_sent = send_reset_password_email(utente.email, token_obj.token, reset_url)
     if email_sent:
-        return {"reset_token": None, "message": "Token inviato via email", "email_sent": True}
+        return {"reset_token": None, "message": "Link di reset inviato via email", "email_sent": True}
     return {
         "reset_token": token_obj.token,
         "message": "Usa questo token per reimpostare la password (email non configurata)",
