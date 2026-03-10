@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { fornitoriAPI } from '../api/client'
 
-const emptyForm = { nome: '', email: '', telefono: '', indirizzo: '', partita_iva: '' }
+const emptyForm = { nome: '', email: '', telefono: '', indirizzo: '', partita_iva: '', note: '' }
 
 function Fornitori() {
   const [fornitori, setFornitori] = useState([])
@@ -40,7 +40,7 @@ function Fornitori() {
   }
 
   const handleEdit = (f) => {
-    setForm({ nome: f.nome, email: f.email || '', telefono: f.telefono || '', indirizzo: f.indirizzo || '', partita_iva: f.partita_iva || '' })
+    setForm({ nome: f.nome, email: f.email || '', telefono: f.telefono || '', indirizzo: f.indirizzo || '', partita_iva: f.partita_iva || '', note: f.note || '' })
     setEditing(f.id)
     setShowForm(true)
   }
@@ -91,6 +91,15 @@ function Fornitori() {
               </label>
             ))}
           </div>
+          <label style={{ ...labelStyle, marginBottom: '16px' }}>
+            <span>Note</span>
+            <textarea
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical' }}
+            />
+          </label>
           <button type="submit" style={btnStyle('#2e7d32')}>{editing ? 'Salva Modifiche' : 'Crea Fornitore'}</button>
         </form>
       )}
@@ -99,14 +108,14 @@ function Fornitori() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Nome', 'Email', 'Telefono', 'Partita IVA', 'Azioni'].map(h => (
+              {['ID', 'Nome', 'Email', 'Telefono', 'Partita IVA', 'Note', 'Azioni'].map(h => (
                 <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {fornitori.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</td></tr>
             ) : fornitori.map((f) => (
               <tr key={f.id} style={{ borderBottom: '1px solid #eee' }}>
                 <td style={tdStyle}>{f.id}</td>
@@ -114,6 +123,7 @@ function Fornitori() {
                 <td style={tdStyle}>{f.email || '-'}</td>
                 <td style={tdStyle}>{f.telefono || '-'}</td>
                 <td style={tdStyle}>{f.partita_iva || '-'}</td>
+                <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.note || ''}>{f.note || '-'}</td>
                 <td style={tdStyle}>
                   <button onClick={() => handleEdit(f)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(f.id)} style={btnSmall('#c62828')}>🗑️</button>
