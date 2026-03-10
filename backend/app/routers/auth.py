@@ -1,11 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from ..database import get_db
-from ..schemas.utente import Token, UtenteCreate, UtenteResponse, UtenteUpdateProfilo
+from ..schemas.utente import (
+    Token, UtenteCreate, UtenteResponse, UtenteUpdateProfilo,
+    ForgotUsernameRequest, ForgotUsernameResponse,
+    ForgotPasswordRequest, ForgotPasswordResponse,
+    ResetPasswordRequest,
+)
 from ..crud import utente as crud
-from ..auth import create_access_token, get_current_active_user, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..crud import reset_token as crud_token
+from ..auth import create_access_token, get_current_active_user, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter()
 
@@ -76,3 +82,47 @@ def update_me(
 @router.post("/logout")
 def logout():
     return {"message": "Logout effettuato. Rimuovi il token lato client."}
+
+
+@router.post("/forgot-username", response_model=ForgotUsernameResponse)
+def forgot_username(body: ForgotUsernameRequest, db: Session = Depends(get_db)):
+    utente = crud.get_utente_by_email(db, body.email)
+    if not utente:
+        raise HTTPException(status_code=404, detail="Nessun account trovato con questa email")
+    return {"username": utente.username, "message": "Username trovato"}
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    utente = crud.get_utente_by_email(db, body.email)
+    if not utente:
+        raise HTTPException(status_code=404, detail="Nessun account trovato con questa email")
+    token_obj = crud_token.create_reset_token(db, utente.id)
+    return {
+        "reset_token": token_obj.token,
+        "message": "Usa questo token per reimpostare la password",
+    }
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
+    token_obj = crud_token.get_reset_token(db, body.token)
+    if not token_obj:
+        raise HTTPException(status_code=400, detail="Token non valido o scaduto")
+    if token_obj.used:
+        raise HTTPException(status_code=400, detail="Token già utilizzato")
+    now = datetime.now(timezone.utc)
+    expires = token_obj.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if now > expires:
+        raise HTTPException(status_code=400, detail="Token non valido o scaduto")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="La nuova password deve contenere almeno 8 caratteri")
+    utente = crud.get_utente(db, token_obj.utente_id)
+    if not utente:
+        raise HTTPException(status_code=400, detail="Token non valido o scaduto")
+    utente.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    crud_token.use_reset_token(db, token_obj)
+    return {"message": "Password reimpostata con successo"}

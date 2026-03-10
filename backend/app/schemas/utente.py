@@ -46,3 +46,26 @@ class UtenteUpdateProfilo(BaseModel):
     username: Optional[str] = None
     current_password: Optional[str] = None
     new_password: Optional[str] = None
+
+
+class ForgotUsernameRequest(BaseModel):
+    email: str
+
+
+class ForgotUsernameResponse(BaseModel):
+    username: str
+    message: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ForgotPasswordResponse(BaseModel):
+    reset_token: str
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
