@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, movimentiAPI } from '../api/client'
 
 function StatCard({ title, value, color, emoji }) {
@@ -27,7 +26,6 @@ function Dashboard() {
     movimentiRecenti: [],
   })
   const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,24 +53,7 @@ function Dashboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, color: '#1a237e' }}>📊 Dashboard</h1>
-        <button
-          onClick={() => navigate('/analisi')}
-          style={{
-            backgroundColor: '#1a237e',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 20px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '0.95rem',
-          }}
-        >
-          📈 Vai all'Analisi Finanziaria
-        </button>
-      </div>
+      <h1 style={{ marginBottom: '24px', color: '#1a237e' }}>📊 Dashboard</h1>
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
         <StatCard
