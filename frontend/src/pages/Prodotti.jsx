@@ -44,14 +44,6 @@ function Prodotti() {
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
 
-  // Inline category management
-  const [showAddCategoria, setShowAddCategoria] = useState(false)
-  const [newCategoriaNome, setNewCategoriaNome] = useState('')
-
-  // Inline ubicazione management
-  const [showAddUbicazione, setShowAddUbicazione] = useState(false)
-  const [newUbicazioneNome, setNewUbicazioneNome] = useState('')
-
   const fetchAll = async () => {
     try {
       const [p, c, u] = await Promise.all([
@@ -119,70 +111,12 @@ function Prodotti() {
     }
   }
 
-  const handleAddCategoria = async () => {
-    if (!newCategoriaNome.trim()) return
-    try {
-      await categorieAPI.create({ nome: newCategoriaNome.trim() })
-      setNewCategoriaNome('')
-      setShowAddCategoria(false)
-      const c = await categorieAPI.getAll()
-      setCategorie(c.data)
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Errore nella creazione della categoria')
-    }
-  }
-
-  const handleDeleteCategoria = async () => {
-    if (!form.categoria_id) return
-    const cat = categorie.find(c => String(c.id) === String(form.categoria_id))
-    if (!cat) return
-    if (!window.confirm(`Eliminare la categoria "${cat.nome}"?`)) return
-    try {
-      await categorieAPI.delete(form.categoria_id)
-      setForm({ ...form, categoria_id: '' })
-      const c = await categorieAPI.getAll()
-      setCategorie(c.data)
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Errore nell\'eliminazione della categoria')
-    }
-  }
-
-  const handleAddUbicazione = async () => {
-    if (!newUbicazioneNome.trim()) return
-    try {
-      await ubicazioniAPI.create({ nome: newUbicazioneNome.trim() })
-      setNewUbicazioneNome('')
-      setShowAddUbicazione(false)
-      const u = await ubicazioniAPI.getAll()
-      setUbicazioni(u.data)
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Errore nella creazione dell\'ubicazione')
-    }
-  }
-
-  const handleDeleteUbicazione = async () => {
-    if (!form.ubicazione_id) return
-    const ub = ubicazioni.find(u => String(u.id) === String(form.ubicazione_id))
-    if (!ub) return
-    if (!window.confirm(`Eliminare l'ubicazione "${ub.nome}"?`)) return
-    try {
-      await ubicazioniAPI.delete(form.ubicazione_id)
-      setForm({ ...form, ubicazione_id: '' })
-      const u = await ubicazioniAPI.getAll()
-      setUbicazioni(u.data)
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Errore nell\'eliminazione dell\'ubicazione')
-    }
-  }
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ color: '#1a237e' }}>📦 Prodotti</h1>
         <button onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }}
-          style={btnStyle('#1a237e')}>
-          {showForm ? 'Annulla' : '+ Aggiungi Prodotto'}
-        </button>
+          style={btnStyle('#1a237e')}>{showForm ? 'Annulla' : '+ Aggiungi Prodotto'}</button>
       </div>
 
       {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
@@ -190,116 +124,70 @@ function Prodotti() {
       {showForm && (
         <form onSubmit={handleSubmit} style={formStyle}>
           <h3>{editing ? 'Modifica Prodotto' : 'Nuovo Prodotto'}</h3>
-          <div style={gridStyle}>
-            {[
-              { key: 'nome', label: 'Nome *', required: true },
-              { key: 'sku', label: 'SKU *', required: true },
-              { key: 'descrizione', label: 'Descrizione' },
-              { key: 'quantita', label: 'Quantità', type: 'number' },
-              { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
-              { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },
-              { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
-            ].map(({ key, label, type = 'text', required, step }) => (
-              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
-                <input
-                  type={type}
-                  step={step}
-                  required={required}
-                  value={form[key]}
-                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  style={inputStyle}
-                />
-              </label>
-            ))}
-
-            {/* Stato di Conservazione */}
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
-              <select
-                value={form.stato_conservazione}
-                onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })}
+          <div style={gridStyle}>{[
+            { key: 'nome', label: 'Nome *', required: true },
+            { key: 'sku', label: 'SKU *', required: true },
+            { key: 'descrizione', label: 'Descrizione' },
+            { key: 'quantita', label: 'Quantità', type: 'number' },
+            { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
+            { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },
+            { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
+          ].map(({ key, label, type = 'text', required, step }) => (
+            <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
+              <input
+                type={type}
+                step={step}
+                required={required}
+                value={form[key]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                 style={inputStyle}
-              >
-                <option value="">-- Nessuno --</option>
-                <option value="Mint">Mint</option>
-                <option value="Near Mint">Near Mint</option>
-                <option value="Excellent">Excellent</option>
-                <option value="Good">Good</option>
-                <option value="Light Played">Light Played</option>
-                <option value="Played">Played</option>
-                <option value="Poor">Poor</option>
-              </select>
+              />
             </label>
+          ))}
 
-            {/* Categoria con gestione inline */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <select
-                  value={form.categoria_id}
-                  onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
-                  style={{ ...inputStyle, flex: 1 }}
-                >
-                  <option value="">-- Nessuna --</option>
-                  {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                <button type="button" onClick={() => { setShowAddCategoria(!showAddCategoria); setNewCategoriaNome('') }}
-                  style={btnIconStyle} title="Aggiungi categoria">➕</button>
-                <button type="button" onClick={handleDeleteCategoria}
-                  disabled={!form.categoria_id}
-                  style={btnIconDisabled(!!form.categoria_id)} title="Elimina categoria selezionata">🗑️</button>
-              </div>
-              {showAddCategoria && (
-                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                  <input
-                    type="text"
-                    placeholder="Nome categoria"
-                    value={newCategoriaNome}
-                    onChange={(e) => setNewCategoriaNome(e.target.value)}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button type="button" onClick={handleAddCategoria} style={btnIconStyle} title="Salva">✓</button>
-                  <button type="button" onClick={() => { setShowAddCategoria(false); setNewCategoriaNome('') }}
-                    style={btnIconStyle} title="Annulla">✕</button>
-                </div>
-              )}
-            </div>
+          {/* Stato di Conservazione */}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
+            <select
+              value={form.stato_conservazione}
+              onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })}
+              style={inputStyle}>
+              <option value="">-- Nessuno --</option>
+              <option value="Mint">Mint</option>
+              <option value="Near Mint">Near Mint</option>
+              <option value="Excellent">Excellent</option>
+              <option value="Good">Good</option>
+              <option value="Light Played">Light Played</option>
+              <option value="Played">Played</option>
+              <option value="Poor">Poor</option>
+            </select>
+          </label>
 
-            {/* Ubicazione con gestione inline */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Ubicazione</span>
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <select
-                  value={form.ubicazione_id}
-                  onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })}
-                  style={{ ...inputStyle, flex: 1 }}
-                >
-                  <option value="">-- Nessuna --</option>
-                  {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                </select>
-                <button type="button" onClick={() => { setShowAddUbicazione(!showAddUbicazione); setNewUbicazioneNome('') }}
-                  style={btnIconStyle} title="Aggiungi ubicazione">➕</button>
-                <button type="button" onClick={handleDeleteUbicazione}
-                  disabled={!form.ubicazione_id}
-                  style={btnIconDisabled(!!form.ubicazione_id)} title="Elimina ubicazione selezionata">🗑️</button>
-              </div>
-              {showAddUbicazione && (
-                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                  <input
-                    type="text"
-                    placeholder="Nome ubicazione"
-                    value={newUbicazioneNome}
-                    onChange={(e) => setNewUbicazioneNome(e.target.value)}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button type="button" onClick={handleAddUbicazione} style={btnIconStyle} title="Salva">✓</button>
-                  <button type="button" onClick={() => { setShowAddUbicazione(false); setNewUbicazioneNome('') }}
-                    style={btnIconStyle} title="Annulla">✕</button>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Categoria */}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
+            <select
+              value={form.categoria_id}
+              onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
+              style={inputStyle}>
+              <option value="">-- Nessuna --</option>
+              {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </label>
+
+          {/* Ubicazione */}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#555' }}>Ubicazione</span>
+            <select
+              value={form.ubicazione_id}
+              onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })}
+              style={inputStyle}>
+              <option value="">-- Nessuna --</option>
+              {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+            </select>
+          </label>
+        </div>
           <button type="submit" style={btnStyle('#2e7d32')}>
             {editing ? 'Salva Modifiche' : 'Crea Prodotto'}
           </button>
@@ -345,9 +233,7 @@ const thStyle = { textAlign: 'left', padding: '12px 16px', fontWeight: '600' }
 const tdStyle = { padding: '10px 16px', color: '#333' }
 const btnStyle = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' })
 const btnSmall = (bg) => ({ ...btnStyle(bg), padding: '4px 10px', marginRight: '4px', fontSize: '0.85rem' })
-const btnIconStyle = { backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd', borderRadius: '4px', padding: '6px 8px', cursor: 'pointer', fontSize: '0.9rem' }
-const btnIconDisabled = (enabled) => ({ ...btnIconStyle, opacity: enabled ? 1 : 0.4 })
-const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem' }
+const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }
 const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
 
