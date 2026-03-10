@@ -77,4 +77,17 @@ export const forgotUsername = (email) => client.post('/api/auth/forgot-username'
 export const forgotPassword = (email) => client.post('/api/auth/forgot-password', { email })
 export const resetPassword = (token, new_password) => client.post('/api/auth/reset-password', { token, new_password })
 
+export const speseGestioneAPI = {
+  getAll: (params) => client.get('/api/spese-gestione/', { params }),
+  getById: (id) => client.get(`/api/spese-gestione/${id}`),
+  create: (data) => client.post('/api/spese-gestione/', data),
+  update: (id, data) => client.put(`/api/spese-gestione/${id}`, data),
+  delete: (id) => client.delete(`/api/spese-gestione/${id}`),
+}
+
+export const analisiAPI = {
+  getMensile: (anno) => client.get('/api/analisi/mensile', { params: { anno } }),
+  getAnnuale: () => client.get('/api/analisi/annuale'),
+}
+
 export default client

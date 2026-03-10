@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
+from .routers import spese_gestione, analisi
 
 load_dotenv()
 
@@ -32,6 +33,8 @@ app.include_router(categorie.router, prefix="/api/categorie", tags=["Categorie"]
 app.include_router(movimenti.router, prefix="/api/movimenti", tags=["Movimenti"])
 app.include_router(fornitori.router, prefix="/api/fornitori", tags=["Fornitori"])
 app.include_router(ubicazioni.router, prefix="/api/ubicazioni", tags=["Ubicazioni"])
+app.include_router(spese_gestione.router, prefix="/api/spese-gestione", tags=["Spese Gestione"])
+app.include_router(analisi.router, prefix="/api/analisi", tags=["Analisi"])
 
 
 @app.on_event("startup")
