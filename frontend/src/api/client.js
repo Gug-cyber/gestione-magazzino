@@ -73,4 +73,8 @@ export const ubicazioniAPI = {
 
 export const updateProfilo = (data) => client.put('/api/auth/me', data)
 
+export const forgotUsername = (email) => client.post('/api/auth/forgot-username', { email })
+export const forgotPassword = (email) => client.post('/api/auth/forgot-password', { email })
+export const resetPassword = (token, new_password) => client.post('/api/auth/reset-password', { token, new_password })
+
 export default client
