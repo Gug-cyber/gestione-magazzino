@@ -72,13 +72,12 @@ function Login() {
     setFpError(''); setFpResult(null); setFpLoading(true)
     try {
       const res = await forgotPassword(fpEmail)
-      if (res.data.email_sent) {
-        setFpToken('')
-      } else {
-        setFpToken(res.data.reset_token || '')
-      }
       setFpResult(res.data)
-      setFpStep(2)
+      if (!res.data.email_sent) {
+        setFpToken(res.data.reset_token || '')
+        setFpStep(2)
+      }
+      // If email sent, stay on step 1 and show success message
     } catch (err) {
       setFpError(err?.response?.data?.detail || 'Errore durante la richiesta.')
     } finally {
@@ -356,8 +355,13 @@ function Login() {
                       style={inputStyle}
                     />
                     <button type="submit" disabled={fpLoading} style={btnPrimary(fpLoading)}>
-                      {fpLoading ? '⏳ Invio...' : 'Invia token di reset'}
+                      {fpLoading ? '⏳ Invio...' : 'Invia link di reset'}
                     </button>
+                    {fpResult?.email_sent && (
+                      <div style={{ marginTop: '14px', padding: '12px', backgroundColor: '#e8f5e9', borderRadius: '8px', color: '#2e7d32', fontSize: '0.95rem' }}>
+                        ✅ Link di reset inviato alla tua email! Controlla la casella e clicca il link per reimpostare la password.
+                      </div>
+                    )}
                     {fpError && (
                       <div style={{ marginTop: '14px', padding: '12px', backgroundColor: '#ffebee', borderRadius: '8px', color: '#c62828', fontSize: '0.9rem' }}>
                         ⚠️ {fpError}

@@ -53,13 +53,15 @@ def send_forgot_username_email(to: str, username: str) -> bool:
     return send_email(to, subject, body)
 
 
-def send_reset_password_email(to: str, token: str) -> bool:
+def send_reset_password_email(to: str, token: str, reset_url: str) -> bool:
     subject = "Gestione Magazzino — Reset Password"
     body = f"""
     <p>Ciao,</p>
     <p>hai richiesto il reset della password per <strong>Gestione Magazzino</strong>.</p>
-    <p>Usa il seguente token per reimpostare la password (scade tra 30 minuti):</p>
-    <pre style="background:#e8eaf6;padding:12px;border-radius:6px;font-size:1.1rem">{token}</pre>
+    <p>Clicca il link qui sotto per reimpostare la tua password (scade tra 30 minuti):</p>
+    <p><a href="{reset_url}" style="background:#1a237e;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Reimposta Password 🔑</a></p>
+    <p>Oppure copia questo link nel browser:</p>
+    <pre style="background:#e8eaf6;padding:8px;border-radius:4px;word-break:break-all">{reset_url}</pre>
     <p>Se non hai richiesto il reset, ignora questa email.</p>
     """
     return send_email(to, subject, body)
