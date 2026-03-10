@@ -30,6 +30,23 @@ function Navbar() {
             👤 {user.username}
           </span>
         )}
+        {user && (
+          <Link
+            to="/profilo"
+            style={{
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: '6px',
+              padding: '6px 14px',
+            }}
+          >
+            ⚙️ Profilo
+          </Link>
+        )}
         {user ? (
           <button
             onClick={handleLogout}

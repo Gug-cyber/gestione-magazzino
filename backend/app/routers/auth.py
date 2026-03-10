@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from ..database import get_db
-from ..schemas.utente import Token, UtenteCreate, UtenteResponse
+from ..schemas.utente import Token, UtenteCreate, UtenteResponse, UtenteUpdateProfilo
 from ..crud import utente as crud
-from ..auth import create_access_token, get_current_active_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..auth import create_access_token, get_current_active_user, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter()
 
@@ -46,6 +46,31 @@ def register(
 @router.get("/me", response_model=UtenteResponse)
 def get_me(current_user=Depends(get_current_active_user)):
     return current_user
+
+
+@router.put("/me", response_model=UtenteResponse)
+def update_me(
+    dati: UtenteUpdateProfilo,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    # Validate new_password requires current_password
+    if dati.new_password is not None:
+        if not dati.current_password:
+            raise HTTPException(status_code=400, detail="La password attuale è obbligatoria per cambiare la password")
+        if len(dati.new_password) < 8:
+            raise HTTPException(status_code=400, detail="La nuova password deve contenere almeno 8 caratteri")
+        if not verify_password(dati.current_password, current_user.hashed_password):
+            raise HTTPException(status_code=400, detail="Password attuale non corretta")
+
+    # Validate username uniqueness
+    if dati.username is not None and dati.username != current_user.username:
+        existing = crud.get_utente_by_username(db, dati.username)
+        if existing:
+            raise HTTPException(status_code=400, detail="Username già in uso")
+
+    utente_aggiornato = crud.update_profilo_utente(db, current_user.id, dati)
+    return utente_aggiornato
 
 
 @router.post("/logout")

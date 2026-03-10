@@ -40,3 +40,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+
+class UtenteUpdateProfilo(BaseModel):
+    username: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
