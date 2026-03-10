@@ -206,7 +206,7 @@ function Prodotti() {
             </select>
           </label>
         </div>
-          <button type="submit" style={btnStyle('#2e7d32')}>
+          <button type="submit" style={btnStyle('#2e7d32')}> 
             {editing ? 'Salva Modifiche' : 'Crea Prodotto'}
           </button>
         </form>
