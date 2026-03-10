@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
-from .routers import spese_gestione, analisi, dati_storici
+from .routers import spese_gestione, analisi, dati_storici, webhook
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 
 load_dotenv()
@@ -37,6 +37,7 @@ app.include_router(ubicazioni.router, prefix="/api/ubicazioni", tags=["Ubicazion
 app.include_router(spese_gestione.router, prefix="/api/spese-gestione", tags=["Spese Gestione"])
 app.include_router(analisi.router, prefix="/api/analisi", tags=["Analisi"])
 app.include_router(dati_storici.router, prefix="/api/dati-storici", tags=["Dati Storici"])
+app.include_router(webhook.router, prefix="/api/webhook", tags=["Webhook"])
 
 
 @app.on_event("startup")
