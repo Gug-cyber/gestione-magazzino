@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import extract, func
-from typing import List
 from datetime import datetime
 from ..database import get_db
 from ..models.movimento import Movimento, TipoMovimento
