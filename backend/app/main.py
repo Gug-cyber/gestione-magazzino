@@ -6,7 +6,7 @@ from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
 from .routers import spese_gestione, analisi, dati_storici
-from .models import dato_storico  # ensure table is created
+from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 
 load_dotenv()
 
