@@ -7,6 +7,7 @@ from ..database import get_db
 from ..models.movimento import Movimento, TipoMovimento
 from ..models.prodotto import Prodotto
 from ..models.spesa_gestione import SpesaGestione
+from ..models.dato_storico import DatoStorico
 from ..auth import get_current_active_user
 
 router = APIRouter()
@@ -59,6 +60,20 @@ def get_analisi_mensile(
         ).scalar()
         spese = float(spese_result or 0)
 
+        storici_costi = db.query(func.sum(DatoStorico.importo)).filter(
+            DatoStorico.tipo == "costo",
+            extract("year", DatoStorico.data) == anno,
+            extract("month", DatoStorico.data) == mese,
+        ).scalar()
+        costi += float(storici_costi or 0)
+
+        storici_ricavi = db.query(func.sum(DatoStorico.importo)).filter(
+            DatoStorico.tipo == "ricavo",
+            extract("year", DatoStorico.data) == anno,
+            extract("month", DatoStorico.data) == mese,
+        ).scalar()
+        ricavi += float(storici_ricavi or 0)
+
         risultati.append({
             "mese": mese,
             "costi": round(costi, 2),
@@ -81,6 +96,15 @@ def get_analisi_annuale(
         .all()
     )
     anni = [int(row.anno) for row in anni_query if row.anno is not None]
+
+    # Also include years that only appear in dati_storici
+    storici_anni_query = (
+        db.query(extract("year", DatoStorico.data).label("anno"))
+        .distinct()
+        .all()
+    )
+    storici_anni = {int(row.anno) for row in storici_anni_query if row.anno is not None}
+    anni = sorted(set(anni) | storici_anni)
 
     if not anni:
         return []
@@ -119,6 +143,18 @@ def get_analisi_annuale(
             extract("year", SpesaGestione.data) == anno,
         ).scalar()
         spese = float(spese_result or 0)
+
+        storici_costi = db.query(func.sum(DatoStorico.importo)).filter(
+            DatoStorico.tipo == "costo",
+            extract("year", DatoStorico.data) == anno,
+        ).scalar()
+        costi += float(storici_costi or 0)
+
+        storici_ricavi = db.query(func.sum(DatoStorico.importo)).filter(
+            DatoStorico.tipo == "ricavo",
+            extract("year", DatoStorico.data) == anno,
+        ).scalar()
+        ricavi += float(storici_ricavi or 0)
 
         risultati.append({
             "anno": anno,

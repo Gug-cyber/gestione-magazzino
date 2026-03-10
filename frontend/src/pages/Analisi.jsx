@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { speseGestioneAPI, analisiAPI } from '../api/client'
+import { speseGestioneAPI, analisiAPI, datiStoriciAPI } from '../api/client'
 
 // ─── Stili comuni ────────────────────────────────────────────────────────────
 
@@ -637,16 +637,238 @@ function TabPackaging() {
   )
 }
 
+// ─── Tab 4: Importa Dati ─────────────────────────────────────────────────────
+
+const CSV_ESEMPIO_COSTI = `data,importo,descrizione,categoria
+2024-01-15,250.00,Acquisto materiali,Forniture
+2024-02-03,45.50,Spedizioni,Logistica
+2023-11-20,1200.00,Attrezzatura,Investimenti`
+
+const CSV_ESEMPIO_RICAVI = `data,importo,descrizione,categoria
+2024-01-20,1500.00,Vendita prodotti,Vendite
+2024-02-15,350.00,Servizi consulenza,Consulenza
+2023-12-01,800.00,Vendita stock,Vendite`
+
+function scaricaCSVEsempio(tipo) {
+  const contenuto = tipo === 'costo' ? CSV_ESEMPIO_COSTI : CSV_ESEMPIO_RICAVI
+  const blob = new Blob([contenuto], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = tipo === 'costo' ? 'esempio_costi.csv' : 'esempio_ricavi.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const MSG_ERRORE_IMPORTAZIONE = "Errore durante l'importazione"
+const MSG_ERRORE_ELIMINAZIONE = "Errore durante l'eliminazione"
+const YEAR_LENGTH = 4
+
+function SezioneUpload({ tipo, label, onImportSuccess }) {
+  const [file, setFile] = useState(null)
+  const [stato, setStato] = useState(null) // null | 'loading' | {ok, msg}
+  const [statoElimina, setStatoElimina] = useState(null)
+
+  const handleUpload = async () => {
+    if (!file) return
+    setStato('loading')
+    try {
+      const res = tipo === 'costo'
+        ? await datiStoriciAPI.importCosti(file)
+        : await datiStoriciAPI.importRicavi(file)
+      const { importati, errori } = res.data
+      setStato({ ok: true, msg: `✅ ${importati} record importati${errori.length > 0 ? ` (${errori.length} righe saltate)` : ''}` })
+      setFile(null)
+      onImportSuccess()
+    } catch (err) {
+      setStato({ ok: false, msg: `❌ ${err.response?.data?.detail || MSG_ERRORE_IMPORTAZIONE}` })
+    }
+  }
+
+  const handleElimina = async () => {
+    if (!window.confirm(`Eliminare tutti i dati di tipo "${label}"? L'operazione non è reversibile.`)) return
+    setStatoElimina('loading')
+    try {
+      const res = await datiStoriciAPI.deleteTipo(tipo)
+      setStatoElimina({ ok: true, msg: `✅ ${res.data.eliminati} record eliminati` })
+      onImportSuccess()
+    } catch (err) {
+      setStatoElimina({ ok: false, msg: `❌ ${err.response?.data?.detail || MSG_ERRORE_ELIMINAZIONE}` })
+    }
+  }
+
+  return (
+    <div style={{ ...cardStyle, flex: 1, minWidth: '280px' }}>
+      <h3 style={{ marginTop: 0, color: '#1a237e' }}>📤 Importa {label}</h3>
+      <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '12px' }}>
+        Formato CSV atteso: <code>data,importo,descrizione,categoria</code><br />
+        Date accettate: <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, <code>DD-MM-YYYY</code><br />
+        Separatori supportati: <code>,</code> oppure <code>;</code>
+      </p>
+      <button
+        style={{ ...btnSecondaryStyle, marginBottom: '12px', fontSize: '0.8rem' }}
+        onClick={() => scaricaCSVEsempio(tipo)}
+      >
+        ⬇️ Scarica CSV di esempio
+      </button>
+      <div style={{ marginBottom: '12px' }}>
+        <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>
+          Seleziona file CSV
+        </label>
+        <input
+          type="file"
+          accept=".csv"
+          style={{ fontSize: '0.9rem' }}
+          onChange={(e) => { setFile(e.target.files[0] || null); setStato(null) }}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+        <button
+          style={{ ...btnPrimaryStyle, opacity: file ? 1 : 0.5 }}
+          onClick={handleUpload}
+          disabled={!file || stato === 'loading'}
+        >
+          {stato === 'loading' ? 'Caricamento...' : '⬆️ Carica'}
+        </button>
+        <button
+          style={{ ...btnDangerStyle }}
+          onClick={handleElimina}
+          disabled={statoElimina === 'loading'}
+        >
+          {statoElimina === 'loading' ? '...' : '🗑️ Elimina tutti i dati'}
+        </button>
+      </div>
+      {stato && stato !== 'loading' && (
+        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: stato.ok ? '#388e3c' : '#d32f2f' }}>
+          {stato.msg}
+        </p>
+      )}
+      {statoElimina && statoElimina !== 'loading' && (
+        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: statoElimina.ok ? '#388e3c' : '#d32f2f' }}>
+          {statoElimina.msg}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function TabImportaDati({ onImportSuccess }) {
+  const [previewTipo, setPreviewTipo] = useState('costo')
+  const [dati, setDati] = useState([])
+  const [loadingPreview, setLoadingPreview] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const ricarica = () => setRefreshKey((k) => k + 1)
+
+  const handleImportSuccess = () => {
+    ricarica()
+    if (onImportSuccess) onImportSuccess()
+  }
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoadingPreview(true)
+      try {
+        const res = await datiStoriciAPI.getAll({ tipo: previewTipo, limit: 500 })
+        setDati(res.data)
+      } catch {
+        setDati([])
+      } finally {
+        setLoadingPreview(false)
+      }
+    }
+    fetch()
+  }, [previewTipo, refreshKey])
+
+  const anniDisponibili = [...new Set(dati.map((d) => d.data.slice(0, YEAR_LENGTH)))].sort().reverse()
+
+  return (
+    <div>
+      {/* Sezione upload — 2 colonne */}
+      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '8px' }}>
+        <SezioneUpload tipo="costo" label="Costi" onImportSuccess={handleImportSuccess} />
+        <SezioneUpload tipo="ricavo" label="Ricavi" onImportSuccess={handleImportSuccess} />
+      </div>
+
+      {/* Sezione preview */}
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ margin: 0, color: '#1a237e' }}>🔍 Anteprima dati importati</h3>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {['costo', 'ricavo'].map((t) => (
+              <button
+                key={t}
+                onClick={() => setPreviewTipo(t)}
+                style={{
+                  ...btnPrimaryStyle,
+                  backgroundColor: previewTipo === t ? '#1a237e' : '#90a4ae',
+                }}
+              >
+                {t === 'costo' ? '📉 Costi' : '📈 Ricavi'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {anniDisponibili.length > 0 && (
+          <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '12px' }}>
+            Anni nel dataset: {anniDisponibili.join(', ')}
+          </p>
+        )}
+
+        {loadingPreview ? (
+          <p>Caricamento...</p>
+        ) : dati.length === 0 ? (
+          <p style={{ color: '#888' }}>Nessun dato importato per questo tipo.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Data</th>
+                  <th style={thStyle}>Descrizione</th>
+                  <th style={thStyle}>Categoria</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Importo (€)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dati.map((d) => (
+                  <tr key={d.id}>
+                    <td style={tdStyle}>{d.data}</td>
+                    <td style={tdStyle}>{d.descrizione || '—'}</td>
+                    <td style={tdStyle}>{d.categoria || '—'}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>€ {parseFloat(d.importo).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3} style={{ ...tdStyle, fontWeight: 'bold', paddingTop: '10px' }}>Totale ({dati.length} record)</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold', textAlign: 'right', color: previewTipo === 'costo' ? '#d32f2f' : '#388e3c', paddingTop: '10px' }}>
+                    € {dati.reduce((s, d) => s + parseFloat(d.importo || 0), 0).toFixed(2)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principale Analisi ──────────────────────────────────────────
 
 const TABS = [
   { id: 'grafici', label: '📈 Grafici' },
   { id: 'spese', label: '💸 Spese di Gestione' },
   { id: 'packaging', label: '📦 Calcolatore Packaging' },
+  { id: 'importa', label: '📂 Importa Dati' },
 ]
 
 function Analisi() {
   const [tabAttiva, setTabAttiva] = useState('grafici')
+  const [graficiKey, setGraficiKey] = useState(0)
 
   return (
     <div>
@@ -678,9 +900,12 @@ function Analisi() {
       </div>
 
       {/* Tab content */}
-      {tabAttiva === 'grafici' && <TabGrafici />}
+      {tabAttiva === 'grafici' && <TabGrafici key={graficiKey} />}
       {tabAttiva === 'spese' && <TabSpese />}
       {tabAttiva === 'packaging' && <TabPackaging />}
+      {tabAttiva === 'importa' && (
+        <TabImportaDati onImportSuccess={() => { setGraficiKey((k) => k + 1) }} />
+      )}
     </div>
   )
 }

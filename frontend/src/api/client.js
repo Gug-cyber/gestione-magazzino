@@ -90,4 +90,23 @@ export const analisiAPI = {
   getAnnuale: () => client.get('/api/analisi/annuale'),
 }
 
+export const datiStoriciAPI = {
+  importCosti: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post('/api/dati-storici/import/costi', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  importRicavi: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post('/api/dati-storici/import/ricavi', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  getAll: (params) => client.get('/api/dati-storici/', { params }),
+  deleteTipo: (tipo) => client.delete(`/api/dati-storici/tipo/${tipo}`),
+}
+
 export default client
