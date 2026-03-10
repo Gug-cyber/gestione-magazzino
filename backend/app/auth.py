@@ -1,5 +1,6 @@
 import os
 import logging
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -21,22 +22,21 @@ if SECRET_KEY == "changeme-use-a-long-random-secret-key-in-production":
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 hours
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12, truncate_error=False)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+def _prepare_password(password: str) -> str:
+    """
+    SHA-256 pre-hash the password before bcrypt to avoid the 72-byte limit.
+    The hex digest is always 64 ASCII chars, well within bcrypt's limit.
+    """
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # bcrypt truncates at 72 bytes; truncate manually to avoid passlib ValueError
-    if isinstance(plain_password, str):
-        plain_password = plain_password.encode("utf-8")
-    plain_password = plain_password[:72]
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(_prepare_password(plain_password), hashed_password)
 
 def get_password_hash(password: str) -> str:
-    # bcrypt truncates at 72 bytes; truncate manually for consistency
-    if isinstance(password, str):
-        password = password.encode("utf-8")
-    password = password[:72]
-    return pwd_context.hash(password)
+    return pwd_context.hash(_prepare_password(password))
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -46,7 +46,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     from .crud.utente import get_utente_by_username
-    
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenziali non valide",
