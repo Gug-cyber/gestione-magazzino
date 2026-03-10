@@ -2,8 +2,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from .database import engine, Base
+from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
+from .routers import auth
 
 load_dotenv()
 
@@ -25,11 +26,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(prodotti.router, prefix="/api/prodotti", tags=["Prodotti"])
 app.include_router(categorie.router, prefix="/api/categorie", tags=["Categorie"])
 app.include_router(movimenti.router, prefix="/api/movimenti", tags=["Movimenti"])
 app.include_router(fornitori.router, prefix="/api/fornitori", tags=["Fornitori"])
 app.include_router(ubicazioni.router, prefix="/api/ubicazioni", tags=["Ubicazioni"])
+
+
+@app.on_event("startup")
+def create_default_admin():
+    from .crud.utente import get_utenti, create_utente
+    from .schemas.utente import UtenteCreate
+
+    db = SessionLocal()
+    try:
+        if not get_utenti(db, skip=0, limit=1):
+            admin = UtenteCreate(
+                username="admin",
+                email="admin@gestione-magazzino.local",
+                password="admin123",
+            )
+            create_utente(db, admin, is_admin=True)
+    finally:
+        db.close()
 
 
 @app.get("/health", tags=["Health"])
