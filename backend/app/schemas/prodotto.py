@@ -15,6 +15,7 @@ class ProdottoBase(BaseModel):
     categoria_id: Optional[int] = None
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
+    lingua: Optional[str] = None
 
 
 class ProdottoCreate(ProdottoBase):
@@ -32,6 +33,7 @@ class ProdottoUpdate(BaseModel):
     categoria_id: Optional[int] = None
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
+    lingua: Optional[str] = None
 
 
 class ProdottoResponse(ProdottoBase):
