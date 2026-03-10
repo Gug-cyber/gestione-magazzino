@@ -2,7 +2,6 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from sqlalchemy import text
 from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
@@ -12,17 +11,6 @@ from .models import dato_storico  # noqa: F401 – ensures dati_storici table is
 load_dotenv()
 
 Base.metadata.create_all(bind=engine)
-
-# Safe schema migrations – add missing columns without dropping existing data
-_MIGRATIONS = [
-    "ALTER TABLE fornitori ADD COLUMN IF NOT EXISTS note TEXT;",
-    "ALTER TABLE prodotti ADD COLUMN IF NOT EXISTS lingua VARCHAR(50);",
-]
-
-with engine.connect() as conn:
-    for stmt in _MIGRATIONS:
-        conn.execute(text(stmt))
-    conn.commit()
 
 app = FastAPI(
     title="Gestione Magazzino API",
@@ -52,7 +40,10 @@ app.include_router(dati_storici.router, prefix="/api/dati-storici", tags=["Dati 
 
 
 @app.on_event("startup")
-def create_default_admin():
+def startup():
+    from .migrations import run_migrations
+    run_migrations(engine)
+
     from .crud.utente import get_utenti, create_utente
     from .schemas.utente import UtenteCreate
 

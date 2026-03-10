@@ -1,7 +1,13 @@
 from sqlalchemy import text
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+# Allowed identifier pattern: only letters, digits, and underscores
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Allowed column definition pattern: word chars, spaces, and parentheses (e.g. VARCHAR(50))
+_DEFINITION_RE = re.compile(r"^[A-Za-z0-9_\s()]+$")
 
 # Lista di tutte le colonne da aggiungere/garantire nel DB
 # Aggiungi qui ogni nuova colonna futura — viene applicata solo se mancante
@@ -14,25 +20,68 @@ COLUMN_MIGRATIONS = [
     {
         "table": "fornitori",
         "column": "note",
-        "definition": "VARCHAR(1000)",
+        "definition": "TEXT",
+    },
+    {
+        "table": "prodotti",
+        "column": "lingua",
+        "definition": "VARCHAR(50)",
     },
 ]
 
-def run_column_migrations(engine):
+
+def _validate_identifier(value: str, kind: str) -> None:
+    """Raises ValueError if value is not a safe SQL identifier."""
+    if not _IDENTIFIER_RE.match(value):
+        raise ValueError(f"Unsafe SQL {kind}: {value!r}")
+
+
+def _validate_definition(value: str) -> None:
+    """Raises ValueError if value is not a safe column type definition."""
+    if not _DEFINITION_RE.match(value):
+        raise ValueError(f"Unsafe column definition: {value!r}")
+
+
+def _column_exists_sqlite(conn, table: str, column: str) -> bool:
+    """Controlla se una colonna esiste in una tabella SQLite tramite PRAGMA."""
+    result = conn.execute(text(f"PRAGMA table_info({table})"))
+    return any(row[1] == column for row in result)
+
+
+def run_migrations(engine):
     """
     Aggiunge colonne mancanti al DB in modo idempotente all'avvio.
-    Usa ALTER TABLE ... ADD COLUMN IF NOT EXISTS, quindi è sicuro
-    eseguirlo ogni volta — non tocca colonne o dati già esistenti.
+    Supporta PostgreSQL (usa IF NOT EXISTS) e SQLite (usa PRAGMA table_info).
+    Non fa crashare l'app se una migrazione fallisce — logga l'errore e continua.
     """
+    is_sqlite = engine.dialect.name == "sqlite"
+
     with engine.connect() as conn:
         for m in COLUMN_MIGRATIONS:
+            table = m["table"]
+            column = m["column"]
+            definition = m["definition"]
             try:
-                conn.execute(text(
-                    f"ALTER TABLE {m['table']} "
-                    f"ADD COLUMN IF NOT EXISTS {m['column']} {m['definition']}"
-                ))
+                _validate_identifier(table, "table name")
+                _validate_identifier(column, "column name")
+                _validate_definition(definition)
+                if is_sqlite:
+                    if _column_exists_sqlite(conn, table, column):
+                        logger.info(
+                            f"[migration] colonna {column} già presente in {table}, skip"
+                        )
+                        continue
+                    conn.execute(
+                        text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+                    )
+                else:
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
+                        )
+                    )
                 conn.commit()
-                logger.info(f"Migration OK: {m['table']}.{m['column']}")
+                logger.info(f"[migration] aggiunta colonna {column} a {table}")
             except Exception as e:
-                logger.warning(f"Migration skipped {m['table']}.{m['column']}: {e}")
+                logger.warning(f"[migration] errore su {table}.{column}: {e}")
                 conn.rollback()
