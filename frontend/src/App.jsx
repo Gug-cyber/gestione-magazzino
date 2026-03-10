@@ -9,6 +9,7 @@ import Prodotti from './pages/Prodotti.jsx'
 import Movimenti from './pages/Movimenti.jsx'
 import Fornitori from './pages/Fornitori.jsx'
 import Ubicazioni from './pages/Ubicazioni.jsx'
+import Profilo from './pages/Profilo.jsx'
 
 function AppLayout({ children }) {
   return (
@@ -54,6 +55,11 @@ function App() {
           <Route path="/ubicazioni" element={
             <ProtectedRoute>
               <AppLayout><Ubicazioni /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profilo" element={
+            <ProtectedRoute>
+              <AppLayout><Profilo /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>

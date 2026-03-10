@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from ..models.utente import Utente
-from ..schemas.utente import UtenteCreate, UtenteUpdate
+from ..schemas.utente import UtenteCreate, UtenteUpdate, UtenteUpdateProfilo
 from ..auth import get_password_hash, verify_password
 
 
@@ -52,6 +52,19 @@ def update_utente(db: Session, utente_id: int, utente: UtenteUpdate):
         update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
     for key, value in update_data.items():
         setattr(db_utente, key, value)
+    db.commit()
+    db.refresh(db_utente)
+    return db_utente
+
+
+def update_profilo_utente(db: Session, utente_id: int, dati: UtenteUpdateProfilo):
+    db_utente = get_utente(db, utente_id)
+    if not db_utente:
+        return None
+    if dati.username is not None and dati.username != db_utente.username:
+        db_utente.username = dati.username
+    if dati.new_password is not None:
+        db_utente.hashed_password = get_password_hash(dati.new_password)
     db.commit()
     db.refresh(db_utente)
     return db_utente

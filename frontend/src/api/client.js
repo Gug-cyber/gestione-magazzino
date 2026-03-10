@@ -71,4 +71,6 @@ export const ubicazioniAPI = {
   delete: (id) => client.delete(`/api/ubicazioni/${id}`),
 }
 
+export const updateProfilo = (data) => client.put('/api/auth/me', data)
+
 export default client
