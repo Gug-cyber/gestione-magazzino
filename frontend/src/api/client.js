@@ -36,6 +36,13 @@ export const prodottiAPI = {
   create: (data) => client.post('/api/prodotti/', data),
   update: (id, data) => client.put(`/api/prodotti/${id}`, data),
   delete: (id) => client.delete(`/api/prodotti/${id}`),
+  importCSV: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post('/api/prodotti/import/csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 export const categorieAPI = {

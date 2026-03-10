@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 
 const emptyForm = {
@@ -43,6 +43,8 @@ function Prodotti() {
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
+  const [importMsg, setImportMsg] = useState(null)
+  const csvInputRef = useRef(null)
 
   const fetchAll = async () => {
     try {
@@ -60,6 +62,37 @@ function Prodotti() {
   }
 
   useEffect(() => { fetchAll() }, [])
+
+  const handleImportCSV = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    setImportMsg(null)
+    setError('')
+    try {
+      const res = await prodottiAPI.importCSV(file)
+      const { importati, saltati, errori } = res.data
+      setImportMsg({ importati, saltati, errori })
+      fetchAll()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore durante l\'importazione CSV')
+    }
+  }
+
+  const handleDownloadSample = () => {
+    const csv = [
+      'nome,sku,quantita,quantita_minima,prezzo_acquisto,prezzo_vendita,descrizione,stato_conservazione,lingua',
+      'Prodotto Esempio,SKU-001,10,2,5.00,12.50,Descrizione opzionale,Mint,Italiano',
+      'Altro Prodotto,SKU-002,5,1,,,,,',
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'prodotti_esempio.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -117,11 +150,31 @@ function Prodotti() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ color: '#1a237e' }}>📦 Prodotti</h1>
-        <button onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }}
-          style={btnStyle('#1a237e')}>{showForm ? 'Annulla' : '+ Aggiungi Prodotto'}</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <button onClick={() => csvInputRef.current && csvInputRef.current.click()} style={btnStyle('#6a1b9a')}>📂 Importa CSV</button>
+            <button onClick={handleDownloadSample} style={{ background: 'none', border: 'none', color: '#6a1b9a', cursor: 'pointer', fontSize: '0.78rem', textDecoration: 'underline', padding: 0 }}>Scarica CSV di esempio</button>
+            <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
+          </div>
+          <button onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }}
+            style={btnStyle('#1a237e')}>{showForm ? 'Annulla' : '+ Aggiungi Prodotto'}</button>
+        </div>
       </div>
 
       {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+
+      {importMsg && (
+        <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '6px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7' }}>
+          <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
+            ✅ Importati {importMsg.importati} prodotti.{importMsg.saltati > 0 ? ` ${importMsg.saltati} saltati.` : ''}
+          </span>
+          {importMsg.errori && importMsg.errori.length > 0 && (
+            <ul style={{ marginTop: '8px', marginBottom: 0, color: '#c62828', fontSize: '0.9rem' }}>
+              {importMsg.errori.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} style={formStyle}>
