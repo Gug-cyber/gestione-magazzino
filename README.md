@@ -1,1 +1,154 @@
-# gestione-magazzino
+# 🏭 Gestione Magazzino
+
+Software completo per la gestione del magazzino, sviluppato con un moderno stack tecnologico.
+
+## 📋 Descrizione
+
+**Gestione Magazzino** è un'applicazione web full-stack che permette di:
+- Gestire il catalogo prodotti con SKU, categorie e ubicazioni
+- Registrare movimenti di carico e scarico
+- Monitorare le scorte e ricevere alert per prodotti sotto la soglia minima
+- Gestire fornitori e ubicazioni fisiche del magazzino
+- Visualizzare statistiche e dashboard in tempo reale
+
+## 🛠️ Stack Tecnologico
+
+| Layer | Tecnologia |
+|-------|-----------|
+| **Backend** | Python 3.11 + FastAPI + SQLAlchemy |
+| **Frontend** | React 18 + Vite |
+| **Database** | PostgreSQL 15 |
+| **ORM** | SQLAlchemy 2.0 |
+| **Containerizzazione** | Docker + Docker Compose |
+
+## ✅ Prerequisiti
+
+- [Docker](https://www.docker.com/get-started) >= 24.0
+- [Docker Compose](https://docs.docker.com/compose/) >= 2.0
+
+## 🚀 Avvio del Progetto
+
+### 1. Clona il repository
+```bash
+git clone https://github.com/Gug-cyber/gestione-magazzino.git
+cd gestione-magazzino
+```
+
+### 2. Configura le variabili d'ambiente (opzionale)
+```bash
+cp backend/.env.example backend/.env
+```
+
+### 3. Avvia con Docker Compose
+```bash
+docker compose up --build
+```
+
+### 4. Accedi all'applicazione
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8000
+- **Documentazione API (Swagger):** http://localhost:8000/docs
+- **Documentazione API (ReDoc):** http://localhost:8000/redoc
+
+### Fermare il progetto
+```bash
+docker compose down
+```
+
+### Fermare e rimuovere i volumi (reset database)
+```bash
+docker compose down -v
+```
+
+## 📁 Struttura del Progetto
+
+```
+gestione-magazzino/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # Entry point FastAPI
+│   │   ├── database.py          # Configurazione DB e sessione SQLAlchemy
+│   │   ├── models/              # Modelli SQLAlchemy
+│   │   │   ├── prodotto.py
+│   │   │   ├── categoria.py
+│   │   │   ├── movimento.py
+│   │   │   ├── fornitore.py
+│   │   │   └── ubicazione.py
+│   │   ├── schemas/             # Pydantic schemas
+│   │   ├── routers/             # Endpoint REST
+│   │   └── crud/                # Operazioni database
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── components/          # Navbar, Sidebar
+│   │   ├── pages/               # Dashboard, Prodotti, Movimenti, Fornitori, Ubicazioni
+│   │   └── api/                 # Client Axios
+│   ├── package.json
+│   └── Dockerfile
+├── docker-compose.yml
+└── README.md
+```
+
+## 🌐 Endpoint API Principali
+
+### Prodotti
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| `GET` | `/api/prodotti/` | Lista tutti i prodotti |
+| `GET` | `/api/prodotti/{id}` | Dettaglio prodotto |
+| `GET` | `/api/prodotti/sotto-scorta` | Prodotti sotto scorta minima |
+| `POST` | `/api/prodotti/` | Crea nuovo prodotto |
+| `PUT` | `/api/prodotti/{id}` | Aggiorna prodotto |
+| `DELETE` | `/api/prodotti/{id}` | Elimina prodotto |
+
+### Movimenti
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| `GET` | `/api/movimenti/` | Lista tutti i movimenti |
+| `POST` | `/api/movimenti/` | Registra carico/scarico |
+| `GET` | `/api/movimenti/prodotto/{id}` | Movimenti per prodotto |
+
+### Categorie, Fornitori, Ubicazioni
+- `GET /api/categorie/`
+- `GET /api/fornitori/`
+- `GET /api/ubicazioni/`
+
+Tutti gli endpoint supportano operazioni CRUD complete (GET, POST, PUT, DELETE).
+
+### Health Check
+```
+GET /health
+```
+
+## 🔧 Sviluppo Locale (senza Docker)
+
+### Backend
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\activate   # Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## 🤝 Come Contribuire
+
+1. Forka il repository
+2. Crea un branch per la tua feature: `git checkout -b feature/nuova-funzionalita`
+3. Fai il commit delle modifiche: `git commit -m 'Aggiunge nuova funzionalità'`
+4. Pusha il branch: `git push origin feature/nuova-funzionalita`
+5. Apri una Pull Request
+
+## 📄 Licenza
+
+Questo progetto è rilasciato sotto licenza MIT.

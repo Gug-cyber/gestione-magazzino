@@ -1,0 +1,24 @@
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from ..database import Base
+
+
+class Prodotto(Base):
+    __tablename__ = "prodotti"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(150), nullable=False)
+    descrizione = Column(String(500), nullable=True)
+    sku = Column(String(100), nullable=False, unique=True)
+    quantita = Column(Integer, nullable=False, default=0)
+    quantita_minima = Column(Integer, nullable=False, default=0)
+    prezzo_acquisto = Column(Numeric(10, 2), nullable=True)
+    prezzo_vendita = Column(Numeric(10, 2), nullable=True)
+    categoria_id = Column(Integer, ForeignKey("categorie.id"), nullable=True)
+    ubicazione_id = Column(Integer, ForeignKey("ubicazioni.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    categoria = relationship("Categoria", backref="prodotti")
+    ubicazione = relationship("Ubicazione", backref="prodotti")
