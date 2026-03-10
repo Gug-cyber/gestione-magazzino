@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Index
-from sqlalchemy.schema import UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Index
 from ..database import Base
 
 
@@ -12,6 +11,7 @@ class Fornitore(Base):
     telefono = Column(String(30), nullable=True)
     indirizzo = Column(String(255), nullable=True)
     partita_iva = Column(String(20), nullable=True)
+    note = Column(Text, nullable=True)
 
     __table_args__ = (
         Index(
