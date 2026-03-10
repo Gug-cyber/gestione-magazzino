@@ -4,7 +4,7 @@ import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 const emptyForm = {
   nome: '', descrizione: '', sku: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
-  categoria_id: '', ubicazione_id: '', stato_conservazione: '',
+  categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '',
 }
 
 const statoColors = {
@@ -73,6 +73,7 @@ function Prodotti() {
       categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
       ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
       stato_conservazione: form.stato_conservazione || null,
+      lingua: form.lingua || null,
     }
     try {
       if (editing) {
@@ -96,6 +97,7 @@ function Prodotti() {
       prezzo_acquisto: p.prezzo_acquisto || '', prezzo_vendita: p.prezzo_vendita || '',
       categoria_id: p.categoria_id || '', ubicazione_id: p.ubicazione_id || '',
       stato_conservazione: p.stato_conservazione || '',
+      lingua: p.lingua || '',
     })
     setEditing(p.id)
     setShowForm(true)
@@ -164,6 +166,22 @@ function Prodotti() {
             </select>
           </label>
 
+          {/* Lingua */}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#555' }}>Lingua</span>
+            <select
+              value={form.lingua}
+              onChange={(e) => setForm({ ...form, lingua: e.target.value })}
+              style={inputStyle}>
+              <option value="">-- Nessuna --</option>
+              <option value="Italiano">Italiano</option>
+              <option value="Inglese">Inglese</option>
+              <option value="Giapponese">Giapponese</option>
+              <option value="Cinese">Cinese</option>
+              <option value="Coreano">Coreano</option>
+            </select>
+          </label>
+
           {/* Categoria */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
@@ -198,14 +216,14 @@ function Prodotti() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Azioni'].map(h => (
+              {['ID', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
                 <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {prodotti.length === 0 ? (
-              <tr><td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun prodotto trovato</td></tr>
+              <tr><td colSpan={10} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun prodotto trovato</td></tr>
             ) : prodotti.map((p) => (
               <tr key={p.id} style={{ borderBottom: '1px solid #eee', backgroundColor: p.quantita < p.quantita_minima ? '#fff8e1' : 'white' }}>
                 <td style={tdStyle}>{p.id}</td>
@@ -216,6 +234,7 @@ function Prodotti() {
                 <td style={tdStyle}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>
                 <td style={tdStyle}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>
                 <td style={tdStyle}><StatoBadge value={p.stato_conservazione} /></td>
+                <td style={tdStyle}>{p.lingua || '—'}</td>
                 <td style={tdStyle}>
                   <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>

@@ -16,6 +16,7 @@ Base.metadata.create_all(bind=engine)
 # Safe schema migrations – add missing columns without dropping existing data
 _MIGRATIONS = [
     "ALTER TABLE fornitori ADD COLUMN IF NOT EXISTS note TEXT;",
+    "ALTER TABLE prodotti ADD COLUMN IF NOT EXISTS lingua VARCHAR(50);",
 ]
 
 with engine.connect() as conn:
