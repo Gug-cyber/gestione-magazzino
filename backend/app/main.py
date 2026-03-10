@@ -7,10 +7,12 @@ from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
 from .routers import spese_gestione, analisi, dati_storici
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
+from .migrations import run_column_migrations  # aggiunge colonne mancanti all'avvio
 
 load_dotenv()
 
 Base.metadata.create_all(bind=engine)
+run_column_migrations(engine)  # aggiunge automaticamente le colonne mancanti al DB
 
 app = FastAPI(
     title="Gestione Magazzino API",
