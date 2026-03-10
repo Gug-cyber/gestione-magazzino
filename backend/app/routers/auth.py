@@ -12,6 +12,7 @@ from ..schemas.utente import (
 from ..crud import utente as crud
 from ..crud import reset_token as crud_token
 from ..auth import create_access_token, get_current_active_user, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..email_utils import send_forgot_username_email, send_reset_password_email
 
 router = APIRouter()
 
@@ -75,6 +76,12 @@ def update_me(
         if existing:
             raise HTTPException(status_code=400, detail="Username già in uso")
 
+    # Validate email uniqueness
+    if dati.email is not None and dati.email != current_user.email:
+        existing_email = crud.get_utente_by_email(db, dati.email)
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email già in uso")
+
     utente_aggiornato = crud.update_profilo_utente(db, current_user.id, dati)
     return utente_aggiornato
 
@@ -89,7 +96,10 @@ def forgot_username(body: ForgotUsernameRequest, db: Session = Depends(get_db)):
     utente = crud.get_utente_by_email(db, body.email)
     if not utente:
         raise HTTPException(status_code=404, detail="Nessun account trovato con questa email")
-    return {"username": utente.username, "message": "Username trovato"}
+    email_sent = send_forgot_username_email(utente.email, utente.username)
+    if email_sent:
+        return {"username": None, "message": "Username inviato via email", "email_sent": True}
+    return {"username": utente.username, "message": "Username trovato (email non configurata)", "email_sent": False}
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
@@ -98,9 +108,13 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     if not utente:
         raise HTTPException(status_code=404, detail="Nessun account trovato con questa email")
     token_obj = crud_token.create_reset_token(db, utente.id)
+    email_sent = send_reset_password_email(utente.email, token_obj.token)
+    if email_sent:
+        return {"reset_token": None, "message": "Token inviato via email", "email_sent": True}
     return {
         "reset_token": token_obj.token,
-        "message": "Usa questo token per reimpostare la password",
+        "message": "Usa questo token per reimpostare la password (email non configurata)",
+        "email_sent": False,
     }
 
 

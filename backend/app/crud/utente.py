@@ -63,6 +63,8 @@ def update_profilo_utente(db: Session, utente_id: int, dati: UtenteUpdateProfilo
         return None
     if dati.username is not None and dati.username != db_utente.username:
         db_utente.username = dati.username
+    if dati.email is not None and dati.email != db_utente.email:
+        db_utente.email = dati.email
     if dati.new_password is not None:
         db_utente.hashed_password = get_password_hash(dati.new_password)
     db.commit()

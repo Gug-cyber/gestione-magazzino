@@ -9,6 +9,10 @@ function Profilo() {
   const [usernameMsg, setUsernameMsg] = useState(null)
   const [usernameError, setUsernameError] = useState(null)
 
+  const [nuovaEmail, setNuovaEmail] = useState(user?.email || '')
+  const [emailMsg, setEmailMsg] = useState(null)
+  const [emailError, setEmailError] = useState(null)
+
   const [passwordAttuale, setPasswordAttuale] = useState('')
   const [nuovaPassword, setNuovaPassword] = useState('')
   const [confermaPassword, setConfermaPassword] = useState('')
@@ -25,6 +29,19 @@ function Profilo() {
       setUsernameMsg('Username aggiornato con successo!')
     } catch (err) {
       setUsernameError(err.response?.data?.detail || 'Errore durante l\'aggiornamento del username')
+    }
+  }
+
+  const handleSalvaEmail = async (e) => {
+    e.preventDefault()
+    setEmailMsg(null)
+    setEmailError(null)
+    try {
+      const res = await updateProfilo({ email: nuovaEmail })
+      setUser(res.data)
+      setEmailMsg('Email aggiornata con successo!')
+    } catch (err) {
+      setEmailError(err.response?.data?.detail || 'Errore durante l\'aggiornamento dell\'email')
     }
   }
 
@@ -85,6 +102,38 @@ function Profilo() {
           {usernameError && <p style={errorStyle}>{usernameError}</p>}
           <button type="submit" style={btnStyle}>
             💾 Salva username
+          </button>
+        </form>
+      </div>
+
+      {/* Sezione cambio email */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        marginBottom: '24px',
+        maxWidth: '480px',
+      }}>
+        <h2 style={{ marginBottom: '16px', color: '#333' }}>📧 Cambia Email</h2>
+        <form onSubmit={handleSalvaEmail}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#555', fontWeight: 600 }}>
+              Nuova email
+            </label>
+            <input
+              type="email"
+              value={nuovaEmail}
+              onChange={(e) => setNuovaEmail(e.target.value)}
+              required
+              placeholder="Inserisci nuova email"
+              style={inputStyle}
+            />
+          </div>
+          {emailMsg && <p style={successStyle}>{emailMsg}</p>}
+          {emailError && <p style={errorStyle}>{emailError}</p>}
+          <button type="submit" style={btnStyle}>
+            💾 Salva email
           </button>
         </form>
       </div>
@@ -183,3 +232,4 @@ const errorStyle = {
 }
 
 export default Profilo
+

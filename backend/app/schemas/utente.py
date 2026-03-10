@@ -44,6 +44,7 @@ class TokenData(BaseModel):
 
 class UtenteUpdateProfilo(BaseModel):
     username: Optional[str] = None
+    email: Optional[str] = None
     current_password: Optional[str] = None
     new_password: Optional[str] = None
 
@@ -53,8 +54,9 @@ class ForgotUsernameRequest(BaseModel):
 
 
 class ForgotUsernameResponse(BaseModel):
-    username: str
+    username: Optional[str] = None
     message: str
+    email_sent: bool
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -62,8 +64,9 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ForgotPasswordResponse(BaseModel):
-    reset_token: str
+    reset_token: Optional[str] = None
     message: str
+    email_sent: bool
 
 
 class ResetPasswordRequest(BaseModel):

@@ -59,7 +59,7 @@ function Login() {
     setFuError(''); setFuResult(null); setFuLoading(true)
     try {
       const res = await forgotUsername(fuEmail)
-      setFuResult(res.data.username)
+      setFuResult(res.data)
     } catch (err) {
       setFuError(err?.response?.data?.detail || 'Errore durante la ricerca.')
     } finally {
@@ -72,7 +72,12 @@ function Login() {
     setFpError(''); setFpResult(null); setFpLoading(true)
     try {
       const res = await forgotPassword(fpEmail)
-      setFpToken(res.data.reset_token)
+      if (res.data.email_sent) {
+        setFpToken('')
+      } else {
+        setFpToken(res.data.reset_token || '')
+      }
+      setFpResult(res.data)
       setFpStep(2)
     } catch (err) {
       setFpError(err?.response?.data?.detail || 'Errore durante la richiesta.')
@@ -317,7 +322,10 @@ function Login() {
                 </form>
                 {fuResult && (
                   <div style={{ marginTop: '14px', padding: '12px', backgroundColor: '#e8f5e9', borderRadius: '8px', color: '#2e7d32', fontSize: '0.95rem' }}>
-                    ✅ Il tuo username è: <strong>{fuResult}</strong>
+                    {fuResult.email_sent
+                      ? '✅ Username inviato alla tua email registrata!'
+                      : <>✅ Il tuo username è: <strong>{fuResult.username}</strong></>
+                    }
                   </div>
                 )}
                 {fuError && (
@@ -360,11 +368,17 @@ function Login() {
 
                 {fpStep === 2 && (
                   <form onSubmit={handleResetPassword}>
-                    <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#e8eaf6', borderRadius: '8px', fontSize: '0.85rem', color: '#3949ab' }}>
-                      <strong>Token di reset:</strong>
-                      <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '4px' }}>{fpToken}</div>
-                      <div style={{ marginTop: '6px', color: '#555' }}>Copia questo token e usalo nel campo sottostante. Scade tra 30 minuti.</div>
-                    </div>
+                    {fpResult?.email_sent ? (
+                      <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#e8f5e9', borderRadius: '8px', fontSize: '0.85rem', color: '#2e7d32' }}>
+                        ✅ Token inviato via email! Controlla la tua casella e inseriscilo nel campo qui sotto.
+                      </div>
+                    ) : (
+                      <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#e8eaf6', borderRadius: '8px', fontSize: '0.85rem', color: '#3949ab' }}>
+                        <strong>Token di reset:</strong>
+                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '4px' }}>{fpToken}</div>
+                        <div style={{ marginTop: '6px', color: '#555' }}>Copia questo token e usalo nel campo sottostante. Scade tra 30 minuti.</div>
+                      </div>
+                    )}
 
                     <div style={{ marginBottom: '12px' }}>
                       <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', color: '#333' }}>Token</label>
