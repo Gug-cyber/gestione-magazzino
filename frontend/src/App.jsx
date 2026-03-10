@@ -10,6 +10,7 @@ import Prodotti from './pages/Prodotti.jsx'
 import Movimenti from './pages/Movimenti.jsx'
 import Fornitori from './pages/Fornitori.jsx'
 import Ubicazioni from './pages/Ubicazioni.jsx'
+import Categorie from './pages/Categorie.jsx'
 import Profilo from './pages/Profilo.jsx'
 import Analisi from './pages/Analisi.jsx'
 
@@ -58,6 +59,11 @@ function App() {
           <Route path="/ubicazioni" element={
             <ProtectedRoute>
               <AppLayout><Ubicazioni /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/categorie" element={
+            <ProtectedRoute>
+              <AppLayout><Categorie /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/profilo" element={
