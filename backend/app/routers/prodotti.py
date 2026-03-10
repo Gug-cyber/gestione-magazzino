@@ -1,12 +1,13 @@
 import csv
 import io
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
 from ..crud import prodotto as crud
 from ..auth import get_current_active_user
+from ..services import strapi_sync, medusa_sync
 
 router = APIRouter()
 
@@ -30,14 +31,17 @@ def get_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_user=D
 
 
 @router.post("/", response_model=ProdottoResponse, status_code=201)
-def create_prodotto(prodotto: ProdottoCreate, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def create_prodotto(prodotto: ProdottoCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     if crud.get_prodotto_by_sku(db, prodotto.sku):
         raise HTTPException(status_code=400, detail="SKU già esistente")
-    return crud.create_prodotto(db, prodotto)
+    db_prodotto = crud.create_prodotto(db, prodotto)
+    background_tasks.add_task(strapi_sync.sync_create_or_update, db_prodotto)
+    background_tasks.add_task(medusa_sync.sync_create_or_update, db_prodotto)
+    return db_prodotto
 
 
 @router.put("/{prodotto_id}", response_model=ProdottoResponse)
-def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     if prodotto.sku is not None:
         existing = crud.get_prodotto_by_sku(db, prodotto.sku)
         if existing and existing.id != prodotto_id:
@@ -45,13 +49,20 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, db: Session = De
     db_prodotto = crud.update_prodotto(db, prodotto_id, prodotto)
     if not db_prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    background_tasks.add_task(strapi_sync.sync_create_or_update, db_prodotto)
+    background_tasks.add_task(medusa_sync.sync_create_or_update, db_prodotto)
     return db_prodotto
 
 
 @router.delete("/{prodotto_id}", status_code=204)
-def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
-    if not crud.delete_prodotto(db, prodotto_id):
+def delete_prodotto(prodotto_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    prodotto = crud.get_prodotto(db, prodotto_id)
+    if not prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    sku = prodotto.sku
+    crud.delete_prodotto(db, prodotto_id)
+    background_tasks.add_task(strapi_sync.sync_delete, sku)
+    background_tasks.add_task(medusa_sync.delete_product, sku)
 
 
 @router.post("/import/csv")
