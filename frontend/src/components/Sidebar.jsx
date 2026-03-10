@@ -7,6 +7,7 @@ const links = [
   { to: '/movimenti', label: '🔄 Movimenti' },
   { to: '/fornitori', label: '🏢 Fornitori' },
   { to: '/ubicazioni', label: '📍 Ubicazioni' },
+  { to: '/categorie', label: '🏷️ Categorie' },
 ]
 
 function Sidebar() {
