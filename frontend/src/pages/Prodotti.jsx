@@ -4,7 +4,35 @@ import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 const emptyForm = {
   nome: '', descrizione: '', sku: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
-  categoria_id: '', ubicazione_id: '',
+  categoria_id: '', ubicazione_id: '', stato_conservazione: '',
+}
+
+const statoColors = {
+  'Mint':         { bg: '#e8f5e9', text: '#2e7d32' },
+  'Near Mint':    { bg: '#f1f8e9', text: '#558b2f' },
+  'Excellent':    { bg: '#e3f2fd', text: '#1565c0' },
+  'Good':         { bg: '#fff8e1', text: '#f57f17' },
+  'Light Played': { bg: '#fff3e0', text: '#e65100' },
+  'Played':       { bg: '#fce4ec', text: '#c62828' },
+  'Poor':         { bg: '#ffebee', text: '#b71c1c' },
+}
+
+function StatoBadge({ value }) {
+  if (!value) return <span>—</span>
+  const colors = statoColors[value] || { bg: '#f5f5f5', text: '#555' }
+  return (
+    <span style={{
+      backgroundColor: colors.bg,
+      color: colors.text,
+      padding: '2px 8px',
+      borderRadius: '12px',
+      fontSize: '0.8rem',
+      fontWeight: '600',
+      whiteSpace: 'nowrap',
+    }}>
+      {value}
+    </span>
+  )
 }
 
 function Prodotti() {
@@ -15,6 +43,14 @@ function Prodotti() {
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
+
+  // Inline category management
+  const [showAddCategoria, setShowAddCategoria] = useState(false)
+  const [newCategoriaNome, setNewCategoriaNome] = useState('')
+
+  // Inline ubicazione management
+  const [showAddUbicazione, setShowAddUbicazione] = useState(false)
+  const [newUbicazioneNome, setNewUbicazioneNome] = useState('')
 
   const fetchAll = async () => {
     try {
@@ -44,6 +80,7 @@ function Prodotti() {
       prezzo_vendita: form.prezzo_vendita ? parseFloat(form.prezzo_vendita) : null,
       categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
       ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
+      stato_conservazione: form.stato_conservazione || null,
     }
     try {
       if (editing) {
@@ -66,6 +103,7 @@ function Prodotti() {
       quantita: p.quantita, quantita_minima: p.quantita_minima,
       prezzo_acquisto: p.prezzo_acquisto || '', prezzo_vendita: p.prezzo_vendita || '',
       categoria_id: p.categoria_id || '', ubicazione_id: p.ubicazione_id || '',
+      stato_conservazione: p.stato_conservazione || '',
     })
     setEditing(p.id)
     setShowForm(true)
@@ -78,6 +116,62 @@ function Prodotti() {
       fetchAll()
     } catch (err) {
       setError('Errore nell\'eliminazione')
+    }
+  }
+
+  const handleAddCategoria = async () => {
+    if (!newCategoriaNome.trim()) return
+    try {
+      await categorieAPI.create({ nome: newCategoriaNome.trim() })
+      setNewCategoriaNome('')
+      setShowAddCategoria(false)
+      const c = await categorieAPI.getAll()
+      setCategorie(c.data)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore nella creazione della categoria')
+    }
+  }
+
+  const handleDeleteCategoria = async () => {
+    if (!form.categoria_id) return
+    const cat = categorie.find(c => String(c.id) === String(form.categoria_id))
+    if (!cat) return
+    if (!window.confirm(`Eliminare la categoria "${cat.nome}"?`)) return
+    try {
+      await categorieAPI.delete(form.categoria_id)
+      setForm({ ...form, categoria_id: '' })
+      const c = await categorieAPI.getAll()
+      setCategorie(c.data)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore nell\'eliminazione della categoria')
+    }
+  }
+
+  const handleAddUbicazione = async () => {
+    if (!newUbicazioneNome.trim()) return
+    try {
+      await ubicazioniAPI.create({ nome: newUbicazioneNome.trim() })
+      setNewUbicazioneNome('')
+      setShowAddUbicazione(false)
+      const u = await ubicazioniAPI.getAll()
+      setUbicazioni(u.data)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore nella creazione dell\'ubicazione')
+    }
+  }
+
+  const handleDeleteUbicazione = async () => {
+    if (!form.ubicazione_id) return
+    const ub = ubicazioni.find(u => String(u.id) === String(form.ubicazione_id))
+    if (!ub) return
+    if (!window.confirm(`Eliminare l'ubicazione "${ub.nome}"?`)) return
+    try {
+      await ubicazioniAPI.delete(form.ubicazione_id)
+      setForm({ ...form, ubicazione_id: '' })
+      const u = await ubicazioniAPI.getAll()
+      setUbicazioni(u.data)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore nell\'eliminazione dell\'ubicazione')
     }
   }
 
@@ -118,20 +212,93 @@ function Prodotti() {
                 />
               </label>
             ))}
+
+            {/* Stato di Conservazione */}
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
+              <select
+                value={form.stato_conservazione}
+                onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })}
+                style={inputStyle}
+              >
+                <option value="">-- Nessuno --</option>
+                <option value="Mint">Mint</option>
+                <option value="Near Mint">Near Mint</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Good">Good</option>
+                <option value="Light Played">Light Played</option>
+                <option value="Played">Played</option>
+                <option value="Poor">Poor</option>
+              </select>
+            </label>
+
+            {/* Categoria con gestione inline */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
-              <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })} style={inputStyle}>
-                <option value="">-- Nessuna --</option>
-                {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <select
+                  value={form.categoria_id}
+                  onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
+                  style={{ ...inputStyle, flex: 1 }}
+                >
+                  <option value="">-- Nessuna --</option>
+                  {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                <button type="button" onClick={() => { setShowAddCategoria(!showAddCategoria); setNewCategoriaNome('') }}
+                  style={btnIconStyle} title="Aggiungi categoria">➕</button>
+                <button type="button" onClick={handleDeleteCategoria}
+                  disabled={!form.categoria_id}
+                  style={btnIconDisabled(!!form.categoria_id)} title="Elimina categoria selezionata">🗑️</button>
+              </div>
+              {showAddCategoria && (
+                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                  <input
+                    type="text"
+                    placeholder="Nome categoria"
+                    value={newCategoriaNome}
+                    onChange={(e) => setNewCategoriaNome(e.target.value)}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button type="button" onClick={handleAddCategoria} style={btnIconStyle} title="Salva">✓</button>
+                  <button type="button" onClick={() => { setShowAddCategoria(false); setNewCategoriaNome('') }}
+                    style={btnIconStyle} title="Annulla">✕</button>
+                </div>
+              )}
+            </div>
+
+            {/* Ubicazione con gestione inline */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '0.85rem', color: '#555' }}>Ubicazione</span>
-              <select value={form.ubicazione_id} onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })} style={inputStyle}>
-                <option value="">-- Nessuna --</option>
-                {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-            </label>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <select
+                  value={form.ubicazione_id}
+                  onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })}
+                  style={{ ...inputStyle, flex: 1 }}
+                >
+                  <option value="">-- Nessuna --</option>
+                  {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                </select>
+                <button type="button" onClick={() => { setShowAddUbicazione(!showAddUbicazione); setNewUbicazioneNome('') }}
+                  style={btnIconStyle} title="Aggiungi ubicazione">➕</button>
+                <button type="button" onClick={handleDeleteUbicazione}
+                  disabled={!form.ubicazione_id}
+                  style={btnIconDisabled(!!form.ubicazione_id)} title="Elimina ubicazione selezionata">🗑️</button>
+              </div>
+              {showAddUbicazione && (
+                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                  <input
+                    type="text"
+                    placeholder="Nome ubicazione"
+                    value={newUbicazioneNome}
+                    onChange={(e) => setNewUbicazioneNome(e.target.value)}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button type="button" onClick={handleAddUbicazione} style={btnIconStyle} title="Salva">✓</button>
+                  <button type="button" onClick={() => { setShowAddUbicazione(false); setNewUbicazioneNome('') }}
+                    style={btnIconStyle} title="Annulla">✕</button>
+                </div>
+              )}
+            </div>
           </div>
           <button type="submit" style={btnStyle('#2e7d32')}>
             {editing ? 'Salva Modifiche' : 'Crea Prodotto'}
@@ -143,14 +310,14 @@ function Prodotti() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Azioni'].map(h => (
+              {['ID', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Azioni'].map(h => (
                 <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {prodotti.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun prodotto trovato</td></tr>
+              <tr><td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun prodotto trovato</td></tr>
             ) : prodotti.map((p) => (
               <tr key={p.id} style={{ borderBottom: '1px solid #eee', backgroundColor: p.quantita < p.quantita_minima ? '#fff8e1' : 'white' }}>
                 <td style={tdStyle}>{p.id}</td>
@@ -160,6 +327,7 @@ function Prodotti() {
                 <td style={tdStyle}>{p.quantita_minima}</td>
                 <td style={tdStyle}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>
                 <td style={tdStyle}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>
+                <td style={tdStyle}><StatoBadge value={p.stato_conservazione} /></td>
                 <td style={tdStyle}>
                   <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>
@@ -177,6 +345,8 @@ const thStyle = { textAlign: 'left', padding: '12px 16px', fontWeight: '600' }
 const tdStyle = { padding: '10px 16px', color: '#333' }
 const btnStyle = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' })
 const btnSmall = (bg) => ({ ...btnStyle(bg), padding: '4px 10px', marginRight: '4px', fontSize: '0.85rem' })
+const btnIconStyle = { backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd', borderRadius: '4px', padding: '6px 8px', cursor: 'pointer', fontSize: '0.9rem' }
+const btnIconDisabled = (enabled) => ({ ...btnIconStyle, opacity: enabled ? 1 : 0.4 })
 const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem' }
 const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
