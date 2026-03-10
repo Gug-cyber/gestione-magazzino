@@ -17,6 +17,7 @@ class Prodotto(Base):
     prezzo_vendita = Column(Numeric(10, 2), nullable=True)
     categoria_id = Column(Integer, ForeignKey("categorie.id"), nullable=True)
     ubicazione_id = Column(Integer, ForeignKey("ubicazioni.id"), nullable=True)
+    stato_conservazione = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

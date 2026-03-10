@@ -14,6 +14,7 @@ class ProdottoBase(BaseModel):
     prezzo_vendita: Optional[Decimal] = None
     categoria_id: Optional[int] = None
     ubicazione_id: Optional[int] = None
+    stato_conservazione: Optional[str] = None
 
 
 class ProdottoCreate(ProdottoBase):
@@ -30,6 +31,7 @@ class ProdottoUpdate(BaseModel):
     prezzo_vendita: Optional[Decimal] = None
     categoria_id: Optional[int] = None
     ubicazione_id: Optional[int] = None
+    stato_conservazione: Optional[str] = None
 
 
 class ProdottoResponse(ProdottoBase):
