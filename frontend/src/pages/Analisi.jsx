@@ -419,26 +419,11 @@ function TabSpese() {
 
 // ─── Tab 3: Calcolatore Packaging ────────────────────────────────────────────
 
-const TIPI_PACKAGING = [
-  'Scatola piccola',
-  'Scatola media',
-  'Scatola grande',
-  'Busta',
-  'Tubo',
-  'Personalizzato',
-]
-
-const calcolatoreVuoto = {
-  tipo: 'Scatola piccola',
-  costoMateriale: '',
-  quantita: '',
-  costoManodopera: '',
-  costoSpedizione: '',
-  marginePercent: '',
-}
+const nuovoComponenteVuoto = { nome: '', costoAcquisto: '', numeroPezzi: '' }
 
 function TabPackaging() {
-  const [form, setForm] = useState(calcolatoreVuoto)
+  const [componenti, setComponenti] = useState([])
+  const [nuovoComp, setNuovoComp] = useState(nuovoComponenteVuoto)
   const [nomePreset, setNomePreset] = useState('')
   const [presets, setPresets] = useState(() => {
     try {
@@ -448,33 +433,39 @@ function TabPackaging() {
     }
   })
 
-  const handleChange = (e) => {
+  const handleNuovoChange = (e) => {
     const { name, value } = e.target
-    setForm((f) => ({ ...f, [name]: value }))
+    setNuovoComp((c) => ({ ...c, [name]: value }))
   }
 
-  const costoMat = parseFloat(form.costoMateriale) || 0
-  const qty = parseInt(form.quantita) || 0
-  const costoMan = parseFloat(form.costoManodopera) || 0
-  const costoSped = parseFloat(form.costoSpedizione) || 0
-  const margine = parseFloat(form.marginePercent) || 0
+  const aggiungiComponente = () => {
+    const nome = nuovoComp.nome.trim()
+    const costoAcquisto = parseFloat(nuovoComp.costoAcquisto)
+    const numeroPezzi = parseInt(nuovoComp.numeroPezzi)
+    if (!nome || isNaN(costoAcquisto) || costoAcquisto < 0 || isNaN(numeroPezzi) || numeroPezzi <= 0) return
+    setComponenti((prev) => [...prev, { nome, costoAcquisto, numeroPezzi }])
+    setNuovoComp(nuovoComponenteVuoto)
+  }
 
-  const costoPackagingTotale = costoMat * qty
-  const costoPerPezzo = qty > 0 ? costoMat : 0
-  const costoTotaleManodopera = costoPackagingTotale + costoMan * qty
-  const costoTotaleSpedizione = costoTotaleManodopera + costoSped * qty
-  const prezzoVendita = costoTotaleSpedizione * (1 + margine / 100)
+  const eliminaComponente = (idx) => {
+    setComponenti((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const totalePerUnita = componenti.reduce((acc, c) => {
+    const cpp = c.numeroPezzi > 0 ? c.costoAcquisto / c.numeroPezzi : 0
+    return acc + cpp
+  }, 0)
 
   const salvaPreset = () => {
     if (!nomePreset.trim()) return
-    const nuovi = { ...presets, [nomePreset.trim()]: form }
+    const nuovi = { ...presets, [nomePreset.trim()]: componenti }
     setPresets(nuovi)
     localStorage.setItem('packagingPresets', JSON.stringify(nuovi))
     setNomePreset('')
   }
 
   const caricaPreset = (nome) => {
-    setForm(presets[nome])
+    setComponenti(presets[nome] || [])
   }
 
   const eliminaPreset = (nome) => {
@@ -484,94 +475,133 @@ function TabPackaging() {
     localStorage.setItem('packagingPresets', JSON.stringify(nuovi))
   }
 
-  const risultatoStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  }
-
-  const rigaRisultatoStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '8px 12px',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '6px',
-  }
+  const labelStyle = { display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', flexWrap: 'wrap' }}>
-        {/* Form parametri */}
-        <div style={cardStyle}>
-          <h3 style={{ marginTop: 0, color: '#1a237e' }}>📦 Parametri</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Tabella componenti */}
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0, color: '#1a237e' }}>📦 Componenti Imballo</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Nome</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Costo acq. (€)</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>N° pezzi</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Costo/pz (€)</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {componenti.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ ...tdStyle, color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
+                  Nessun componente aggiunto. Usa il form sotto per aggiungerne uno.
+                </td>
+              </tr>
+            )}
+            {componenti.map((c, idx) => {
+              const cpp = c.numeroPezzi > 0 ? c.costoAcquisto / c.numeroPezzi : 0
+              return (
+                <tr key={idx}>
+                  <td style={tdStyle}>{c.nome}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>€ {c.costoAcquisto.toFixed(2)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>{c.numeroPezzi}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>€ {cpp.toFixed(4)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <button style={btnDangerStyle} onClick={() => eliminaComponente(idx)} title="Elimina">🗑️</button>
+                  </td>
+                </tr>
+              )
+            })}
+            {/* Riga totale */}
+            {componenti.length > 0 && (
+              <tr>
+                <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: '#555', borderTop: '2px solid #1a237e' }}>
+                  TOTALE PACKAGING PER UNITÀ
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#1a237e', fontSize: '1.05rem', borderTop: '2px solid #1a237e', backgroundColor: '#e8eaf6' }}>
+                  € {totalePerUnita.toFixed(4)}/pz
+                </td>
+                <td style={{ ...tdStyle, borderTop: '2px solid #1a237e', backgroundColor: '#e8eaf6' }}></td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Form aggiunta componente */}
+        <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
+          <h4 style={{ margin: '0 0 12px', color: '#333' }}>➕ Aggiungi componente</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Tipo packaging</label>
-              <select style={inputStyle} name="tipo" value={form.tipo} onChange={handleChange}>
-                {TIPI_PACKAGING.map((t) => <option key={t}>{t}</option>)}
-              </select>
+              <label style={labelStyle}>Nome componente</label>
+              <input
+                style={inputStyle}
+                name="nome"
+                type="text"
+                placeholder="es. Busta, Scatola, Pluriball…"
+                value={nuovoComp.nome}
+                onChange={handleNuovoChange}
+                onKeyDown={(e) => e.key === 'Enter' && aggiungiComponente()}
+              />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Costo unitario materiale (€)</label>
-              <input style={inputStyle} name="costoMateriale" type="number" step="0.01" min="0" value={form.costoMateriale} onChange={handleChange} placeholder="0.00" />
+              <label style={labelStyle}>Costo acquisto (€)</label>
+              <input
+                style={inputStyle}
+                name="costoAcquisto"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={nuovoComp.costoAcquisto}
+                onChange={handleNuovoChange}
+                onKeyDown={(e) => e.key === 'Enter' && aggiungiComponente()}
+              />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Quantità pezzi da imballare</label>
-              <input style={inputStyle} name="quantita" type="number" min="0" step="1" value={form.quantita} onChange={handleChange} placeholder="0" />
+              <label style={labelStyle}>N° pezzi in confezione</label>
+              <input
+                style={inputStyle}
+                name="numeroPezzi"
+                type="number"
+                step="1"
+                min="1"
+                placeholder="es. 100"
+                value={nuovoComp.numeroPezzi}
+                onChange={handleNuovoChange}
+                onKeyDown={(e) => e.key === 'Enter' && aggiungiComponente()}
+              />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Costo manodopera per pezzo (€)</label>
-              <input style={inputStyle} name="costoManodopera" type="number" step="0.01" min="0" value={form.costoManodopera} onChange={handleChange} placeholder="0.00" />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Costo spedizione per pezzo (€)</label>
-              <input style={inputStyle} name="costoSpedizione" type="number" step="0.01" min="0" value={form.costoSpedizione} onChange={handleChange} placeholder="0.00" />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Margine aggiuntivo (%)</label>
-              <input style={inputStyle} name="marginePercent" type="number" step="0.1" min="0" value={form.marginePercent} onChange={handleChange} placeholder="0" />
+              <button style={{ ...btnPrimaryStyle, whiteSpace: 'nowrap' }} onClick={aggiungiComponente}>
+                + Aggiungi
+              </button>
             </div>
           </div>
+          {/* Anteprima costo/pz */}
+          {nuovoComp.costoAcquisto !== '' && nuovoComp.numeroPezzi !== '' && (
+            <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#555' }}>
+              Costo al pezzo:{' '}
+              <strong style={{ color: '#1a237e' }}>
+                € {(parseFloat(nuovoComp.costoAcquisto) / (parseInt(nuovoComp.numeroPezzi) || 1)).toFixed(4)}
+              </strong>
+            </p>
+          )}
         </div>
 
-        {/* Risultati */}
-        <div style={cardStyle}>
-          <h3 style={{ marginTop: 0, color: '#1a237e' }}>📊 Risultati</h3>
-          <div style={risultatoStyle}>
-            <div style={rigaRisultatoStyle}>
-              <span style={{ color: '#555' }}>Costo packaging totale</span>
-              <strong>€{costoPackagingTotale.toFixed(2)}</strong>
-            </div>
-            <div style={rigaRisultatoStyle}>
-              <span style={{ color: '#555' }}>Costo materiale per pezzo</span>
-              <strong>€{costoPerPezzo.toFixed(2)}</strong>
-            </div>
-            <div style={rigaRisultatoStyle}>
-              <span style={{ color: '#555' }}>Costo totale con manodopera</span>
-              <strong>€{costoTotaleManodopera.toFixed(2)}</strong>
-            </div>
-            <div style={rigaRisultatoStyle}>
-              <span style={{ color: '#555' }}>Costo totale con spedizione</span>
-              <strong>€{costoTotaleSpedizione.toFixed(2)}</strong>
-            </div>
-            <div style={{ ...rigaRisultatoStyle, backgroundColor: '#e8f5e9' }}>
-              <span style={{ color: '#2e7d32', fontWeight: 600 }}>Prezzo di vendita consigliato</span>
-              <strong style={{ color: '#2e7d32', fontSize: '1.1rem' }}>€{prezzoVendita.toFixed(2)}</strong>
-            </div>
-          </div>
-
-          {/* Salva preset */}
-          <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#333' }}>💾 Salva preset</h4>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                style={{ ...inputStyle, flex: 1 }}
-                placeholder="Nome preset"
-                value={nomePreset}
-                onChange={(e) => setNomePreset(e.target.value)}
-              />
-              <button style={btnPrimaryStyle} onClick={salvaPreset}>Salva</button>
-            </div>
+        {/* Salva preset */}
+        <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
+          <h4 style={{ margin: '0 0 8px', color: '#333' }}>💾 Salva preset</h4>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              style={{ ...inputStyle, flex: 1 }}
+              placeholder="Nome preset"
+              value={nomePreset}
+              onChange={(e) => setNomePreset(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && salvaPreset()}
+            />
+            <button style={btnPrimaryStyle} onClick={salvaPreset}>Salva</button>
           </div>
         </div>
       </div>
