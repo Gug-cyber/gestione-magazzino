@@ -4,14 +4,15 @@ import { NavLink } from 'react-router-dom'
 const links = [
   { to: '/', label: '📊 Dashboard' },
   { to: '/analisi', label: '📈 Analisi' },
+  { to: '/ordini', label: '🛒 Ordini' },
   { to: '/prodotti', label: '📦 Prodotti' },
+  { to: '/clienti', label: '👥 Clienti' },
   { to: '/movimenti', label: '🔄 Movimenti' },
+  { to: '/fatture', label: '🧾 Fatture' },
   { to: '/fornitori', label: '🏢 Fornitori' },
   { to: '/ubicazioni', label: '📍 Ubicazioni' },
   { to: '/categorie', label: '🏷️ Categorie' },
-  { to: '/fatture', label: '🧾 Fatture' },
-  { to: '/clienti', label: '👥 Clienti' },
-  { to: '/ordini', label: '🛒 Ordini' },
+  { to: '/cardtrader', label: '🃏 CardTrader' },
 ]
 
 function NavLinks({ onLinkClick }) {
