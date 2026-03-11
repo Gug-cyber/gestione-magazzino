@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserMultiFormatOneDReader } from '@zxing/browser'
 
 function BarcodeScanner({ onScan, onClose }) {
@@ -6,28 +6,44 @@ function BarcodeScanner({ onScan, onClose }) {
   const readerRef = useRef(null)
   const [error, setError] = useState('')
 
+  const stopStream = useCallback(() => {
+    try { readerRef.current?.reset() } catch { /* ignore */ }
+    if (videoRef.current) {
+      videoRef.current.srcObject?.getTracks().forEach(t => t.stop())
+      videoRef.current.srcObject = null
+    }
+  }, [])
+
   useEffect(() => {
     const reader = new BrowserMultiFormatOneDReader()
     readerRef.current = reader
 
     reader.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
       if (result) {
+        stopStream()
         onScan(result.getText())
         onClose()
+        return
       }
-      if (err && !(err.name === 'NotFoundException')) {
-        setError('Errore durante la scansione: ' + err.message)
+      if (err) {
+        const ignoredErrors = ['NotFoundException', 'ChecksumException', 'FormatException']
+        if (!ignoredErrors.includes(err.name) && err.message) {
+          setError('Errore durante la scansione: ' + err.message)
+        }
       }
     }).catch((e) => {
-      setError('Impossibile accedere alla webcam: ' + e.message)
+      setError('Impossibile accedere alla webcam: ' + (e.message || 'Errore sconosciuto'))
     })
 
     return () => {
-      if (readerRef.current) {
-        try { readerRef.current.reset() } catch { /* ignore cleanup errors on unmount */ }
-      }
+      stopStream()
     }
-  }, [onScan, onClose])
+  }, [onScan, onClose, stopStream])
+
+  const handleClose = () => {
+    stopStream()
+    onClose()
+  }
 
   return (
     <div style={{
@@ -48,7 +64,7 @@ function BarcodeScanner({ onScan, onClose }) {
         }
         <video ref={videoRef} style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }} />
         <button
-          onClick={onClose}
+          onClick={handleClose}
           style={{
             marginTop: '16px', backgroundColor: '#c62828', color: 'white',
             border: 'none', borderRadius: '6px', padding: '8px 20px',
