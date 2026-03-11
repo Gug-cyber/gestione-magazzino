@@ -1,0 +1,28 @@
+# koyeb.yaml — Configurazione di riferimento per il deploy su Koyeb
+# Questo file documenta le impostazioni da configurare nel pannello Koyeb
+# Non viene letto automaticamente da Koyeb — segui README-DEPLOY.md
+
+service:
+  name: gestione-magazzino-backend
+  type: web
+  
+  build:
+    type: docker
+    dockerfile: backend/Dockerfile
+    
+  run:
+    ports:
+      - port: 8000
+        protocol: http
+    
+  environment:
+    - key: DATABASE_URL
+      value: "postgresql://user:password@host/dbname?sslmode=require"  # Neon connection string
+    - key: ALLOWED_ORIGINS
+      value: "https://YOUR_APP.vercel.app"  # URL del frontend su Vercel
+    - key: CORS_ALLOW_LAN
+      value: "false"
+    - key: SECRET_KEY
+      value: "<GENERA_UNA_CHIAVE_CASUALE_DI_ALMENO_32_CARATTERI>"
+    - key: UPLOAD_DIR
+      value: "/app/uploads"

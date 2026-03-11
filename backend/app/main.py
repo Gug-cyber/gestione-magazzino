@@ -40,9 +40,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("/app/uploads", exist_ok=True)
-os.makedirs(os.path.join(os.getenv("UPLOAD_DIR", "/app/uploads"), "fatture"), exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(os.path.join(UPLOAD_DIR, "fatture"), exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(prodotti.router, prefix="/api/prodotti", tags=["Prodotti"])
