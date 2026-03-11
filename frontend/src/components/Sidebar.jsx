@@ -37,15 +37,12 @@ function NavLinks({ onLinkClick }) {
   ))
 }
 
-function Sidebar() {
+function Sidebar({ isOpen, onClose }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 768
-      setIsMobile(mobile)
-      if (!mobile) setIsOpen(false)
+      setIsMobile(window.innerWidth < 768)
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -54,53 +51,24 @@ function Sidebar() {
   if (isMobile) {
     return (
       <>
-        {/* Hamburger button */}
-        <button
-          onClick={() => setIsOpen(true)}
-          aria-label="Apri menu"
-          style={{
-            position: 'fixed',
-            top: '14px',
-            left: '12px',
-            zIndex: 1100,
-            backgroundColor: '#283593',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            width: '36px',
-            height: '36px',
-            fontSize: '1.3rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          }}
-        >
-          ☰
-        </button>
-
         {/* Overlay */}
         {isOpen && (
           <div
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
               backgroundColor: 'rgba(0,0,0,0.5)',
               zIndex: 1099,
             }}
           />
         )}
 
-        {/* Drawer */}
+        {/* Drawer — starts below the navbar */}
         <aside
           style={{
             position: 'fixed',
-            top: 0,
+            top: '64px',
             left: 0,
             bottom: 0,
             width: '240px',
@@ -109,27 +77,9 @@ function Sidebar() {
             overflowY: 'auto',
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.25s ease',
-            paddingTop: '8px',
           }}
         >
-          {/* Close button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 12px' }}>
-            <button
-              onClick={() => setIsOpen(false)}
-              aria-label="Chiudi menu"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255,255,255,0.85)',
-                fontSize: '1.4rem',
-                cursor: 'pointer',
-                lineHeight: 1,
-              }}
-            >
-              ✕
-            </button>
-          </div>
-          <NavLinks onLinkClick={() => setIsOpen(false)} />
+          <NavLinks onLinkClick={onClose} />
         </aside>
       </>
     )

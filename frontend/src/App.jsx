@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useState } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar.jsx'
@@ -20,11 +21,12 @@ import Clienti from './pages/Clienti.jsx'
 import Ordini from './pages/Ordini.jsx'
 import CardTrader from './pages/CardTrader.jsx'
 function AppLayout({ children }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Navbar />
+      <Navbar onMenuClick={() => setMenuOpen(true)} />
       <div style={{ display: 'flex', flex: 1 }}>
-        <Sidebar />
+        <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
         <main style={{
           flex: 1,
           padding: 'clamp(12px, 3vw, 24px)',
