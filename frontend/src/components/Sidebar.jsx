@@ -12,6 +12,7 @@ const links = [
   { to: '/fatture', label: '🧾 Fatture' },
   { to: '/clienti', label: '👥 Clienti' },
   { to: '/ordini', label: '🛒 Ordini' },
+  { to: '/cardtrader', label: '🃏 CardTrader' },
 ]
 
 function NavLinks({ onLinkClick }) {

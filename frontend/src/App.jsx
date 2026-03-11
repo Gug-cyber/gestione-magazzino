@@ -18,6 +18,7 @@ import NuovoMovimento from './pages/NuovoMovimento.jsx'
 import Fatture from './pages/Fatture.jsx'
 import Clienti from './pages/Clienti.jsx'
 import Ordini from './pages/Ordini.jsx'
+import CardTrader from './pages/CardTrader.jsx'
 
 function AppLayout({ children }) {
   return (
@@ -110,6 +111,11 @@ function App() {
           <Route path="/ordini" element={
             <ProtectedRoute>
               <AppLayout><Ordini /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/cardtrader" element={
+            <ProtectedRoute>
+              <AppLayout><CardTrader /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>
