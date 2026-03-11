@@ -35,9 +35,6 @@ function BarcodeScanner({ onScan, onClose }) {
     setStatus(STATUS.INIT)
     setScanning(false)
 
-    // Warn if on non-secure context (HTTP on LAN)
-    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost'
-
     let stream
     try {
       const videoConstraints = deviceId
@@ -53,14 +50,18 @@ function BarcodeScanner({ onScan, onClose }) {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true })
       } catch (e) {
+        const httpsRequiredMsg = 'Per usare la webcam da telefono/tablet è necessario HTTPS. Riavvia l\'app con VITE_HTTPS=true oppure accedi da localhost.'
         if (e.name === 'NotAllowedError') {
-          let msg = 'Permesso fotocamera negato. Vai nelle impostazioni del browser e abilita la fotocamera.'
-          if (!isSecure) {
-            msg += ' ⚠️ Il sito gira su HTTP (non HTTPS): in Chrome vai su chrome://flags/#unsafely-treat-insecure-origin-as-secure e aggiungi questo indirizzo.'
+          const isLAN = !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/)
+          if (isLAN && window.location.protocol !== 'https:') {
+            setError(httpsRequiredMsg)
+          } else {
+            setError('Permesso fotocamera negato. Vai nelle impostazioni del browser e abilita la fotocamera.')
           }
-          setError(msg)
         } else if (e.name === 'NotFoundError') {
           setError('Nessuna fotocamera trovata su questo dispositivo.')
+        } else if (e.name === 'SecurityError') {
+          setError(httpsRequiredMsg)
         } else {
           setError('Impossibile accedere alla fotocamera: ' + (e.message || 'Errore sconosciuto'))
         }

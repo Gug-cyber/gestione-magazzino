@@ -20,6 +20,7 @@ brew services start postgresql@15 2>/dev/null || true
 echo "🚀 Avvio backend..."
 cd backend
 source venv/bin/activate
+export CORS_ALLOW_LAN=true
 nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /tmp/gestione-magazzino-backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
@@ -27,7 +28,7 @@ cd ..
 # --- Avvio frontend ---
 echo "🚀 Avvio frontend..."
 cd frontend
-nohup npm run dev -- --host > /tmp/gestione-magazzino-frontend.log 2>&1 &
+VITE_HTTPS=true VITE_PROXY_TARGET=http://localhost:8000 nohup npm run dev -- --host > /tmp/gestione-magazzino-frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
@@ -40,7 +41,7 @@ sleep 4
 
 echo "======================================"
 echo "  App disponibile su:"
-echo "   🖥️  http://localhost:5173"
+echo "   🖥️  https://localhost:5173"
 echo "======================================"
 
 # --- IP LAN per accesso da telefono ---
@@ -49,11 +50,14 @@ LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/nul
 if [ -n "$LAN_IP" ]; then
     echo ""
     echo "📱 Per accedere da telefono/tablet (stessa rete Wi-Fi):"
-    echo "   🌐 http://$LAN_IP:5173"
+    echo "   🌐 https://$LAN_IP:5173"
+    echo ""
+    echo "   ⚠️  La prima volta il browser mostra 'certificato non attendibile':"
+    echo "      → clicca 'Avanzate' → 'Continua comunque' (o 'Visita sito non sicuro')"
     echo ""
     echo "   Oppure inquadra questo QR code:"
     if command -v qrencode &>/dev/null; then
-        qrencode -t ANSIUTF8 "http://$LAN_IP:5173"
+        qrencode -t ANSIUTF8 "https://$LAN_IP:5173"
     else
         echo "   (installa qrencode con: brew install qrencode)"
     fi
