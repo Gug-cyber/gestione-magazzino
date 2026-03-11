@@ -15,6 +15,8 @@ function BarcodeScanner({ onScan, onClose }) {
   const [zoom, setZoom] = useState(1)
   const [status, setStatus] = useState(STATUS.INIT)
   const [scanning, setScanning] = useState(false)
+  const [cameras, setCameras] = useState([])
+  const [selectedCamera, setSelectedCamera] = useState(null)
 
   const stopStream = useCallback(() => {
     try { readerRef.current?.reset() } catch { /* ignore */ }
@@ -27,83 +29,123 @@ function BarcodeScanner({ onScan, onClose }) {
     }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
+  const startCamera = useCallback(async (deviceId) => {
+    stopStream()
+    setError('')
+    setStatus(STATUS.INIT)
+    setScanning(false)
 
-    async function startCamera() {
+    // Warn if on non-secure context (HTTP on LAN)
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost'
+
+    let stream
+    try {
+      const videoConstraints = deviceId
+        ? { deviceId: { exact: deviceId } }
+        : {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          }
+      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints })
+    } catch {
+      // Fallback: try any camera
       try {
-        const constraints = {
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 },
-          },
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
-
-        // Apply advanced focus constraints where supported
-        try {
-          const [track] = stream.getVideoTracks()
-          if (track && typeof track.applyConstraints === 'function') {
-            await track.applyConstraints({
-              advanced: [{ focusMode: 'continuous' }],
-            })
-          }
-        } catch {
-          // Not all browsers/cameras support these constraints — degrade gracefully
-        }
-
-        if (cancelled) {
-          stream.getTracks().forEach(t => t.stop())
-          return
-        }
-
-        streamRef.current = stream
-        if (!videoRef.current) return
-        videoRef.current.srcObject = stream
-
-        const reader = new BrowserMultiFormatOneDReader()
-        readerRef.current = reader
-
-        setStatus(STATUS.WAITING)
-        setScanning(true)
-
-        reader.decodeFromVideoElement(videoRef.current, (result, err) => {
-          if (cancelled) return
-          if (result) {
-            setStatus(STATUS.DETECTED)
-            setScanning(false)
-            stopStream()
-            onScan(result.getText())
-            onClose()
-            return
-          }
-          if (err) {
-            const ignoredErrors = ['NotFoundException', 'ChecksumException', 'FormatException']
-            if (!ignoredErrors.includes(err.name) && err.message) {
-              setError('Errore durante la scansione: ' + err.message)
-            }
-          }
-        }).catch((e) => {
-          if (!cancelled) {
-            setError('Impossibile avviare il lettore: ' + (e.message || 'Errore sconosciuto'))
-          }
-        })
+        stream = await navigator.mediaDevices.getUserMedia({ video: true })
       } catch (e) {
-        if (!cancelled) {
-          setError('Impossibile accedere alla webcam: ' + (e.message || 'Errore sconosciuto'))
+        if (e.name === 'NotAllowedError') {
+          let msg = 'Permesso fotocamera negato. Vai nelle impostazioni del browser e abilita la fotocamera.'
+          if (!isSecure) {
+            msg += ' ⚠️ Il sito gira su HTTP (non HTTPS): in Chrome vai su chrome://flags/#unsafely-treat-insecure-origin-as-secure e aggiungi questo indirizzo.'
+          }
+          setError(msg)
+        } else if (e.name === 'NotFoundError') {
+          setError('Nessuna fotocamera trovata su questo dispositivo.')
+        } else {
+          setError('Impossibile accedere alla fotocamera: ' + (e.message || 'Errore sconosciuto'))
         }
+        return
       }
     }
 
-    startCamera()
+    // Apply continuous autofocus where supported
+    try {
+      const [track] = stream.getVideoTracks()
+      if (track && typeof track.applyConstraints === 'function') {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+      }
+    } catch { /* not all cameras support this */ }
+
+    streamRef.current = stream
+    if (!videoRef.current) { stream.getTracks().forEach(t => t.stop()); return }
+    videoRef.current.srcObject = stream
+
+    const reader = new BrowserMultiFormatOneDReader()
+    readerRef.current = reader
+
+    setStatus(STATUS.WAITING)
+    setScanning(true)
+
+    reader.decodeFromVideoElement(videoRef.current, (result, err) => {
+      if (result) {
+        setStatus(STATUS.DETECTED)
+        setScanning(false)
+        stopStream()
+        onScan(result.getText())
+        onClose()
+        return
+      }
+      if (err) {
+        const ignoredErrors = ['NotFoundException', 'ChecksumException', 'FormatException']
+        if (!ignoredErrors.includes(err.name) && err.message) {
+          setError('Errore durante la scansione: ' + err.message)
+        }
+      }
+    }).catch((e) => {
+      setError('Impossibile avviare il lettore: ' + (e.message || 'Errore sconosciuto'))
+    })
+  }, [stopStream, onScan, onClose])
+
+  // Enumerate cameras on mount, then start the preferred one
+  useEffect(() => {
+    let cancelled = false
+
+    async function init() {
+      // We need to request camera access once before enumerateDevices gives us labels
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true }).then(s => s.getTracks().forEach(t => t.stop()))
+      } catch { /* ignore — we'll surface the error in startCamera */ }
+
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = devices.filter(d => d.kind === 'videoinput')
+        if (!cancelled) {
+          setCameras(videoDevices)
+          // Prefer the rear camera: look for 'back'/'environment' in the label
+          const rearCam = videoDevices.find(d =>
+            /back|rear|environment/i.test(d.label)
+          )
+          const preferred = rearCam?.deviceId || videoDevices[0]?.deviceId || null
+          setSelectedCamera(preferred)
+          startCamera(preferred)
+        }
+      } catch {
+        if (!cancelled) startCamera(null)
+      }
+    }
+
+    init()
 
     return () => {
       cancelled = true
       stopStream()
     }
-  }, [onScan, onClose, stopStream])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const switchCamera = useCallback((deviceId) => {
+    setSelectedCamera(deviceId)
+    startCamera(deviceId)
+  }, [startCamera])
 
   const handleClose = () => {
     stopStream()
@@ -113,6 +155,8 @@ function BarcodeScanner({ onScan, onClose }) {
   const statusColor = status === STATUS.DETECTED ? '#2e7d32'
     : status === STATUS.WAITING ? '#1565c0'
     : '#555'
+
+  const videoMaxHeight = window.innerWidth < 480 ? '50vh' : '300px'
 
   return (
     <div style={{
@@ -129,6 +173,7 @@ function BarcodeScanner({ onScan, onClose }) {
       <div style={{
         backgroundColor: 'white', borderRadius: '12px', padding: '24px',
         maxWidth: '480px', width: '90%', textAlign: 'center',
+        maxHeight: '90vh', overflowY: 'auto',
       }}>
         <h3 style={{ color: '#1a237e', marginTop: 0 }}>📷 Scansiona Codice a Barre</h3>
 
@@ -150,7 +195,10 @@ function BarcodeScanner({ onScan, onClose }) {
             ref={videoRef}
             aria-label="Flusso video fotocamera per la scansione del codice a barre"
             style={{
-              width: '100%', display: 'block',
+              width: '100%',
+              maxHeight: videoMaxHeight,
+              objectFit: 'cover',
+              display: 'block',
               transform: `scale(${zoom})`,
               transformOrigin: 'center center',
               transition: 'transform 0.2s ease',
@@ -183,6 +231,22 @@ function BarcodeScanner({ onScan, onClose }) {
             ))}
           </div>
         </div>
+
+        {/* Camera selector (shown only when multiple cameras are available) */}
+        {cameras.length > 1 && (
+          <select
+            value={selectedCamera || ''}
+            onChange={e => switchCamera(e.target.value)}
+            style={{ marginTop: '8px', width: '100%', padding: '6px', borderRadius: '4px', fontSize: '0.9rem' }}
+            aria-label="Seleziona fotocamera"
+          >
+            {cameras.map(cam => (
+              <option key={cam.deviceId} value={cam.deviceId}>
+                {cam.label || `Fotocamera ${cam.deviceId.slice(0, 8)}`}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Zoom slider */}
         <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -217,3 +281,4 @@ function BarcodeScanner({ onScan, onClose }) {
 }
 
 export default BarcodeScanner
+

@@ -25,7 +25,13 @@ function AppLayout({ children }) {
       <Navbar />
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar />
-        <main style={{ flex: 1, padding: '24px', backgroundColor: '#f5f5f5' }}>
+        <main style={{
+          flex: 1,
+          padding: 'clamp(12px, 3vw, 24px)',
+          backgroundColor: '#f5f5f5',
+          minWidth: 0,
+          overflowX: 'hidden',
+        }}>
           {children}
         </main>
       </div>

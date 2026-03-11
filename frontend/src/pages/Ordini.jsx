@@ -304,6 +304,7 @@ export default function Ordini() {
 
         <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ marginTop: 0, color: primaryColor }}>Righe Ordine</h3>
+          <div className="table-wrapper">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -324,6 +325,7 @@ export default function Ordini() {
               ))}
             </tbody>
           </table>
+          </div>
           <div style={{ textAlign: 'right', marginTop: '16px', fontSize: '18px', fontWeight: 700, color: primaryColor }}>
             Totale: {formatCurrency(selectedOrdine.totale)}
           </div>
@@ -335,7 +337,7 @@ export default function Ordini() {
   return (
     <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ margin: 0, color: primaryColor }}>🛒 Ordini</h1>
         <button
           onClick={openNewModal}
@@ -399,6 +401,7 @@ export default function Ordini() {
         ) : ordini.length === 0 ? (
           <div style={{ padding: '32px', textAlign: 'center', color: '#777' }}>Nessun ordine trovato</div>
         ) : (
+          <div className="table-wrapper">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -453,6 +456,7 @@ export default function Ordini() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -463,7 +467,7 @@ export default function Ordini() {
             <h2 style={{ marginTop: 0, color: primaryColor }}>Nuovo Ordine</h2>
             {formError && <div style={{ color: '#c62828', marginBottom: '12px', padding: '8px 12px', backgroundColor: '#ffebee', borderRadius: '4px' }}>{formError}</div>}
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#555' }}>Cliente (da anagrafica)</label>
                   <select
@@ -500,7 +504,7 @@ export default function Ordini() {
 
               <h3 style={{ color: primaryColor, marginBottom: '12px' }}>Prodotti</h3>
               {form.righe.map((riga, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr)) auto', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
                   <select
                     value={riga.prodotto_id}
                     onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)}
