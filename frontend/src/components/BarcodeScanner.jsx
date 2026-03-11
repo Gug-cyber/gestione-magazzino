@@ -140,6 +140,9 @@ function BarcodeScanner({ onScan, onClose }) {
       cancelled = true
       stopStream()
     }
+    // Empty deps: camera enumeration and initial stream must run only on mount.
+    // startCamera/stopStream are stable useCallback refs; re-running on parent
+    // re-renders would cause undesired camera restarts.
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const switchCamera = useCallback((deviceId) => {
