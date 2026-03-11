@@ -34,6 +34,8 @@ services:
   frontend:
     build: ./frontend
     container_name: magazzino_frontend
+    environment:
+      - VITE_API_TARGET=http://backend:8000
     ports:
       - "3000:80"
     depends_on:
