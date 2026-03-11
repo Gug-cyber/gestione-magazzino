@@ -4,8 +4,16 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import resend
+
 logger = logging.getLogger(__name__)
 
+# --- Resend configuration ---
+resend.api_key = os.getenv("RESEND_API_KEY", "")
+RESEND_ENABLED = bool(resend.api_key)
+RESEND_FROM = os.getenv("RESEND_FROM", "Gestione Magazzino <onboarding@resend.dev>")
+
+# --- SMTP fallback configuration ---
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 try:
     SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -14,17 +22,26 @@ except (ValueError, TypeError):
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
-EMAIL_ENABLED = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
+SMTP_ENABLED = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
 
 
-def send_email(to: str, subject: str, body_html: str) -> bool:
-    """
-    Invia una email via SMTP. Ritorna True se inviata, False se SMTP non configurato.
-    Non solleva eccezioni: logga l'errore e ritorna False.
-    """
-    if not EMAIL_ENABLED:
-        logger.info(f"[EMAIL DISABLED] To: {to} | Subject: {subject}")
+def _send_email_resend(to: str, subject: str, body_html: str) -> bool:
+    try:
+        params = {
+            "from": RESEND_FROM,
+            "to": [to],
+            "subject": subject,
+            "html": body_html,
+        }
+        resend.Emails.send(params)
+        logger.info(f"[RESEND] Email inviata a {to} | Subject: {subject}")
+        return True
+    except Exception as e:
+        logger.error(f"Errore Resend a {to}: {e}")
         return False
+
+
+def _send_email_smtp(to: str, subject: str, body_html: str) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
@@ -36,10 +53,25 @@ def send_email(to: str, subject: str, body_html: str) -> bool:
             server.starttls()
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [to], msg.as_string())
+        logger.info(f"[SMTP] Email inviata a {to} | Subject: {subject}")
         return True
     except Exception as e:
         logger.error(f"Errore invio email a {to}: {e}")
         return False
+
+
+def send_email(to: str, subject: str, body_html: str) -> bool:
+    """
+    Invia una email. Usa Resend se RESEND_API_KEY è configurata, altrimenti SMTP.
+    Ritorna True se inviata, False altrimenti.
+    Non solleva eccezioni: logga l'errore e ritorna False.
+    """
+    if RESEND_ENABLED:
+        return _send_email_resend(to, subject, body_html)
+    if SMTP_ENABLED:
+        return _send_email_smtp(to, subject, body_html)
+    logger.info(f"[EMAIL DISABLED] To: {to} | Subject: {subject}")
+    return False
 
 
 def send_forgot_username_email(to: str, username: str) -> bool:

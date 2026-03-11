@@ -43,6 +43,11 @@ Questa guida spiega come mettere online **Gestione Magazzino** gratuitamente usa
    | `ALLOWED_ORIGINS` | `https://YOUR_APP.vercel.app` (da aggiornare dopo il Passo 3) |
    | `CORS_ALLOW_LAN` | `false` |
    | `SECRET_KEY` | Una stringa casuale lunga almeno 32 caratteri (es. usa [questo generatore](https://generate-secret.vercel.app/32)) |
+   | `FRONTEND_URL` | L'URL del frontend Vercel (es. `https://gestione-magazzino-xxx.vercel.app`) |
+   | `RESEND_API_KEY` | La chiave API di Resend (es. `re_xxxxxxxx`) — per invio email |
+   | `RESEND_FROM` | *(opzionale)* Mittente email, default: `Gestione Magazzino <onboarding@resend.dev>` |
+
+   > **Nota email**: Il backend usa [Resend](https://resend.com) per inviare email (reset password, recupero username) tramite HTTP API, che funziona su tutti i piani di hosting. Le variabili SMTP (`SMTP_HOST`, `SMTP_USER`, ecc.) sono opzionali e usate solo come fallback se `RESEND_API_KEY` non è configurata.
 
 7. Clicca **"Deploy"**
 8. Attendi il deploy (2-5 minuti). Una volta completato, copia l'URL del servizio (formato: `https://xxx-yyy.koyeb.app`)
