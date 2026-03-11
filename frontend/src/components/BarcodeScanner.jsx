@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { BrowserMultiFormatOneDReader } from '@zxing/browser'
+import { BrowserMultiFormatReader } from '@zxing/browser'
 
 const STATUS = {
   INIT: '⏳ Inizializzazione fotocamera...',
@@ -39,11 +39,7 @@ function BarcodeScanner({ onScan, onClose }) {
     try {
       const videoConstraints = deviceId
         ? { deviceId: { exact: deviceId } }
-        : {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          }
+        : { facingMode: { ideal: 'environment' } }
       stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints })
     } catch {
       // Fallback: try any camera
@@ -81,13 +77,18 @@ function BarcodeScanner({ onScan, onClose }) {
     if (!videoRef.current) { stream.getTracks().forEach(t => t.stop()); return }
     videoRef.current.srcObject = stream
 
-    const reader = new BrowserMultiFormatOneDReader()
+    // Explicit play() is required on iOS even with autoPlay attribute
+    try {
+      await videoRef.current.play()
+    } catch { /* ignore — some browsers auto-play without needing this */ }
+
+    const reader = new BrowserMultiFormatReader()
     readerRef.current = reader
 
     setStatus(STATUS.WAITING)
     setScanning(true)
 
-    reader.decodeFromVideoElement(videoRef.current, (result, err) => {
+    reader.decodeFromStream(stream, videoRef.current, (result, err) => {
       if (result) {
         setStatus(STATUS.DETECTED)
         setScanning(false)
@@ -98,7 +99,7 @@ function BarcodeScanner({ onScan, onClose }) {
       }
       if (err) {
         const ignoredErrors = ['NotFoundException', 'ChecksumException', 'FormatException']
-        if (!ignoredErrors.includes(err.name) && err.message) {
+        if (!ignoredErrors.includes(err?.name) && err?.message) {
           setError('Errore durante la scansione: ' + err.message)
         }
       }
@@ -197,6 +198,9 @@ function BarcodeScanner({ onScan, onClose }) {
         }}>
           <video
             ref={videoRef}
+            playsInline
+            muted
+            autoPlay
             aria-label="Flusso video fotocamera per la scansione del codice a barre"
             style={{
               width: '100%',
