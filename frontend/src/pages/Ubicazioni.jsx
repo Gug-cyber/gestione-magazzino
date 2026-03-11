@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { ubicazioniAPI } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const emptyForm = { nome: '', zona: '', scaffale: '', piano: '' }
 
 function Ubicazioni() {
+  const isMobile = useIsMobile()
   const [ubicazioni, setUbicazioni] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [editing, setEditing] = useState(null)
@@ -95,34 +97,55 @@ function Ubicazioni() {
         </form>
       )}
 
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Nome', 'Zona', 'Scaffale', 'Piano', 'Azioni'].map(h => (
-                <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {ubicazioni.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessuna ubicazione trovata</td></tr>
-            ) : ubicazioni.map((u) => (
-              <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={tdStyle}>{u.id}</td>
-                <td style={tdStyle}>{u.nome}</td>
-                <td style={tdStyle}>{u.zona || '-'}</td>
-                <td style={tdStyle}>{u.scaffale || '-'}</td>
-                <td style={tdStyle}>{u.piano ?? '-'}</td>
-                <td style={tdStyle}>
+      {isMobile ? (
+        <div>
+          {ubicazioni.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessuna ubicazione trovata</div>
+          ) : ubicazioni.map((u) => (
+            <div key={u.id} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 700, color: '#1a237e' }}>📍 {u.nome}</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => handleEdit(u)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(u.id)} style={btnSmall('#c62828')}>🗑️</button>
-                </td>
+                </div>
+              </div>
+              {u.zona && <div style={cardRowStyle}><span style={cardLabelStyle}>Zona</span><span style={cardValueStyle}>{u.zona}</span></div>}
+              {u.scaffale && <div style={cardRowStyle}><span style={cardLabelStyle}>Scaffale</span><span style={cardValueStyle}>{u.scaffale}</span></div>}
+              {u.piano != null && <div style={cardRowStyle}><span style={cardLabelStyle}>Piano</span><span style={cardValueStyle}>{u.piano}</span></div>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
+                {['ID', 'Nome', 'Zona', 'Scaffale', 'Piano', 'Azioni'].map(h => (
+                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {ubicazioni.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessuna ubicazione trovata</td></tr>
+              ) : ubicazioni.map((u) => (
+                <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={tdStyle}>{u.id}</td>
+                  <td style={tdStyle}>{u.nome}</td>
+                  <td style={tdStyle}>{u.zona || '-'}</td>
+                  <td style={tdStyle}>{u.scaffale || '-'}</td>
+                  <td style={tdStyle}>{u.piano ?? '-'}</td>
+                  <td style={tdStyle}>
+                    <button onClick={() => handleEdit(u)} style={btnSmall('#1565c0')}>✏️</button>
+                    <button onClick={() => handleDelete(u.id)} style={btnSmall('#c62828')}>🗑️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -135,5 +158,9 @@ const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4p
 const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', color: '#555' }
+const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
+const cardRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.9rem' }
+const cardLabelStyle = { color: '#888', fontWeight: 500, marginRight: '8px' }
+const cardValueStyle = { color: '#333', fontWeight: 600, textAlign: 'right' }
 
 export default Ubicazioni

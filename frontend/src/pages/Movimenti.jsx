@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { movimentiAPI, prodottiAPI, fornitoriAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 function Movimenti() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [movimenti, setMovimenti] = useState([])
   const [prodotti, setProdotti] = useState([])
   const [fornitori, setFornitori] = useState([])
@@ -101,50 +103,80 @@ function Movimenti() {
 
       {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
 
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div className="table-wrapper">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Prodotto', 'Tipo', 'Quantità', 'Fornitore', 'Note', 'Data', 'Azioni'].map(h => (
-                <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {movimentiFiltrati.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
-                  {search ? `Nessun movimento corrisponde a "${search}"` : 'Nessun movimento registrato'}
-                </td>
-              </tr>
-            ) : movimentiFiltrati.map((m) => (
-              <tr key={m.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={tdStyle}>{m.id}</td>
-                <td style={tdStyle}>{getProdottoNome(m.prodotto_id)}</td>
-                <td style={tdStyle}>
+      {isMobile ? (
+        <div>
+          {movimentiFiltrati.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+              {search ? `Nessun movimento corrisponde a "${search}"` : 'Nessun movimento registrato'}
+            </div>
+          ) : movimentiFiltrati.map((m) => (
+            <div key={m.id} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#1a237e' }}>{getProdottoNome(m.prodotto_id)}</div>
                   <span style={{
-                    padding: '2px 10px', borderRadius: '12px',
+                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold',
                     backgroundColor: m.tipo === 'carico' ? '#e8f5e9' : '#ffebee',
                     color: m.tipo === 'carico' ? '#2e7d32' : '#c62828',
-                    fontWeight: 'bold', fontSize: '0.85rem',
                   }}>
                     {m.tipo === 'carico' ? '📥' : '📤'} {m.tipo}
                   </span>
-                </td>
-                <td style={tdStyle}>{m.quantita}</td>
-                <td style={tdStyle}>{m.fornitore_id ? getFornitoreNome(m.fornitore_id) : '-'}</td>
-                <td style={tdStyle}>{m.note || '-'}</td>
-                <td style={tdStyle}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</td>
-                <td style={tdStyle}>
-                  <button onClick={() => handleDelete(m.id)} style={btnSmall('#c62828')}>🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+                <button onClick={() => handleDelete(m.id)} style={btnSmall('#c62828')}>🗑️</button>
+              </div>
+              <div style={cardRowStyle}><span style={cardLabelStyle}>Quantità</span><span style={cardValueStyle}>{m.quantita}</span></div>
+              {m.fornitore_id && <div style={cardRowStyle}><span style={cardLabelStyle}>Fornitore</span><span style={cardValueStyle}>{getFornitoreNome(m.fornitore_id)}</span></div>}
+              {m.note && <div style={cardRowStyle}><span style={cardLabelStyle}>Note</span><span style={cardValueStyle}>{m.note}</span></div>}
+              <div style={cardRowStyle}><span style={cardLabelStyle}>Data</span><span style={{ ...cardValueStyle, fontSize: '0.8rem' }}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</span></div>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div className="table-wrapper">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
+                {['ID', 'Prodotto', 'Tipo', 'Quantità', 'Fornitore', 'Note', 'Data', 'Azioni'].map(h => (
+                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {movimentiFiltrati.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                    {search ? `Nessun movimento corrisponde a "${search}"` : 'Nessun movimento registrato'}
+                  </td>
+                </tr>
+              ) : movimentiFiltrati.map((m) => (
+                <tr key={m.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={tdStyle}>{m.id}</td>
+                  <td style={tdStyle}>{getProdottoNome(m.prodotto_id)}</td>
+                  <td style={tdStyle}>
+                    <span style={{
+                      padding: '2px 10px', borderRadius: '12px',
+                      backgroundColor: m.tipo === 'carico' ? '#e8f5e9' : '#ffebee',
+                      color: m.tipo === 'carico' ? '#2e7d32' : '#c62828',
+                      fontWeight: 'bold', fontSize: '0.85rem',
+                    }}>
+                      {m.tipo === 'carico' ? '📥' : '📤'} {m.tipo}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>{m.quantita}</td>
+                  <td style={tdStyle}>{m.fornitore_id ? getFornitoreNome(m.fornitore_id) : '-'}</td>
+                  <td style={tdStyle}>{m.note || '-'}</td>
+                  <td style={tdStyle}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</td>
+                  <td style={tdStyle}>
+                    <button onClick={() => handleDelete(m.id)} style={btnSmall('#c62828')}>🗑️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </div>
+      )}
 
       {showScanner && (
         <BarcodeScanner
@@ -160,5 +192,9 @@ const thStyle = { textAlign: 'left', padding: '12px 16px', fontWeight: '600' }
 const tdStyle = { padding: '10px 16px', color: '#333' }
 const btnStyle = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' })
 const btnSmall = (bg) => ({ ...btnStyle(bg), padding: '4px 10px', fontSize: '0.85rem' })
+const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
+const cardRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.9rem' }
+const cardLabelStyle = { color: '#888', fontWeight: 500, marginRight: '8px' }
+const cardValueStyle = { color: '#333', fontWeight: 600, textAlign: 'right' }
 
 export default Movimenti
