@@ -17,6 +17,7 @@ import NuovoProdotto from './pages/NuovoProdotto.jsx'
 import NuovoMovimento from './pages/NuovoMovimento.jsx'
 import Fatture from './pages/Fatture.jsx'
 import Clienti from './pages/Clienti.jsx'
+import Ordini from './pages/Ordini.jsx'
 
 function AppLayout({ children }) {
   return (
@@ -98,6 +99,11 @@ function App() {
           <Route path="/clienti" element={
             <ProtectedRoute>
               <AppLayout><Clienti /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/ordini" element={
+            <ProtectedRoute>
+              <AppLayout><Ordini /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>
