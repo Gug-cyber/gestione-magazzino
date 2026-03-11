@@ -12,8 +12,7 @@ const links = [
   { to: '/fornitori', label: '🏢 Fornitori' },
   { to: '/ubicazioni', label: '📍 Ubicazioni' },
   { to: '/categorie', label: '🏷️ Categorie' },
-  { to: '/cardtrader', label: '🃏 CardTrader' },
-]
+] 
 
 function NavLinks({ onLinkClick }) {
   return links.map(({ to, label }) => (
@@ -150,4 +149,3 @@ function Sidebar() {
 }
 
 export default Sidebar
-
