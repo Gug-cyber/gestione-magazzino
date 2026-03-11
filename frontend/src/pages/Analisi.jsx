@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { speseGestioneAPI, analisiAPI, datiStoriciAPI } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 // ─── Stili comuni ────────────────────────────────────────────────────────────
 
@@ -864,15 +865,16 @@ function TabImportaDati({ onImportSuccess }) {
 // ─── Componente principale Analisi ──────────────────────────────────────────
 
 const TABS = [
-  { id: 'grafici', label: '📈 Grafici' },
-  { id: 'spese', label: '💸 Spese di Gestione' },
-  { id: 'packaging', label: '📦 Calcolatore Packaging' },
-  { id: 'importa', label: '📂 Importa Dati' },
+  { id: 'grafici',   label: '📈 Grafici',              labelShort: '📈' },
+  { id: 'spese',     label: '💸 Spese di Gestione',     labelShort: '💸' },
+  { id: 'packaging', label: '📦 Calcolatore Packaging', labelShort: '📦' },
+  { id: 'importa',   label: '📂 Importa Dati',          labelShort: '📂' },
 ]
 
 function Analisi() {
   const [tabAttiva, setTabAttiva] = useState('grafici')
   const [graficiKey, setGraficiKey] = useState(0)
+  const isMobile = useIsMobile()
 
   return (
     <div>
@@ -885,20 +887,20 @@ function Analisi() {
             key={tab.id}
             onClick={() => setTabAttiva(tab.id)}
             style={{
-              padding: '10px 20px',
+              padding: isMobile ? '10px 12px' : '10px 20px',
               border: 'none',
               borderBottom: tabAttiva === tab.id ? '2px solid #1a237e' : '2px solid transparent',
               marginBottom: '-2px',
               backgroundColor: 'transparent',
               color: tabAttiva === tab.id ? '#1a237e' : '#666',
               fontWeight: tabAttiva === tab.id ? 700 : 400,
-              fontSize: '0.95rem',
+              fontSize: isMobile ? '1.3rem' : '0.95rem',
               cursor: 'pointer',
               borderRadius: '4px 4px 0 0',
               transition: 'all 0.15s',
             }}
           >
-            {tab.label}
+            {isMobile ? tab.labelShort : tab.label}
           </button>
         ))}
       </div>

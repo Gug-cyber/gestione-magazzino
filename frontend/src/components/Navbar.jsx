@@ -45,7 +45,9 @@ function Navbar({ onMenuClick }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-        position: 'relative',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000,
       }}>
         {/* Left: hamburger */}
         <button onClick={onMenuClick} aria-label="Apri menu" style={iconBtnStyle}>☰</button>
@@ -86,6 +88,9 @@ function Navbar({ onMenuClick }) {
       alignItems: 'center',
       justifyContent: 'space-between',
       boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 1000,
     }}>
       <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontSize: '1.4rem', fontWeight: 'bold' }}>
         🏭 Gestione Magazzino
