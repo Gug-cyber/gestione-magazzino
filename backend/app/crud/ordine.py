@@ -59,6 +59,17 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
         if c:
             cliente_nome = f"{c.nome} {c.cognome}".strip() if c.cognome else c.nome
 
+    # Controllo disponibilità su tutte le righe prima di creare l'ordine
+    for r in ordine_data.righe:
+        prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
+        if not prodotto:
+            raise HTTPException(status_code=404, detail=f"Prodotto con id {r.prodotto_id} non trovato")
+        if prodotto.quantita < r.quantita:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Quantità insufficiente per '{prodotto.nome}': disponibili {prodotto.quantita}, richiesti {r.quantita}"
+            )
+
     numero_ordine = _genera_numero_ordine(db)
 
     righe = []
