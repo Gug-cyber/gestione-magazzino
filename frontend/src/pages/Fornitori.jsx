@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { fornitoriAPI } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const emptyForm = { nome: '', email: '', telefono: '', indirizzo: '', partita_iva: '', note: '' }
 
 function Fornitori() {
+  const isMobile = useIsMobile()
   const [fornitori, setFornitori] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [editing, setEditing] = useState(null)
@@ -104,35 +106,57 @@ function Fornitori() {
         </form>
       )}
 
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Nome', 'Email', 'Telefono', 'Partita IVA', 'Note', 'Azioni'].map(h => (
-                <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {fornitori.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</td></tr>
-            ) : fornitori.map((f) => (
-              <tr key={f.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={tdStyle}>{f.id}</td>
-                <td style={tdStyle}>{f.nome}</td>
-                <td style={tdStyle}>{f.email || '-'}</td>
-                <td style={tdStyle}>{f.telefono || '-'}</td>
-                <td style={tdStyle}>{f.partita_iva || '-'}</td>
-                <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.note || ''}>{f.note || '-'}</td>
-                <td style={tdStyle}>
+      {isMobile ? (
+        <div>
+          {fornitori.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</div>
+          ) : fornitori.map((f) => (
+            <div key={f.id} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a237e' }}>🏢 {f.nome}</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => handleEdit(f)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(f.id)} style={btnSmall('#c62828')}>🗑️</button>
-                </td>
+                </div>
+              </div>
+              {f.email && <div style={cardRowStyle}><span style={cardLabelStyle}>📧 Email</span><span style={cardValueStyle}>{f.email}</span></div>}
+              {f.telefono && <div style={cardRowStyle}><span style={cardLabelStyle}>📞 Tel</span><span style={cardValueStyle}>{f.telefono}</span></div>}
+              {f.partita_iva && <div style={cardRowStyle}><span style={cardLabelStyle}>P.IVA</span><span style={cardValueStyle}>{f.partita_iva}</span></div>}
+              {f.note && <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>{f.note}</div>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
+                {['ID', 'Nome', 'Email', 'Telefono', 'Partita IVA', 'Note', 'Azioni'].map(h => (
+                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {fornitori.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</td></tr>
+              ) : fornitori.map((f) => (
+                <tr key={f.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={tdStyle}>{f.id}</td>
+                  <td style={tdStyle}>{f.nome}</td>
+                  <td style={tdStyle}>{f.email || '-'}</td>
+                  <td style={tdStyle}>{f.telefono || '-'}</td>
+                  <td style={tdStyle}>{f.partita_iva || '-'}</td>
+                  <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.note || ''}>{f.note || '-'}</td>
+                  <td style={tdStyle}>
+                    <button onClick={() => handleEdit(f)} style={btnSmall('#1565c0')}>✏️</button>
+                    <button onClick={() => handleDelete(f.id)} style={btnSmall('#c62828')}>🗑️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -145,5 +169,9 @@ const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4p
 const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', color: '#555' }
+const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
+const cardRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.9rem' }
+const cardLabelStyle = { color: '#888', fontWeight: 500, marginRight: '8px' }
+const cardValueStyle = { color: '#333', fontWeight: 600, textAlign: 'right' }
 
 export default Fornitori

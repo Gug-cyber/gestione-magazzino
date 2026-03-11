@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const emptyForm = {
   nome: '', descrizione: '', sku: '', quantita: 0,
@@ -39,6 +40,7 @@ function StatoBadge({ value }) {
 
 function Prodotti() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [prodotti, setProdotti] = useState([])
   const [categorie, setCategorie] = useState([])
   const [ubicazioni, setUbicazioni] = useState([])
@@ -291,58 +293,95 @@ function Prodotti() {
       )}
 
 
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <div className="table-wrapper">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Foto', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
-                <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {prodottiFiltrati.length === 0 ? (
-              <tr>
-                <td colSpan={11} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
-                  {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
-                </td>
-              </tr>
-            ) : prodottiFiltrati.map((p) => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #eee', backgroundColor: p.quantita < p.quantita_minima ? '#fff8e1' : 'white' }}>
-                <td style={tdStyle}>{p.id}</td>
-                <td style={tdStyle}>
+      {isMobile ? (
+        <div>
+          {prodottiFiltrati.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+              {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
+            </div>
+          ) : prodottiFiltrati.map((p) => (
+            <div key={p.id} style={{ ...cardStyle, backgroundColor: p.quantita < p.quantita_minima ? '#fff8e1' : 'white' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {p.foto_url
-                    ? <img src={p.foto_url} alt={p.nome}
-                        style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }}
-                        onClick={() => setUploadingFotoId(p.id)}
-                      />
-                    : <span
-                        style={{ fontSize: '1.4rem', cursor: 'pointer' }}
-                        onClick={() => setUploadingFotoId(p.id)}
-                        title="Carica foto"
-                      >📷</span>
+                    ? <img src={p.foto_url} alt={p.nome} style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }} onClick={() => setUploadingFotoId(p.id)} />
+                    : <span style={{ fontSize: '2rem', cursor: 'pointer' }} onClick={() => setUploadingFotoId(p.id)}>📷</span>
                   }
-                </td>
-                <td style={tdStyle}>{p.nome}</td>
-                <td style={tdStyle}><code>{p.sku}</code></td>
-                <td style={{ ...tdStyle, color: p.quantita < p.quantita_minima ? '#c62828' : '#2e7d32', fontWeight: 'bold' }}>{p.quantita}</td>
-                <td style={tdStyle}>{p.quantita_minima}</td>
-                <td style={tdStyle}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>
-                <td style={tdStyle}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>
-                <td style={tdStyle}><StatoBadge value={p.stato_conservazione} /></td>
-                <td style={tdStyle}>{p.lingua || '—'}</td>
-                <td style={tdStyle}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a237e' }}>{p.nome}</div>
+                    <code style={{ fontSize: '0.8rem', color: '#666' }}>{p.sku}</code>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>
                   <button onClick={() => setUploadingFotoId(p.id)} style={btnSmall('#7b1fa2')} title="Carica foto">🖼️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+              <div style={cardRowStyle}>
+                <span style={cardLabelStyle}>Quantità</span>
+                <span style={{ ...cardValueStyle, color: p.quantita < p.quantita_minima ? '#c62828' : '#2e7d32' }}>{p.quantita} {p.quantita < p.quantita_minima ? '⚠️' : ''}</span>
+              </div>
+              {p.prezzo_vendita && <div style={cardRowStyle}><span style={cardLabelStyle}>Prezzo</span><span style={cardValueStyle}>€{p.prezzo_vendita}</span></div>}
+              {p.stato_conservazione && <div style={cardRowStyle}><span style={cardLabelStyle}>Stato</span><StatoBadge value={p.stato_conservazione} /></div>}
+              {p.lingua && <div style={cardRowStyle}><span style={cardLabelStyle}>Lingua</span><span style={cardValueStyle}>{p.lingua}</span></div>}
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div className="table-wrapper">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
+                {['ID', 'Foto', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
+                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {prodottiFiltrati.length === 0 ? (
+                <tr>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                    {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
+                  </td>
+                </tr>
+              ) : prodottiFiltrati.map((p) => (
+                <tr key={p.id} style={{ borderBottom: '1px solid #eee', backgroundColor: p.quantita < p.quantita_minima ? '#fff8e1' : 'white' }}>
+                  <td style={tdStyle}>{p.id}</td>
+                  <td style={tdStyle}>
+                    {p.foto_url
+                      ? <img src={p.foto_url} alt={p.nome}
+                          style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }}
+                          onClick={() => setUploadingFotoId(p.id)}
+                        />
+                      : <span
+                          style={{ fontSize: '1.4rem', cursor: 'pointer' }}
+                          onClick={() => setUploadingFotoId(p.id)}
+                          title="Carica foto"
+                        >📷</span>
+                    }
+                  </td>
+                  <td style={tdStyle}>{p.nome}</td>
+                  <td style={tdStyle}><code>{p.sku}</code></td>
+                  <td style={{ ...tdStyle, color: p.quantita < p.quantita_minima ? '#c62828' : '#2e7d32', fontWeight: 'bold' }}>{p.quantita}</td>
+                  <td style={tdStyle}>{p.quantita_minima}</td>
+                  <td style={tdStyle}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>
+                  <td style={tdStyle}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>
+                  <td style={tdStyle}><StatoBadge value={p.stato_conservazione} /></td>
+                  <td style={tdStyle}>{p.lingua || '—'}</td>
+                  <td style={tdStyle}>
+                    <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
+                    <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>
+                    <button onClick={() => setUploadingFotoId(p.id)} style={btnSmall('#7b1fa2')} title="Carica foto">🖼️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </div>
+      )}
       {showScanner && (
         <BarcodeScanner
           onScan={(value) => { setSearch(value); setShowScanner(false) }}
@@ -360,5 +399,9 @@ const btnSmall = (bg) => ({ ...btnStyle(bg), padding: '4px 10px', marginRight: '
 const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }
 const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
+const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
+const cardRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.9rem' }
+const cardLabelStyle = { color: '#888', fontWeight: 500, marginRight: '8px' }
+const cardValueStyle = { color: '#333', fontWeight: 600, textAlign: 'right' }
 
 export default Prodotti
