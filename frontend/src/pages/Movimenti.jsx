@@ -10,6 +10,7 @@ function Movimenti() {
   const [form, setForm] = useState(emptyForm)
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
 
   const fetchAll = async () => {
     try {
@@ -61,6 +62,18 @@ function Movimenti() {
   const getProdottoNome = (id) => prodotti.find(p => p.id === id)?.nome || `#${id}`
   const getFornitoreNome = (id) => fornitori.find(f => f.id === id)?.nome || '-'
 
+  const movimentiFiltrati = movimenti.filter(m => {
+    const q = search.toLowerCase()
+    if (!q) return true
+    return (
+      getProdottoNome(m.prodotto_id).toLowerCase().includes(q) ||
+      (prodotti.find(p => p.id === m.prodotto_id)?.sku || '').toLowerCase().includes(q) ||
+      (m.tipo || '').toLowerCase().includes(q) ||
+      getFornitoreNome(m.fornitore_id).toLowerCase().includes(q) ||
+      (m.note || '').toLowerCase().includes(q)
+    )
+  })
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -110,6 +123,38 @@ function Movimenti() {
         </form>
       )}
 
+      {/* Barra di ricerca */}
+      <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '1.1rem' }}>🔍</span>
+        <input
+          type="text"
+          placeholder="Cerca per prodotto, SKU, tipo, fornitore, note..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            ...inputStyle,
+            maxWidth: '420px',
+            padding: '9px 14px',
+            fontSize: '0.97rem',
+            border: '1.5px solid #c5cae9',
+            borderRadius: '8px',
+            outline: 'none',
+          }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#888', padding: '0 4px' }}
+            title="Cancella ricerca"
+          >✕</button>
+        )}
+        {search && (
+          <span style={{ fontSize: '0.88rem', color: '#666' }}>
+            {movimentiFiltrati.length} risultat{movimentiFiltrati.length === 1 ? 'o' : 'i'} su {movimenti.length}
+          </span>
+        )}
+      </div>
+
       <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -120,9 +165,13 @@ function Movimenti() {
             </tr>
           </thead>
           <tbody>
-            {movimenti.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun movimento registrato</td></tr>
-            ) : movimenti.map((m) => (
+            {movimentiFiltrati.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                  {search ? `Nessun movimento corrisponde a "${search}"` : 'Nessun movimento registrato'}
+                </td>
+              </tr>
+            ) : movimentiFiltrati.map((m) => (
               <tr key={m.id} style={{ borderBottom: '1px solid #eee' }}>
                 <td style={tdStyle}>{m.id}</td>
                 <td style={tdStyle}>{getProdottoNome(m.prodotto_id)}</td>
