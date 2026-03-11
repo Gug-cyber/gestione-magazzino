@@ -33,6 +33,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - prodotti_uploads:/app/uploads
     restart: unless-stopped
 
   frontend:
@@ -135,3 +136,4 @@ volumes:
   strapi_db_data:
   medusa_db_data:
   strapi_uploads:
+  prodotti_uploads:

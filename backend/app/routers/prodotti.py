@@ -1,8 +1,11 @@
 import csv
 import io
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+import os
+import shutil
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
 from ..crud import prodotto as crud
@@ -11,37 +14,62 @@ from ..services import strapi_sync, medusa_sync
 
 router = APIRouter()
 
+UPLOAD_DIR = "/app/uploads/prodotti"
+
+
+def _build_foto_url(prodotto, request: Request) -> Optional[str]:
+    if not prodotto.foto_path:
+        return None
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/api/prodotti/{prodotto.id}/foto"
+
 
 @router.get("/", response_model=List[ProdottoResponse])
-def get_prodotti(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
-    return crud.get_prodotti(db, skip=skip, limit=limit)
+def get_prodotti(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    prodotti = crud.get_prodotti(db, skip=skip, limit=limit)
+    result = []
+    for p in prodotti:
+        d = ProdottoResponse.model_validate(p).model_dump()
+        d["foto_url"] = _build_foto_url(p, request)
+        result.append(d)
+    return result
 
 
 @router.get("/sotto-scorta", response_model=List[ProdottoResponse])
-def get_prodotti_sotto_scorta(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
-    return crud.get_prodotti_sotto_scorta(db)
+def get_prodotti_sotto_scorta(request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    prodotti = crud.get_prodotti_sotto_scorta(db)
+    result = []
+    for p in prodotti:
+        d = ProdottoResponse.model_validate(p).model_dump()
+        d["foto_url"] = _build_foto_url(p, request)
+        result.append(d)
+    return result
 
 
 @router.get("/{prodotto_id}", response_model=ProdottoResponse)
-def get_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def get_prodotto(prodotto_id: int, request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     db_prodotto = crud.get_prodotto(db, prodotto_id)
     if not db_prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
-    return db_prodotto
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
 
 
 @router.post("/", response_model=ProdottoResponse, status_code=201)
-def create_prodotto(prodotto: ProdottoCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def create_prodotto(prodotto: ProdottoCreate, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     if crud.get_prodotto_by_sku(db, prodotto.sku):
         raise HTTPException(status_code=400, detail="SKU già esistente")
     db_prodotto = crud.create_prodotto(db, prodotto)
     background_tasks.add_task(strapi_sync.sync_create_or_update, db_prodotto)
     background_tasks.add_task(medusa_sync.sync_create_or_update, db_prodotto)
-    return db_prodotto
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
 
 
 @router.put("/{prodotto_id}", response_model=ProdottoResponse)
-def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     if prodotto.sku is not None:
         existing = crud.get_prodotto_by_sku(db, prodotto.sku)
         if existing and existing.id != prodotto_id:
@@ -51,7 +79,9 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, background_tasks
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
     background_tasks.add_task(strapi_sync.sync_create_or_update, db_prodotto)
     background_tasks.add_task(medusa_sync.sync_create_or_update, db_prodotto)
-    return db_prodotto
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
 
 
 @router.delete("/{prodotto_id}", status_code=204)
@@ -63,6 +93,36 @@ def delete_prodotto(prodotto_id: int, background_tasks: BackgroundTasks, db: Ses
     crud.delete_prodotto(db, prodotto_id)
     background_tasks.add_task(strapi_sync.sync_delete, sku)
     background_tasks.add_task(medusa_sync.delete_product, sku)
+
+
+@router.post("/{prodotto_id}/foto", response_model=ProdottoResponse)
+async def upload_foto_prodotto(prodotto_id: int, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    dest_path = os.path.join(UPLOAD_DIR, f"{prodotto_id}.{ext}")
+    with open(dest_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    db_prodotto.foto_path = dest_path
+    db.commit()
+    db.refresh(db_prodotto)
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
+
+
+@router.get("/{prodotto_id}/foto")
+def get_foto_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto or not db_prodotto.foto_path:
+        raise HTTPException(status_code=404, detail="Foto non trovata")
+    if not os.path.exists(db_prodotto.foto_path):
+        raise HTTPException(status_code=404, detail="File foto non trovato")
+    return FileResponse(db_prodotto.foto_path)
 
 
 @router.post("/import/csv")

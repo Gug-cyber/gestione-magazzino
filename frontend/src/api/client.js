@@ -43,6 +43,13 @@ export const prodottiAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  uploadFoto: (id, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post(`/api/prodotti/${id}/foto`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 export const categorieAPI = {
