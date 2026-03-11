@@ -13,6 +13,7 @@ import Ubicazioni from './pages/Ubicazioni.jsx'
 import Categorie from './pages/Categorie.jsx'
 import Profilo from './pages/Profilo.jsx'
 import Analisi from './pages/Analisi.jsx'
+import NuovoProdotto from './pages/NuovoProdotto.jsx'
 
 function AppLayout({ children }) {
   return (
@@ -44,6 +45,11 @@ function App() {
           <Route path="/prodotti" element={
             <ProtectedRoute>
               <AppLayout><Prodotti /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/prodotti/nuovo" element={
+            <ProtectedRoute>
+              <AppLayout><NuovoProdotto /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/movimenti" element={
