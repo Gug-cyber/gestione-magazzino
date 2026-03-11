@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
-from .routers import spese_gestione, analisi, dati_storici
+from .routers import spese_gestione, analisi, dati_storici, fatture
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
+from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
 
 load_dotenv()
 
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 os.makedirs("/app/uploads", exist_ok=True)
+os.makedirs(os.path.join(os.getenv("UPLOAD_DIR", "/app/uploads"), "fatture"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -41,6 +43,7 @@ app.include_router(ubicazioni.router, prefix="/api/ubicazioni", tags=["Ubicazion
 app.include_router(spese_gestione.router, prefix="/api/spese-gestione", tags=["Spese Gestione"])
 app.include_router(analisi.router, prefix="/api/analisi", tags=["Analisi"])
 app.include_router(dati_storici.router, prefix="/api/dati-storici", tags=["Dati Storici"])
+app.include_router(fatture.router, prefix="/api/fatture", tags=["Fatture"])
 
 
 @app.on_event("startup")
