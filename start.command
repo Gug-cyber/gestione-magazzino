@@ -28,7 +28,7 @@ cd ..
 # --- Avvio frontend ---
 echo "🚀 Avvio frontend..."
 cd frontend
-VITE_HTTPS=true VITE_PROXY_TARGET=http://localhost:8000 nohup npm run dev -- --host > /tmp/gestione-magazzino-frontend.log 2>&1 &
+VITE_HTTPS=true VITE_API_TARGET=http://localhost:8000 nohup npm run dev -- --host > /tmp/gestione-magazzino-frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
