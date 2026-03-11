@@ -14,6 +14,7 @@ import Categorie from './pages/Categorie.jsx'
 import Profilo from './pages/Profilo.jsx'
 import Analisi from './pages/Analisi.jsx'
 import NuovoProdotto from './pages/NuovoProdotto.jsx'
+import NuovoMovimento from './pages/NuovoMovimento.jsx'
 
 function AppLayout({ children }) {
   return (
@@ -50,6 +51,11 @@ function App() {
           <Route path="/prodotti/nuovo" element={
             <ProtectedRoute>
               <AppLayout><NuovoProdotto /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/movimenti/nuovo" element={
+            <ProtectedRoute>
+              <AppLayout><NuovoMovimento /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/movimenti" element={
