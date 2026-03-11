@@ -6,9 +6,10 @@ from dotenv import load_dotenv
 from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
-from .routers import spese_gestione, analisi, dati_storici, fatture
+from .routers import spese_gestione, analisi, dati_storici, fatture, clienti
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
+from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti table is created
 
 load_dotenv()
 
@@ -44,6 +45,7 @@ app.include_router(spese_gestione.router, prefix="/api/spese-gestione", tags=["S
 app.include_router(analisi.router, prefix="/api/analisi", tags=["Analisi"])
 app.include_router(dati_storici.router, prefix="/api/dati-storici", tags=["Dati Storici"])
 app.include_router(fatture.router, prefix="/api/fatture", tags=["Fatture"])
+app.include_router(clienti.router, prefix="/api/clienti", tags=["Clienti"])
 
 
 @app.on_event("startup")
