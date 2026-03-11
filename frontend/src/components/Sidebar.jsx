@@ -8,6 +8,7 @@ const links = [
   { to: '/fornitori', label: '🏢 Fornitori' },
   { to: '/ubicazioni', label: '📍 Ubicazioni' },
   { to: '/categorie', label: '🏷️ Categorie' },
+  { to: '/fatture', label: '🧾 Fatture' },
 ]
 
 function Sidebar() {

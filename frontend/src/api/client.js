@@ -123,4 +123,16 @@ export const datiStoriciAPI = {
   deleteTipo: (tipo) => client.delete(`/api/dati-storici/tipo/${tipo}`),
 }
 
+export const fattureAPI = {
+  getAll: (params) => client.get('/api/fatture/', { params }),
+  getById: (id) => client.get(`/api/fatture/${id}`),
+  create: (formData) => client.post('/api/fatture/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  update: (id, data) => client.put(`/api/fatture/${id}`, data),
+  togglePagata: (id) => client.patch(`/api/fatture/${id}/pagata`),
+  delete: (id) => client.delete(`/api/fatture/${id}`),
+  getDownloadUrl: (id) => `${API_BASE_URL}/api/fatture/${id}/download`,
+}
+
 export default client

@@ -15,6 +15,7 @@ import Profilo from './pages/Profilo.jsx'
 import Analisi from './pages/Analisi.jsx'
 import NuovoProdotto from './pages/NuovoProdotto.jsx'
 import NuovoMovimento from './pages/NuovoMovimento.jsx'
+import Fatture from './pages/Fatture.jsx'
 
 function AppLayout({ children }) {
   return (
@@ -86,6 +87,11 @@ function App() {
           <Route path="/analisi" element={
             <ProtectedRoute>
               <AppLayout><Analisi /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/fatture" element={
+            <ProtectedRoute>
+              <AppLayout><Fatture /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>
