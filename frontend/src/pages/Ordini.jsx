@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
+import { ordiniAPI, clientiAPI, prodottiAPI, fattureAPI } from '../api/client'
 
 const primaryColor = '#1a237e'
 
@@ -73,6 +73,7 @@ export default function Ordini() {
   const [form, setForm] = useState({ cliente_id: '', cliente_nome: '', note: '', righe: [{ ...emptyRiga }] })
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [fatturaOrdine, setFatturaOrdine] = useState(null)
 
   const fetchOrdini = useCallback(async (params = {}) => {
     setLoading(true)
@@ -165,12 +166,26 @@ export default function Ordini() {
     }
   }
 
+  const caricaFatturaOrdine = (ordineId) => {
+    setFatturaOrdine(null)
+    fattureAPI.getByOrdine(ordineId).then(r => {
+      const fatture = r.data || []
+      const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
+      setFatturaOrdine(fattura || null)
+    }).catch(() => {})
+  }
+
   const handleChangeStato = async (ordineId, nuovoStato) => {
     try {
       await ordiniAPI.update(ordineId, { stato: nuovoStato })
       if (selectedOrdine?.id === ordineId) {
         const res = await ordiniAPI.getById(ordineId)
         setSelectedOrdine(res.data)
+        if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
+          caricaFatturaOrdine(ordineId)
+        } else {
+          setFatturaOrdine(null)
+        }
       }
       fetchOrdini()
     } catch (err) {
@@ -192,6 +207,11 @@ export default function Ordini() {
   const openDettaglio = async (ordine) => {
     const res = await ordiniAPI.getById(ordine.id)
     setSelectedOrdine(res.data)
+    if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
+      caricaFatturaOrdine(res.data.id)
+    } else {
+      setFatturaOrdine(null)
+    }
   }
 
   // Stats
@@ -258,6 +278,29 @@ export default function Ordini() {
             </div>
           </div>
         </div>
+
+        {fatturaOrdine && (
+          <div style={{ backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '8px', padding: '16px 20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '20px' }}>🧾</span>
+              <div>
+                <strong style={{ color: '#2e7d32' }}>Fattura generata automaticamente</strong>
+                <div style={{ fontSize: '13px', color: '#555', marginTop: '4px' }}>
+                  N° <strong>{fatturaOrdine.numero_fattura}</strong>
+                  {' — '}{formatDate(fatturaOrdine.data_fattura)}
+                  {fatturaOrdine.imponibile !== null && fatturaOrdine.imponibile !== undefined && (
+                    <> — Imponibile: <strong>{formatCurrency(fatturaOrdine.imponibile)}</strong>
+                    {' + IVA '}{fatturaOrdine.aliquota_iva}%: <strong>{formatCurrency(fatturaOrdine.importo_iva)}</strong>
+                    {' = '}<strong>{formatCurrency(fatturaOrdine.importo)}</strong></>
+                  )}
+                  {fatturaOrdine.annullata && (
+                    <span style={{ marginLeft: '8px', color: '#c62828', fontWeight: 600 }}>— ANNULLATA (nota di credito emessa)</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ marginTop: 0, color: primaryColor }}>Righe Ordine</h3>
@@ -380,6 +423,14 @@ export default function Ordini() {
                         title="Vedi dettaglio"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
                       >👁️</button>
+                      {ordine.stato === 'completato' && (
+                        <span
+                          title="Fattura generata automaticamente"
+                          style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', border: '1px solid #a5d6a7', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'default' }}
+                        >
+                          🧾 Fattura
+                        </span>
+                      )}
                       {STATO_NEXT[ordine.stato] && (
                         <button
                           onClick={() => handleChangeStato(ordine.id, STATO_NEXT[ordine.stato])}

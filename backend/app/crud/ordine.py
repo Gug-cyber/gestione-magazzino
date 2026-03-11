@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from ..models.ordine import Ordine, RigaOrdine, StatoOrdine
 from ..models.prodotto import Prodotto
 from ..schemas.ordine import OrdineCreate, OrdineUpdate
+from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, genera_nota_credito
 
 
 def _genera_numero_ordine(db: Session) -> str:
@@ -128,6 +129,10 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                     note=f"Scarico automatico ordine {ordine.numero_ordine}",
                 )
                 db.add(movimento)
+        db.flush()
+        # Genera fattura automatica se non già presente
+        if not get_fattura_by_ordine(db, ordine.id):
+            genera_fattura_da_ordine(db, ordine)
 
     # Ripristino magazzino quando l'ordine viene annullato dopo essere stato completato
     elif update.stato == StatoOrdine.annullato and stato_precedente == StatoOrdine.completato:
@@ -143,6 +148,11 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                     note=f"Ripristino automatico annullamento ordine {ordine.numero_ordine}",
                 )
                 db.add(movimento)
+        db.flush()
+        # Emetti nota di credito per la fattura auto-generata, se presente
+        fattura_esistente = get_fattura_by_ordine(db, ordine.id)
+        if fattura_esistente and not fattura_esistente.annullata:
+            genera_nota_credito(db, fattura_esistente)
 
     db.commit()
     db.refresh(ordine)
