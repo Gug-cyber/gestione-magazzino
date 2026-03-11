@@ -7,6 +7,7 @@ from ..models.movimento import Movimento, TipoMovimento
 from ..models.prodotto import Prodotto
 from ..models.spesa_gestione import SpesaGestione
 from ..models.dato_storico import DatoStorico
+from ..models.ordine import Ordine, StatoOrdine
 from ..auth import get_current_active_user
 
 router = APIRouter()
@@ -38,19 +39,33 @@ def get_analisi_mensile(
             for m, p in movimenti_carico
         )
 
-        movimenti_scarico = (
+        # Ricavi da ordini completati nel mese
+        ordini_completati = (
+            db.query(Ordine)
+            .filter(
+                Ordine.stato == StatoOrdine.completato,
+                extract("year", Ordine.data_completamento) == anno,
+                extract("month", Ordine.data_completamento) == mese,
+            )
+            .all()
+        )
+        ricavi = sum(float(o.totale or 0) for o in ordini_completati)
+
+        # Ricavi da movimenti di scarico manuali (escludi quelli automatici degli ordini)
+        movimenti_scarico_manuali = (
             db.query(Movimento, Prodotto)
             .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
             .filter(
                 Movimento.tipo == TipoMovimento.scarico,
                 extract("year", Movimento.data_movimento) == anno,
                 extract("month", Movimento.data_movimento) == mese,
+                ~Movimento.note.like("Scarico automatico ordine %"),
             )
             .all()
         )
-        ricavi = sum(
+        ricavi += sum(
             float(m.quantita) * float(p.prezzo_vendita or 0)
-            for m, p in movimenti_scarico
+            for m, p in movimenti_scarico_manuali
         )
 
         spese_result = db.query(func.sum(SpesaGestione.importo)).filter(
@@ -103,7 +118,17 @@ def get_analisi_annuale(
         .all()
     )
     storici_anni = {int(row.anno) for row in storici_anni_query if row.anno is not None}
-    anni = sorted(set(anni) | storici_anni)
+
+    # Also include years that only appear in completed orders
+    ordini_anni_query = (
+        db.query(extract("year", Ordine.data_completamento).label("anno"))
+        .filter(Ordine.stato == StatoOrdine.completato)
+        .distinct()
+        .all()
+    )
+    ordini_anni = {int(row.anno) for row in ordini_anni_query if row.anno is not None}
+
+    anni = sorted(set(anni) | storici_anni | ordini_anni)
 
     if not anni:
         return []
@@ -124,18 +149,31 @@ def get_analisi_annuale(
             for m, p in movimenti_carico
         )
 
-        movimenti_scarico = (
+        # Ricavi da ordini completati nell'anno
+        ordini_completati = (
+            db.query(Ordine)
+            .filter(
+                Ordine.stato == StatoOrdine.completato,
+                extract("year", Ordine.data_completamento) == anno,
+            )
+            .all()
+        )
+        ricavi = sum(float(o.totale or 0) for o in ordini_completati)
+
+        # Ricavi da movimenti di scarico manuali (escludi automatici ordini)
+        movimenti_scarico_manuali = (
             db.query(Movimento, Prodotto)
             .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
             .filter(
                 Movimento.tipo == TipoMovimento.scarico,
                 extract("year", Movimento.data_movimento) == anno,
+                ~Movimento.note.like("Scarico automatico ordine %"),
             )
             .all()
         )
-        ricavi = sum(
+        ricavi += sum(
             float(m.quantita) * float(p.prezzo_vendita or 0)
-            for m, p in movimenti_scarico
+            for m, p in movimenti_scarico_manuali
         )
 
         spese_result = db.query(func.sum(SpesaGestione.importo)).filter(
