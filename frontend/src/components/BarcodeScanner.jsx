@@ -88,21 +88,16 @@ function BarcodeScanner({ onScan, onClose }) {
     setStatus(STATUS.WAITING)
     setScanning(true)
 
-    reader.decodeFromStream(stream, videoRef.current, (result, err) => {
+    reader.decodeFromStream(stream, videoRef.current, (result) => {
       if (result) {
         setStatus(STATUS.DETECTED)
         setScanning(false)
         stopStream()
         onScan(result.getText())
         onClose()
-        return
       }
-      if (err) {
-        const ignoredErrors = ['NotFoundException', 'ChecksumException', 'FormatException']
-        if (!ignoredErrors.includes(err?.name) && err?.message) {
-          setError('Errore durante la scansione: ' + err.message)
-        }
-      }
+      // Scan-loop errors (NotFoundException, ChecksumException, FormatException, etc.)
+      // are emitted every frame when no barcode is visible — ignore them silently.
     }).catch((e) => {
       setError('Impossibile avviare il lettore: ' + (e.message || 'Errore sconosciuto'))
     })
@@ -123,11 +118,19 @@ function BarcodeScanner({ onScan, onClose }) {
         const videoDevices = devices.filter(d => d.kind === 'videoinput')
         if (!cancelled) {
           setCameras(videoDevices)
-          // Prefer the rear camera: look for 'back'/'environment' in the label
-          const rearCam = videoDevices.find(d =>
-            /back|rear|environment/i.test(d.label)
-          )
-          const preferred = rearCam?.deviceId || videoDevices[0]?.deviceId || null
+          // Restore saved camera preference if it still exists, otherwise prefer rear camera
+          let savedId = null
+          try { savedId = localStorage.getItem('barcode_preferred_camera') } catch { /* private browsing / storage disabled */ }
+          const savedExists = savedId && videoDevices.some(d => d.deviceId === savedId)
+          let preferred
+          if (savedExists) {
+            preferred = savedId
+          } else {
+            const rearCam = videoDevices.find(d =>
+              /back|rear|environment/i.test(d.label)
+            )
+            preferred = rearCam?.deviceId || videoDevices[0]?.deviceId || null
+          }
           setSelectedCamera(preferred)
           startCamera(preferred)
         }
@@ -149,6 +152,9 @@ function BarcodeScanner({ onScan, onClose }) {
 
   const switchCamera = useCallback((deviceId) => {
     setSelectedCamera(deviceId)
+    if (deviceId) {
+      try { localStorage.setItem('barcode_preferred_camera', deviceId) } catch { /* private browsing / storage disabled */ }
+    }
     startCamera(deviceId)
   }, [startCamera])
 
