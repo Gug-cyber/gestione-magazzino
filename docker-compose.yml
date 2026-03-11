@@ -21,11 +21,6 @@ services:
     container_name: magazzino_backend
     environment:
       DATABASE_URL: postgresql://magazzino:magazzino@db:5432/magazzino
-      STRAPI_URL: http://strapi:1337
-      STRAPI_API_TOKEN: ""
-      MEDUSA_URL: http://medusa:9000
-      MEDUSA_API_KEY: ""
-      WEBHOOK_SECRET: "magazzino-webhook-secret"
     ports:
       - "8000:8000"
     depends_on:
@@ -45,95 +40,6 @@ services:
       - backend
     restart: unless-stopped
 
-  # Database per Strapi
-  strapi_db:
-    image: postgres:15-alpine
-    container_name: strapi_db
-    environment:
-      POSTGRES_USER: strapi
-      POSTGRES_PASSWORD: strapi
-      POSTGRES_DB: strapi
-    volumes:
-      - strapi_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U strapi"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Strapi CMS
-  strapi:
-    image: node:18-alpine
-    container_name: strapi_cms
-    working_dir: /app
-    command: sh -c "npm install && npm run develop"
-    ports:
-      - "1337:1337"
-    depends_on:
-      strapi_db:
-        condition: service_healthy
-    environment:
-      DATABASE_CLIENT: postgres
-      DATABASE_HOST: strapi_db
-      DATABASE_PORT: 5432
-      DATABASE_NAME: strapi
-      DATABASE_USERNAME: strapi
-      DATABASE_PASSWORD: strapi
-      NODE_ENV: development
-      APP_KEYS: "toBeModified1,toBeModified2"
-      API_TOKEN_SALT: "toBeModified"
-      ADMIN_JWT_SECRET: "toBeModified"
-      JWT_SECRET: "toBeModified"
-      TRANSFER_TOKEN_SALT: "toBeModified"
-    volumes:
-      - ./strapi:/app
-      - strapi_uploads:/app/public/uploads
-    restart: unless-stopped
-
-  # Database per Medusa
-  medusa_db:
-    image: postgres:15-alpine
-    container_name: medusa_db
-    environment:
-      POSTGRES_USER: medusa
-      POSTGRES_PASSWORD: medusa
-      POSTGRES_DB: medusa
-    volumes:
-      - medusa_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medusa"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Medusa eCommerce
-  medusa:
-    image: node:18-alpine
-    container_name: medusa_backend
-    working_dir: /app
-    command: sh -c "npm install && npx medusa migrations run && npx medusa develop"
-    ports:
-      - "9000:9000"
-    depends_on:
-      medusa_db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://medusa:medusa@medusa_db:5432/medusa
-      NODE_ENV: development
-      JWT_SECRET: "supersecret"
-      COOKIE_SECRET: "supersecret"
-      STORE_CORS: "http://localhost:3000"
-      ADMIN_CORS: "http://localhost:9000"
-      AUTH_CORS: "http://localhost:9000,http://localhost:3000"
-      MAGAZZINO_URL: "http://backend:8000"
-      WEBHOOK_SECRET: "magazzino-webhook-secret"
-    volumes:
-      - ./medusa:/app
-    restart: unless-stopped
-
 volumes:
   postgres_data:
-  strapi_db_data:
-  medusa_db_data:
-  strapi_uploads:
   prodotti_uploads:
