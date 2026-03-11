@@ -154,4 +154,12 @@ export const ordiniAPI = {
   delete: (id) => client.delete(`/api/ordini/${id}`),
 }
 
+export const cardtraderAPI = {
+  getStatus: () => client.get('/api/cardtrader/status'),
+  getListings: () => client.get('/api/cardtrader/listings'),
+  importAll: () => client.post('/api/cardtrader/import'),
+  sync: (prodottoId, data) => client.post(`/api/cardtrader/sync/${prodottoId}`, data),
+  getMarketPrices: (blueprintId, params) => client.get(`/api/cardtrader/market-prices/${blueprintId}`, { params }),
+}
+
 export default client
