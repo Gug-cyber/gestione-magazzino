@@ -27,6 +27,11 @@ COLUMN_MIGRATIONS = [
         "column": "lingua",
         "definition": "VARCHAR(50)",
     },
+    {
+        "table": "prodotti",
+        "column": "foto_path",
+        "definition": "VARCHAR(255)",
+    },
 ]
 
 

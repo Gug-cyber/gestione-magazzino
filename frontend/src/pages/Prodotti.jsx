@@ -45,6 +45,8 @@ function Prodotti() {
   const [error, setError] = useState('')
   const [importMsg, setImportMsg] = useState(null)
   const csvInputRef = useRef(null)
+  const [uploadingFotoId, setUploadingFotoId] = useState(null)
+  const fotoInputRef = useRef(null)
 
   const fetchAll = async () => {
     try {
@@ -62,6 +64,12 @@ function Prodotti() {
   }
 
   useEffect(() => { fetchAll() }, [])
+
+  useEffect(() => {
+    if (uploadingFotoId !== null && fotoInputRef.current) {
+      fotoInputRef.current.click()
+    }
+  }, [uploadingFotoId])
 
   const handleImportCSV = async (e) => {
     const file = e.target.files[0]
@@ -160,6 +168,26 @@ function Prodotti() {
             style={btnStyle('#1a237e')}>{showForm ? 'Annulla' : '+ Aggiungi Prodotto'}</button>
         </div>
       </div>
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={fotoInputRef}
+        style={{ display: 'none' }}
+        onChange={async (e) => {
+          const file = e.target.files[0]
+          if (!file || !uploadingFotoId) return
+          try {
+            await prodottiAPI.uploadFoto(uploadingFotoId, file)
+            fetchAll()
+          } catch (err) {
+            setError('Errore nel caricamento della foto')
+          } finally {
+            setUploadingFotoId(null)
+            e.target.value = ''
+          }
+        }}
+      />
 
       {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
 
@@ -269,17 +297,30 @@ function Prodotti() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-              {['ID', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
+              {['ID', 'Foto', 'Nome', 'SKU', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
                 <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {prodotti.length === 0 ? (
-              <tr><td colSpan={10} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun prodotto trovato</td></tr>
+              <tr><td colSpan={11} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun prodotto trovato</td></tr>
             ) : prodotti.map((p) => (
               <tr key={p.id} style={{ borderBottom: '1px solid #eee', backgroundColor: p.quantita < p.quantita_minima ? '#fff8e1' : 'white' }}>
                 <td style={tdStyle}>{p.id}</td>
+                <td style={tdStyle}>
+                  {p.foto_url
+                    ? <img src={p.foto_url} alt={p.nome}
+                        style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }}
+                        onClick={() => setUploadingFotoId(p.id)}
+                      />
+                    : <span
+                        style={{ fontSize: '1.4rem', cursor: 'pointer' }}
+                        onClick={() => setUploadingFotoId(p.id)}
+                        title="Carica foto"
+                      >📷</span>
+                  }
+                </td>
                 <td style={tdStyle}>{p.nome}</td>
                 <td style={tdStyle}><code>{p.sku}</code></td>
                 <td style={{ ...tdStyle, color: p.quantita < p.quantita_minima ? '#c62828' : '#2e7d32', fontWeight: 'bold' }}>{p.quantita}</td>
@@ -291,6 +332,7 @@ function Prodotti() {
                 <td style={tdStyle}>
                   <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>
+                  <button onClick={() => setUploadingFotoId(p.id)} style={btnSmall('#7b1fa2')} title="Carica foto">🖼️</button>
                 </td>
               </tr>
             ))}

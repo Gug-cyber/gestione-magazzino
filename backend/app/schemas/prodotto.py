@@ -16,6 +16,7 @@ class ProdottoBase(BaseModel):
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
+    foto_path: Optional[str] = None
 
 
 class ProdottoCreate(ProdottoBase):
@@ -40,6 +41,7 @@ class ProdottoResponse(ProdottoBase):
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    foto_url: Optional[str] = None
 
     class Config:
         from_attributes = True

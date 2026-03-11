@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from .database import engine, Base, SessionLocal
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
@@ -27,6 +28,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+os.makedirs("/app/uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(prodotti.router, prefix="/api/prodotti", tags=["Prodotti"])
