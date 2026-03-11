@@ -92,6 +92,32 @@ Poi riavvia il backend: le tabelle verranno ricreate automaticamente.
 
 ---
 
+## ⏹️ Fermare i server
+
+Per fermare backend e frontend avviati con `start.command` o `setup.command`:
+
+1. Fai **doppio click** su `stop.command` dal Finder
+2. Oppure, dal terminale:
+   ```bash
+   ./stop.command
+   ```
+
+Lo script legge automaticamente i PID salvati in `/tmp/gestione-magazzino-backend.pid` e `/tmp/gestione-magazzino-frontend.pid`, termina i processi e rimuove i file PID.
+
+Se i file PID non esistono (per esempio dopo un riavvio del Mac), i server possono essere fermati manualmente:
+
+```bash
+# Trova i processi
+lsof -i :8000   # backend
+lsof -i :5173   # frontend
+
+# Termina per porta
+kill $(lsof -ti:8000) 2>/dev/null || true
+kill $(lsof -ti:5173) 2>/dev/null || true
+```
+
+---
+
 ## 📋 Log
 
 I log dei server vengono salvati in `/tmp/`:
