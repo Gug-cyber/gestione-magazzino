@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
+import BarcodeScanner from '../components/BarcodeScanner'
 
 const emptyForm = {
   nome: '', descrizione: '', sku: '', quantita: 0,
@@ -19,6 +20,7 @@ function NuovoProdotto() {
   const [fotoFile, setFotoFile] = useState(null)
   const [fotoPreview, setFotoPreview] = useState(null)
   const fotoInputRef = useRef(null)
+  const [showScanner, setShowScanner] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -135,7 +137,6 @@ function NuovoProdotto() {
             <div style={gridStyle}>
               {[
                 { key: 'nome', label: 'Nome *', required: true },
-                { key: 'sku', label: 'SKU *', required: true },
                 { key: 'descrizione', label: 'Descrizione' },
                 { key: 'quantita', label: 'Quantità', type: 'number' },
                 { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
@@ -154,6 +155,25 @@ function NuovoProdotto() {
                   />
                 </label>
               ))}
+
+              <label style={labelStyle}>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>SKU *</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="text"
+                    required
+                    value={form.sku}
+                    onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    style={{ padding: '8px 10px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1.1rem' }}
+                    title="Scansiona codice a barre"
+                  >📷</button>
+                </div>
+              </label>
 
               <label style={labelStyle}>
                 <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
@@ -291,6 +311,12 @@ function NuovoProdotto() {
           )}
         </div>
       </div>
+      {showScanner && (
+        <BarcodeScanner
+          onScan={(value) => { setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   )
 }
