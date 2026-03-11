@@ -141,6 +141,32 @@ function Prodotti() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ color: '#1a237e' }}>📦 Prodotti</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <input
+              type="text"
+              placeholder="Cerca per nome, SKU..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                height: '36px',
+                boxSizing: 'border-box',
+                border: '1.5px solid #c5cae9',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                width: '280px',
+                outline: 'none',
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#888', padding: '0 2px' }} title="Cancella ricerca">✕</button>
+            )}
+            {search && (
+              <span style={{ fontSize: '0.82rem', color: '#666', whiteSpace: 'nowrap' }}>
+                {prodottiFiltrati.length} / {prodotti.length}
+              </span>
+            )}
+          </div>
           <button onClick={() => navigate('/prodotti/nuovo')}
             style={btnStyle('#1a237e')}>+ Aggiungi Prodotto</button>
         </div>
@@ -257,37 +283,6 @@ function Prodotti() {
         </form>
       )}
 
-      {/* Barra di ricerca */}
-      <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ fontSize: '1.1rem' }}>🔍</span>
-        <input
-          type="text"
-          placeholder="Cerca per nome, SKU, descrizione, stato, lingua..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            ...inputStyle,
-            maxWidth: '420px',
-            padding: '9px 14px',
-            fontSize: '0.97rem',
-            border: '1.5px solid #c5cae9',
-            borderRadius: '8px',
-            outline: 'none',
-          }}
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#888', padding: '0 4px' }}
-            title="Cancella ricerca"
-          >✕</button>
-        )}
-        {search && (
-          <span style={{ fontSize: '0.88rem', color: '#666' }}>
-            {prodottiFiltrati.length} risultat{prodottiFiltrati.length === 1 ? 'o' : 'i'} su {prodotti.length}
-          </span>
-        )}
-      </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
