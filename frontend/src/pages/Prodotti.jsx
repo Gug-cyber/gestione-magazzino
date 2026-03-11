@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
+import BarcodeScanner from '../components/BarcodeScanner'
 
 const emptyForm = {
   nome: '', descrizione: '', sku: '', quantita: 0,
@@ -48,6 +49,7 @@ function Prodotti() {
   const [uploadingFotoId, setUploadingFotoId] = useState(null)
   const fotoInputRef = useRef(null)
   const [search, setSearch] = useState('')
+  const [showScanner, setShowScanner] = useState(false)
 
   const fetchAll = async () => {
     try {
@@ -166,6 +168,11 @@ function Prodotti() {
                 {prodottiFiltrati.length} / {prodotti.length}
               </span>
             )}
+            <button
+              onClick={() => setShowScanner(true)}
+              style={{ padding: '7px 12px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1.1rem' }}
+              title="Cerca con codice a barre"
+            >📷</button>
           </div>
           <button onClick={() => navigate('/prodotti/nuovo')}
             style={btnStyle('#1a237e')}>+ Aggiungi Prodotto</button>
@@ -334,6 +341,12 @@ function Prodotti() {
           </tbody>
         </table>
       </div>
+      {showScanner && (
+        <BarcodeScanner
+          onScan={(value) => { setSearch(value); setShowScanner(false) }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   )
 }
