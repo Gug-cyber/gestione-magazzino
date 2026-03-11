@@ -23,10 +23,11 @@ def get_fatture(
     cliente: Optional[str] = None,
     data_da: Optional[date] = None,
     data_a: Optional[date] = None,
+    ordine_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    return crud.get_fatture(db, skip=skip, limit=limit, cliente=cliente, data_da=data_da, data_a=data_a)
+    return crud.get_fatture(db, skip=skip, limit=limit, cliente=cliente, data_da=data_da, data_a=data_a, ordine_id=ordine_id)
 
 
 @router.post("/", response_model=FatturaResponse, status_code=201)
@@ -88,9 +89,12 @@ def update_fattura(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    db_fattura = crud.update_fattura(db, fattura_id, fattura_update)
+    db_fattura = crud.get_fattura(db, fattura_id)
     if not db_fattura:
         raise HTTPException(status_code=404, detail="Fattura non trovata")
+    if db_fattura.auto_generata:
+        raise HTTPException(status_code=400, detail="Le fatture generate automaticamente non possono essere modificate manualmente")
+    db_fattura = crud.update_fattura(db, fattura_id, fattura_update)
     return db_fattura
 
 
@@ -115,6 +119,8 @@ def delete_fattura(
     fattura = crud.get_fattura(db, fattura_id)
     if not fattura:
         raise HTTPException(status_code=404, detail="Fattura non trovata")
+    if fattura.auto_generata:
+        raise HTTPException(status_code=400, detail="Le fatture generate automaticamente non possono essere eliminate manualmente")
     crud.delete_fattura(db, fattura_id)
 
 

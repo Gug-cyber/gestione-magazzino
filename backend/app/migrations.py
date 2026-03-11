@@ -37,6 +37,46 @@ COLUMN_MIGRATIONS = [
         "column": "cliente_id",
         "definition": "INTEGER REFERENCES clienti(id) ON DELETE SET NULL",
     },
+    {
+        "table": "fatture",
+        "column": "tipo_documento",
+        "definition": "VARCHAR",
+    },
+    {
+        "table": "fatture",
+        "column": "imponibile",
+        "definition": "FLOAT",
+    },
+    {
+        "table": "fatture",
+        "column": "aliquota_iva",
+        "definition": "FLOAT",
+    },
+    {
+        "table": "fatture",
+        "column": "importo_iva",
+        "definition": "FLOAT",
+    },
+    {
+        "table": "fatture",
+        "column": "ordine_id",
+        "definition": "INTEGER REFERENCES ordini(id) ON DELETE SET NULL",
+    },
+    {
+        "table": "fatture",
+        "column": "nota_credito_di",
+        "definition": "INTEGER REFERENCES fatture(id) ON DELETE SET NULL",
+    },
+    {
+        "table": "fatture",
+        "column": "annullata",
+        "definition": "BOOLEAN DEFAULT FALSE",
+    },
+    {
+        "table": "fatture",
+        "column": "auto_generata",
+        "definition": "BOOLEAN DEFAULT FALSE",
+    },
 ]
 
 

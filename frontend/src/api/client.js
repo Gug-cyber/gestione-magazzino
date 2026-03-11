@@ -126,6 +126,7 @@ export const datiStoriciAPI = {
 export const fattureAPI = {
   getAll: (params) => client.get('/api/fatture/', { params }),
   getById: (id) => client.get(`/api/fatture/${id}`),
+  getByOrdine: (ordineId) => client.get('/api/fatture/', { params: { ordine_id: ordineId } }),
   create: (formData) => client.post('/api/fatture/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),

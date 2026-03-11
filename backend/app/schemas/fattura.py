@@ -17,6 +17,14 @@ class FatturaBase(BaseModel):
     tipo: TipoFatturaSchema
     pagata: bool = False
     note: Optional[str] = None
+    tipo_documento: str = "fattura"
+    imponibile: Optional[float] = None
+    aliquota_iva: Optional[float] = None
+    importo_iva: Optional[float] = None
+    ordine_id: Optional[int] = None
+    nota_credito_di: Optional[int] = None
+    annullata: bool = False
+    auto_generata: bool = False
 
 
 class FatturaCreate(FatturaBase):
@@ -32,6 +40,11 @@ class FatturaUpdate(BaseModel):
     pagata: Optional[bool] = None
     note: Optional[str] = None
     cliente_id: Optional[int] = None
+    tipo_documento: Optional[str] = None
+    imponibile: Optional[float] = None
+    aliquota_iva: Optional[float] = None
+    importo_iva: Optional[float] = None
+    annullata: Optional[bool] = None
 
 
 class FatturaResponse(FatturaBase):
