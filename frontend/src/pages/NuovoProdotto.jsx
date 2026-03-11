@@ -16,6 +16,9 @@ function NuovoProdotto() {
   const [error, setError] = useState('')
   const [importMsg, setImportMsg] = useState(null)
   const csvInputRef = useRef(null)
+  const [fotoFile, setFotoFile] = useState(null)
+  const [fotoPreview, setFotoPreview] = useState(null)
+  const fotoInputRef = useRef(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,11 +48,34 @@ function NuovoProdotto() {
       lingua: form.lingua || null,
     }
     try {
-      await prodottiAPI.create(payload)
+      const res = await prodottiAPI.create(payload)
+      const newProdotto = res.data
+      if (fotoFile) {
+        try {
+          await prodottiAPI.uploadFoto(newProdotto.id, fotoFile)
+        } catch {
+          // upload foto fallisce silenziosamente, il prodotto è già creato
+        }
+      }
       navigate('/prodotti')
     } catch (err) {
       setError(err.response?.data?.detail || 'Errore nel salvataggio')
     }
+  }
+
+  const handleFotoChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 10 * 1024 * 1024) {
+      setError('La foto non può superare i 10 MB')
+      return
+    }
+    setFotoFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setFotoPreview(ev.target.result)
+    reader.onerror = () => setError('Errore nella lettura del file immagine')
+    reader.readAsDataURL(file)
   }
 
   const handleImportCSV = async (e) => {
@@ -85,12 +111,14 @@ function NuovoProdotto() {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ color: '#1a237e', marginBottom: '8px' }}>➕ Aggiungi Prodotto</h1>
         <button
           onClick={() => navigate('/prodotti')}
-          style={{ background: 'none', border: '1px solid #1a237e', color: '#1a237e', borderRadius: '6px', padding: '7px 14px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}
-        >← Torna ai Prodotti</button>
-        <h1 style={{ color: '#1a237e', margin: 0 }}>➕ Aggiungi Prodotto</h1>
+          style={{ background: 'none', border: 'none', color: '#1a237e', cursor: 'pointer', fontSize: '0.9rem', padding: 0, textDecoration: 'underline' }}
+        >
+          ← Torna ai Prodotti
+        </button>
       </div>
 
       {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
@@ -167,6 +195,46 @@ function NuovoProdotto() {
                   {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                 </select>
               </label>
+            </div>
+
+            {/* Upload Foto */}
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555', display: 'block', marginBottom: '8px' }}>Foto prodotto</span>
+              <div
+                onClick={() => fotoInputRef.current && fotoInputRef.current.click()}
+                style={{
+                  width: '120px', height: '120px', border: '2px dashed #c5cae9', borderRadius: '8px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', backgroundColor: '#f8f9ff', overflow: 'hidden', position: 'relative',
+                }}
+              >
+                {fotoPreview ? (
+                  <img src={fotoPreview} alt="anteprima" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <>
+                    <span style={{ fontSize: '2rem' }}>📷</span>
+                    <span style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px', textAlign: 'center', padding: '0 8px' }}>
+                      Clicca per aggiungere foto
+                    </span>
+                  </>
+                )}
+              </div>
+              {fotoPreview && (
+                <button
+                  type="button"
+                  onClick={() => { setFotoFile(null); setFotoPreview(null) }}
+                  style={{ marginTop: '6px', background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', fontSize: '0.82rem' }}
+                >
+                  ✕ Rimuovi foto
+                </button>
+              )}
+              <input
+                ref={fotoInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleFotoChange}
+              />
             </div>
 
             <button type="submit" style={btnStyle('#2e7d32')}>Crea Prodotto</button>
