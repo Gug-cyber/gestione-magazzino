@@ -1,7 +1,9 @@
+import io
 import os
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fpdf import FPDF
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -133,10 +135,123 @@ def download_fattura(
     db_fattura = crud.get_fattura(db, fattura_id)
     if not db_fattura:
         raise HTTPException(status_code=404, detail="Fattura non trovata")
-    if not db_fattura.file_path or not os.path.exists(db_fattura.file_path):
-        raise HTTPException(status_code=404, detail="File PDF non trovato")
-    return FileResponse(
-        path=db_fattura.file_path,
+
+    if db_fattura.file_path and os.path.exists(db_fattura.file_path):
+        return FileResponse(
+            path=db_fattura.file_path,
+            media_type="application/pdf",
+            filename=db_fattura.nome_file or "fattura.pdf",
+        )
+
+    pdf_bytes = _genera_pdf_fattura(db_fattura)
+    filename = f"fattura_{db_fattura.numero_fattura.replace('/', '-')}.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        filename=db_fattura.nome_file or "fattura.pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+def _genera_pdf_fattura(fattura) -> bytes:
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Intestazione azienda
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "GESTIONE MAGAZZINO", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 5, "Via Esempio 1 - 00100 Roma (RM)", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 5, "P.IVA: 00000000000 - info@gestione-magazzino.local", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(8)
+
+    # Linea separatrice
+    pdf.set_draw_color(26, 35, 126)
+    pdf.set_line_width(0.8)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(6)
+
+    # Titolo fattura
+    tipo_value = fattura.tipo.value if hasattr(fattura.tipo, "value") else str(fattura.tipo)
+    tipo_label = "FATTURA ATTIVA" if tipo_value == "attiva" else "FATTURA PASSIVA"
+    tipo_documento = getattr(fattura, "tipo_documento", None)
+    if tipo_documento is not None:
+        td_value = tipo_documento.value if hasattr(tipo_documento, "value") else str(tipo_documento)
+        if td_value == "nota_credito":
+            tipo_label = "NOTA DI CREDITO"
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 10, f"{tipo_label} N. {fattura.numero_fattura}", new_x="LMARGIN", new_y="NEXT")
+
+    # Data
+    pdf.set_font("Helvetica", "", 11)
+    data_str = fattura.data_fattura.strftime("%d/%m/%Y") if fattura.data_fattura else "-"
+    pdf.cell(0, 7, f"Data: {data_str}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+
+    # Dati cliente
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, "CLIENTE / FORNITORE:", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 7, fattura.cliente or "-", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+
+    # Tabella importi
+    pdf.set_fill_color(26, 35, 126)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(120, 9, "Descrizione", border=1, fill=True)
+    pdf.cell(35, 9, "Importo netto", border=1, fill=True, align="R")
+    pdf.cell(35, 9, "Totale", border=1, fill=True, align="R")
+    pdf.ln()
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "", 11)
+    importo = float(fattura.importo or 0)
+    imponibile = round(importo / 1.22, 2)
+    iva = round(importo - imponibile, 2)
+
+    pdf.cell(120, 9, "Servizi / Prodotti", border=1)
+    pdf.cell(35, 9, f"EUR {imponibile:,.2f}", border=1, align="R")
+    pdf.cell(35, 9, f"EUR {importo:,.2f}", border=1, align="R")
+    pdf.ln()
+
+    # IVA riga
+    pdf.cell(120, 9, "IVA 22%", border=1)
+    pdf.cell(35, 9, f"EUR {iva:,.2f}", border=1, align="R")
+    pdf.cell(35, 9, "", border=1)
+    pdf.ln()
+
+    # Totale
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(120, 10, "TOTALE", border=1, fill=True)
+    pdf.cell(35, 10, "", border=1, fill=True)
+    pdf.cell(35, 10, f"EUR {importo:,.2f}", border=1, fill=True, align="R")
+    pdf.ln(12)
+
+    # Stato pagamento
+    if fattura.pagata:
+        pdf.set_text_color(46, 125, 50)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 10, "FATTURA PAGATA", new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.set_text_color(198, 40, 40)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 10, "DA PAGARE", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+
+    # Note
+    if fattura.note:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(0, 7, "Note:", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 6, fattura.note)
+
+    # Footer
+    pdf.ln(10)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 5, "Documento generato automaticamente da Gestione Magazzino", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    return bytes(pdf.output())

@@ -386,15 +386,13 @@ export default function Fatture() {
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      {f.nome_file && (
-                        <button
-                          onClick={() => handleDownload(f)}
-                          title="Scarica PDF"
-                          style={actionBtnStyle('#1565c0')}
-                        >
-                          📥
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleDownload(f)}
+                        title="Scarica PDF"
+                        style={actionBtnStyle('#1565c0')}
+                      >
+                        📥
+                      </button>
                       <button
                         onClick={() => openEditModal(f)}
                         title="Modifica"
