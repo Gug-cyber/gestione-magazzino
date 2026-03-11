@@ -145,4 +145,12 @@ export const clientiAPI = {
   getStatistiche: (id) => client.get(`/api/clienti/${id}/statistiche`),
 }
 
+export const ordiniAPI = {
+  getAll: (params) => client.get('/api/ordini/', { params }),
+  getById: (id) => client.get(`/api/ordini/${id}`),
+  create: (data) => client.post('/api/ordini/', data),
+  update: (id, data) => client.put(`/api/ordini/${id}`, data),
+  delete: (id) => client.delete(`/api/ordini/${id}`),
+}
+
 export default client

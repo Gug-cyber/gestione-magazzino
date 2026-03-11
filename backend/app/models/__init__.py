@@ -6,3 +6,4 @@ from .movimento import Movimento
 from .reset_token import ResetToken
 from .fattura import Fattura
 from .cliente import Cliente
+from .ordine import Ordine, RigaOrdine
