@@ -10,6 +10,7 @@ const links = [
   { to: '/categorie', label: '🏷️ Categorie' },
   { to: '/fatture', label: '🧾 Fatture' },
   { to: '/clienti', label: '👥 Clienti' },
+  { to: '/ordini', label: '🛒 Ordini' },
 ]
 
 function Sidebar() {
