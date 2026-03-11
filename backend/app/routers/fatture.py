@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
@@ -143,8 +144,17 @@ def download_fattura(
             filename=db_fattura.nome_file or "fattura.pdf",
         )
 
-    pdf_bytes = _genera_pdf_fattura(db_fattura)
-    filename = f"fattura_{db_fattura.numero_fattura.replace('/', '-')}.pdf"
+    try:
+        pdf_bytes = _genera_pdf_fattura(db_fattura)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore nella generazione del PDF: {str(e)}")
+
+    # Sanitize filename: remove non-ASCII-safe characters
+    numero_safe = re.sub(r"[^\w.\-]", "_", db_fattura.numero_fattura or "fattura")
+    tipo_doc = getattr(db_fattura, "tipo_documento", None) or "fattura"
+    prefix = "nota_credito" if tipo_doc == "nota_credito" else "fattura"
+    filename = f"{prefix}_{numero_safe}.pdf"
+
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -171,16 +181,23 @@ def _genera_pdf_fattura(fattura) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(6)
 
+    # Determina tipo documento in modo robusto
+    tipo_documento = getattr(fattura, "tipo_documento", None) or "fattura"
+    tipo_value = ""
+    if fattura.tipo is not None:
+        tipo_value = fattura.tipo.value if hasattr(fattura.tipo, "value") else str(fattura.tipo)
+
+    if tipo_documento == "nota_credito":
+        tipo_label = "NOTA DI CREDITO"
+    elif tipo_value == "passiva":
+        tipo_label = "FATTURA PASSIVA"
+    else:
+        tipo_label = "FATTURA ATTIVA"
+
     # Titolo fattura
-    tipo_value = fattura.tipo.value if hasattr(fattura.tipo, "value") else str(fattura.tipo)
-    tipo_label = "FATTURA ATTIVA" if tipo_value == "attiva" else "FATTURA PASSIVA"
-    tipo_documento = getattr(fattura, "tipo_documento", None)
-    if tipo_documento is not None:
-        td_value = tipo_documento.value if hasattr(tipo_documento, "value") else str(tipo_documento)
-        if td_value == "nota_credito":
-            tipo_label = "NOTA DI CREDITO"
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, f"{tipo_label} N. {fattura.numero_fattura}", new_x="LMARGIN", new_y="NEXT")
+    numero = fattura.numero_fattura or "-"
+    pdf.cell(0, 10, f"{tipo_label} N. {numero}", new_x="LMARGIN", new_y="NEXT")
 
     # Data
     pdf.set_font("Helvetica", "", 11)
@@ -207,17 +224,27 @@ def _genera_pdf_fattura(fattura) -> bytes:
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Helvetica", "", 11)
     importo = float(fattura.importo or 0)
-    imponibile = round(importo / 1.22, 2)
-    iva = round(importo - imponibile, 2)
+
+    # Usa imponibile/iva salvati se disponibili, altrimenti calcola
+    aliquota = float(getattr(fattura, "aliquota_iva", None) or 22)
+    imponibile_salvato = getattr(fattura, "imponibile", None)
+    iva_salvata = getattr(fattura, "importo_iva", None)
+
+    if imponibile_salvato is not None:
+        imponibile = float(imponibile_salvato)
+        iva = float(iva_salvata or 0)
+    else:
+        imponibile = round(importo / (1 + aliquota / 100), 2)
+        iva = round(importo - imponibile, 2)
 
     pdf.cell(120, 9, "Servizi / Prodotti", border=1)
-    pdf.cell(35, 9, f"EUR {imponibile:,.2f}", border=1, align="R")
-    pdf.cell(35, 9, f"EUR {importo:,.2f}", border=1, align="R")
+    pdf.cell(35, 9, f"EUR {imponibile:.2f}", border=1, align="R")
+    pdf.cell(35, 9, f"EUR {importo:.2f}", border=1, align="R")
     pdf.ln()
 
     # IVA riga
-    pdf.cell(120, 9, "IVA 22%", border=1)
-    pdf.cell(35, 9, f"EUR {iva:,.2f}", border=1, align="R")
+    pdf.cell(120, 9, f"IVA {aliquota:.0f}%", border=1)
+    pdf.cell(35, 9, f"EUR {iva:.2f}", border=1, align="R")
     pdf.cell(35, 9, "", border=1)
     pdf.ln()
 
@@ -226,11 +253,16 @@ def _genera_pdf_fattura(fattura) -> bytes:
     pdf.set_fill_color(240, 240, 240)
     pdf.cell(120, 10, "TOTALE", border=1, fill=True)
     pdf.cell(35, 10, "", border=1, fill=True)
-    pdf.cell(35, 10, f"EUR {importo:,.2f}", border=1, fill=True, align="R")
+    pdf.cell(35, 10, f"EUR {importo:.2f}", border=1, fill=True, align="R")
     pdf.ln(12)
 
     # Stato pagamento
-    if fattura.pagata:
+    annullata = getattr(fattura, "annullata", False) or False
+    if annullata:
+        pdf.set_text_color(100, 100, 100)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 10, "ANNULLATA", new_x="LMARGIN", new_y="NEXT")
+    elif fattura.pagata:
         pdf.set_text_color(46, 125, 50)
         pdf.set_font("Helvetica", "B", 13)
         pdf.cell(0, 10, "FATTURA PAGATA", new_x="LMARGIN", new_y="NEXT")
