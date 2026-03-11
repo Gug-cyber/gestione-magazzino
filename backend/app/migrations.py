@@ -32,6 +32,11 @@ COLUMN_MIGRATIONS = [
         "column": "foto_path",
         "definition": "VARCHAR(255)",
     },
+    {
+        "table": "fatture",
+        "column": "cliente_id",
+        "definition": "INTEGER REFERENCES clienti(id) ON DELETE SET NULL",
+    },
 ]
 
 

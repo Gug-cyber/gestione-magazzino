@@ -135,4 +135,14 @@ export const fattureAPI = {
   getDownloadUrl: (id) => `${API_BASE_URL}/api/fatture/${id}/download`,
 }
 
+export const clientiAPI = {
+  getAll: (params) => client.get('/api/clienti/', { params }),
+  getById: (id) => client.get(`/api/clienti/${id}`),
+  create: (data) => client.post('/api/clienti/', data),
+  update: (id, data) => client.put(`/api/clienti/${id}`, data),
+  delete: (id) => client.delete(`/api/clienti/${id}`),
+  getStorico: (id) => client.get(`/api/clienti/${id}/storico`),
+  getStatistiche: (id) => client.get(`/api/clienti/${id}/statistiche`),
+}
+
 export default client

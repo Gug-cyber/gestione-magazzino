@@ -31,12 +31,14 @@ class FatturaUpdate(BaseModel):
     tipo: Optional[TipoFatturaSchema] = None
     pagata: Optional[bool] = None
     note: Optional[str] = None
+    cliente_id: Optional[int] = None
 
 
 class FatturaResponse(FatturaBase):
     id: int
     file_path: Optional[str] = None
     nome_file: Optional[str] = None
+    cliente_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:
