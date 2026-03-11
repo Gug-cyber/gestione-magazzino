@@ -220,7 +220,7 @@ export default function Clienti() {
         </div>
 
         {/* Dati cliente */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px' }}>
           <div style={{ ...cardStyle, flex: 'unset' }}>
             <h3 style={{ color: primaryColor, marginTop: 0 }}>📋 Dati Anagrafici</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>

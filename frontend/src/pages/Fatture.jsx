@@ -208,7 +208,7 @@ export default function Fatture() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ color: primaryColor, margin: 0 }}>🧾 Fatture</h1>
         <button
           onClick={openNewModal}
@@ -259,32 +259,32 @@ export default function Fatture() {
         flexWrap: 'wrap',
         alignItems: 'flex-end',
       }}>
-        <div>
+        <div style={{ flex: 1, minWidth: '140px' }}>
           <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Cliente 🔍</label>
           <input
             type="text"
             value={filterCliente}
             onChange={e => setFilterCliente(e.target.value)}
             placeholder="Cerca cliente..."
-            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', width: '100%' }}
           />
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: '130px' }}>
           <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Data da 📅</label>
           <input
             type="date"
             value={filterDataDa}
             onChange={e => setFilterDataDa(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', width: '100%' }}
           />
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: '130px' }}>
           <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Data a 📅</label>
           <input
             type="date"
             value={filterDataA}
             onChange={e => setFilterDataA(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', width: '100%' }}
           />
         </div>
         <button

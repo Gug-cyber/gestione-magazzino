@@ -374,6 +374,7 @@ function TabSpese() {
           {spese.length === 0 ? (
             <p style={{ color: '#888' }}>Nessuna spesa registrata.</p>
           ) : (
+            <div className="table-wrapper">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -410,6 +411,7 @@ function TabSpese() {
                 </tr>
               </tfoot>
             </table>
+            </div>
           )}
         </div>
       )}
@@ -482,6 +484,7 @@ function TabPackaging() {
       {/* Tabella componenti */}
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0, color: '#1a237e' }}>📦 Componenti Imballo</h3>
+        <div className="table-wrapper">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -528,11 +531,12 @@ function TabPackaging() {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Form aggiunta componente */}
         <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
           <h4 style={{ margin: '0 0 12px', color: '#333' }}>➕ Aggiungi componente</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', alignItems: 'flex-end' }}>
             <div>
               <label style={labelStyle}>Nome componente</label>
               <input

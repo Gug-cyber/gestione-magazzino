@@ -80,6 +80,7 @@ function Dashboard() {
         {stats.movimentiRecenti.length === 0 ? (
           <p style={{ color: '#888' }}>Nessun movimento registrato.</p>
         ) : (
+          <div className="table-wrapper">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -113,6 +114,7 @@ function Dashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

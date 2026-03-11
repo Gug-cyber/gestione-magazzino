@@ -140,10 +140,10 @@ function Prodotti() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ color: '#1a237e' }}>📦 Prodotti</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <h1 style={{ color: '#1a237e', margin: 0 }}>📦 Prodotti</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <input
               type="text"
               placeholder="Cerca per nome, SKU..."
@@ -156,7 +156,7 @@ function Prodotti() {
                 border: '1.5px solid #c5cae9',
                 borderRadius: '6px',
                 fontSize: '0.95rem',
-                width: '280px',
+                width: 'clamp(160px, 30vw, 280px)',
                 outline: 'none',
               }}
             />
@@ -292,6 +292,7 @@ function Prodotti() {
 
 
       <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <div className="table-wrapper">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
@@ -340,6 +341,7 @@ function Prodotti() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       {showScanner && (
         <BarcodeScanner
