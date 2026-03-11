@@ -23,12 +23,18 @@ app = FastAPI(
     version="1.0.0",
 )
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+allowed_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
+
+# When CORS_ALLOW_LAN=true, allow all origins so phones/tablets on the same
+# Wi-Fi can reach the API. Note: allow_credentials must be False with allow_origins=["*"].
+# This is fine because we use JWT in the Authorization header, not cookies.
+allow_all_origins = os.getenv("CORS_ALLOW_LAN", "false").lower() == "true"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_origins=["*"] if allow_all_origins else allowed_origins,
+    allow_credentials=False if allow_all_origins else True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
