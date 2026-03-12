@@ -1,0 +1,30 @@
+# render.yaml - Configurazione deploy su Render.com
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: gestione-magazzino-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # impostare manualmente nella dashboard Render
+      - key: SECRET_KEY
+        generateValue: true  # Render genera automaticamente un valore sicuro
+      - key: ALLOWED_ORIGINS
+        sync: false          # es. https://YOUR_APP.vercel.app
+      - key: CORS_ALLOW_LAN
+        value: "false"
+      - key: FRONTEND_URL
+        sync: false          # es. https://YOUR_APP.vercel.app
+      - key: RESEND_API_KEY
+        sync: false          # opzionale, per invio email
+      - key: UPLOAD_DIR
+        value: /app/uploads
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+    healthCheckPath: /health
