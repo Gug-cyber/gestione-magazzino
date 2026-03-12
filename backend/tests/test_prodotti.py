@@ -2,6 +2,7 @@
 Test per la logica dei prodotti.
 """
 import pytest
+from app.models.prodotto import Prodotto as ProdottoModel
 
 
 def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", quantita=10):
@@ -102,3 +103,43 @@ def test_get_prodotti_sotto_scorta(client, auth_headers):
     nomi = [p["nome"] for p in resp.json()]
     assert "Prodotto Sotto Scorta" in nomi
     assert "Prodotto OK" not in nomi
+
+
+def test_get_foto_prodotto_no_auth(client, auth_headers, db):
+    """Verifica che GET /foto non richieda autenticazione (no 401 senza token)."""
+    # Crea un prodotto
+    resp = _crea_prodotto(client, auth_headers, sku="FOTO-001")
+    assert resp.status_code == 201
+    prodotto_id = resp.json()["id"]
+
+    # Imposta un foto_path direttamente nel DB (simula una foto con path locale mancante)
+    prodotto = db.query(ProdottoModel).filter(ProdottoModel.id == prodotto_id).first()
+    prodotto.foto_path = "/tmp/foto_inesistente.jpg"
+    db.commit()
+
+    # Richiesta senza header di autenticazione: deve restituire 404 (file mancante),
+    # NON 401 (autenticazione richiesta)
+    resp_no_auth = client.get(f"/api/prodotti/{prodotto_id}/foto")
+    assert resp_no_auth.status_code != 401, (
+        "L'endpoint GET /foto non deve richiedere autenticazione"
+    )
+    assert resp_no_auth.status_code == 404
+
+
+def test_get_foto_prodotto_cloudinary_no_auth(client, auth_headers, db):
+    """Verifica che GET /foto con URL Cloudinary faccia redirect senza autenticazione."""
+    resp = _crea_prodotto(client, auth_headers, sku="FOTO-CLOUD-001")
+    assert resp.status_code == 201
+    prodotto_id = resp.json()["id"]
+
+    # Simula un foto_path Cloudinary
+    prodotto = db.query(ProdottoModel).filter(ProdottoModel.id == prodotto_id).first()
+    prodotto.foto_path = "https://res.cloudinary.com/test/image/upload/v1/prodotti/1.jpg"
+    db.commit()
+
+    # Richiesta senza header di autenticazione: deve fare redirect (307), NON 401
+    resp_no_auth = client.get(f"/api/prodotti/{prodotto_id}/foto", follow_redirects=False)
+    assert resp_no_auth.status_code != 401, (
+        "L'endpoint GET /foto non deve richiedere autenticazione neanche per URL Cloudinary"
+    )
+    assert resp_no_auth.status_code == 307
