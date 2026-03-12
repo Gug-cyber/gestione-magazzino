@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { prodottiAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 
 const primaryColor = '#1a237e'
 
@@ -122,15 +122,88 @@ function DettaglioProdotto() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [movPage, setMovPage] = useState(0)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [form, setForm] = useState({})
+  const [formError, setFormError] = useState('')
+  const [categorie, setCategorie] = useState([])
+  const [ubicazioni, setUbicazioni] = useState([])
+  const [uploadingFoto, setUploadingFoto] = useState(false)
+  const [fotoError, setFotoError] = useState('')
+  const fotoInputRef = useRef(null)
 
-  useEffect(() => {
+  const loadScheda = () => {
     setLoading(true)
     setError(null)
     prodottiAPI.getScheda(id)
       .then(res => setScheda(res.data))
       .catch(err => setError(err.response?.data?.detail || 'Prodotto non trovato'))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadScheda()
+    Promise.all([categorieAPI.getAll(), ubicazioniAPI.getAll()])
+      .then(([c, u]) => { setCategorie(c.data); setUbicazioni(u.data) })
+      .catch(() => {})
   }, [id])
+
+  const handleEditOpen = () => {
+    const p = scheda.prodotto
+    setForm({
+      nome: p.nome || '',
+      descrizione: p.descrizione || '',
+      sku: p.sku || '',
+      quantita: p.quantita ?? 0,
+      quantita_minima: p.quantita_minima ?? 0,
+      prezzo_acquisto: p.prezzo_acquisto || '',
+      prezzo_vendita: p.prezzo_vendita || '',
+      categoria_id: p.categoria_id || '',
+      ubicazione_id: p.ubicazione_id || '',
+      stato_conservazione: p.stato_conservazione || '',
+      lingua: p.lingua || '',
+    })
+    setFormError('')
+    setShowEditForm(true)
+  }
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    setFormError('')
+    const payload = {
+      ...form,
+      quantita: parseInt(form.quantita),
+      quantita_minima: parseInt(form.quantita_minima),
+      prezzo_acquisto: form.prezzo_acquisto ? parseFloat(form.prezzo_acquisto) : null,
+      prezzo_vendita: form.prezzo_vendita ? parseFloat(form.prezzo_vendita) : null,
+      categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
+      ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
+      stato_conservazione: form.stato_conservazione || null,
+      lingua: form.lingua || null,
+    }
+    try {
+      await prodottiAPI.update(id, payload)
+      setShowEditForm(false)
+      loadScheda()
+    } catch (err) {
+      setFormError(err.response?.data?.detail || 'Errore nel salvataggio')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm('Eliminare questo prodotto?')) return
+    try {
+      await prodottiAPI.delete(id)
+      navigate('/prodotti')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore durante l\'eliminazione')
+    }
+  }
+
+  useEffect(() => {
+    if (uploadingFoto && fotoInputRef.current) {
+      fotoInputRef.current.click()
+    }
+  }, [uploadingFoto])
 
   if (loading) {
     return <div style={{ padding: '48px', textAlign: 'center', color: '#888', fontSize: '1.1rem' }}>Caricamento...</div>
@@ -173,7 +246,90 @@ function DettaglioProdotto() {
         <button onClick={() => navigate('/prodotti')} style={btnStyle('#546e7a')}>← Torna ai Prodotti</button>
         <h1 style={{ color: primaryColor, margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
         {prodotto.stato_conservazione && <StatoBadge value={prodotto.stato_conservazione} />}
+        <button onClick={handleEditOpen} style={btnStyle(primaryColor)}>✏️ Modifica</button>
+        <button onClick={handleDelete} style={btnStyle('#c62828')}>🗑️ Elimina</button>
       </div>
+
+      {/* Edit form */}
+      {showEditForm && (
+        <form onSubmit={handleSave} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+          <h3 style={{ color: primaryColor, marginTop: 0 }}>✏️ Modifica Prodotto</h3>
+          {formError && <div style={{ color: 'red', marginBottom: '12px' }}>{formError}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            {[
+              { key: 'nome', label: 'Nome *', required: true },
+              { key: 'sku', label: 'SKU *', required: true },
+              { key: 'descrizione', label: 'Descrizione' },
+              { key: 'quantita', label: 'Quantità', type: 'number' },
+              { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
+              { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },
+              { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
+            ].map(({ key, label, type = 'text', required, step }) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
+                <input
+                  type={type}
+                  step={step}
+                  required={required}
+                  value={form[key] ?? ''}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}
+                />
+              </label>
+            ))}
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
+              <select value={form.stato_conservazione} onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })}
+                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                <option value="">-- Nessuno --</option>
+                <option value="Mint">Mint</option>
+                <option value="Near Mint">Near Mint</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Good">Good</option>
+                <option value="Light Played">Light Played</option>
+                <option value="Played">Played</option>
+                <option value="Poor">Poor</option>
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>Lingua</span>
+              <select value={form.lingua} onChange={(e) => setForm({ ...form, lingua: e.target.value })}
+                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                <option value="">-- Nessuna --</option>
+                <option value="Italiano">Italiano</option>
+                <option value="Inglese">Inglese</option>
+                <option value="Giapponese">Giapponese</option>
+                <option value="Cinese">Cinese</option>
+                <option value="Coreano">Coreano</option>
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
+              <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
+                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                <option value="">-- Nessuna --</option>
+                {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>Ubicazione</span>
+              <select value={form.ubicazione_id} onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })}
+                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                <option value="">-- Nessuna --</option>
+                {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+            <button type="submit" style={{ backgroundColor: primaryColor, color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}>💾 Salva</button>
+            <button type="button" onClick={() => setShowEditForm(false)} style={{ backgroundColor: '#f5f5f5', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer' }}>✕ Annulla</button>
+          </div>
+        </form>
+      )}
 
       {/* Main info grid */}
       <div style={{
@@ -185,15 +341,43 @@ function DettaglioProdotto() {
         {/* Left: product details */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
-            {prodotto.foto_url
-              ? <img src={prodotto.foto_url} alt={prodotto.nome}
-                  style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-              : <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>📦</span>
-            }
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              {prodotto.foto_url
+                ? <img src={prodotto.foto_url} alt={prodotto.nome}
+                    style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover', display: 'block' }} />
+                : <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>📦</span>
+              }
+              <button
+                onClick={() => setUploadingFoto(true)}
+                style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                title="Cambia foto"
+              >📷</button>
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fotoInputRef}
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files[0]
+                if (!file) return
+                setFotoError('')
+                try {
+                  await prodottiAPI.uploadFoto(id, file)
+                  loadScheda()
+                } catch {
+                  setFotoError('Errore nel caricamento della foto')
+                } finally {
+                  setUploadingFoto(false)
+                  e.target.value = ''
+                }
+              }}
+            />
             <div>
               <div style={{ fontSize: '1.1rem', fontWeight: 700, color: primaryColor, marginBottom: 4 }}>{prodotto.nome}</div>
               {prodotto.descrizione && <div style={{ color: '#555', fontSize: '0.9rem', marginBottom: 8 }}>{prodotto.descrizione}</div>}
               <div style={{ fontSize: '0.85rem', color: '#888' }}>SKU: <code style={{ backgroundColor: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{prodotto.sku}</code></div>
+              {fotoError && <div style={{ color: 'red', fontSize: '0.8rem', marginTop: 4 }}>{fotoError}</div>}
             </div>
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
