@@ -46,8 +46,13 @@ Questa guida spiega come mettere online **Gestione Magazzino** gratuitamente usa
    | `FRONTEND_URL` | L'URL del frontend Vercel (es. `https://gestione-magazzino-xxx.vercel.app`) |
    | `RESEND_API_KEY` | La chiave API di Resend (es. `re_xxxxxxxx`) — per invio email |
    | `RESEND_FROM` | *(opzionale)* Mittente email, default: `Gestione Magazzino <onboarding@resend.dev>` |
+   | `CLOUDINARY_CLOUD_NAME` | Il nome del tuo cloud Cloudinary (dalla dashboard su cloudinary.com) |
+   | `CLOUDINARY_API_KEY` | La API Key di Cloudinary |
+   | `CLOUDINARY_API_SECRET` | Il API Secret di Cloudinary |
 
    > **Nota email**: Il backend usa [Resend](https://resend.com) per inviare email (reset password, recupero username) tramite HTTP API, che funziona su tutti i piani di hosting. Le variabili SMTP (`SMTP_HOST`, `SMTP_USER`, ecc.) sono opzionali e usate solo come fallback se `RESEND_API_KEY` non è configurata.
+
+   > **Nota Cloudinary**: Le variabili `CLOUDINARY_*` sono necessarie per il caricamento delle foto dei prodotti. Registrati gratuitamente su [cloudinary.com](https://cloudinary.com) (piano gratuito: 25 GB storage, 25 GB banda/mese), poi trovi Cloud Name, API Key e API Secret nella sezione **"API Keys"** del dashboard (sotto "Product Environment").
 
 7. Clicca **"Deploy"**
 8. Attendi il deploy (2-5 minuti). Una volta completato, copia l'URL del servizio (formato: `https://xxx-yyy.koyeb.app`)

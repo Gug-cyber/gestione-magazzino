@@ -274,9 +274,9 @@ def get_foto_prodotto(prodotto_id: int, db: Session = Depends(get_db)):
     db_prodotto = crud.get_prodotto(db, prodotto_id)
     if not db_prodotto or not db_prodotto.foto_path:
         raise HTTPException(status_code=404, detail="Foto non trovata")
-    # Se è un URL Cloudinary, redirect
+    # Se è un URL Cloudinary, redirect diretto (302 per cache-friendly)
     if db_prodotto.foto_path.startswith("http://") or db_prodotto.foto_path.startswith("https://"):
-        return RedirectResponse(url=db_prodotto.foto_path)
+        return RedirectResponse(url=db_prodotto.foto_path, status_code=302)
     # Fallback per path locali
     if not os.path.exists(db_prodotto.foto_path):
         raise HTTPException(status_code=404, detail="File foto non trovato")
