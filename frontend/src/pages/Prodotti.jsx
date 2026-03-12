@@ -313,6 +313,7 @@ function Prodotti() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => navigate(`/prodotti/${p.id}`)} style={btnSmall('#1a237e')} title="Scheda dettaglio">🔍</button>
                   <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
                   <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>
                   <button onClick={() => setUploadingFotoId(p.id)} style={btnSmall('#7b1fa2')} title="Carica foto">🖼️</button>
@@ -371,6 +372,7 @@ function Prodotti() {
                   <td style={tdStyle}><StatoBadge value={p.stato_conservazione} /></td>
                   <td style={tdStyle}>{p.lingua || '—'}</td>
                   <td style={tdStyle}>
+                    <button onClick={() => navigate(`/prodotti/${p.id}`)} style={btnSmall('#1a237e')} title="Scheda dettaglio">🔍</button>
                     <button onClick={() => handleEdit(p)} style={btnSmall('#1565c0')}>✏️</button>
                     <button onClick={() => handleDelete(p.id)} style={btnSmall('#c62828')}>🗑️</button>
                     <button onClick={() => setUploadingFotoId(p.id)} style={btnSmall('#7b1fa2')} title="Carica foto">🖼️</button>
