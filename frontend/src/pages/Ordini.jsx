@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ordiniAPI, clientiAPI, prodottiAPI, fattureAPI } from '../api/client'
+import { useNavigate } from 'react-router-dom'
+import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
 
 const primaryColor = '#1a237e'
 
@@ -36,11 +37,6 @@ const STATO_COLORS = {
   annullato: { bg: '#ffebee', color: '#c62828' },
 }
 
-const STATO_NEXT = {
-  bozza: 'confermato',
-  confermato: 'spedito',
-  spedito: 'completato',
-}
 
 function StatoBadge({ stato }) {
   const colors = STATO_COLORS[stato] || { bg: '#eee', color: '#333' }
@@ -75,21 +71,18 @@ function formatCurrency(amount) {
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
 
 export default function Ordini() {
+  const navigate = useNavigate()
   const [ordini, setOrdini] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [filtroStato, setFiltroStato] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [selectedOrdine, setSelectedOrdine] = useState(null)
   const [clienti, setClienti] = useState([])
   const [prodotti, setProdotti] = useState([])
   const [form, setForm] = useState({ cliente_id: '', cliente_nome: '', note: '', righe: [{ ...emptyRiga }] })
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [fatturaOrdine, setFatturaOrdine] = useState(null)
-  const [trackingModal, setTrackingModal] = useState(null) // { ordineId, corriere, tracking_number }
-  const [trackingError, setTrackingError] = useState('')
 
   const fetchOrdini = useCallback(async (params = {}) => {
     setLoading(true)
@@ -182,173 +175,10 @@ export default function Ordini() {
     }
   }
 
-  const caricaFatturaOrdine = (ordineId) => {
-    setFatturaOrdine(null)
-    fattureAPI.getByOrdine(ordineId).then(r => {
-      const fatture = r.data || []
-      const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
-      setFatturaOrdine(fattura || null)
-    }).catch(() => {})
-  }
-
-  const handleChangeStato = async (ordineId, nuovoStato) => {
-    try {
-      await ordiniAPI.update(ordineId, { stato: nuovoStato })
-      if (selectedOrdine?.id === ordineId) {
-        const res = await ordiniAPI.getById(ordineId)
-        setSelectedOrdine(res.data)
-        if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
-          caricaFatturaOrdine(ordineId)
-        } else {
-          setFatturaOrdine(null)
-        }
-      }
-      fetchOrdini()
-    } catch (err) {
-      alert(err?.response?.data?.detail || 'Errore nel cambio stato')
-    }
-  }
-
-  const handleDelete = async (ordineId) => {
-    if (!window.confirm('Eliminare questo ordine?')) return
-    try {
-      await ordiniAPI.delete(ordineId)
-      if (selectedOrdine?.id === ordineId) setSelectedOrdine(null)
-      fetchOrdini()
-    } catch (err) {
-      alert(err?.response?.data?.detail || 'Errore nell\'eliminazione')
-    }
-  }
-
-  const openDettaglio = async (ordine) => {
-    const res = await ordiniAPI.getById(ordine.id)
-    setSelectedOrdine(res.data)
-    if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
-      caricaFatturaOrdine(res.data.id)
-    } else {
-      setFatturaOrdine(null)
-    }
-  }
-
   // Stats
   const totaleBozze = ordini.filter(o => o.stato === 'bozza').length
   const totaleCompletati = ordini.filter(o => o.stato === 'completato').length
   const fatturatoTotale = ordini.filter(o => o.stato === 'completato').reduce((acc, o) => acc + (o.totale || 0), 0)
-
-  if (selectedOrdine) {
-    const nextStato = STATO_NEXT[selectedOrdine.stato]
-    return (
-      <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
-        <button
-          onClick={() => setSelectedOrdine(null)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: primaryColor, fontSize: '14px', marginBottom: '16px' }}
-        >
-          ← Torna agli ordini
-        </button>
-
-        <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h2 style={{ margin: 0, color: primaryColor }}>{selectedOrdine.numero_ordine}</h2>
-              <p style={{ margin: '4px 0', color: '#555' }}>
-                Cliente: <strong>{selectedOrdine.cliente_nome || '—'}</strong>
-              </p>
-              <p style={{ margin: '4px 0', color: '#555' }}>
-                Data: <strong>{formatDate(selectedOrdine.data_ordine)}</strong>
-              </p>
-              {selectedOrdine.data_completamento && (
-                <p style={{ margin: '4px 0', color: '#555' }}>
-                  Completato il: <strong>{formatDate(selectedOrdine.data_completamento)}</strong>
-                </p>
-              )}
-              {selectedOrdine.note && (
-                <p style={{ margin: '4px 0', color: '#555' }}>Note: {selectedOrdine.note}</p>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <StatoBadge stato={selectedOrdine.stato} />
-              {nextStato && (
-                <button
-                  onClick={() => handleChangeStato(selectedOrdine.id, nextStato)}
-                  style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Avanza → {nextStato}
-                </button>
-              )}
-              {selectedOrdine.stato !== 'annullato' && selectedOrdine.stato !== 'completato' && (
-                <button
-                  onClick={() => handleChangeStato(selectedOrdine.id, 'annullato')}
-                  style={{ backgroundColor: '#c62828', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Annulla ordine
-                </button>
-              )}
-              {selectedOrdine.stato === 'completato' && (
-                <button
-                  onClick={() => handleChangeStato(selectedOrdine.id, 'annullato')}
-                  style={{ backgroundColor: '#c62828', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Annulla (ripristina magazzino)
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {fatturaOrdine && (
-          <div style={{ backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '8px', padding: '16px 20px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '20px' }}>🧾</span>
-              <div>
-                <strong style={{ color: '#2e7d32' }}>Fattura generata automaticamente</strong>
-                <div style={{ fontSize: '13px', color: '#555', marginTop: '4px' }}>
-                  N° <strong>{fatturaOrdine.numero_fattura}</strong>
-                  {' — '}{formatDate(fatturaOrdine.data_fattura)}
-                  {fatturaOrdine.imponibile !== null && fatturaOrdine.imponibile !== undefined && (
-                    <> — Imponibile: <strong>{formatCurrency(fatturaOrdine.imponibile)}</strong>
-                    {' + IVA '}{fatturaOrdine.aliquota_iva}%: <strong>{formatCurrency(fatturaOrdine.importo_iva)}</strong>
-                    {' = '}<strong>{formatCurrency(fatturaOrdine.importo)}</strong></>
-                  )}
-                  {fatturaOrdine.annullata && (
-                    <span style={{ marginLeft: '8px', color: '#c62828', fontWeight: 600 }}>— ANNULLATA (nota di credito emessa)</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0, color: primaryColor }}>Righe Ordine</h3>
-          <div className="table-wrapper">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f5f5f5' }}>
-                {['Prodotto', 'SKU', 'Quantità', 'Prezzo Unitario', 'Subtotale'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', color: '#555' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {selectedOrdine.righe.map((riga, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '10px 12px' }}>{riga.prodotto_nome || `Prodotto #${riga.prodotto_id}`}</td>
-                  <td style={{ padding: '10px 12px', color: '#777', fontSize: '13px' }}>{riga.prodotto_sku || '—'}</td>
-                  <td style={{ padding: '10px 12px' }}>{riga.quantita}</td>
-                  <td style={{ padding: '10px 12px' }}>{formatCurrency(riga.prezzo_unitario)}</td>
-                  <td style={{ padding: '10px 12px', fontWeight: 600 }}>{formatCurrency(riga.subtotale)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-          <div style={{ textAlign: 'right', marginTop: '16px', fontSize: '18px', fontWeight: 700, color: primaryColor }}>
-            Totale: {formatCurrency(selectedOrdine.totale)}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
@@ -461,48 +291,20 @@ export default function Ordini() {
                   <td style={{ padding: '12px 14px', fontWeight: 600 }}>{formatCurrency(ordine.totale)}</td>
                   <td style={{ padding: '12px 14px', color: '#777', fontSize: '13px' }}>{formatDate(ordine.data_ordine)}</td>
                   <td style={{ padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => openDettaglio(ordine)}
-                        title="Vedi dettaglio"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
-                      >👁️</button>
-                      <button
-                        onClick={() => { setTrackingModal({
-                          ordineId: ordine.id,
-                          corriere: ordine.corriere || '',
-                          tracking_number: ordine.tracking_number || '',
-                        }); setTrackingError('') }}
-                        title="Aggiorna tracking spedizione"
-                        style={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.9rem' }}
-                      >
-                        🚚
-                      </button>
-                      {ordine.stato === 'completato' && (
-                        <span
-                          title="Fattura generata automaticamente"
-                          style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', border: '1px solid #a5d6a7', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'default' }}
-                        >
-                          🧾 Fattura
-                        </span>
-                      )}
-                      {STATO_NEXT[ordine.stato] && (
-                        <button
-                          onClick={() => handleChangeStato(ordine.id, STATO_NEXT[ordine.stato])}
-                          title={`Avanza a ${STATO_NEXT[ordine.stato]}`}
-                          style={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}
-                        >
-                          → {STATO_NEXT[ordine.stato]}
-                        </button>
-                      )}
-                      {ordine.stato !== 'completato' && (
-                        <button
-                          onClick={() => handleDelete(ordine.id)}
-                          title="Elimina"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
-                        >🗑️</button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => navigate(`/ordini/${ordine.id}`)}
+                      title="Vedi dettaglio"
+                      style={{
+                        background: 'none',
+                        border: '1px solid #c5cae9',
+                        borderRadius: '6px',
+                        padding: '5px 10px',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                      }}
+                    >
+                      🔍
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -621,82 +423,6 @@ export default function Ordini() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      {/* Tracking Modal */}
-      {trackingModal && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            backgroundColor: '#fff', borderRadius: '10px', padding: '28px',
-            width: '100%', maxWidth: '420px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-          }}>
-            <h3 style={{ color: '#1a237e', marginTop: 0 }}>🚚 Tracking Spedizione</h3>
-
-            {trackingError && (
-              <div style={{ color: '#c62828', backgroundColor: '#ffebee', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', fontSize: '0.85rem' }}>
-                {trackingError}
-              </div>
-            )}
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '6px' }}>
-                Corriere
-              </label>
-              <select
-                value={trackingModal.corriere}
-                onChange={(e) => setTrackingModal({ ...trackingModal, corriere: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-              >
-                <option value="">— Seleziona corriere —</option>
-                {CORRIERI.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '6px' }}>
-                Numero Tracking
-              </label>
-              <input
-                type="text"
-                value={trackingModal.tracking_number}
-                onChange={(e) => setTrackingModal({ ...trackingModal, tracking_number: e.target.value })}
-                placeholder="es. IT123456789"
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => { setTrackingModal(null); setTrackingError('') }}
-                style={{ padding: '8px 20px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer' }}
-              >
-                Annulla
-              </button>
-              <button
-                onClick={async () => {
-                  setTrackingError('')
-                  try {
-                    await ordiniAPI.updateTracking(trackingModal.ordineId, {
-                      corriere: trackingModal.corriere || undefined,
-                      tracking_number: trackingModal.tracking_number || undefined,
-                    })
-                    setTrackingModal(null)
-                    fetchOrdini()
-                  } catch (err) {
-                    setTrackingError(err?.response?.data?.detail || 'Errore nel salvataggio del tracking')
-                  }
-                }}
-                style={{ padding: '8px 20px', backgroundColor: '#1a237e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                💾 Salva
-              </button>
-            </div>
           </div>
         </div>
       )}
