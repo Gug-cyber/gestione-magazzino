@@ -1,51 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ordiniAPI, fattureAPI } from '../api/client'
-
-const primaryColor = '#1a237e'
-
-const STATO_COLORS = {
-  bozza: { bg: '#f5f5f5', color: '#757575' },
-  confermato: { bg: '#e3f2fd', color: '#1565c0' },
-  spedito: { bg: '#fff3e0', color: '#e65100' },
-  completato: { bg: '#e8f5e9', color: '#2e7d32' },
-  annullato: { bg: '#ffebee', color: '#c62828' },
-}
+import StatoBadge from '../components/ui/StatoBadge'
+import { STATO_ORDINE_COLORS, PRIMARY_COLOR } from '../constants/colors'
+import { formatDate, formatCurrency } from '../utils/formatters'
 
 const STATO_NEXT = {
   bozza: 'confermato',
   confermato: 'spedito',
   spedito: 'completato',
-}
-
-function StatoBadge({ stato }) {
-  const colors = STATO_COLORS[stato] || { bg: '#eee', color: '#333' }
-  return (
-    <span style={{
-      backgroundColor: colors.bg,
-      color: colors.color,
-      padding: '3px 10px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: 600,
-      textTransform: 'capitalize',
-    }}>
-      {stato}
-    </span>
-  )
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('it-IT')
-  } catch {
-    return dateStr
-  }
-}
-
-function formatCurrency(amount) {
-  return Number(amount || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
 }
 
 export default function DettaglioOrdine() {
@@ -114,7 +77,7 @@ export default function DettaglioOrdine() {
   return (
     <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
       {/* Breadcrumb/Back nav */}
-      <button onClick={() => navigate('/ordini')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: primaryColor, fontSize: '14px', marginBottom: '16px' }}>
+      <button onClick={() => navigate('/ordini')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: PRIMARY_COLOR, fontSize: '14px', marginBottom: '16px' }}>
         ← Torna agli ordini
       </button>
 
@@ -122,7 +85,7 @@ export default function DettaglioOrdine() {
       <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h2 style={{ margin: 0, color: primaryColor }}>{ordine.numero_ordine}</h2>
+            <h2 style={{ margin: 0, color: PRIMARY_COLOR }}>{ordine.numero_ordine}</h2>
             <p style={{ margin: '4px 0', color: '#555' }}>Cliente: <strong>{ordine.cliente_nome || '—'}</strong></p>
             <p style={{ margin: '4px 0', color: '#555' }}>Data: <strong>{formatDate(ordine.data_ordine)}</strong></p>
             {ordine.data_completamento && (
@@ -131,9 +94,9 @@ export default function DettaglioOrdine() {
             {ordine.note && <p style={{ margin: '4px 0', color: '#555' }}>Note: {ordine.note}</p>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <StatoBadge stato={ordine.stato} />
+            <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
             {nextStato && (
-              <button onClick={() => handleChangeStato(nextStato)} style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px' }}>
+              <button onClick={() => handleChangeStato(nextStato)} style={{ backgroundColor: PRIMARY_COLOR, color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px' }}>
                 Avanza → {nextStato}
               </button>
             )}
@@ -181,7 +144,7 @@ export default function DettaglioOrdine() {
       {/* Tabella righe */}
       <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
-          <h3 style={{ margin: 0, color: primaryColor }}>📦 Righe Ordine</h3>
+          <h3 style={{ margin: 0, color: PRIMARY_COLOR }}>📦 Righe Ordine</h3>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -199,14 +162,14 @@ export default function DettaglioOrdine() {
                   <td style={{ padding: '12px 16px', color: '#666', fontFamily: 'monospace', fontSize: '0.85rem' }}>{r.prodotto_sku || '—'}</td>
                   <td style={{ padding: '12px 16px' }}>{r.quantita}</td>
                   <td style={{ padding: '12px 16px' }}>{formatCurrency(r.prezzo_unitario)}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: primaryColor }}>{formatCurrency(r.subtotale)}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: PRIMARY_COLOR }}>{formatCurrency(r.subtotale)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <div style={{ padding: '16px 20px', borderTop: '2px solid #eee', textAlign: 'right' }}>
-          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: primaryColor }}>
+          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: PRIMARY_COLOR }}>
             Totale: {formatCurrency(ordine.totale)}
           </span>
         </div>

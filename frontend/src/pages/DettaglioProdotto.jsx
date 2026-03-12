@@ -1,32 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
-
-const primaryColor = '#1a237e'
-
-const statoColors = {
-  'Mint':         { bg: '#e8f5e9', text: '#2e7d32' },
-  'Near Mint':    { bg: '#f1f8e9', text: '#558b2f' },
-  'Excellent':    { bg: '#e3f2fd', text: '#1565c0' },
-  'Good':         { bg: '#fff8e1', text: '#f57f17' },
-  'Light Played': { bg: '#fff3e0', text: '#e65100' },
-  'Played':       { bg: '#fce4ec', text: '#c62828' },
-  'Poor':         { bg: '#ffebee', text: '#b71c1c' },
-}
-
-function StatoBadge({ value }) {
-  if (!value) return null
-  const colors = statoColors[value] || { bg: '#f5f5f5', text: '#555' }
-  return (
-    <span style={{
-      backgroundColor: colors.bg, color: colors.text,
-      padding: '3px 10px', borderRadius: '12px',
-      fontSize: '0.85rem', fontWeight: '600', whiteSpace: 'nowrap',
-    }}>
-      {value}
-    </span>
-  )
-}
+import StatoBadge from '../components/ui/StatoBadge'
+import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 
 function QuantitaChart({ storico }) {
   if (!storico || storico.length === 0) {
@@ -213,7 +189,7 @@ function DettaglioProdotto() {
     return (
       <div style={{ padding: '48px', textAlign: 'center' }}>
         <p style={{ color: '#c62828', fontSize: '1.1rem' }}>{error}</p>
-        <button onClick={() => navigate('/prodotti')} style={btnStyle(primaryColor)}>← Torna ai Prodotti</button>
+        <button onClick={() => navigate('/prodotti')} style={btnStyle(PRIMARY_COLOR)}>← Torna ai Prodotti</button>
       </div>
     )
   }
@@ -244,16 +220,16 @@ function DettaglioProdotto() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <button onClick={() => navigate('/prodotti')} style={btnStyle('#546e7a')}>← Torna ai Prodotti</button>
-        <h1 style={{ color: primaryColor, margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
-        {prodotto.stato_conservazione && <StatoBadge value={prodotto.stato_conservazione} />}
-        <button onClick={handleEditOpen} style={btnStyle(primaryColor)}>✏️ Modifica</button>
+        <h1 style={{ color: PRIMARY_COLOR, margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
+        {prodotto.stato_conservazione && <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />}
+        <button onClick={handleEditOpen} style={btnStyle(PRIMARY_COLOR)}>✏️ Modifica</button>
         <button onClick={handleDelete} style={btnStyle('#c62828')}>🗑️ Elimina</button>
       </div>
 
       {/* Edit form */}
       {showEditForm && (
         <form onSubmit={handleSave} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
-          <h3 style={{ color: primaryColor, marginTop: 0 }}>✏️ Modifica Prodotto</h3>
+          <h3 style={{ color: PRIMARY_COLOR, marginTop: 0 }}>✏️ Modifica Prodotto</h3>
           {formError && <div style={{ color: 'red', marginBottom: '12px' }}>{formError}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             {[
@@ -325,7 +301,7 @@ function DettaglioProdotto() {
             </label>
           </div>
           <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-            <button type="submit" style={{ backgroundColor: primaryColor, color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}>💾 Salva</button>
+            <button type="submit" style={{ backgroundColor: PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}>💾 Salva</button>
             <button type="button" onClick={() => setShowEditForm(false)} style={{ backgroundColor: '#f5f5f5', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer' }}>✕ Annulla</button>
           </div>
         </form>
@@ -374,7 +350,7 @@ function DettaglioProdotto() {
               }}
             />
             <div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: primaryColor, marginBottom: 4 }}>{prodotto.nome}</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: PRIMARY_COLOR, marginBottom: 4 }}>{prodotto.nome}</div>
               {prodotto.descrizione && <div style={{ color: '#555', fontSize: '0.9rem', marginBottom: 8 }}>{prodotto.descrizione}</div>}
               <div style={{ fontSize: '0.85rem', color: '#888' }}>SKU: <code style={{ backgroundColor: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{prodotto.sku}</code></div>
               {fotoError && <div style={{ color: 'red', fontSize: '0.8rem', marginTop: 4 }}>{fotoError}</div>}
@@ -402,7 +378,7 @@ function DettaglioProdotto() {
             {prodotto.stato_conservazione && (
               <div style={infoRowStyle}>
                 <span style={labelStyle}>Conservazione</span>
-                <StatoBadge value={prodotto.stato_conservazione} />
+                <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />
               </div>
             )}
           </div>
@@ -466,13 +442,13 @@ function DettaglioProdotto() {
 
       {/* Chart */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: primaryColor, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>📊 Quantità nel tempo</h2>
+        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>📊 Quantità nel tempo</h2>
         <QuantitaChart storico={storico_quantita} />
       </div>
 
       {/* Movements table */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: primaryColor, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
+        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
           📋 Storico Movimenti
           <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#888', marginLeft: 8 }}>({movimenti.length} totali)</span>
         </h2>
@@ -483,7 +459,7 @@ function DettaglioProdotto() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
-                  <tr style={{ backgroundColor: primaryColor, color: 'white' }}>
+                  <tr style={{ backgroundColor: PRIMARY_COLOR, color: 'white' }}>
                     {['Data', 'Tipo', 'Quantità', 'Fornitore', 'Note'].map(h => (
                       <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                     ))}
@@ -511,12 +487,12 @@ function DettaglioProdotto() {
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
                 <button onClick={() => setMovPage(p => Math.max(0, p - 1))} disabled={movPage === 0}
-                  style={btnSmall(movPage === 0 ? '#ccc' : primaryColor)}>‹ Prec</button>
+                  style={btnSmall(movPage === 0 ? '#ccc' : PRIMARY_COLOR)}>‹ Prec</button>
                 <span style={{ padding: '4px 10px', fontSize: '0.9rem', color: '#555' }}>
                   {movPage + 1} / {totalPages}
                 </span>
                 <button onClick={() => setMovPage(p => Math.min(totalPages - 1, p + 1))} disabled={movPage === totalPages - 1}
-                  style={btnSmall(movPage === totalPages - 1 ? '#ccc' : primaryColor)}>Succ ›</button>
+                  style={btnSmall(movPage === totalPages - 1 ? '#ccc' : PRIMARY_COLOR)}>Succ ›</button>
               </div>
             )}
           </>
@@ -526,7 +502,7 @@ function DettaglioProdotto() {
       {/* Prodotti correlati */}
       {prodotti_correlati.length > 0 && (
         <div style={{ ...cardStyle, marginBottom: 24 }}>
-          <h2 style={{ color: primaryColor, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔗 Prodotti correlati</h2>
+          <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔗 Prodotti correlati</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
             {prodotti_correlati.map(pc => (
               <div key={pc.id}
@@ -546,7 +522,7 @@ function DettaglioProdotto() {
                     : <span style={{ fontSize: '2.5rem' }}>📦</span>
                   }
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: primaryColor, marginBottom: 4, textAlign: 'center' }}>{pc.nome}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: PRIMARY_COLOR, marginBottom: 4, textAlign: 'center' }}>{pc.nome}</div>
                 <div style={{ fontSize: '0.78rem', color: '#888', textAlign: 'center', marginBottom: 4 }}>
                   <code>{pc.sku}</code>
                 </div>

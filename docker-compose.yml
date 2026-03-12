@@ -21,6 +21,8 @@ services:
     container_name: magazzino_backend
     environment:
       DATABASE_URL: postgresql://magazzino:magazzino@db:5432/magazzino
+      SECRET_KEY: ${SECRET_KEY:-changeme-use-a-long-random-secret-key-in-production}
+      APP_ENV: ${APP_ENV:-production}
     ports:
       - "8000:8000"
     depends_on:

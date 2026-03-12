@@ -1,17 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
-
-const primaryColor = '#1a237e'
-
-const cardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  flex: 1,
-  minWidth: '140px',
-}
+import StatoBadge from '../components/ui/StatoBadge'
+import { STATO_ORDINE_COLORS } from '../constants/colors'
+import { formatDate, formatCurrency } from '../utils/formatters'
+import styles from './Ordini.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
 
@@ -29,50 +22,14 @@ const CORRIERI = [
   { value: 'Altro',              label: 'Altro',              url: () => null },
 ]
 
-const STATO_COLORS = {
-  bozza: { bg: '#f5f5f5', color: '#757575' },
-  confermato: { bg: '#e3f2fd', color: '#1565c0' },
-  spedito: { bg: '#fff3e0', color: '#e65100' },
-  completato: { bg: '#e8f5e9', color: '#2e7d32' },
-  annullato: { bg: '#ffebee', color: '#c62828' },
-}
-
-
-function StatoBadge({ stato }) {
-  const colors = STATO_COLORS[stato] || { bg: '#eee', color: '#333' }
-  return (
-    <span style={{
-      backgroundColor: colors.bg,
-      color: colors.color,
-      padding: '3px 10px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: 600,
-      textTransform: 'capitalize',
-    }}>
-      {stato}
-    </span>
-  )
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('it-IT')
-  } catch {
-    return dateStr
-  }
-}
-
-function formatCurrency(amount) {
-  return Number(amount || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
-}
-
+const PAGE_SIZE = 50
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
 
 export default function Ordini() {
   const navigate = useNavigate()
   const [ordini, setOrdini] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -84,12 +41,16 @@ export default function Ordini() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
   const fetchOrdini = useCallback(async (params = {}) => {
     setLoading(true)
     setError('')
     try {
-      const res = await ordiniAPI.getAll(params)
+      const res = await ordiniAPI.getAll({ ...params, skip: ((params.page || 1) - 1) * PAGE_SIZE, limit: PAGE_SIZE })
       setOrdini(res.data)
+      const totalCount = parseInt(res.headers['x-total-count'] ?? '0', 10)
+      setTotal(isNaN(totalCount) ? res.data.length : totalCount)
     } catch {
       setError('Errore nel caricamento degli ordini')
     } finally {
@@ -98,22 +59,32 @@ export default function Ordini() {
   }, [])
 
   useEffect(() => {
-    fetchOrdini()
-    clientiAPI.getAll().then(r => setClienti(r.data)).catch(() => {})
-    prodottiAPI.getAll().then(r => setProdotti(r.data)).catch(() => {})
-  }, [fetchOrdini])
-
-  const handleSearch = () => {
     const params = {}
     if (search) params.search = search
     if (filtroStato) params.stato = filtroStato
+    params.page = page
+    fetchOrdini(params)
+  }, [page, fetchOrdini]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    clientiAPI.getAll().then(r => setClienti(r.data)).catch(() => {})
+    prodottiAPI.getAll({ limit: 200 }).then(r => setProdotti(r.data)).catch(() => {})
+  }, [])
+
+  const handleSearch = () => {
+    setPage(1)
+    const params = {}
+    if (search) params.search = search
+    if (filtroStato) params.stato = filtroStato
+    params.page = 1
     fetchOrdini(params)
   }
 
   const handleReset = () => {
     setSearch('')
     setFiltroStato('')
-    fetchOrdini()
+    setPage(1)
+    fetchOrdini({ page: 1 })
   }
 
   const openNewModal = () => {
@@ -152,7 +123,7 @@ export default function Ordini() {
     e.preventDefault()
     setFormError('')
     const righe = form.righe.filter(r => r.prodotto_id)
-    if (!righe.length) { setFormError("Aggiungi almeno un prodotto"); return }
+    if (!righe.length) { setFormError('Aggiungi almeno un prodotto'); return }
     setSubmitting(true)
     try {
       const payload = {
@@ -167,7 +138,7 @@ export default function Ordini() {
       }
       await ordiniAPI.create(payload)
       closeModal()
-      fetchOrdini()
+      handleReset()
     } catch (err) {
       setFormError(err?.response?.data?.detail || 'Errore nella creazione dell\'ordine')
     } finally {
@@ -175,252 +146,164 @@ export default function Ordini() {
     }
   }
 
-  // Stats
+  // Stats locali sulla pagina corrente
   const totaleBozze = ordini.filter(o => o.stato === 'bozza').length
   const totaleCompletati = ordini.filter(o => o.stato === 'completato').length
   const fatturatoTotale = ordini.filter(o => o.stato === 'completato').reduce((acc, o) => acc + (o.totale || 0), 0)
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
+    <div className={styles.container}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 style={{ margin: 0, color: primaryColor }}>🛒 Ordini</h1>
-        <button
-          onClick={openNewModal}
-          style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 600 }}
-        >
-          + Nuovo Ordine
-        </button>
+      <div className={styles.header}>
+        <h1 className={styles.title}>🛒 Ordini</h1>
+        <button onClick={openNewModal} className={styles.newBtn}>+ Nuovo Ordine</button>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <div style={cardStyle}>
-          <div style={{ fontSize: '13px', color: '#777' }}>Totale Ordini</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: primaryColor }}>{ordini.length}</div>
+      <div className={styles.statsRow}>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Totale Ordini</div>
+          <div className={styles.statValue}>{total}</div>
         </div>
-        <div style={cardStyle}>
-          <div style={{ fontSize: '13px', color: '#777' }}>In Bozza</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#757575' }}>{totaleBozze}</div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>In Bozza</div>
+          <div className={styles.statValue} style={{ color: '#757575' }}>{totaleBozze}</div>
         </div>
-        <div style={cardStyle}>
-          <div style={{ fontSize: '13px', color: '#777' }}>Completati</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#2e7d32' }}>{totaleCompletati}</div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Completati</div>
+          <div className={styles.statValue} style={{ color: '#2e7d32' }}>{totaleCompletati}</div>
         </div>
-        <div style={cardStyle}>
-          <div style={{ fontSize: '13px', color: '#777' }}>Fatturato (completati)</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: primaryColor }}>{formatCurrency(fatturatoTotale)}</div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Fatturato (completati)</div>
+          <div className={styles.statValue}>{formatCurrency(fatturatoTotale)}</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className={styles.filterRow}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
           placeholder="Cerca per N° ordine o cliente..."
-          style={{ flex: 1, minWidth: '200px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
+          className={styles.filterInput}
         />
-        <select
-          value={filtroStato}
-          onChange={e => setFiltroStato(e.target.value)}
-          style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-        >
+        <select value={filtroStato} onChange={e => setFiltroStato(e.target.value)} className={styles.filterSelect}>
           <option value="">Tutti gli stati</option>
           {STATI.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
-        <button onClick={handleSearch} style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer' }}>
-          Cerca
-        </button>
-        <button onClick={handleReset} style={{ backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer' }}>
-          Reset
-        </button>
+        <button onClick={handleSearch} className={styles.searchBtn}>Cerca</button>
+        <button onClick={handleReset} className={styles.resetBtn}>Reset</button>
       </div>
 
-      {error && <div style={{ color: '#c62828', marginBottom: '16px' }}>{error}</div>}
+      {error && <div className={styles.errorMsg}>{error}</div>}
 
       {/* Table */}
-      <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div className={styles.tableWrapper}>
         {loading ? (
-          <div style={{ padding: '32px', textAlign: 'center', color: '#777' }}>Caricamento...</div>
+          <div className={styles.emptyMsg}>Caricamento...</div>
         ) : ordini.length === 0 ? (
-          <div style={{ padding: '32px', textAlign: 'center', color: '#777' }}>Nessun ordine trovato</div>
+          <div className={styles.emptyMsg}>Nessun ordine trovato</div>
         ) : (
-          <div className="table-wrapper">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className={styles.table}>
             <thead>
-              <tr style={{ backgroundColor: '#f5f5f5' }}>
+              <tr>
                 {['N° Ordine', 'Cliente', 'Stato', 'Tracking', 'Prodotti', 'Totale €', 'Data', 'Azioni'].map(h => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: '13px', color: '#555', fontWeight: 600 }}>{h}</th>
+                  <th key={h} className={styles.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {ordini.map(ordine => (
-                <tr key={ordine.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, color: primaryColor }}>{ordine.numero_ordine}</td>
-                  <td style={{ padding: '12px 14px' }}>{ordine.cliente_nome || '—'}</td>
-                  <td style={{ padding: '12px 14px' }}><StatoBadge stato={ordine.stato} /></td>
-                  <td style={{ padding: '12px 14px' }}>
+                <tr key={ordine.id} className={styles.tr}>
+                  <td className={`${styles.td} ${styles.ordineNum}`}>{ordine.numero_ordine}</td>
+                  <td className={styles.td}>{ordine.cliente_nome || '—'}</td>
+                  <td className={styles.td}>
+                    <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
+                  </td>
+                  <td className={styles.td}>
                     {ordine.tracking_number ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#555', fontWeight: 600 }}>
-                          {ordine.corriere || '—'}
-                        </span>
+                      <div className={styles.tracking}>
+                        <span className={styles.trackingCorriere}>{ordine.corriere || '—'}</span>
                         {(() => {
                           const corriere = CORRIERI.find(c => c.value === ordine.corriere)
                           const url = corriere ? corriere.url(ordine.tracking_number) : null
                           return url ? (
-                            <a href={url} target="_blank" rel="noopener noreferrer"
-                               style={{ fontSize: '0.8rem', color: '#1565c0', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className={styles.trackingLink}>
                               {ordine.tracking_number} 🔗
                             </a>
                           ) : (
-                            <span style={{ fontSize: '0.8rem', color: '#333', fontFamily: 'monospace' }}>
-                              {ordine.tracking_number}
-                            </span>
+                            <span className={styles.trackingNum}>{ordine.tracking_number}</span>
                           )
                         })()}
                       </div>
                     ) : (
-                      <span style={{ color: '#bbb', fontSize: '0.8rem' }}>—</span>
+                      <span className={styles.trackingEmpty}>—</span>
                     )}
                   </td>
-                  <td style={{ padding: '12px 14px', color: '#555' }}>{ordine.righe?.length || 0} prodotti</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 600 }}>{formatCurrency(ordine.totale)}</td>
-                  <td style={{ padding: '12px 14px', color: '#777', fontSize: '13px' }}>{formatDate(ordine.data_ordine)}</td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <button
-                      onClick={() => navigate(`/ordini/${ordine.id}`)}
-                      title="Vedi dettaglio"
-                      style={{
-                        background: 'none',
-                        border: '1px solid #c5cae9',
-                        borderRadius: '6px',
-                        padding: '5px 10px',
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                      }}
-                    >
-                      🔍
-                    </button>
+                  <td className={styles.td}>{ordine.righe?.length || 0} prodotti</td>
+                  <td className={`${styles.td} ${styles.totalCell}`}>{formatCurrency(ordine.totale)}</td>
+                  <td className={`${styles.td} ${styles.dateCell}`}>{formatDate(ordine.data_ordine)}</td>
+                  <td className={styles.td}>
+                    <button onClick={() => navigate(`/ordini/${ordine.id}`)} title="Vedi dettaglio" className={styles.detailBtn}>🔍</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          </div>
         )}
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className={styles.pagination}>
+          <button className={styles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Precedente</button>
+          <span>Pagina {page} di {totalPages} ({total} ordini)</span>
+          <button className={styles.pageBtn} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Successiva →</button>
+        </div>
+      )}
+
       {/* New Order Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '28px', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-            <h2 style={{ marginTop: 0, color: primaryColor }}>Nuovo Ordine</h2>
-            {formError && <div style={{ color: '#c62828', marginBottom: '12px', padding: '8px 12px', backgroundColor: '#ffebee', borderRadius: '4px' }}>{formError}</div>}
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <h2 className={styles.modalTitle}>Nuovo Ordine</h2>
+            {formError && <div className={styles.modalError}>{formError}</div>}
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#555' }}>Cliente (da anagrafica)</label>
-                  <select
-                    value={form.cliente_id}
-                    onChange={e => setForm(prev => ({ ...prev, cliente_id: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                  >
+              <div className={styles.formGrid}>
+                <div className={styles.formField}>
+                  <label>Cliente (da anagrafica)</label>
+                  <select value={form.cliente_id} onChange={e => setForm(prev => ({ ...prev, cliente_id: e.target.value }))} className={styles.formSelect}>
                     <option value="">— Nessun cliente —</option>
-                    {clienti.map(c => (
-                      <option key={c.id} value={c.id}>{c.nome}{c.cognome ? ` ${c.cognome}` : ''}</option>
-                    ))}
+                    {clienti.map(c => <option key={c.id} value={c.id}>{c.nome}{c.cognome ? ` ${c.cognome}` : ''}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#555' }}>Nome cliente (testo libero)</label>
-                  <input
-                    value={form.cliente_nome}
-                    onChange={e => setForm(prev => ({ ...prev, cliente_nome: e.target.value }))}
-                    placeholder="Es. Mario Rossi"
-                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
-                  />
+                <div className={styles.formField}>
+                  <label>Nome cliente (testo libero)</label>
+                  <input value={form.cliente_nome} onChange={e => setForm(prev => ({ ...prev, cliente_nome: e.target.value }))} placeholder="Es. Mario Rossi" className={styles.formInput} />
                 </div>
               </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#555' }}>Note (opzionale)</label>
-                <input
-                  value={form.note}
-                  onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))}
-                  placeholder="Note sull'ordine..."
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
-                />
+              <div className={styles.formField} style={{ marginBottom: '16px' }}>
+                <label>Note (opzionale)</label>
+                <input value={form.note} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="Note sull'ordine..." className={styles.formInput} />
               </div>
-
-              <h3 style={{ color: primaryColor, marginBottom: '12px' }}>Prodotti</h3>
+              <h3 className={styles.modalTitle} style={{ fontSize: '1rem', marginBottom: '12px' }}>Prodotti</h3>
               {form.righe.map((riga, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr)) auto', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
-                  <select
-                    value={riga.prodotto_id}
-                    onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)}
-                    style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                  >
+                <div key={i} className={styles.rigaRow}>
+                  <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect}>
                     <option value="">— Seleziona prodotto —</option>
-                    {prodotti.map(p => (
-                      <option key={p.id} value={p.id}>{p.nome} (disp: {p.quantita})</option>
-                    ))}
+                    {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (disp: {p.quantita})</option>)}
                   </select>
-                  <input
-                    type="number"
-                    min="1"
-                    value={riga.quantita}
-                    onChange={e => handleRigaChange(i, 'quantita', e.target.value)}
-                    placeholder="Qtà"
-                    style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={riga.prezzo_unitario}
-                    onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)}
-                    placeholder="Prezzo"
-                    style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeRiga(i)}
-                    disabled={form.righe.length === 1}
-                    style={{ background: 'none', border: 'none', cursor: form.righe.length === 1 ? 'not-allowed' : 'pointer', fontSize: '18px', opacity: form.righe.length === 1 ? 0.3 : 1 }}
-                  >🗑️</button>
+                  <input type="number" min="1" value={riga.quantita} onChange={e => handleRigaChange(i, 'quantita', e.target.value)} placeholder="Qtà" className={styles.formInput} />
+                  <input type="number" min="0" step="0.01" value={riga.prezzo_unitario} onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)} placeholder="Prezzo" className={styles.formInput} />
+                  <button type="button" onClick={() => removeRiga(i)} disabled={form.righe.length === 1} className={styles.removeRigaBtn} style={{ opacity: form.righe.length === 1 ? 0.3 : 1, cursor: form.righe.length === 1 ? 'not-allowed' : 'pointer' }}>🗑️</button>
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={addRiga}
-                style={{ backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', marginBottom: '16px' }}
-              >
-                + Aggiungi Prodotto
-              </button>
-
-              <div style={{ textAlign: 'right', fontSize: '16px', fontWeight: 700, color: primaryColor, marginBottom: '20px' }}>
-                Totale: {formatCurrency(totaleOrdine)}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  style={{ backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer' }}
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600 }}
-                >
-                  {submitting ? 'Salvataggio...' : 'Salva come Bozza'}
-                </button>
+              <button type="button" onClick={addRiga} className={styles.addRigaBtn}>+ Aggiungi Prodotto</button>
+              <div className={styles.totaleOrdine}>Totale: {formatCurrency(totaleOrdine)}</div>
+              <div className={styles.modalActions}>
+                <button type="button" onClick={closeModal} className={styles.cancelBtn}>Annulla</button>
+                <button type="submit" disabled={submitting} className={styles.submitBtn}>{submitting ? 'Salvataggio...' : 'Salva come Bozza'}</button>
               </div>
             </form>
           </div>

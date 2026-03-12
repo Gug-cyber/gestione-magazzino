@@ -141,6 +141,52 @@ npm install
 npm run dev
 ```
 
+## 🗄️ Migrazioni Database (Alembic)
+
+Il progetto usa [Alembic](https://alembic.sqlalchemy.org/) per gestire le migrazioni del database.
+
+### Eseguire le migrazioni
+```bash
+cd backend
+# Applica tutte le migrazioni in sospeso
+DATABASE_URL=postgresql://user:pass@host/db alembic upgrade head
+```
+
+### Creare una nuova migrazione
+```bash
+cd backend
+# Autogenera dal confronto tra modelli e DB
+DATABASE_URL=... alembic revision --autogenerate -m "descrizione_migrazione"
+# Oppure crea una migrazione vuota
+alembic revision -m "descrizione_migrazione"
+```
+
+### Rollback
+```bash
+cd backend
+alembic downgrade -1   # un passo indietro
+alembic downgrade base  # torna all'inizio
+```
+
+## 🧪 Test (Backend)
+
+```bash
+cd backend
+pip install -r requirements-test.txt
+pytest
+```
+
+## 🔑 Variabili d'Ambiente
+
+| Variabile | Default | Descrizione |
+|-----------|---------|-------------|
+| `SECRET_KEY` | (deve essere impostata) | Chiave segreta JWT — **obbligatoria in produzione** |
+| `DATABASE_URL` | `postgresql://magazzino:magazzino@db:5432/magazzino` | URL del database |
+| `APP_ENV` | `production` | Ambiente (`production` / `development`) |
+| `UPLOAD_DIR` | `/app/uploads` | Directory per i file caricati |
+
+> ⚠️ In produzione il server **non si avvia** se `SECRET_KEY` è quella di default o ha meno di 32 caratteri.
+
 ## 🤝 Come Contribuire
 
 1. Forka il repository
