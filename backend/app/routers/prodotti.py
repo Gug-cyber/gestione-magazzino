@@ -5,6 +5,7 @@ import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
@@ -18,8 +19,7 @@ UPLOAD_DIR = "/app/uploads/prodotti"
 def _build_foto_url(prodotto, request: Request) -> Optional[str]:
     if not prodotto.foto_path:
         return None
-    base = str(request.base_url).rstrip("/")
-    return f"{base}/api/prodotti/{prodotto.id}/foto"
+    return f"/api/prodotti/{prodotto.id}/foto"
 
 
 @router.get("/", response_model=List[ProdottoResponse])
@@ -83,7 +83,14 @@ def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_use
     prodotto = crud.get_prodotto(db, prodotto_id)
     if not prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
-    crud.delete_prodotto(db, prodotto_id)
+    try:
+        crud.delete_prodotto(db, prodotto_id)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Impossibile eliminare il prodotto: esistono movimenti o ordini collegati. Elimina prima i movimenti e le righe ordine associate."
+        )
 
 
 @router.post("/{prodotto_id}/foto", response_model=ProdottoResponse)
