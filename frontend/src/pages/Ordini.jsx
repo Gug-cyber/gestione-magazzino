@@ -14,6 +14,20 @@ const cardStyle = {
 
 const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
 
+const CORRIERI = [
+  { value: 'BRT',                label: 'BRT',                url: (n) => `https://vas.brt.it/vas/sped_det_show.hsm?referer=sped_numspe_input.hsm&Nspedizione=${n}` },
+  { value: 'DHL',                label: 'DHL',                url: (n) => `https://www.dhl.com/it-it/home/tracking.html?tracking-id=${n}` },
+  { value: 'SDA',                label: 'SDA',                url: (n) => `https://www.sda.it/wps/portal/Servizi-per-te/Cerca-spedizione?spedizione=${n}` },
+  { value: 'GLS',                label: 'GLS',                url: (n) => `https://gls-group.com/track/${n}` },
+  { value: 'Poste Italiane',     label: 'Poste Italiane',     url: (n) => `https://www.poste.it/cerca/index.html#/risultati-spedizioni/${n}` },
+  { value: 'UPS',                label: 'UPS',                url: (n) => `https://www.ups.com/track?tracknum=${n}` },
+  { value: 'FedEx',              label: 'FedEx',              url: (n) => `https://www.fedex.com/fedextrack/?tracknumbers=${n}` },
+  { value: 'Amazon Logistics',   label: 'Amazon Logistics',   url: (n) => `https://track.amazon.it/tracking/${n}` },
+  { value: 'TNT',                label: 'TNT',                url: (n) => `https://www.tnt.com/express/it_it/site/tracking.html?searchType=CON&cons=${n}` },
+  { value: 'InPost',             label: 'InPost',             url: (n) => `https://inpost.it/tracking?number=${n}` },
+  { value: 'Altro',              label: 'Altro',              url: () => null },
+]
+
 const STATO_COLORS = {
   bozza: { bg: '#f5f5f5', color: '#757575' },
   confermato: { bg: '#e3f2fd', color: '#1565c0' },
@@ -74,6 +88,8 @@ export default function Ordini() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [fatturaOrdine, setFatturaOrdine] = useState(null)
+  const [trackingModal, setTrackingModal] = useState(null) // { ordineId, corriere, tracking_number }
+  const [trackingError, setTrackingError] = useState('')
 
   const fetchOrdini = useCallback(async (params = {}) => {
     setLoading(true)
@@ -405,7 +421,7 @@ export default function Ordini() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f5f5f5' }}>
-                {['N° Ordine', 'Cliente', 'Stato', 'Prodotti', 'Totale €', 'Data', 'Azioni'].map(h => (
+                {['N° Ordine', 'Cliente', 'Stato', 'Tracking', 'Prodotti', 'Totale €', 'Data', 'Azioni'].map(h => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: '13px', color: '#555', fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
@@ -416,6 +432,31 @@ export default function Ordini() {
                   <td style={{ padding: '12px 14px', fontWeight: 600, color: primaryColor }}>{ordine.numero_ordine}</td>
                   <td style={{ padding: '12px 14px' }}>{ordine.cliente_nome || '—'}</td>
                   <td style={{ padding: '12px 14px' }}><StatoBadge stato={ordine.stato} /></td>
+                  <td style={{ padding: '12px 14px' }}>
+                    {ordine.tracking_number ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#555', fontWeight: 600 }}>
+                          {ordine.corriere || '—'}
+                        </span>
+                        {(() => {
+                          const corriere = CORRIERI.find(c => c.value === ordine.corriere)
+                          const url = corriere ? corriere.url(ordine.tracking_number) : null
+                          return url ? (
+                            <a href={url} target="_blank" rel="noopener noreferrer"
+                               style={{ fontSize: '0.8rem', color: '#1565c0', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                              {ordine.tracking_number} 🔗
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: '#333', fontFamily: 'monospace' }}>
+                              {ordine.tracking_number}
+                            </span>
+                          )
+                        })()}
+                      </div>
+                    ) : (
+                      <span style={{ color: '#bbb', fontSize: '0.8rem' }}>—</span>
+                    )}
+                  </td>
                   <td style={{ padding: '12px 14px', color: '#555' }}>{ordine.righe?.length || 0} prodotti</td>
                   <td style={{ padding: '12px 14px', fontWeight: 600 }}>{formatCurrency(ordine.totale)}</td>
                   <td style={{ padding: '12px 14px', color: '#777', fontSize: '13px' }}>{formatDate(ordine.data_ordine)}</td>
@@ -426,6 +467,17 @@ export default function Ordini() {
                         title="Vedi dettaglio"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
                       >👁️</button>
+                      <button
+                        onClick={() => { setTrackingModal({
+                          ordineId: ordine.id,
+                          corriere: ordine.corriere || '',
+                          tracking_number: ordine.tracking_number || '',
+                        }); setTrackingError('') }}
+                        title="Aggiorna tracking spedizione"
+                        style={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.9rem' }}
+                      >
+                        🚚
+                      </button>
                       {ordine.stato === 'completato' && (
                         <span
                           title="Fattura generata automaticamente"
@@ -569,6 +621,82 @@ export default function Ordini() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Tracking Modal */}
+      {trackingModal && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '10px', padding: '28px',
+            width: '100%', maxWidth: '420px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          }}>
+            <h3 style={{ color: '#1a237e', marginTop: 0 }}>🚚 Tracking Spedizione</h3>
+
+            {trackingError && (
+              <div style={{ color: '#c62828', backgroundColor: '#ffebee', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', fontSize: '0.85rem' }}>
+                {trackingError}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '6px' }}>
+                Corriere
+              </label>
+              <select
+                value={trackingModal.corriere}
+                onChange={(e) => setTrackingModal({ ...trackingModal, corriere: e.target.value })}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
+              >
+                <option value="">— Seleziona corriere —</option>
+                {CORRIERI.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '6px' }}>
+                Numero Tracking
+              </label>
+              <input
+                type="text"
+                value={trackingModal.tracking_number}
+                onChange={(e) => setTrackingModal({ ...trackingModal, tracking_number: e.target.value })}
+                placeholder="es. IT123456789"
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setTrackingModal(null); setTrackingError('') }}
+                style={{ padding: '8px 20px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer' }}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={async () => {
+                  setTrackingError('')
+                  try {
+                    await ordiniAPI.updateTracking(trackingModal.ordineId, {
+                      corriere: trackingModal.corriere || undefined,
+                      tracking_number: trackingModal.tracking_number || undefined,
+                    })
+                    setTrackingModal(null)
+                    fetchOrdini()
+                  } catch (err) {
+                    setTrackingError(err?.response?.data?.detail || 'Errore nel salvataggio del tracking')
+                  }
+                }}
+                style={{ padding: '8px 20px', backgroundColor: '#1a237e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                💾 Salva
+              </button>
+            </div>
           </div>
         </div>
       )}

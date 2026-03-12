@@ -77,6 +77,16 @@ COLUMN_MIGRATIONS = [
         "column": "auto_generata",
         "definition": "BOOLEAN DEFAULT FALSE",
     },
+    {
+        "table": "ordini",
+        "column": "corriere",
+        "definition": "VARCHAR",
+    },
+    {
+        "table": "ordini",
+        "column": "tracking_number",
+        "definition": "VARCHAR",
+    },
 ]
 
 

@@ -40,6 +40,8 @@ class OrdineUpdate(BaseModel):
     cliente_nome: Optional[str] = None
     note: Optional[str] = None
     stato: Optional[StatoOrdineSchema] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
 
 
 class OrdineResponse(BaseModel):
@@ -50,6 +52,8 @@ class OrdineResponse(BaseModel):
     stato: str
     note: Optional[str] = None
     totale: float
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
     data_ordine: Optional[datetime] = None
     data_completamento: Optional[datetime] = None
     righe: List[RigaOrdineResponse] = []

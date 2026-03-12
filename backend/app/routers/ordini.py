@@ -19,6 +19,8 @@ def _ordine_to_response(o) -> OrdineResponse:
         "stato": o.stato,
         "note": o.note,
         "totale": o.totale,
+        "corriere": o.corriere,
+        "tracking_number": o.tracking_number,
         "data_ordine": o.data_ordine,
         "data_completamento": o.data_completamento,
         "righe": [
@@ -93,3 +95,24 @@ def delete_ordine(
 ):
     if not crud.delete_ordine(db, ordine_id):
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+
+@router.patch("/{ordine_id}/tracking", response_model=OrdineResponse)
+def update_tracking(
+    ordine_id: int,
+    corriere: Optional[str] = None,
+    tracking_number: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Aggiorna solo corriere e numero tracking di un ordine."""
+    o = crud.get_ordine(db, ordine_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+    if corriere is not None:
+        o.corriere = corriere
+    if tracking_number is not None:
+        o.tracking_number = tracking_number
+    db.commit()
+    db.refresh(o)
+    return _ordine_to_response(o)
