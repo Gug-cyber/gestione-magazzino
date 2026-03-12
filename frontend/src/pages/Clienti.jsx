@@ -1,14 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { clientiAPI } from '../api/client'
 
 const primaryColor = '#1a237e'
-const STATO_COLORS = {
-  bozza: { bg: '#f5f5f5', color: '#757575' },
-  confermato: { bg: '#e3f2fd', color: '#1565c0' },
-  spedito: { bg: '#fff3e0', color: '#e65100' },
-  completato: { bg: '#e8f5e9', color: '#2e7d32' },
-  annullato: { bg: '#ffebee', color: '#c62828' },
-}
 const cardStyle = {
   backgroundColor: '#fff',
   borderRadius: '8px',
@@ -45,18 +39,15 @@ const emptyForm = {
 }
 
 export default function Clienti() {
+  const navigate = useNavigate()
   const [clienti, setClienti] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [editingCliente, setEditingCliente] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState('')
-  const [selectedCliente, setSelectedCliente] = useState(null)
-  const [storico, setStorico] = useState(null)
-  const [storicoLoading, setStoricoLoading] = useState(false)
 
   const fetchClienti = useCallback(async (params = {}) => {
     setLoading(true)
@@ -87,35 +78,13 @@ export default function Clienti() {
   }
 
   const openNewModal = () => {
-    setEditingCliente(null)
     setForm(emptyForm)
-    setFormError('')
-    setShowModal(true)
-  }
-
-  const openEditModal = (cliente) => {
-    setEditingCliente(cliente)
-    setForm({
-      tipo: cliente.tipo || 'privato',
-      nome: cliente.nome || '',
-      cognome: cliente.cognome || '',
-      email: cliente.email || '',
-      telefono: cliente.telefono || '',
-      indirizzo: cliente.indirizzo || '',
-      citta: cliente.citta || '',
-      cap: cliente.cap || '',
-      provincia: cliente.provincia || '',
-      partita_iva: cliente.partita_iva || '',
-      codice_fiscale: cliente.codice_fiscale || '',
-      note: cliente.note || '',
-    })
     setFormError('')
     setShowModal(true)
   }
 
   const closeModal = () => {
     setShowModal(false)
-    setEditingCliente(null)
     setFormError('')
   }
 
@@ -137,12 +106,7 @@ export default function Clienti() {
     setSubmitting(true)
     setFormError('')
     try {
-      const data = { ...form }
-      if (editingCliente) {
-        await clientiAPI.update(editingCliente.id, data)
-      } else {
-        await clientiAPI.create(data)
-      }
+      await clientiAPI.create(form)
       closeModal()
       fetchClienti(search ? { search } : {})
     } catch (err) {
@@ -152,179 +116,11 @@ export default function Clienti() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Sei sicuro di voler eliminare questo cliente?')) return
-    try {
-      await clientiAPI.delete(id)
-      fetchClienti(search ? { search } : {})
-    } catch {
-      alert('Errore durante l\'eliminazione del cliente')
-    }
-  }
-
-  const handleVediStorico = async (cliente) => {
-    setSelectedCliente(cliente)
-    setStoricoLoading(true)
-    try {
-      const res = await clientiAPI.getStorico(cliente.id)
-      setStorico(res.data)
-    } catch {
-      setStorico(null)
-    } finally {
-      setStoricoLoading(false)
-    }
-  }
-
-  const handleTornaLista = () => {
-    setSelectedCliente(null)
-    setStorico(null)
-  }
-
   // Stats
   const totaleClienti = clienti.length
   const numAziende = clienti.filter((c) => c.tipo === 'azienda').length
   const numPrivati = clienti.filter((c) => c.tipo === 'privato').length
   const fatturatoTotale = clienti.reduce((sum, c) => sum + (c.totale_ordini || 0), 0)
-
-  // ---- STORICO VIEW ----
-  if (selectedCliente) {
-    const stats = storico || {}
-    const ordini = storico?.ordini || []
-    const nomeCompleto = selectedCliente.cognome
-      ? `${selectedCliente.nome} ${selectedCliente.cognome}`
-      : selectedCliente.nome
-
-    return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <button
-            onClick={handleTornaLista}
-            style={{
-              backgroundColor: '#fff',
-              border: `1px solid ${primaryColor}`,
-              color: primaryColor,
-              borderRadius: '6px',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            ← Torna alla lista
-          </button>
-          <h1 style={{ color: primaryColor, margin: 0, fontSize: '1.6rem' }}>
-            👤 {nomeCompleto}
-          </h1>
-          <span style={{
-            backgroundColor: selectedCliente.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
-            color: selectedCliente.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
-            borderRadius: '12px',
-            padding: '4px 12px',
-            fontSize: '0.82rem',
-            fontWeight: 'bold',
-          }}>
-            {selectedCliente.tipo === 'azienda' ? '🏢 Azienda' : '👤 Privato'}
-          </span>
-        </div>
-
-        {/* Dati cliente */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-          <div style={{ ...cardStyle, flex: 'unset' }}>
-            <h3 style={{ color: primaryColor, marginTop: 0 }}>📋 Dati Anagrafici</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {[
-                  ['Email', selectedCliente.email],
-                  ['Telefono', selectedCliente.telefono],
-                  ['Indirizzo', selectedCliente.indirizzo],
-                  ['Città', selectedCliente.citta],
-                  ['CAP', selectedCliente.cap],
-                  ['Provincia', selectedCliente.provincia],
-                  ['Partita IVA', selectedCliente.partita_iva],
-                  ['Codice Fiscale', selectedCliente.codice_fiscale],
-                ].map(([label, value]) => value ? (
-                  <tr key={label}>
-                    <td style={{ padding: '6px 0', color: '#666', width: '140px', fontWeight: 500 }}>{label}:</td>
-                    <td style={{ padding: '6px 0', color: '#333' }}>{value}</td>
-                  </tr>
-                ) : null)}
-              </tbody>
-            </table>
-            {selectedCliente.note && (
-              <div style={{ marginTop: '12px', color: '#555', fontSize: '0.9rem' }}>
-                <strong>Note:</strong> {selectedCliente.note}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[
-              { label: '🛒 N. Ordini', value: stats.num_ordini || 0, color: '#e3f2fd', textColor: '#1565c0' },
-              { label: '💰 Totale Ordini', value: formatCurrency(stats.totale_ordini || 0), color: '#e8f5e9', textColor: '#2e7d32' },
-              { label: '✅ Ordini Completati', value: stats.num_ordini_completati || 0, color: '#f3e5f5', textColor: '#6a1b9a' },
-              { label: '📅 Ultimo Ordine', value: formatDate(stats.ultimo_ordine), color: '#fff8e1', textColor: '#e65100' },
-            ].map(({ label, value, color, textColor }) => (
-              <div key={label} style={{ backgroundColor: color, borderRadius: '8px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '4px' }}>{label}</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: textColor }}>{value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Storico ordini */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
-            <h3 style={{ color: primaryColor, margin: 0 }}>🛒 Storico Ordini</h3>
-          </div>
-          {storicoLoading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Caricamento...</div>
-          ) : ordini.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
-              Nessun ordine collegato a questo cliente
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f5f5f5' }}>
-                    {['N. Ordine', 'Data', 'Totale', 'Stato', 'Note'].map((h) => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ordini.map((o) => {
-                    const tdStyle = { padding: '12px 16px' }
-                    return (
-                      <tr key={o.id} style={{ borderTop: '1px solid #f0f0f0' }}>
-                        <td style={tdStyle}><code>{o.numero_ordine}</code></td>
-                        <td style={{ ...tdStyle, color: '#555' }}>{formatDate(o.data_ordine)}</td>
-                        <td style={{ ...tdStyle, fontWeight: 600, color: '#2e7d32' }}>{formatCurrency(o.totale)}</td>
-                        <td style={tdStyle}>
-                          <span style={{
-                            backgroundColor: STATO_COLORS[o.stato]?.bg || '#eee',
-                            color: STATO_COLORS[o.stato]?.color || '#333',
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}>
-                            {o.stato}
-                          </span>
-                        </td>
-                        <td style={{ ...tdStyle, color: '#777' }}>{o.note || '—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
 
   // ---- LIST VIEW ----
   return (
@@ -449,29 +245,13 @@ export default function Clienti() {
                         {formatCurrency(c.totale_ordini || 0)}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            onClick={() => handleVediStorico(c)}
-                            title="Vedi storico"
-                            style={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.9rem' }}
-                          >
-                            👁️
-                          </button>
-                          <button
-                            onClick={() => openEditModal(c)}
-                            title="Modifica"
-                            style={{ backgroundColor: '#fff8e1', color: '#e65100', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.9rem' }}
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c.id)}
-                            title="Elimina"
-                            style={{ backgroundColor: '#ffebee', color: '#c62828', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.9rem' }}
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => navigate(`/clienti/${c.id}`)}
+                          title="Dettaglio cliente"
+                          style={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.9rem' }}
+                        >
+                          🔍
+                        </button>
                       </td>
                     </tr>
                   )
@@ -488,7 +268,7 @@ export default function Clienti() {
           <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ color: primaryColor, margin: 0 }}>
-                {editingCliente ? '✏️ Modifica Cliente' : '➕ Nuovo Cliente'}
+                ➕ Nuovo Cliente
               </h2>
               <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
@@ -588,7 +368,7 @@ export default function Clienti() {
                   disabled={submitting}
                   style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: submitting ? 0.7 : 1 }}
                 >
-                  {submitting ? 'Salvataggio...' : editingCliente ? 'Aggiorna' : 'Crea Cliente'}
+                  {submitting ? 'Salvataggio...' : 'Crea Cliente'}
                 </button>
               </div>
             </form>

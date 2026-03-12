@@ -19,6 +19,7 @@ import NuovoProdotto from './pages/NuovoProdotto.jsx'
 import NuovoMovimento from './pages/NuovoMovimento.jsx'
 import Fatture from './pages/Fatture.jsx'
 import Clienti from './pages/Clienti.jsx'
+import DettaglioCliente from './pages/DettaglioCliente.jsx'
 import DettaglioOrdine from './pages/DettaglioOrdine.jsx'
 import Ordini from './pages/Ordini.jsx'
 import CardTrader from './pages/CardTrader.jsx'
@@ -110,6 +111,11 @@ function App() {
           <Route path="/fatture" element={
             <ProtectedRoute>
               <AppLayout><Fatture /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/clienti/:id" element={
+            <ProtectedRoute>
+              <AppLayout><DettaglioCliente /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/clienti" element={
