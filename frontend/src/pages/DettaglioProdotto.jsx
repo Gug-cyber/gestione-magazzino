@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 
@@ -319,7 +319,7 @@ function DettaglioProdotto() {
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               {prodotto.foto_url
-                ? <img src={prodotto.foto_url} alt={prodotto.nome}
+                ? <img src={getFotoUrl(prodotto.foto_url)} alt={prodotto.nome}
                     style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover', display: 'block' }} />
                 : <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>📦</span>
               }
@@ -517,7 +517,7 @@ function DettaglioProdotto() {
               >
                 <div style={{ textAlign: 'center', marginBottom: 8 }}>
                   {pc.foto_url
-                    ? <img src={pc.foto_url} alt={pc.nome}
+                    ? <img src={getFotoUrl(pc.foto_url)} alt={pc.nome}
                         style={{ width: 60, height: 60, borderRadius: 6, objectFit: 'cover' }} />
                     : <span style={{ fontSize: '2.5rem' }}>📦</span>
                   }
