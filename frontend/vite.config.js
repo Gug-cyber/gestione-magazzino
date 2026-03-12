@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -7,7 +8,31 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig(async () => {
-  const plugins = [react()]
+  const plugins = [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'icons/*.png', 'icons/*.svg'],
+      manifest: false, // uses the manifest.json already present in public/
+      workbox: {
+        // Cache-first for static assets (JS, CSS, images)
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // NetworkOnly for API calls (never cache /api/)
+        runtimeCaching: [
+          {
+            urlPattern: /^https?:\/\/.*\/api\/.*/i,
+            handler: 'NetworkOnly',
+          },
+        ],
+        // Maximum file size to precache: 3 MB
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
+      devOptions: {
+        // Enable SW in dev for testing (optional)
+        enabled: false,
+      },
+    }),
+  ]
   let serverHttps = false
 
   if (process.env.VITE_HTTPS === 'true') {
