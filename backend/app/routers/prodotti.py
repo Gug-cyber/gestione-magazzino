@@ -270,7 +270,7 @@ async def upload_foto_prodotto(prodotto_id: int, request: Request, file: UploadF
 
 
 @router.get("/{prodotto_id}/foto")
-def get_foto_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def get_foto_prodotto(prodotto_id: int, db: Session = Depends(get_db)):
     db_prodotto = crud.get_prodotto(db, prodotto_id)
     if not db_prodotto or not db_prodotto.foto_path:
         raise HTTPException(status_code=404, detail="Foto non trovata")
