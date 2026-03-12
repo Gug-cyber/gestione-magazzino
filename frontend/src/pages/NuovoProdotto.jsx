@@ -191,13 +191,17 @@ function NuovoProdotto() {
 
               <label style={labelStyle}>
                 <span style={{ fontSize: '0.85rem', color: '#555' }}>Lingua</span>
-                <input
-                  type="text"
+                <select
                   value={form.lingua}
                   onChange={(e) => setForm({ ...form, lingua: e.target.value })}
-                  style={inputStyle}
-                  placeholder="es. Italiano"
-                />
+                  style={inputStyle}>
+                  <option value="">-- Nessuna --</option>
+                  <option value="Italiano">Italiano</option>
+                  <option value="Inglese">Inglese</option>
+                  <option value="Giapponese">Giapponese</option>
+                  <option value="Cinese">Cinese</option>
+                  <option value="Coreano">Coreano</option>
+                </select>
               </label>
 
               <label style={labelStyle}>
