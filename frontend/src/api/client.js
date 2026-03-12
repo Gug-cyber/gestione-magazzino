@@ -152,6 +152,10 @@ export const ordiniAPI = {
   create: (data) => client.post('/api/ordini/', data),
   update: (id, data) => client.put(`/api/ordini/${id}`, data),
   delete: (id) => client.delete(`/api/ordini/${id}`),
+  updateTracking: (id, { corriere, tracking_number }) =>
+    client.patch(`/api/ordini/${id}/tracking`, null, {
+      params: { corriere, tracking_number },
+    }),
 }
 
 export const cardtraderAPI = {

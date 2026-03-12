@@ -25,6 +25,8 @@ class Ordine(Base):
     data_ordine = Column(DateTime(timezone=True), server_default=func.now())
     data_completamento = Column(DateTime(timezone=True), nullable=True)
     totale = Column(Float, default=0.0)
+    corriere = Column(String, nullable=True)
+    tracking_number = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
