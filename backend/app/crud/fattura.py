@@ -46,6 +46,25 @@ def get_fatture(
     return query.order_by(Fattura.data_fattura.desc()).offset(skip).limit(limit).all()
 
 
+def count_fatture(
+    db: Session,
+    cliente: Optional[str] = None,
+    data_da: Optional[date] = None,
+    data_a: Optional[date] = None,
+    ordine_id: Optional[int] = None,
+) -> int:
+    query = db.query(Fattura)
+    if cliente:
+        query = query.filter(Fattura.cliente.ilike(f"%{cliente}%"))
+    if data_da:
+        query = query.filter(Fattura.data_fattura >= data_da)
+    if data_a:
+        query = query.filter(Fattura.data_fattura <= data_a)
+    if ordine_id is not None:
+        query = query.filter(Fattura.ordine_id == ordine_id)
+    return query.count()
+
+
 def get_fattura(db: Session, fattura_id: int) -> Optional[Fattura]:
     return db.query(Fattura).filter(Fattura.id == fattura_id).first()
 

@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -23,3 +23,7 @@ class Movimento(Base):
 
     prodotto = relationship("Prodotto", backref="movimenti")
     fornitore = relationship("Fornitore", backref="movimenti")
+
+    __table_args__ = (
+        Index("ix_movimenti_prodotto_data", "prodotto_id", "data_movimento"),
+    )

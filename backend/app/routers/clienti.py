@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -15,10 +15,14 @@ def get_clienti(
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     clienti = crud.get_clienti(db, skip=skip, limit=limit, search=search)
+    total = crud.count_clienti(db, search=search)
+    if response is not None:
+        response.headers["X-Total-Count"] = str(total)
     result = []
     for c in clienti:
         stats_fatture = crud.get_statistiche_cliente(db, c.id)

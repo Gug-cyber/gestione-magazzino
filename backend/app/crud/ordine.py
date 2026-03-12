@@ -39,6 +39,25 @@ def get_ordini(
     return query.order_by(Ordine.created_at.desc()).offset(skip).limit(limit).all()
 
 
+def count_ordini(
+    db: Session,
+    stato: Optional[str] = None,
+    cliente_id: Optional[int] = None,
+    search: Optional[str] = None,
+) -> int:
+    query = db.query(Ordine)
+    if stato:
+        query = query.filter(Ordine.stato == stato)
+    if cliente_id:
+        query = query.filter(Ordine.cliente_id == cliente_id)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            Ordine.numero_ordine.ilike(term) | Ordine.cliente_nome.ilike(term)
+        )
+    return query.count()
+
+
 def get_ordine(db: Session, ordine_id: int) -> Optional[Ordine]:
     return (
         db.query(Ordine)

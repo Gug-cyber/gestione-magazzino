@@ -1,42 +1,55 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { movimentiAPI, prodottiAPI, fornitoriAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { useIsMobile } from '../hooks/useIsMobile'
+import StatoBadge from '../components/ui/StatoBadge'
+import { TIPO_MOVIMENTO_COLORS } from '../constants/colors'
+import styles from './Movimenti.module.css'
+
+const PAGE_SIZE = 50
 
 function Movimenti() {
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [movimenti, setMovimenti] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [prodotti, setProdotti] = useState([])
   const [fornitori, setFornitori] = useState([])
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [showScanner, setShowScanner] = useState(false)
 
-  const fetchAll = async () => {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const fetchMovimenti = useCallback(async (currentPage) => {
     try {
-      const [m, p, f] = await Promise.all([
-        movimentiAPI.getAll({ limit: 100 }),
-        prodottiAPI.getAll({ limit: 1000 }),
-        fornitoriAPI.getAll(),
-      ])
+      const skip = (currentPage - 1) * PAGE_SIZE
+      const m = await movimentiAPI.getAll({ skip, limit: PAGE_SIZE })
       setMovimenti(m.data)
-      setProdotti(p.data)
-      setFornitori(f.data)
-    } catch (err) {
+      const totalCount = parseInt(m.headers['x-total-count'] ?? '0', 10)
+      setTotal(isNaN(totalCount) ? m.data.length : totalCount)
+    } catch {
       setError('Errore nel caricamento dei dati')
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    fetchMovimenti(page)
+  }, [page, fetchMovimenti])
+
+  useEffect(() => {
+    prodottiAPI.getAll({ limit: 500 }).then(r => setProdotti(r.data)).catch(() => {})
+    fornitoriAPI.getAll().then(r => setFornitori(r.data)).catch(() => {})
+  }, [])
 
   const handleDelete = async (id) => {
     if (!window.confirm('Eliminare questo movimento?')) return
     try {
       await movimentiAPI.delete(id)
-      fetchAll()
-    } catch (err) {
+      fetchMovimenti(page)
+    } catch {
       setError('Errore nell\'eliminazione')
     }
   }
@@ -44,64 +57,45 @@ function Movimenti() {
   const getProdottoNome = (id) => prodotti.find(p => p.id === id)?.nome || `#${id}`
   const getFornitoreNome = (id) => fornitori.find(f => f.id === id)?.nome || '-'
 
-  const movimentiFiltrati = movimenti.filter(m => {
-    const q = search.toLowerCase()
-    if (!q) return true
-    return (
-      getProdottoNome(m.prodotto_id).toLowerCase().includes(q) ||
-      (prodotti.find(p => p.id === m.prodotto_id)?.sku || '').toLowerCase().includes(q) ||
-      (m.tipo || '').toLowerCase().includes(q) ||
-      getFornitoreNome(m.fornitore_id).toLowerCase().includes(q) ||
-      (m.note || '').toLowerCase().includes(q)
-    )
-  })
+  const movimentiFiltrati = search
+    ? movimenti.filter(m => {
+        const q = search.toLowerCase()
+        return (
+          getProdottoNome(m.prodotto_id).toLowerCase().includes(q) ||
+          (prodotti.find(p => p.id === m.prodotto_id)?.sku || '').toLowerCase().includes(q) ||
+          (m.tipo || '').toLowerCase().includes(q) ||
+          getFornitoreNome(m.fornitore_id).toLowerCase().includes(q) ||
+          (m.note || '').toLowerCase().includes(q)
+        )
+      })
+    : movimenti
+
+  const tipoLabel = (tipo) => tipo === 'carico' ? '📥 carico' : '📤 scarico'
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 style={{ color: '#1a237e', margin: 0 }}>🔄 Movimenti</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>🔄 Movimenti</h1>
+        <div className={styles.toolbar}>
           <input
             type="text"
             placeholder="Cerca per prodotto, SKU, tipo, fornitore, note..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{
-              height: '36px',
-              width: 'clamp(160px, 30vw, 280px)',
-              padding: '0 12px',
-              border: '1.5px solid #c5cae9',
-              borderRadius: '6px',
-              fontSize: '0.95rem',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
+            className={styles.searchInput}
           />
           {search && (
-            <button
-              onClick={() => setSearch('')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#888', padding: '0 4px' }}
-              title="Cancella ricerca"
-            >✕</button>
+            <button onClick={() => setSearch('')} className={styles.clearBtn} title="Cancella ricerca">✕</button>
           )}
           {search && (
-            <span style={{ fontSize: '0.88rem', color: '#666', whiteSpace: 'nowrap' }}>
-              {movimentiFiltrati.length}/{movimenti.length}
-            </span>
+            <span className={styles.searchCount}>{movimentiFiltrati.length}/{movimenti.length}</span>
           )}
-          <button
-            onClick={() => setShowScanner(true)}
-            style={{ height: '36px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '6px', padding: '0 12px', cursor: 'pointer', fontSize: '1.1rem' }}
-            title="Cerca con codice a barre"
-          >📷</button>
-          <button
-            onClick={() => navigate('/movimenti/nuovo')}
-            style={{ height: '36px', backgroundColor: '#1a237e', color: 'white', border: 'none', borderRadius: '6px', padding: '0 16px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' }}
-          >+ Registra Movimento</button>
+          <button onClick={() => setShowScanner(true)} className={styles.scanBtn} title="Cerca con codice a barre">📷</button>
+          <button onClick={() => navigate('/movimenti/nuovo')} className={styles.addBtn}>+ Registra Movimento</button>
         </div>
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+      {error && <div className={styles.errorMsg}>{error}</div>}
 
       {isMobile ? (
         <div>
@@ -110,71 +104,64 @@ function Movimenti() {
               {search ? `Nessun movimento corrisponde a "${search}"` : 'Nessun movimento registrato'}
             </div>
           ) : movimentiFiltrati.map((m) => (
-            <div key={m.id} style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <div key={m.id} className={styles.card}>
+              <div className={styles.cardHeader}>
                 <div>
-                  <div style={{ fontWeight: 700, color: '#1a237e' }}>{getProdottoNome(m.prodotto_id)}</div>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold',
-                    backgroundColor: m.tipo === 'carico' ? '#e8f5e9' : '#ffebee',
-                    color: m.tipo === 'carico' ? '#2e7d32' : '#c62828',
-                  }}>
-                    {m.tipo === 'carico' ? '📥' : '📤'} {m.tipo}
-                  </span>
+                  <div className={styles.cardProdotto}>{getProdottoNome(m.prodotto_id)}</div>
+                  <StatoBadge value={m.tipo} colors={TIPO_MOVIMENTO_COLORS} />
                 </div>
-                <button onClick={() => handleDelete(m.id)} style={btnSmall('#c62828')}>🗑️</button>
+                <button onClick={() => handleDelete(m.id)} className={styles.deleteBtn}>🗑️</button>
               </div>
-              <div style={cardRowStyle}><span style={cardLabelStyle}>Quantità</span><span style={cardValueStyle}>{m.quantita}</span></div>
-              {m.fornitore_id && <div style={cardRowStyle}><span style={cardLabelStyle}>Fornitore</span><span style={cardValueStyle}>{getFornitoreNome(m.fornitore_id)}</span></div>}
-              {m.note && <div style={cardRowStyle}><span style={cardLabelStyle}>Note</span><span style={cardValueStyle}>{m.note}</span></div>}
-              <div style={cardRowStyle}><span style={cardLabelStyle}>Data</span><span style={{ ...cardValueStyle, fontSize: '0.8rem' }}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</span></div>
+              <div className={styles.cardRow}><span className={styles.cardLabel}>Quantità</span><span className={styles.cardValue}>{m.quantita}</span></div>
+              {m.fornitore_id && <div className={styles.cardRow}><span className={styles.cardLabel}>Fornitore</span><span className={styles.cardValue}>{getFornitoreNome(m.fornitore_id)}</span></div>}
+              {m.note && <div className={styles.cardRow}><span className={styles.cardLabel}>Note</span><span className={styles.cardValue}>{m.note}</span></div>}
+              <div className={styles.cardRow}><span className={styles.cardLabel}>Data</span><span className={styles.cardValue} style={{ fontSize: '0.8rem' }}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</span></div>
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <div className="table-wrapper">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
             <thead>
-              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
+              <tr>
                 {['ID', 'Prodotto', 'Tipo', 'Quantità', 'Fornitore', 'Note', 'Data', 'Azioni'].map(h => (
-                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
+                  <th key={h} className={styles.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {movimentiFiltrati.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                <tr className={styles.trEmpty}>
+                  <td colSpan={8}>
                     {search ? `Nessun movimento corrisponde a "${search}"` : 'Nessun movimento registrato'}
                   </td>
                 </tr>
               ) : movimentiFiltrati.map((m) => (
-                <tr key={m.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={tdStyle}>{m.id}</td>
-                  <td style={tdStyle}>{getProdottoNome(m.prodotto_id)}</td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      padding: '2px 10px', borderRadius: '12px',
-                      backgroundColor: m.tipo === 'carico' ? '#e8f5e9' : '#ffebee',
-                      color: m.tipo === 'carico' ? '#2e7d32' : '#c62828',
-                      fontWeight: 'bold', fontSize: '0.85rem',
-                    }}>
-                      {m.tipo === 'carico' ? '📥' : '📤'} {m.tipo}
-                    </span>
+                <tr key={m.id} className={styles.tr}>
+                  <td className={styles.td}>{m.id}</td>
+                  <td className={styles.td}>{getProdottoNome(m.prodotto_id)}</td>
+                  <td className={styles.td}>
+                    <StatoBadge value={tipoLabel(m.tipo)} colors={{ [tipoLabel(m.tipo)]: TIPO_MOVIMENTO_COLORS[m.tipo] || {} }} />
                   </td>
-                  <td style={tdStyle}>{m.quantita}</td>
-                  <td style={tdStyle}>{m.fornitore_id ? getFornitoreNome(m.fornitore_id) : '-'}</td>
-                  <td style={tdStyle}>{m.note || '-'}</td>
-                  <td style={tdStyle}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleDelete(m.id)} style={btnSmall('#c62828')}>🗑️</button>
+                  <td className={styles.td}>{m.quantita}</td>
+                  <td className={styles.td}>{m.fornitore_id ? getFornitoreNome(m.fornitore_id) : '-'}</td>
+                  <td className={styles.td}>{m.note || '-'}</td>
+                  <td className={styles.td}>{m.data_movimento ? new Date(m.data_movimento).toLocaleString('it-IT') : '-'}</td>
+                  <td className={styles.td}>
+                    <button onClick={() => handleDelete(m.id)} className={styles.deleteBtn}>🗑️</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          </div>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className={styles.pagination}>
+          <button className={styles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Precedente</button>
+          <span>Pagina {page} di {totalPages} ({total} movimenti)</span>
+          <button className={styles.pageBtn} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Successiva →</button>
         </div>
       )}
 
@@ -187,14 +174,5 @@ function Movimenti() {
     </div>
   )
 }
-
-const thStyle = { textAlign: 'left', padding: '12px 16px', fontWeight: '600' }
-const tdStyle = { padding: '10px 16px', color: '#333' }
-const btnStyle = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' })
-const btnSmall = (bg) => ({ ...btnStyle(bg), padding: '4px 10px', fontSize: '0.85rem' })
-const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
-const cardRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.9rem' }
-const cardLabelStyle = { color: '#888', fontWeight: 500, marginRight: '8px' }
-const cardValueStyle = { color: '#333', fontWeight: 600, textAlign: 'right' }
 
 export default Movimenti

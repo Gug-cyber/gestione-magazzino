@@ -2,7 +2,7 @@ import io
 import os
 import re
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from fpdf import FPDF
 from sqlalchemy.orm import Session
@@ -27,10 +27,15 @@ def get_fatture(
     data_da: Optional[date] = None,
     data_a: Optional[date] = None,
     ordine_id: Optional[int] = None,
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    return crud.get_fatture(db, skip=skip, limit=limit, cliente=cliente, data_da=data_da, data_a=data_a, ordine_id=ordine_id)
+    fatture = crud.get_fatture(db, skip=skip, limit=limit, cliente=cliente, data_da=data_da, data_a=data_a, ordine_id=ordine_id)
+    total = crud.count_fatture(db, cliente=cliente, data_da=data_da, data_a=data_a, ordine_id=ordine_id)
+    if response is not None:
+        response.headers["X-Total-Count"] = str(total)
+    return fatture
 
 
 @router.post("/", response_model=FatturaResponse, status_code=201)

@@ -24,6 +24,22 @@ def get_clienti(
     return query.order_by(Cliente.nome).offset(skip).limit(limit).all()
 
 
+def count_clienti(
+    db: Session,
+    search: Optional[str] = None,
+) -> int:
+    query = db.query(Cliente)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            Cliente.nome.ilike(term)
+            | Cliente.cognome.ilike(term)
+            | Cliente.email.ilike(term)
+            | Cliente.partita_iva.ilike(term)
+        )
+    return query.count()
+
+
 def get_cliente(db: Session, cliente_id: int) -> Optional[Cliente]:
     return db.query(Cliente).filter(Cliente.id == cliente_id).first()
 

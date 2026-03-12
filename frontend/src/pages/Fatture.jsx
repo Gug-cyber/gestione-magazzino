@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fattureAPI } from '../api/client'
+import { formatDate, formatCurrency } from '../utils/formatters'
+import { PRIMARY_COLOR } from '../constants/colors'
 
-const primaryColor = '#1a237e'
 const cardStyle = {
   backgroundColor: '#fff',
   borderRadius: '8px',
@@ -9,16 +10,6 @@ const cardStyle = {
   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
   flex: 1,
   minWidth: '140px',
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—'
-  const [y, m, d] = dateStr.split('-')
-  return `${d}/${m}/${y}`
-}
-
-function formatCurrency(amount) {
-  return Number(amount).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
 }
 
 const emptyForm = {
@@ -34,6 +25,8 @@ const emptyForm = {
 
 export default function Fatture() {
   const [fatture, setFatture] = useState([])
+  const [totalFatture, setTotalFatture] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -47,12 +40,17 @@ export default function Fatture() {
   const [filterDataDa, setFilterDataDa] = useState('')
   const [filterDataA, setFilterDataA] = useState('')
 
+  const PAGE_SIZE = 50
+  const totalPages = Math.max(1, Math.ceil(totalFatture / PAGE_SIZE))
+
   const fetchFatture = useCallback(async (params = {}) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fattureAPI.getAll(params)
+      const res = await fattureAPI.getAll({ ...params, skip: ((params.page || 1) - 1) * PAGE_SIZE, limit: PAGE_SIZE })
       setFatture(res.data)
+      const tc = parseInt(res.headers['x-total-count'] ?? '0', 10)
+      setTotalFatture(isNaN(tc) ? res.data.length : tc)
     } catch {
       setError('Errore nel caricamento delle fatture')
     } finally {
@@ -61,22 +59,24 @@ export default function Fatture() {
   }, [])
 
   useEffect(() => {
-    fetchFatture()
-  }, [fetchFatture])
+    fetchFatture({ page })
+  }, [fetchFatture, page])
 
   const handleSearch = () => {
+    setPage(1)
     const params = {}
     if (filterCliente) params.cliente = filterCliente
     if (filterDataDa) params.data_da = filterDataDa
     if (filterDataA) params.data_a = filterDataA
-    fetchFatture(params)
+    fetchFatture({ ...params, page: 1 })
   }
 
   const handleReset = () => {
     setFilterCliente('')
     setFilterDataDa('')
     setFilterDataA('')
-    fetchFatture()
+    setPage(1)
+    fetchFatture({ page: 1 })
   }
 
   const openNewModal = () => {
@@ -209,11 +209,11 @@ export default function Fatture() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 style={{ color: primaryColor, margin: 0 }}>🧾 Fatture</h1>
+        <h1 style={{ color: PRIMARY_COLOR, margin: 0 }}>🧾 Fatture</h1>
         <button
           onClick={openNewModal}
           style={{
-            backgroundColor: primaryColor,
+            backgroundColor: PRIMARY_COLOR,
             color: '#fff',
             border: 'none',
             borderRadius: '6px',
@@ -231,7 +231,7 @@ export default function Fatture() {
       <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <div style={cardStyle}>
           <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>📄 Totale fatture</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: primaryColor }}>{totale}</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: PRIMARY_COLOR }}>{totale}</div>
         </div>
         <div style={cardStyle}>
           <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>✅ Pagate</div>
@@ -243,7 +243,7 @@ export default function Fatture() {
         </div>
         <div style={cardStyle}>
           <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>💰 Totale importo</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: primaryColor }}>{formatCurrency(importoTotale)}</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: PRIMARY_COLOR }}>{formatCurrency(importoTotale)}</div>
         </div>
       </div>
 
@@ -290,7 +290,7 @@ export default function Fatture() {
         <button
           onClick={handleSearch}
           style={{
-            backgroundColor: primaryColor,
+            backgroundColor: PRIMARY_COLOR,
             color: '#fff',
             border: 'none',
             borderRadius: '4px',
@@ -305,8 +305,8 @@ export default function Fatture() {
           onClick={handleReset}
           style={{
             backgroundColor: '#fff',
-            color: primaryColor,
-            border: `1px solid ${primaryColor}`,
+            color: PRIMARY_COLOR,
+            border: `1px solid ${PRIMARY_COLOR}`,
             borderRadius: '4px',
             padding: '8px 16px',
             cursor: 'pointer',
@@ -332,7 +332,7 @@ export default function Fatture() {
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: primaryColor, color: '#fff' }}>
+              <tr style={{ backgroundColor: PRIMARY_COLOR, color: '#fff' }}>
                 <th style={thStyle}>#</th>
                 <th style={thStyle}>Numero</th>
                 <th style={thStyle}>Data</th>
@@ -416,6 +416,23 @@ export default function Fatture() {
         )}
       </div>
 
+      {/* Paginazione */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '20px', fontSize: '0.9rem', color: '#555' }}>
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            style={{ backgroundColor: page === 1 ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: page === 1 ? 'default' : 'pointer' }}
+          >← Precedente</button>
+          <span>Pagina {page} di {totalPages} ({totalFatture} fatture)</span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            style={{ backgroundColor: page === totalPages ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: page === totalPages ? 'default' : 'pointer' }}
+          >Successiva →</button>
+        </div>
+      )}
+
       {/* Modal */}
       {showModal && (
         <div style={{
@@ -434,7 +451,7 @@ export default function Fatture() {
             overflowY: 'auto',
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
           }}>
-            <h2 style={{ color: primaryColor, marginTop: 0, marginBottom: '20px' }}>
+            <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: '20px' }}>
               {editingFattura ? '✏️ Modifica Fattura' : '➕ Nuova Fattura'}
             </h2>
 
@@ -570,7 +587,7 @@ export default function Fatture() {
                   type="submit"
                   disabled={submitting}
                   style={{
-                    backgroundColor: primaryColor,
+                    backgroundColor: PRIMARY_COLOR,
                     color: '#fff',
                     border: 'none',
                     borderRadius: '4px',

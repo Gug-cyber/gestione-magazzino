@@ -12,8 +12,50 @@ def get_prodotto_by_sku(db: Session, sku: str) -> Optional[Prodotto]:
     return db.query(Prodotto).filter(Prodotto.sku == sku).first()
 
 
-def get_prodotti(db: Session, skip: int = 0, limit: int = 100) -> List[Prodotto]:
-    return db.query(Prodotto).offset(skip).limit(limit).all()
+def get_prodotti(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    categoria_id: Optional[int] = None,
+    ubicazione_id: Optional[int] = None,
+    stato_conservazione: Optional[str] = None,
+) -> List[Prodotto]:
+    query = db.query(Prodotto)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            Prodotto.nome.ilike(term) | Prodotto.sku.ilike(term) | Prodotto.descrizione.ilike(term)
+        )
+    if categoria_id:
+        query = query.filter(Prodotto.categoria_id == categoria_id)
+    if ubicazione_id:
+        query = query.filter(Prodotto.ubicazione_id == ubicazione_id)
+    if stato_conservazione:
+        query = query.filter(Prodotto.stato_conservazione == stato_conservazione)
+    return query.order_by(Prodotto.nome).offset(skip).limit(limit).all()
+
+
+def count_prodotti(
+    db: Session,
+    search: Optional[str] = None,
+    categoria_id: Optional[int] = None,
+    ubicazione_id: Optional[int] = None,
+    stato_conservazione: Optional[str] = None,
+) -> int:
+    query = db.query(Prodotto)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(
+            Prodotto.nome.ilike(term) | Prodotto.sku.ilike(term) | Prodotto.descrizione.ilike(term)
+        )
+    if categoria_id:
+        query = query.filter(Prodotto.categoria_id == categoria_id)
+    if ubicazione_id:
+        query = query.filter(Prodotto.ubicazione_id == ubicazione_id)
+    if stato_conservazione:
+        query = query.filter(Prodotto.stato_conservazione == stato_conservazione)
+    return query.count()
 
 
 def get_prodotti_sotto_scorta(db: Session) -> List[Prodotto]:
