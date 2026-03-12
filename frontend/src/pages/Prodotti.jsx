@@ -124,7 +124,7 @@ function Prodotti() {
       await prodottiAPI.delete(id)
       fetchAll()
     } catch (err) {
-      setError('Errore nell\'eliminazione')
+      setError(err.response?.data?.detail || 'Errore durante l\'eliminazione')
     }
   }
 
