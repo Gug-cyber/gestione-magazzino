@@ -1,4 +1,5 @@
 import os
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from ..schemas.utente import (
     Token, UtenteCreate, UtenteResponse, UtenteUpdateProfilo,
     ForgotUsernameRequest, ForgotUsernameResponse,
     ForgotPasswordRequest, ForgotPasswordResponse,
-    ResetPasswordRequest,
+    ResetPasswordRequest, UtenteCreateAdmin, UtenteAdminUpdate,
 )
 from ..crud import utente as crud
 from ..crud import reset_token as crud_token
@@ -143,3 +144,68 @@ def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
     db.commit()
     crud_token.use_reset_token(db, token_obj)
     return {"message": "Password reimpostata con successo"}
+
+
+@router.get("/utenti", response_model=List[UtenteResponse])
+def get_utenti_admin(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
+    return crud.get_utenti(db)
+
+
+@router.post("/utenti", response_model=UtenteResponse, status_code=201)
+def create_utente_admin(
+    utente: UtenteCreateAdmin,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
+    if crud.get_utente_by_username(db, utente.username):
+        raise HTTPException(status_code=400, detail="Username già in uso")
+    if crud.get_utente_by_email(db, utente.email):
+        raise HTTPException(status_code=400, detail="Email già in uso")
+    return crud.create_utente(db, utente, is_admin=utente.is_admin)
+
+
+@router.put("/utenti/{utente_id}", response_model=UtenteResponse)
+def update_utente_admin(
+    utente_id: int,
+    dati: UtenteAdminUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
+    if utente_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Non puoi modificare il tuo account da qui. Usa la pagina Profilo.")
+    if dati.username:
+        existing = crud.get_utente_by_username(db, dati.username)
+        if existing and existing.id != utente_id:
+            raise HTTPException(status_code=400, detail="Username già in uso")
+    if dati.email:
+        existing = crud.get_utente_by_email(db, dati.email)
+        if existing and existing.id != utente_id:
+            raise HTTPException(status_code=400, detail="Email già in uso")
+    result = crud.admin_update_utente(db, utente_id, dati)
+    if not result:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    return result
+
+
+@router.delete("/utenti/{utente_id}", status_code=204)
+def delete_utente_admin(
+    utente_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
+    if utente_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Non puoi eliminare il tuo stesso account")
+    if not crud.get_utente(db, utente_id):
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    crud.delete_utente(db, utente_id)

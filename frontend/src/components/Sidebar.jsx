@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
-const links = [
+const baseLinks = [
   { to: '/', label: '📊 Dashboard' },
   { to: '/analisi', label: '📈 Analisi' },
   { to: '/ordini', label: '🛒 Ordini' },
@@ -12,9 +13,13 @@ const links = [
   { to: '/fornitori', label: '🏢 Fornitori' },
   { to: '/ubicazioni', label: '📍 Ubicazioni' },
   { to: '/categorie', label: '🏷️ Categorie' },
-] 
+]
 
 function NavLinks({ onLinkClick }) {
+  const { user } = useAuth()
+  const links = user?.is_admin
+    ? [...baseLinks, { to: '/amministrazione', label: '⚙️ Amministrazione' }]
+    : baseLinks
   return links.map(({ to, label }) => (
     <NavLink
       key={to}

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from ..models.utente import Utente
-from ..schemas.utente import UtenteCreate, UtenteUpdate, UtenteUpdateProfilo
+from ..schemas.utente import UtenteCreate, UtenteUpdate, UtenteUpdateProfilo, UtenteAdminUpdate
 from ..auth import get_password_hash, verify_password
 
 
@@ -79,3 +79,23 @@ def delete_utente(db: Session, utente_id: int):
     db.delete(db_utente)
     db.commit()
     return True
+
+
+def admin_update_utente(db: Session, utente_id: int, dati: UtenteAdminUpdate):
+    """Aggiornamento completo da parte dell'admin: username, email, password, ruolo, stato."""
+    db_utente = get_utente(db, utente_id)
+    if not db_utente:
+        return None
+    if dati.username is not None:
+        db_utente.username = dati.username
+    if dati.email is not None:
+        db_utente.email = dati.email
+    if dati.password is not None:
+        db_utente.hashed_password = get_password_hash(dati.password)
+    if dati.is_admin is not None:
+        db_utente.is_admin = dati.is_admin
+    if dati.is_active is not None:
+        db_utente.is_active = dati.is_active
+    db.commit()
+    db.refresh(db_utente)
+    return db_utente

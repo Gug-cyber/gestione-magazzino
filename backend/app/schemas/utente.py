@@ -72,3 +72,20 @@ class ForgotPasswordResponse(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class UtenteCreateAdmin(BaseModel):
+    """Usato dall'admin per creare un nuovo utente, con controllo del ruolo."""
+    username: str
+    email: str
+    password: str
+    is_admin: bool = False
+
+
+class UtenteAdminUpdate(BaseModel):
+    """Usato dall'admin per modificare un utente esistente."""
+    username: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    is_admin: Optional[bool] = None
+    is_active: Optional[bool] = None
