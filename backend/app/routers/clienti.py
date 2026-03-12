@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
-from ..schemas.cliente import ClienteCreate, ClienteUpdate, ClienteResponse, ClienteConStorico, FatturaStorico
+from ..schemas.cliente import ClienteCreate, ClienteUpdate, ClienteResponse, ClienteConStorico, FatturaStorico, OrdineStorico
 from ..crud import cliente as crud
 from ..auth import get_current_active_user
 
@@ -21,12 +21,12 @@ def get_clienti(
     clienti = crud.get_clienti(db, skip=skip, limit=limit, search=search)
     result = []
     for c in clienti:
-        stats = crud.get_statistiche_cliente(db, c.id)
+        stats_fatture = crud.get_statistiche_cliente(db, c.id)
+        stats_ordini = crud.get_statistiche_ordini_cliente(db, c.id)
         cliente_dict = {
             **c.__dict__,
-            "num_fatture": stats["num_fatture"],
-            "totale_speso": stats["totale_speso"],
-            "ultima_fattura": stats["ultima_fattura"],
+            **stats_fatture,
+            **stats_ordini,
         }
         result.append(ClienteResponse.model_validate(cliente_dict))
     return result
@@ -39,7 +39,7 @@ def create_cliente(
     current_user=Depends(get_current_active_user),
 ):
     db_cliente = crud.create_cliente(db, cliente)
-    return ClienteResponse.model_validate({**db_cliente.__dict__, "num_fatture": 0, "totale_speso": 0.0})
+    return ClienteResponse.model_validate({**db_cliente.__dict__, "num_fatture": 0, "totale_speso": 0.0, "num_ordini": 0, "totale_ordini": 0.0, "num_ordini_completati": 0})
 
 
 @router.get("/{cliente_id}", response_model=ClienteResponse)
@@ -52,7 +52,8 @@ def get_cliente(
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente non trovato")
     stats = crud.get_statistiche_cliente(db, cliente_id)
-    return ClienteResponse.model_validate({**db_cliente.__dict__, **stats})
+    stats_ordini = crud.get_statistiche_ordini_cliente(db, cliente_id)
+    return ClienteResponse.model_validate({**db_cliente.__dict__, **stats, **stats_ordini})
 
 
 @router.put("/{cliente_id}", response_model=ClienteResponse)
@@ -66,7 +67,8 @@ def update_cliente(
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente non trovato")
     stats = crud.get_statistiche_cliente(db, cliente_id)
-    return ClienteResponse.model_validate({**db_cliente.__dict__, **stats})
+    stats_ordini = crud.get_statistiche_ordini_cliente(db, cliente_id)
+    return ClienteResponse.model_validate({**db_cliente.__dict__, **stats, **stats_ordini})
 
 
 @router.delete("/{cliente_id}", status_code=204)
@@ -89,8 +91,9 @@ def get_storico(
     result = crud.get_cliente_storico(db, cliente_id)
     if not result:
         raise HTTPException(status_code=404, detail="Cliente non trovato")
-    cliente, fatture = result
+    cliente, fatture, ordini = result
     stats = crud.get_statistiche_cliente(db, cliente_id)
+    stats_ordini = crud.get_statistiche_ordini_cliente(db, cliente_id)
     fatture_list = [
         FatturaStorico(
             id=f.id,
@@ -104,10 +107,23 @@ def get_storico(
         )
         for f in fatture
     ]
+    ordini_list = [
+        OrdineStorico(
+            id=o.id,
+            numero_ordine=o.numero_ordine,
+            data_ordine=str(o.data_ordine) if o.data_ordine else None,
+            stato=o.stato.value if hasattr(o.stato, "value") else str(o.stato),
+            totale=float(o.totale or 0),
+            note=o.note,
+        )
+        for o in ordini
+    ]
     return ClienteConStorico.model_validate({
         **cliente.__dict__,
         **stats,
+        **stats_ordini,
         "fatture": [f.model_dump() for f in fatture_list],
+        "ordini": [o.model_dump() for o in ordini_list],
     })
 
 
