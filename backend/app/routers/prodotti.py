@@ -1,10 +1,11 @@
 import csv
 import io
 import os
-import shutil
+import cloudinary
+import cloudinary.uploader
 from datetime import datetime as dt_datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
@@ -16,12 +17,24 @@ from ..models.movimento import Movimento
 from ..models.prodotto import Prodotto
 router = APIRouter()
 
-UPLOAD_DIR = "/app/uploads/prodotti"
+
+def get_cloudinary():
+    cloudinary.config(
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.getenv("CLOUDINARY_API_KEY"),
+        api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+        secure=True,
+    )
+    return cloudinary
 
 
 def _build_foto_url(prodotto, request: Request) -> Optional[str]:
     if not prodotto.foto_path:
         return None
+    # Se è già un URL completo (Cloudinary), restituiscilo direttamente
+    if prodotto.foto_path.startswith("http://") or prodotto.foto_path.startswith("https://"):
+        return prodotto.foto_path
+    # Retrocompatibilità per path locali vecchi
     return f"/api/prodotti/{prodotto.id}/foto"
 
 
@@ -207,6 +220,13 @@ def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_use
     prodotto = crud.get_prodotto(db, prodotto_id)
     if not prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    # Elimina la foto da Cloudinary se presente
+    if prodotto.foto_path and prodotto.foto_path.startswith("https://res.cloudinary.com/"):
+        try:
+            get_cloudinary()
+            cloudinary.uploader.destroy(f"prodotti/{prodotto_id}")
+        except Exception:
+            pass  # non bloccare la cancellazione del prodotto
     try:
         crud.delete_prodotto(db, prodotto_id)
     except IntegrityError:
@@ -224,12 +244,24 @@ async def upload_foto_prodotto(prodotto_id: int, request: Request, file: UploadF
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
-    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    dest_path = os.path.join(UPLOAD_DIR, f"{prodotto_id}.{ext}")
-    with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    db_prodotto.foto_path = dest_path
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+    if not cloud_name or not api_key or not api_secret:
+        raise HTTPException(
+            status_code=503,
+            detail="Cloudinary non configurato. Impostare CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET."
+        )
+    contents = await file.read()
+    get_cloudinary()
+    result = cloudinary.uploader.upload(
+        contents,
+        public_id=f"prodotti/{prodotto_id}",
+        overwrite=True,
+        resource_type="image",
+        transformation=[{"width": 800, "height": 800, "crop": "limit", "quality": "auto"}],
+    )
+    db_prodotto.foto_path = result["secure_url"]
     db.commit()
     db.refresh(db_prodotto)
     d = ProdottoResponse.model_validate(db_prodotto).model_dump()
@@ -242,6 +274,10 @@ def get_foto_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_u
     db_prodotto = crud.get_prodotto(db, prodotto_id)
     if not db_prodotto or not db_prodotto.foto_path:
         raise HTTPException(status_code=404, detail="Foto non trovata")
+    # Se è un URL Cloudinary, redirect
+    if db_prodotto.foto_path.startswith("http://") or db_prodotto.foto_path.startswith("https://"):
+        return RedirectResponse(url=db_prodotto.foto_path)
+    # Fallback per path locali
     if not os.path.exists(db_prodotto.foto_path):
         raise HTTPException(status_code=404, detail="File foto non trovato")
     return FileResponse(db_prodotto.foto_path)
