@@ -145,6 +145,8 @@ function DettaglioProdotto() {
     )
   }
 
+  if (!scheda) return <div style={{ padding: '48px', textAlign: 'center', color: '#888' }}>Dati non disponibili</div>
+
   const { prodotto, movimenti, storico_quantita, prodotti_correlati, stats } = scheda
 
   const sottoScorta = prodotto.quantita < prodotto.quantita_minima
