@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { clientiAPI } from '../api/client'
 
 const primaryColor = '#1a237e'
+const STATO_COLORS = {
+  bozza: { bg: '#f5f5f5', color: '#757575' },
+  confermato: { bg: '#e3f2fd', color: '#1565c0' },
+  spedito: { bg: '#fff3e0', color: '#e65100' },
+  completato: { bg: '#e8f5e9', color: '#2e7d32' },
+  annullato: { bg: '#ffebee', color: '#c62828' },
+}
 const cardStyle = {
   backgroundColor: '#fff',
   borderRadius: '8px',
@@ -177,12 +184,12 @@ export default function Clienti() {
   const totaleClienti = clienti.length
   const numAziende = clienti.filter((c) => c.tipo === 'azienda').length
   const numPrivati = clienti.filter((c) => c.tipo === 'privato').length
-  const fatturatoTotale = clienti.reduce((sum, c) => sum + (c.totale_speso || 0), 0)
+  const fatturatoTotale = clienti.reduce((sum, c) => sum + (c.totale_ordini || 0), 0)
 
   // ---- STORICO VIEW ----
   if (selectedCliente) {
     const stats = storico || {}
-    const fatture = storico?.fatture || []
+    const ordini = storico?.ordini || []
     const nomeCompleto = selectedCliente.cognome
       ? `${selectedCliente.nome} ${selectedCliente.cognome}`
       : selectedCliente.nome
@@ -251,10 +258,10 @@ export default function Clienti() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
-              { label: '💰 Totale Speso', value: formatCurrency(stats.totale_speso || 0), color: '#e8f5e9', textColor: '#2e7d32' },
-              { label: '🧾 N. Fatture', value: stats.num_fatture || 0, color: '#e3f2fd', textColor: '#1565c0' },
-              { label: '✅ Fatture Pagate', value: stats.num_fatture_pagate || 0, color: '#f3e5f5', textColor: '#6a1b9a' },
-              { label: '📅 Ultima Transazione', value: formatDate(stats.ultima_fattura), color: '#fff8e1', textColor: '#e65100' },
+              { label: '🛒 N. Ordini', value: stats.num_ordini || 0, color: '#e3f2fd', textColor: '#1565c0' },
+              { label: '💰 Totale Ordini', value: formatCurrency(stats.totale_ordini || 0), color: '#e8f5e9', textColor: '#2e7d32' },
+              { label: '✅ Ordini Completati', value: stats.num_ordini_completati || 0, color: '#f3e5f5', textColor: '#6a1b9a' },
+              { label: '📅 Ultimo Ordine', value: formatDate(stats.ultimo_ordine), color: '#fff8e1', textColor: '#e65100' },
             ].map(({ label, value, color, textColor }) => (
               <div key={label} style={{ backgroundColor: color, borderRadius: '8px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '4px' }}>{label}</div>
@@ -264,62 +271,52 @@ export default function Clienti() {
           </div>
         </div>
 
-        {/* Storico fatture */}
+        {/* Storico ordini */}
         <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
-            <h3 style={{ color: primaryColor, margin: 0 }}>📋 Storico Fatture</h3>
+            <h3 style={{ color: primaryColor, margin: 0 }}>🛒 Storico Ordini</h3>
           </div>
           {storicoLoading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Caricamento...</div>
-          ) : fatture.length === 0 ? (
+          ) : ordini.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
-              Nessuna fattura collegata a questo cliente
+              Nessun ordine collegato a questo cliente
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f5f5f5' }}>
-                    {['Numero', 'Data', 'Importo', 'Tipo', 'Stato', 'File'].map((h) => (
+                    {['N. Ordine', 'Data', 'Totale', 'Stato', 'Note'].map((h) => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {fatture.map((f) => (
-                    <tr key={f.id} style={{ borderTop: '1px solid #f0f0f0' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 500 }}>{f.numero_fattura}</td>
-                      <td style={{ padding: '12px 16px', color: '#555' }}>{formatDate(f.data_fattura)}</td>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: primaryColor }}>{formatCurrency(f.importo)}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          backgroundColor: f.tipo === 'attiva' ? '#e8f5e9' : '#fce4ec',
-                          color: f.tipo === 'attiva' ? '#2e7d32' : '#c62828',
-                          borderRadius: '12px',
-                          padding: '3px 10px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                        }}>
-                          {f.tipo === 'attiva' ? '↑ Attiva' : '↓ Passiva'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          backgroundColor: f.pagata ? '#e8f5e9' : '#fff8e1',
-                          color: f.pagata ? '#2e7d32' : '#e65100',
-                          borderRadius: '12px',
-                          padding: '3px 10px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                        }}>
-                          {f.pagata ? '✅ Pagata' : '⏳ Da pagare'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: '#777', fontSize: '0.85rem' }}>
-                        {f.nome_file || '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {ordini.map((o) => {
+                    const tdStyle = { padding: '12px 16px' }
+                    return (
+                      <tr key={o.id} style={{ borderTop: '1px solid #f0f0f0' }}>
+                        <td style={tdStyle}><code>{o.numero_ordine}</code></td>
+                        <td style={{ ...tdStyle, color: '#555' }}>{formatDate(o.data_ordine)}</td>
+                        <td style={{ ...tdStyle, fontWeight: 600, color: '#2e7d32' }}>{formatCurrency(o.totale)}</td>
+                        <td style={tdStyle}>
+                          <span style={{
+                            backgroundColor: STATO_COLORS[o.stato]?.bg || '#eee',
+                            color: STATO_COLORS[o.stato]?.color || '#333',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            textTransform: 'capitalize',
+                          }}>
+                            {o.stato}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, color: '#777' }}>{o.note || '—'}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -357,7 +354,7 @@ export default function Clienti() {
           { label: '👥 Totale Clienti', value: totaleClienti, color: '#e3f2fd', textColor: '#1565c0' },
           { label: '🏢 Aziende', value: numAziende, color: '#ede7f6', textColor: '#6a1b9a' },
           { label: '👤 Privati', value: numPrivati, color: '#e8f5e9', textColor: '#2e7d32' },
-          { label: '💰 Fatturato Totale', value: formatCurrency(fatturatoTotale), color: '#fff8e1', textColor: '#e65100' },
+          { label: '💰 Totale Ordini', value: formatCurrency(fatturatoTotale), color: '#fff8e1', textColor: '#e65100' },
         ].map(({ label, value, color, textColor }) => (
           <div key={label} style={{ ...cardStyle, backgroundColor: color }}>
             <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>{label}</div>
@@ -414,7 +411,7 @@ export default function Clienti() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f5f5f5' }}>
-                  {['#', 'Nome', 'Tipo', 'Email', 'Telefono', 'Città', 'Fatture', 'Totale Speso', 'Azioni'].map((h) => (
+                  {['#', 'Nome', 'Tipo', 'Email', 'Telefono', 'Città', 'Ordini', 'Totale Ordini', 'Azioni'].map((h) => (
                     <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -446,10 +443,10 @@ export default function Clienti() {
                       <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.telefono || '—'}</td>
                       <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.citta || '—'}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        <span style={{ fontWeight: 600, color: primaryColor }}>{c.num_fatture || 0}</span>
+                        <span style={{ fontWeight: 600, color: primaryColor }}>{c.num_ordini || 0}</span>
                       </td>
                       <td style={{ padding: '12px 16px', fontWeight: 600, color: '#2e7d32' }}>
-                        {formatCurrency(c.totale_speso || 0)}
+                        {formatCurrency(c.totale_ordini || 0)}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', gap: '6px' }}>

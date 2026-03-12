@@ -43,6 +43,10 @@ class ClienteResponse(ClienteBase):
     num_fatture: int = 0
     totale_speso: float = 0.0
     ultima_fattura: Optional[str] = None
+    num_ordini: int = 0
+    totale_ordini: float = 0.0
+    num_ordini_completati: int = 0
+    ultimo_ordine: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -62,5 +66,18 @@ class FatturaStorico(BaseModel):
         from_attributes = True
 
 
+class OrdineStorico(BaseModel):
+    id: int
+    numero_ordine: str
+    data_ordine: Optional[str] = None
+    stato: str
+    totale: float
+    note: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class ClienteConStorico(ClienteResponse):
     fatture: List[FatturaStorico] = []
+    ordini: List[OrdineStorico] = []

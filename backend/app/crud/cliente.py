@@ -62,7 +62,8 @@ def delete_cliente(db: Session, cliente_id: int) -> bool:
 
 
 def get_cliente_storico(db: Session, cliente_id: int):
-    """Restituisce il cliente con le fatture collegate tramite cliente_id."""
+    """Restituisce il cliente con le fatture e gli ordini collegati."""
+    from ..models.ordine import Ordine
     cliente = get_cliente(db, cliente_id)
     if not cliente:
         return None
@@ -72,7 +73,13 @@ def get_cliente_storico(db: Session, cliente_id: int):
         .order_by(Fattura.data_fattura.desc())
         .all()
     )
-    return cliente, fatture
+    ordini = (
+        db.query(Ordine)
+        .filter(Ordine.cliente_id == cliente_id)
+        .order_by(Ordine.data_ordine.desc())
+        .all()
+    )
+    return cliente, fatture, ordini
 
 
 def get_statistiche_cliente(db: Session, cliente_id: int) -> dict:
@@ -92,4 +99,25 @@ def get_statistiche_cliente(db: Session, cliente_id: int) -> dict:
         "totale_speso": float(result.totale_speso or 0.0),
         "num_fatture_pagate": result.num_fatture_pagate or 0,
         "ultima_fattura": str(result.ultima_fattura) if result.ultima_fattura else None,
+    }
+
+
+def get_statistiche_ordini_cliente(db: Session, cliente_id: int) -> dict:
+    """Calcola statistiche aggregate degli ordini per il cliente."""
+    from ..models.ordine import Ordine, StatoOrdine
+    result = (
+        db.query(
+            func.count(Ordine.id).label("num_ordini"),
+            func.coalesce(func.sum(Ordine.totale), 0.0).label("totale_ordini"),
+            func.count(Ordine.id).filter(Ordine.stato == StatoOrdine.completato).label("num_ordini_completati"),
+            func.max(Ordine.data_ordine).label("ultimo_ordine"),
+        )
+        .filter(Ordine.cliente_id == cliente_id)
+        .first()
+    )
+    return {
+        "num_ordini": result.num_ordini or 0,
+        "totale_ordini": float(result.totale_ordini or 0.0),
+        "num_ordini_completati": result.num_ordini_completati or 0,
+        "ultimo_ordine": str(result.ultimo_ordine) if result.ultimo_ordine else None,
     }
