@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from typing import List
 from ..database import get_db
@@ -10,8 +10,12 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[MovimentoResponse])
-def get_movimenti(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
-    return crud.get_movimenti(db, skip=skip, limit=limit)
+def get_movimenti(skip: int = 0, limit: int = 100, response: Response = None, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    movimenti = crud.get_movimenti(db, skip=skip, limit=limit)
+    total = crud.count_movimenti(db)
+    if response is not None:
+        response.headers["X-Total-Count"] = str(total)
+    return movimenti
 
 
 @router.get("/{movimento_id}", response_model=MovimentoResponse)

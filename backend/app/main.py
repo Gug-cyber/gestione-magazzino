@@ -1,4 +1,5 @@
 import os
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +16,25 @@ from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti 
 from .models import ordine as _ordine_model  # noqa: F401 – ensures ordini table is created
 
 load_dotenv()
+
+# Controllo SECRET_KEY al boot
+_SECRET_KEY = os.getenv("SECRET_KEY", "changeme-use-a-long-random-secret-key-in-production")
+_DEFAULT_KEY = "changeme-use-a-long-random-secret-key-in-production"
+_APP_ENV = os.getenv("APP_ENV", "production")
+
+if _SECRET_KEY == _DEFAULT_KEY or len(_SECRET_KEY) < 32:
+    if _APP_ENV == "production":
+        print(
+            "FATAL: SECRET_KEY non configurata o troppo corta. "
+            "Imposta la variabile d'ambiente SECRET_KEY.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    else:
+        print(
+            "WARNING: SECRET_KEY non sicura. Va bene solo in development.",
+            file=sys.stderr,
+        )
 
 Base.metadata.create_all(bind=engine)
 

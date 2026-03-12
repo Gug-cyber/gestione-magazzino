@@ -3,8 +3,8 @@ import io
 import os
 import shutil
 from datetime import datetime as dt_datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
@@ -26,8 +26,35 @@ def _build_foto_url(prodotto, request: Request) -> Optional[str]:
 
 
 @router.get("/", response_model=List[ProdottoResponse])
-def get_prodotti(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
-    prodotti = crud.get_prodotti(db, skip=skip, limit=limit)
+def get_prodotti(
+    request: Request,
+    response: Response,
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = Query(default=None),
+    categoria_id: Optional[int] = Query(default=None),
+    ubicazione_id: Optional[int] = Query(default=None),
+    stato_conservazione: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    prodotti = crud.get_prodotti(
+        db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        categoria_id=categoria_id,
+        ubicazione_id=ubicazione_id,
+        stato_conservazione=stato_conservazione,
+    )
+    total = crud.count_prodotti(
+        db,
+        search=search,
+        categoria_id=categoria_id,
+        ubicazione_id=ubicazione_id,
+        stato_conservazione=stato_conservazione,
+    )
+    response.headers["X-Total-Count"] = str(total)
     result = []
     for p in prodotti:
         d = ProdottoResponse.model_validate(p).model_dump()

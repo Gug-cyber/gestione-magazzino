@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -46,10 +46,14 @@ def get_ordini(
     stato: Optional[str] = Query(default=None),
     cliente_id: Optional[int] = Query(default=None),
     search: Optional[str] = Query(default=None),
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     ordini = crud.get_ordini(db, skip=skip, limit=limit, stato=stato, cliente_id=cliente_id, search=search)
+    total = crud.count_ordini(db, stato=stato, cliente_id=cliente_id, search=search)
+    if response is not None:
+        response.headers["X-Total-Count"] = str(total)
     return [_ordine_to_response(o) for o in ordini]
 
 

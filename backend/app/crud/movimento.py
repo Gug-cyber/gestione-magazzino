@@ -14,6 +14,10 @@ def get_movimenti(db: Session, skip: int = 0, limit: int = 100) -> List[Moviment
     return db.query(Movimento).order_by(Movimento.data_movimento.desc()).offset(skip).limit(limit).all()
 
 
+def count_movimenti(db: Session) -> int:
+    return db.query(Movimento).count()
+
+
 def get_movimenti_by_prodotto(db: Session, prodotto_id: int) -> List[Movimento]:
     return db.query(Movimento).filter(Movimento.prodotto_id == prodotto_id).all()
 

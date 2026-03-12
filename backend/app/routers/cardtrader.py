@@ -207,6 +207,99 @@ def import_listings(db: Session = Depends(get_db), current_user=Depends(get_curr
     return {"importati": importati, "aggiornati": aggiornati, "errori": errori}
 
 
+class SyncPreviewItem(BaseModel):
+    sku: str
+    nome: str
+    blueprint_id: Optional[int]
+    prezzo_attuale: Optional[float]
+    prezzo_cardtrader: Optional[float]
+    quantita_attuale: Optional[int]
+    quantita_cardtrader: Optional[int]
+    trovato: bool
+
+
+class SyncReport(BaseModel):
+    trovati: int
+    non_trovati: int
+    anteprima: list
+    applicato: bool
+
+
+@router.post("/sync", response_model=SyncReport)
+def sync_listings(
+    apply: bool = False,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Confronta le listing CardTrader con il magazzino locale.
+    Con apply=False (default) mostra solo un'anteprima senza modificare nulla.
+    Con apply=True aggiorna prezzi e quantità nel magazzino.
+    """
+    token = _get_token()
+    listings = _fetch_listings(token)
+
+    trovati = 0
+    non_trovati = 0
+    anteprima = []
+
+    for item in listings:
+        blueprint = item.get("blueprint") or {}
+        properties = item.get("properties") or {}
+        price = item.get("price") or {}
+
+        blueprint_id = blueprint.get("id")
+        nome = blueprint.get("name") or f"CT-{blueprint_id}"
+        sku = f"CT-{blueprint_id}" if blueprint_id else None
+        quantita_ct = item.get("quantity") or 0
+        prezzo_cents = price.get("cents") or 0
+        prezzo_ct = round(prezzo_cents / 100, 2)
+
+        if not sku:
+            non_trovati += 1
+            continue
+
+        existing = crud.get_prodotto_by_sku(db, sku)
+        if existing:
+            trovati += 1
+            preview_item = {
+                "sku": sku,
+                "nome": nome,
+                "blueprint_id": blueprint_id,
+                "prezzo_attuale": float(existing.prezzo_vendita) if existing.prezzo_vendita else None,
+                "prezzo_cardtrader": prezzo_ct,
+                "quantita_attuale": existing.quantita,
+                "quantita_cardtrader": quantita_ct,
+                "trovato": True,
+            }
+            if apply:
+                update_data = ProdottoUpdate(
+                    prezzo_vendita=Decimal(str(prezzo_ct)),
+                    quantita=quantita_ct,
+                )
+                crud.update_prodotto(db, existing.id, update_data)
+        else:
+            non_trovati += 1
+            preview_item = {
+                "sku": sku,
+                "nome": nome,
+                "blueprint_id": blueprint_id,
+                "prezzo_attuale": None,
+                "prezzo_cardtrader": prezzo_ct,
+                "quantita_attuale": None,
+                "quantita_cardtrader": quantita_ct,
+                "trovato": False,
+            }
+        anteprima.append(preview_item)
+
+    return {
+        "trovati": trovati,
+        "non_trovati": non_trovati,
+        "anteprima": anteprima,
+        "applicato": apply,
+    }
+
+
 class SyncRequest(BaseModel):
     cardtrader_id: int
     quantita: int
