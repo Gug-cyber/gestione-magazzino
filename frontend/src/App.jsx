@@ -8,6 +8,7 @@ import Login from './pages/Login.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Prodotti from './pages/Prodotti.jsx'
+import DettaglioProdotto from './pages/DettaglioProdotto.jsx'
 import Movimenti from './pages/Movimenti.jsx'
 import Fornitori from './pages/Fornitori.jsx'
 import Ubicazioni from './pages/Ubicazioni.jsx'
@@ -62,6 +63,11 @@ function App() {
           <Route path="/prodotti/nuovo" element={
             <ProtectedRoute>
               <AppLayout><NuovoProdotto /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/prodotti/:id" element={
+            <ProtectedRoute>
+              <AppLayout><DettaglioProdotto /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/movimenti/nuovo" element={

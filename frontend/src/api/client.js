@@ -33,6 +33,7 @@ export const prodottiAPI = {
   getAll: (params) => client.get('/api/prodotti/', { params }),
   getById: (id) => client.get(`/api/prodotti/${id}`),
   getSottoScorta: () => client.get('/api/prodotti/sotto-scorta'),
+  getScheda: (id) => client.get(`/api/prodotti/${id}/scheda`),
   create: (data) => client.post('/api/prodotti/', data),
   update: (id, data) => client.put(`/api/prodotti/${id}`, data),
   delete: (id) => client.delete(`/api/prodotti/${id}`),

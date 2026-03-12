@@ -26,6 +26,7 @@ class MovimentoUpdate(BaseModel):
 class MovimentoResponse(MovimentoBase):
     id: int
     data_movimento: Optional[datetime] = None
+    fornitore_nome: Optional[str] = None
 
     class Config:
         from_attributes = True
