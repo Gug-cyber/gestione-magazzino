@@ -174,4 +174,24 @@ export const cardtraderAPI = {
   getMarketPrices: (blueprintId, params) => client.get(`/api/cardtrader/market-prices/${blueprintId}`, { params }),
 }
 
+/**
+ * Restituisce l'URL completo per mostrare la foto di un prodotto.
+ * - Se foto_url è già un URL assoluto (Cloudinary), lo restituisce direttamente.
+ * - Se foto_url è un path relativo (/api/prodotti/...), costruisce l'URL assoluto
+ *   aggiungendo il token JWT come query param per evitare il 401 sui tag <img>.
+ * - Se foto_url è null/undefined, restituisce null.
+ */
+export function getFotoUrl(foto_url) {
+  if (!foto_url) return null
+  if (foto_url.startsWith('http://') || foto_url.startsWith('https://')) {
+    return foto_url
+  }
+  const token = localStorage.getItem('token')
+  const base = import.meta.env.VITE_API_URL || ''
+  if (token) {
+    return `${base}${foto_url}?token=${encodeURIComponent(token)}`
+  }
+  return `${base}${foto_url}`
+}
+
 export default client

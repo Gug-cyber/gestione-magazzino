@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { prodottiAPI } from '../api/client'
+import { prodottiAPI, getFotoUrl } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { useIsMobile } from '../hooks/useIsMobile'
 import StatoBadge from '../components/ui/StatoBadge'
@@ -100,7 +100,7 @@ function Prodotti() {
               <div className={styles.cardHeader}>
                 <div className={styles.cardInfo}>
                   {p.foto_url
-                    ? <img src={p.foto_url} alt={p.nome} style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />
+                    ? <img src={getFotoUrl(p.foto_url)} alt={p.nome} style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />
                     : <span style={{ fontSize: '2rem' }}>📷</span>
                   }
                   <div>
@@ -164,7 +164,7 @@ function Prodotti() {
                   <td className={styles.td}>{p.id}</td>
                   <td className={styles.td}>
                     {p.foto_url
-                      ? <img src={p.foto_url} alt={p.nome} className={styles.productImg} />
+                      ? <img src={getFotoUrl(p.foto_url)} alt={p.nome} className={styles.productImg} />
                       : <span style={{ fontSize: '1.4rem' }}>📷</span>
                     }
                   </td>
