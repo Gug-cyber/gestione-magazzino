@@ -21,6 +21,7 @@ import Fatture from './pages/Fatture.jsx'
 import Clienti from './pages/Clienti.jsx'
 import Ordini from './pages/Ordini.jsx'
 import CardTrader from './pages/CardTrader.jsx'
+import Amministrazione from './pages/Amministrazione.jsx'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -123,6 +124,11 @@ function App() {
           <Route path="/cardtrader" element={
             <ProtectedRoute>
               <AppLayout><CardTrader /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/amministrazione" element={
+            <ProtectedRoute>
+              <AppLayout><Amministrazione /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>

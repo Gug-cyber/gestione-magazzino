@@ -92,6 +92,13 @@ export const forgotUsername = (email) => client.post('/api/auth/forgot-username'
 export const forgotPassword = (email) => client.post('/api/auth/forgot-password', { email })
 export const resetPassword = (token, new_password) => client.post('/api/auth/reset-password', { token, new_password })
 
+export const amministrazioneAPI = {
+  getUtenti: () => client.get('/api/auth/utenti'),
+  createUtente: (data) => client.post('/api/auth/utenti', data),
+  updateUtente: (id, data) => client.put(`/api/auth/utenti/${id}`, data),
+  deleteUtente: (id) => client.delete(`/api/auth/utenti/${id}`),
+}
+
 export const speseGestioneAPI = {
   getAll: (params) => client.get('/api/spese-gestione/', { params }),
   getById: (id) => client.get(`/api/spese-gestione/${id}`),
