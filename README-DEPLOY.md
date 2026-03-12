@@ -126,9 +126,19 @@ Ogni volta che fai un `git push` sul branch `main`:
 
 ---
 
-## 📁 Note sulle foto prodotti
+## 📁 Foto prodotti — Cloudinary
 
-Il piano gratuito di Koyeb ha un **filesystem effimero**: le foto caricate vengono perse al riavvio del servizio. Per una soluzione persistente, considera di usare [Cloudinary](https://cloudinary.com) (piano gratuito disponibile) o [Supabase Storage](https://supabase.com). Per ora le foto funzionano ma non sono persistenti tra un riavvio e l'altro.
+Le foto dei prodotti vengono archiviate su **Cloudinary** (storage cloud gratuito fino a 25 GB).
+
+### Setup Cloudinary (obbligatorio per le foto):
+1. Crea un account gratuito su [cloudinary.com](https://cloudinary.com)
+2. Dal dashboard Cloudinary copia **Cloud Name**, **API Key**, **API Secret**
+3. Aggiungi queste variabili d'ambiente al backend (Render/Koyeb):
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_API_KEY`
+   - `CLOUDINARY_API_SECRET`
+
+Senza queste variabili, l'upload delle foto restituirà un errore 503 ma il resto dell'app funzionerà normalmente.
 
 ---
 
