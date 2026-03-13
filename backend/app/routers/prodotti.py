@@ -4,15 +4,16 @@ import os
 import cloudinary
 import cloudinary.uploader
 from datetime import datetime as dt_datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query, Header
 from fastapi.responses import FileResponse, RedirectResponse, Response
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
 from ..crud import prodotto as crud
-from ..auth import get_current_active_user
+from ..auth import get_current_active_user, SECRET_KEY, ALGORITHM
 from ..models.movimento import Movimento
 from ..models.prodotto import Prodotto
 router = APIRouter()
@@ -273,8 +274,22 @@ async def upload_foto_prodotto(prodotto_id: int, request: Request, file: UploadF
 def get_foto_prodotto(
     prodotto_id: int,
     token: Optional[str] = Query(default=None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(default=None),
 ):
+    # Verifica autenticazione: prima Bearer header, poi query param ?token=
+    jwt_token = None
+    if authorization and authorization.startswith("Bearer "):
+        jwt_token = authorization[7:]
+    elif token:
+        jwt_token = token
+
+    if jwt_token:
+        try:
+            jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Token non valido")
+
     db_prodotto = crud.get_prodotto(db, prodotto_id)
     if not db_prodotto or not db_prodotto.foto_path:
         raise HTTPException(status_code=404, detail="Foto non trovata")

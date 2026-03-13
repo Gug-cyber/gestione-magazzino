@@ -19,6 +19,18 @@ export default defineConfig(async () => {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // NetworkOnly for API calls (never cache /api/)
         runtimeCaching: [
+          // Foto prodotti: NetworkOnly with credentials so the ?token= query param
+          // reaches the backend. Must be listed BEFORE the generic /api/ rule.
+          {
+            urlPattern: /\/api\/prodotti\/\d+\/foto(\?.*)?$/i,
+            handler: 'NetworkOnly',
+            options: {
+              fetchOptions: {
+                credentials: 'same-origin',
+              },
+            },
+          },
+          // All other API calls: NetworkOnly
           {
             urlPattern: /^https?:\/\/.*\/api\/.*/i,
             handler: 'NetworkOnly',
