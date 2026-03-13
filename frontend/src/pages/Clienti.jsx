@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clientiAPI } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const primaryColor = '#1a237e'
 const cardStyle = {
@@ -40,6 +41,7 @@ const emptyForm = {
 
 export default function Clienti() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [clienti, setClienti] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -188,7 +190,7 @@ export default function Clienti() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table / Card list */}
       <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {error && (
           <div style={{ padding: '16px 20px', backgroundColor: '#ffebee', color: '#c62828' }}>{error}</div>
@@ -201,6 +203,32 @@ export default function Clienti() {
             <button onClick={openNewModal} style={{ background: 'none', border: 'none', color: primaryColor, cursor: 'pointer', fontWeight: 'bold' }}>
               Aggiungine uno!
             </button>
+          </div>
+        ) : isMobile ? (
+          <div style={{ padding: '8px' }}>
+            {clienti.map((c) => {
+              const nomeCompleto = c.cognome ? `${c.nome} ${c.cognome}` : c.nome
+              return (
+                <div key={c.id} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: primaryColor, fontSize: '1rem' }}>
+                        {c.tipo === 'azienda' ? '🏢' : '👤'} {nomeCompleto}
+                      </div>
+                      {c.email && <div style={{ fontSize: '0.85rem', color: '#555', marginTop: '2px' }}>✉️ {c.email}</div>}
+                      {c.telefono && <div style={{ fontSize: '0.85rem', color: '#555' }}>📞 {c.telefono}</div>}
+                      {c.citta && <div style={{ fontSize: '0.85rem', color: '#888' }}>📍 {c.citta}{c.provincia ? ` (${c.provincia})` : ''}</div>}
+                    </div>
+                    <button
+                      onClick={() => navigate(`/clienti/${c.id}`)}
+                      style={{ backgroundColor: primaryColor, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', marginLeft: '8px' }}
+                    >
+                      Dettagli →
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -264,8 +292,8 @@ export default function Clienti() {
 
       {/* Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '8px' : '0' }}>
+          <div className="modal-inner" style={{ backgroundColor: '#fff', borderRadius: '10px', padding: isMobile ? '20px 16px' : '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ color: primaryColor, margin: 0 }}>
                 ➕ Nuovo Cliente
@@ -280,7 +308,7 @@ export default function Clienti() {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
                 {/* Tipo */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Tipo *</label>

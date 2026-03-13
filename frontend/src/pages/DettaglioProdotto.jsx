@@ -450,7 +450,9 @@ function DettaglioProdotto() {
       {/* Chart */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>📊 Quantità nel tempo</h2>
-        <QuantitaChart storico={storico_quantita} />
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <QuantitaChart storico={storico_quantita} />
+        </div>
       </div>
 
       {/* Movements table */}

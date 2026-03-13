@@ -34,6 +34,7 @@ function AppLayout({ children }) {
         <main style={{
           flex: 1,
           padding: 'clamp(12px, 3vw, 24px)',
+          paddingBottom: 'max(clamp(12px, 3vw, 24px), env(safe-area-inset-bottom, 0px))',
           backgroundColor: '#f5f5f5',
           minWidth: 0,
           overflowX: 'hidden',

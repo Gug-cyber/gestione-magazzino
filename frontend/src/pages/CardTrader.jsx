@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { cardtraderAPI } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const primaryColor = '#1a237e'
 
@@ -42,6 +43,7 @@ function formatPrice(value) {
 }
 
 export default function CardTrader() {
+  const isMobile = useIsMobile()
   const [tokenConfigured, setTokenConfigured] = useState(false)
   const [statusLoading, setStatusLoading] = useState(true)
 
@@ -198,42 +200,69 @@ export default function CardTrader() {
             {marketPricesLoading && (
               <p style={{ color: '#666', fontSize: '13px' }}>⏳ Recupero prezzi di mercato...</p>
             )}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f5f5f5' }}>
-                    <th style={thStyle}>Nome</th>
-                    <th style={thStyle}>Blueprint ID</th>
-                    <th style={thStyle}>Qtà</th>
-                    <th style={thStyle}>Prezzo</th>
-                    <th style={thStyle}>Condizione</th>
-                    <th style={thStyle}>Lingua</th>
-                    <th style={thStyle}>Prezzo min. mercato</th>
-                    <th style={thStyle}>Prezzo medio mercato</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {listings.map((item, idx) => {
-                    const key = `${item.blueprint_id}|${item.condizione || ''}|${item.lingua || ''}`
-                    const mp = marketPrices[key]
-                    const mpMin = marketPricesLoading ? '...' : (mp ? formatPrice(mp.prezzo_minimo) : 'N/D')
-                    const mpMed = marketPricesLoading ? '...' : (mp ? formatPrice(mp.prezzo_medio) : 'N/D')
-                    return (
-                      <tr key={item.id ?? idx} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={tdStyle}>{item.nome || '—'}</td>
-                        <td style={tdStyle}>{item.blueprint_id ?? '—'}</td>
-                        <td style={tdStyle}>{item.quantita ?? 0}</td>
-                        <td style={tdStyle}>{formatPrice(item.prezzo)}</td>
-                        <td style={tdStyle}>{item.condizione || '—'}</td>
-                        <td style={tdStyle}>{item.lingua || '—'}</td>
-                        <td style={{ ...tdStyle, color: mpMin === 'N/D' ? '#aaa' : '#1a237e', fontWeight: mpMin !== 'N/D' && mpMin !== '...' ? 600 : 400 }}>{mpMin}</td>
-                        <td style={{ ...tdStyle, color: mpMed === 'N/D' ? '#aaa' : '#1a237e', fontWeight: mpMed !== 'N/D' && mpMed !== '...' ? 600 : 400 }}>{mpMed}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {isMobile ? (
+              <div>
+                {listings.map((item, idx) => {
+                  const key = `${item.blueprint_id}|${item.condizione || ''}|${item.lingua || ''}`
+                  const mp = marketPrices[key]
+                  const mpMin = marketPricesLoading ? '...' : (mp ? formatPrice(mp.prezzo_minimo) : 'N/D')
+                  const mpMed = marketPricesLoading ? '...' : (mp ? formatPrice(mp.prezzo_medio) : 'N/D')
+                  return (
+                    <div key={item.id ?? idx} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
+                      <div style={{ fontWeight: 700, color: primaryColor, marginBottom: '8px', fontSize: '0.95rem' }}>{item.nome || '—'}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: '0.85rem', color: '#555' }}>
+                        <span>Blueprint ID: <strong>{item.blueprint_id ?? '—'}</strong></span>
+                        <span>Qtà: <strong>{item.quantita ?? 0}</strong></span>
+                        <span>Prezzo: <strong>{formatPrice(item.prezzo)}</strong></span>
+                        <span>Condizione: <strong>{item.condizione || '—'}</strong></span>
+                        <span>Lingua: <strong>{item.lingua || '—'}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '16px', marginTop: '8px', fontSize: '0.85rem' }}>
+                        <span>Min mercato: <strong style={{ color: mpMin === 'N/D' ? '#aaa' : primaryColor }}>{mpMin}</strong></span>
+                        <span>Medio mercato: <strong style={{ color: mpMed === 'N/D' ? '#aaa' : primaryColor }}>{mpMed}</strong></span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f5f5f5' }}>
+                      <th style={thStyle}>Nome</th>
+                      <th style={thStyle}>Blueprint ID</th>
+                      <th style={thStyle}>Qtà</th>
+                      <th style={thStyle}>Prezzo</th>
+                      <th style={thStyle}>Condizione</th>
+                      <th style={thStyle}>Lingua</th>
+                      <th style={thStyle}>Prezzo min. mercato</th>
+                      <th style={thStyle}>Prezzo medio mercato</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listings.map((item, idx) => {
+                      const key = `${item.blueprint_id}|${item.condizione || ''}|${item.lingua || ''}`
+                      const mp = marketPrices[key]
+                      const mpMin = marketPricesLoading ? '...' : (mp ? formatPrice(mp.prezzo_minimo) : 'N/D')
+                      const mpMed = marketPricesLoading ? '...' : (mp ? formatPrice(mp.prezzo_medio) : 'N/D')
+                      return (
+                        <tr key={item.id ?? idx} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={tdStyle}>{item.nome || '—'}</td>
+                          <td style={tdStyle}>{item.blueprint_id ?? '—'}</td>
+                          <td style={tdStyle}>{item.quantita ?? 0}</td>
+                          <td style={tdStyle}>{formatPrice(item.prezzo)}</td>
+                          <td style={tdStyle}>{item.condizione || '—'}</td>
+                          <td style={tdStyle}>{item.lingua || '—'}</td>
+                          <td style={{ ...tdStyle, color: mpMin === 'N/D' ? '#aaa' : '#1a237e', fontWeight: mpMin !== 'N/D' && mpMin !== '...' ? 600 : 400 }}>{mpMin}</td>
+                          <td style={{ ...tdStyle, color: mpMed === 'N/D' ? '#aaa' : '#1a237e', fontWeight: mpMed !== 'N/D' && mpMed !== '...' ? 600 : 400 }}>{mpMed}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
 
@@ -252,7 +281,7 @@ export default function CardTrader() {
         </p>
 
         <button
-          style={tokenConfigured ? btnPrimary : { ...btnPrimary, opacity: 0.5, cursor: 'not-allowed' }}
+          style={tokenConfigured ? { ...btnPrimary, width: isMobile ? '100%' : 'auto' } : { ...btnPrimary, opacity: 0.5, cursor: 'not-allowed', width: isMobile ? '100%' : 'auto' }}
           onClick={handleImport}
           disabled={!tokenConfigured || importLoading}
         >
@@ -288,7 +317,7 @@ export default function CardTrader() {
           Cerca il prezzo più basso e il prezzo medio di una carta su CardTrader, filtrati per condizione e lingua.
         </p>
 
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '16px', flexDirection: isMobile ? 'column' : 'row' }}>
           <div>
             <label style={labelStyle}>Blueprint ID</label>
             <input
@@ -318,8 +347,8 @@ export default function CardTrader() {
 
           <button
             style={(!tokenConfigured || !mpBlueprintId || mpLoading)
-              ? { ...btnPrimary, opacity: 0.5, cursor: 'not-allowed' }
-              : btnPrimary}
+              ? { ...btnPrimary, opacity: 0.5, cursor: 'not-allowed', width: isMobile ? '100%' : 'auto' }
+              : { ...btnPrimary, width: isMobile ? '100%' : 'auto' }}
             onClick={handleSearchMarketPrices}
             disabled={!tokenConfigured || !mpBlueprintId || mpLoading}
           >
@@ -403,4 +432,5 @@ const inputStyle = {
   border: '1px solid #ccc',
   fontSize: '14px',
   minWidth: '140px',
+  width: '100%',
 }

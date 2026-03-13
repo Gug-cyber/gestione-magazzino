@@ -21,3 +21,51 @@ html, body {
   h1 { font-size: 1.4rem !important; }
   h2 { font-size: 1.2rem !important; }
 }
+
+/* ── Safe area per iPhone X+ (notch / home indicator) ───────── */
+body {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Touch targets minimi 44px ───────────────────────────────── */
+@media (max-width: 767px) {
+  button, a, select, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="date"], input[type="search"],
+  textarea, select {
+    font-size: 16px !important; /* evita zoom automatico su iOS */
+  }
+}
+
+/* ── Form responsive su mobile ───────────────────────────────── */
+@media (max-width: 767px) {
+  .form-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+  .modal-inner {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 8px auto !important;
+    border-radius: 12px !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* ── Bottoni full-width su mobile ────────────────────────────── */
+@media (max-width: 767px) {
+  .btn-mobile-full {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── Stack flex su mobile ────────────────────────────────────── */
+@media (max-width: 767px) {
+  .flex-mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+}

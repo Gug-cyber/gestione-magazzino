@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateProfilo } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 function Profilo() {
   const { user, setUser } = useAuth()
+  const isMobile = useIsMobile()
 
   const [nuovoUsername, setNuovoUsername] = useState(user?.username || '')
   const [usernameMsg, setUsernameMsg] = useState(null)
@@ -79,10 +81,10 @@ function Profilo() {
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: '24px',
+        padding: isMobile ? '16px' : '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         marginBottom: '24px',
-        maxWidth: '480px',
+        maxWidth: isMobile ? '100%' : '480px',
       }}>
         <h2 style={{ marginBottom: '16px', color: '#333' }}>✏️ Cambia Username</h2>
         <form onSubmit={handleSalvaUsername}>
@@ -110,10 +112,10 @@ function Profilo() {
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: '24px',
+        padding: isMobile ? '16px' : '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         marginBottom: '24px',
-        maxWidth: '480px',
+        maxWidth: isMobile ? '100%' : '480px',
       }}>
         <h2 style={{ marginBottom: '16px', color: '#333' }}>📧 Cambia Email</h2>
         <form onSubmit={handleSalvaEmail}>
@@ -142,9 +144,9 @@ function Profilo() {
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: '24px',
+        padding: isMobile ? '16px' : '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        maxWidth: '480px',
+        maxWidth: isMobile ? '100%' : '480px',
       }}>
         <h2 style={{ marginBottom: '16px', color: '#333' }}>🔒 Cambia Password</h2>
         <form onSubmit={handleCambiaPassword}>
