@@ -36,21 +36,21 @@ function BarcodeCanvas({ value }) {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
 
-    canvas.width = 280
-    canvas.height = 80
+    canvas.width = 180
+    canvas.height = 55
 
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    const barWidth = 2
+    const barWidth = 1
     const quietZone = 10
     let x = quietZone
 
     ctx.fillStyle = '#000000'
 
-    ctx.fillRect(x, 5, barWidth, 60); x += barWidth + barWidth
-    ctx.fillRect(x, 5, barWidth * 2, 60); x += barWidth * 2 + barWidth
-    ctx.fillRect(x, 5, barWidth, 60); x += barWidth + barWidth * 2
+    ctx.fillRect(x, 4, barWidth, 40); x += barWidth + barWidth
+    ctx.fillRect(x, 4, barWidth * 2, 40); x += barWidth * 2 + barWidth
+    ctx.fillRect(x, 4, barWidth, 40); x += barWidth + barWidth * 2
 
     for (let i = 0; i < value.length && x < canvas.width - quietZone - 20; i++) {
       const charCode = value.charCodeAt(i)
@@ -59,20 +59,20 @@ function BarcodeCanvas({ value }) {
         const isFilled = (pattern >> b) & 1
         const w = barWidth + (isFilled ? barWidth : 0)
         if (isFilled) {
-          ctx.fillRect(x, 5, w, 60)
+          ctx.fillRect(x, 4, w, 40)
         }
         x += w + barWidth
       }
     }
 
     if (x < canvas.width - quietZone - 10) {
-      ctx.fillRect(x, 5, barWidth * 2, 60); x += barWidth * 2 + barWidth
-      ctx.fillRect(x, 5, barWidth, 60); x += barWidth + barWidth
-      ctx.fillRect(x, 5, barWidth * 2, 60)
+      ctx.fillRect(x, 4, barWidth * 2, 40); x += barWidth * 2 + barWidth
+      ctx.fillRect(x, 4, barWidth, 40); x += barWidth + barWidth
+      ctx.fillRect(x, 4, barWidth * 2, 40)
     }
   }, [value])
 
-  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+  return <canvas id="barcode-canvas" ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
 }
 
 const emptyForm = {
@@ -174,6 +174,84 @@ function NuovoProdotto() {
     }
   }
 
+  const handlePrintBarcode = () => {
+    const canvas = document.getElementById('barcode-canvas')
+    if (!canvas) return
+    const imgData = canvas.toDataURL('image/png')
+    const printWindow = window.open('', '_blank', 'width=400,height=300')
+    if (!printWindow) return
+    const safeSku = form.sku.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    const safeNome = form.nome ? form.nome.substring(0, 30).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) : ''
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Etichetta - ${safeSku}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              background: white;
+              font-family: monospace;
+            }
+            .label {
+              border: 1px solid #999;
+              border-radius: 6px;
+              padding: 10px 14px;
+              text-align: center;
+              width: 220px;
+              background: white;
+            }
+            .label img {
+              width: 180px;
+              height: auto;
+              display: block;
+              margin: 0 auto;
+            }
+            .sku-text {
+              font-size: 11px;
+              letter-spacing: 0.12em;
+              font-weight: bold;
+              color: #000;
+              margin-top: 4px;
+            }
+            .product-name {
+              font-size: 10px;
+              color: #444;
+              margin-top: 2px;
+              font-family: sans-serif;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            @media print {
+              body { min-height: unset; }
+              .label { border-color: #ccc; }
+              @page { margin: 10mm; size: 60mm 40mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <img src="${imgData}" alt="barcode" />
+            <div class="sku-text">${safeSku}</div>
+            ${safeNome ? `<div class="product-name">${safeNome}</div>` : ''}
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          <\/script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   const handleDownloadSample = () => {
     const csv = [
       'nome,sku,quantita,quantita_minima,prezzo_acquisto,prezzo_vendita,descrizione,stato_conservazione,lingua',
@@ -268,25 +346,42 @@ function NuovoProdotto() {
                 <div style={{
                   border: '1px solid #e0e0e0',
                   borderRadius: '8px',
-                  padding: '16px',
+                  padding: '12px',
                   backgroundColor: '#fafafa',
                   textAlign: 'center',
                   marginBottom: '8px',
                 }}>
-                  <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '8px', fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '6px', fontWeight: 600 }}>
                     🔖 Codice a Barre (SKU)
                   </div>
                   <BarcodeCanvas value={form.sku} />
                   <div style={{
                     fontFamily: 'monospace',
-                    fontSize: '1.1rem',
-                    letterSpacing: '0.15em',
+                    fontSize: '0.85rem',
+                    letterSpacing: '0.12em',
                     color: '#1a237e',
-                    marginTop: '8px',
+                    marginTop: '4px',
                     fontWeight: 'bold',
                   }}>
                     {form.sku}
                   </div>
+                  <button
+                    type="button"
+                    onClick={handlePrintBarcode}
+                    style={{
+                      marginTop: '8px',
+                      backgroundColor: '#37474f',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '5px 12px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    🖨️ Stampa etichetta
+                  </button>
                 </div>
               )}
 
