@@ -19,6 +19,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Idempotency guard: skip if the DB is already initialised
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if "categorie" in inspector.get_table_names():
+        return
+
     op.create_table(
         "categorie",
         sa.Column("id", sa.Integer(), nullable=False),
