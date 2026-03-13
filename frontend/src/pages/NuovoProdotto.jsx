@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 function generateSKU(nome, statoConservazione, lingua) {
   const parenMatch = nome.match(/\(([^)]+)\)/)
@@ -28,51 +29,79 @@ function generateSKU(nome, statoConservazione, lingua) {
   return parts.join('-')
 }
 
-function BarcodeCanvas({ value }) {
-  const canvasRef = useRef(null)
+const CODE39_CHARS = {
+  '0': '101001101101', '1': '110100101011', '2': '101100101011',
+  '3': '110110010101', '4': '101001101011', '5': '110100110101',
+  '6': '101100110101', '7': '101001011011', '8': '110100101101',
+  '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
+  'C': '110110100101', 'D': '101011001011', 'E': '110101100101',
+  'F': '101101100101', 'G': '101010011011', 'H': '110101001101',
+  'I': '101101001101', 'J': '101011001101', 'K': '110101010011',
+  'L': '101101010011', 'M': '110110101001', 'N': '101011010011',
+  'O': '110101101001', 'P': '101101101001', 'Q': '101010110011',
+  'R': '110101011001', 'S': '101101011001', 'T': '101011011001',
+  'U': '110010101011', 'V': '100110101011', 'W': '110011010101',
+  'X': '100101101011', 'Y': '110010110101', 'Z': '100110110101',
+  '-': '100101011011', '.': '110010101101', ' ': '100110101101',
+  '$': '100100100101', '/': '100100101001', '+': '100101001001',
+  '%': '101001001001', '*': '100101101101',
+}
+
+function BarcodeCanvas({ value, canvasRef: extRef }) {
+  const localRef = useRef(null)
+  const canvasRef = extRef || localRef
 
   useEffect(() => {
     if (!canvasRef.current || !value) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
+    const narrowW = 1.5
+    const wideW = narrowW * 3
+    const barcodeHeight = 50
+    const quietZone = 8
+    // Strip characters not supported by Code 39 (keep only valid charset)
+    const sanitized = value.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
+    const chars = ('*' + sanitized + '*').split('')
 
-    canvas.width = 180
-    canvas.height = 55
+    let totalWidth = quietZone * 2
+    for (let ci = 0; ci < chars.length; ci++) {
+      const pattern = CODE39_CHARS[chars[ci]]
+      if (!pattern) continue
+      for (let i = 0; i < pattern.length; i++) {
+        totalWidth += pattern[i] === '1' ? wideW : narrowW
+      }
+      if (ci < chars.length - 1) totalWidth += narrowW
+    }
+
+    canvas.width = Math.ceil(totalWidth)
+    canvas.height = barcodeHeight + 20
 
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    const barWidth = 1
-    const quietZone = 10
     let x = quietZone
-
     ctx.fillStyle = '#000000'
-
-    ctx.fillRect(x, 4, barWidth, 40); x += barWidth + barWidth
-    ctx.fillRect(x, 4, barWidth * 2, 40); x += barWidth * 2 + barWidth
-    ctx.fillRect(x, 4, barWidth, 40); x += barWidth + barWidth * 2
-
-    for (let i = 0; i < value.length && x < canvas.width - quietZone - 20; i++) {
-      const charCode = value.charCodeAt(i)
-      const pattern = charCode % 16
-      for (let b = 0; b < 8; b++) {
-        const isFilled = (pattern >> b) & 1
-        const w = barWidth + (isFilled ? barWidth : 0)
-        if (isFilled) {
-          ctx.fillRect(x, 4, w, 40)
-        }
-        x += w + barWidth
+    for (let ci = 0; ci < chars.length; ci++) {
+      const char = chars[ci]
+      const pattern = CODE39_CHARS[char]
+      if (!pattern) continue
+      for (let i = 0; i < pattern.length; i++) {
+        const isBar = i % 2 === 0
+        const isWide = pattern[i] === '1'
+        const w = isWide ? wideW : narrowW
+        if (isBar) ctx.fillRect(x, 0, w, barcodeHeight)
+        x += w
       }
+      if (ci < chars.length - 1) x += narrowW
     }
 
-    if (x < canvas.width - quietZone - 10) {
-      ctx.fillRect(x, 4, barWidth * 2, 40); x += barWidth * 2 + barWidth
-      ctx.fillRect(x, 4, barWidth, 40); x += barWidth + barWidth
-      ctx.fillRect(x, 4, barWidth * 2, 40)
-    }
+    ctx.font = '9px monospace'
+    ctx.fillStyle = '#000'
+    ctx.textAlign = 'center'
+    ctx.fillText(sanitized, canvas.width / 2, barcodeHeight + 12)
   }, [value])
 
-  return <canvas id="barcode-canvas" ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
 }
 
 const emptyForm = {
@@ -83,6 +112,7 @@ const emptyForm = {
 
 function NuovoProdotto() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [form, setForm] = useState(emptyForm)
   const [categorie, setCategorie] = useState([])
   const [ubicazioni, setUbicazioni] = useState([])
@@ -94,6 +124,7 @@ function NuovoProdotto() {
   const fotoInputRef = useRef(null)
   const [showScanner, setShowScanner] = useState(false)
   const [skuManuale, setSkuManuale] = useState(false)
+  const barcodeCanvasRef = useRef(null)
 
   useEffect(() => {
     if (skuManuale) return
@@ -175,80 +206,32 @@ function NuovoProdotto() {
   }
 
   const handlePrintBarcode = () => {
-    const canvas = document.getElementById('barcode-canvas')
+    const canvas = barcodeCanvasRef.current
     if (!canvas) return
     const imgData = canvas.toDataURL('image/png')
-    const printWindow = window.open('', '_blank', 'width=400,height=300')
+    const printWindow = window.open('', '_blank', 'width=300,height=200')
     if (!printWindow) return
     const safeSku = form.sku.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-    const safeNome = form.nome ? form.nome.substring(0, 30).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) : ''
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Etichetta - ${safeSku}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              min-height: 100vh;
-              background: white;
-              font-family: monospace;
-            }
-            .label {
-              border: 1px solid #999;
-              border-radius: 6px;
-              padding: 10px 14px;
-              text-align: center;
-              width: 220px;
-              background: white;
-            }
-            .label img {
-              width: 180px;
-              height: auto;
-              display: block;
-              margin: 0 auto;
-            }
-            .sku-text {
-              font-size: 11px;
-              letter-spacing: 0.12em;
-              font-weight: bold;
-              color: #000;
-              margin-top: 4px;
-            }
-            .product-name {
-              font-size: 10px;
-              color: #444;
-              margin-top: 2px;
-              font-family: sans-serif;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-            @media print {
-              body { min-height: unset; }
-              .label { border-color: #ccc; }
-              @page { margin: 10mm; size: 60mm 40mm; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <img src="${imgData}" alt="barcode" />
-            <div class="sku-text">${safeSku}</div>
-            ${safeNome ? `<div class="product-name">${safeNome}</div>` : ''}
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          <\/script>
-        </body>
-      </html>
-    `)
+    const safeNome = form.nome ? form.nome.substring(0, 25).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) : ''
+    printWindow.document.write(`<!DOCTYPE html>
+<html><head><title>Etichetta</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: 50mm 25mm; margin: 0; } /* Standard adhesive label size (approx. 2" x 1") */
+  body { width: 50mm; height: 25mm; overflow: hidden; background: white; font-family: monospace; display: flex; align-items: center; justify-content: center; }
+  .label { width: 48mm; height: 23mm; border: 0.3mm solid #888; border-radius: 1.5mm; padding: 1mm 2mm; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .label img { width: 44mm; height: auto; display: block; margin: 0 auto; }
+  .sku { font-size: 6pt; font-weight: bold; letter-spacing: 0.05em; margin-top: 1mm; }
+  .nome { font-size: 5pt; color: #333; font-family: sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 44mm; }
+</style>
+</head><body>
+<div class="label">
+  <img src="${imgData}" />
+  <div class="sku">${safeSku}</div>
+  ${safeNome ? `<div class="nome">${safeNome}</div>` : ''}
+</div>
+<script>window.onload=function(){window.print();setTimeout(function(){window.close()},400);}<\/script>
+</body></html>`)
     printWindow.document.close()
   }
 
@@ -268,125 +251,130 @@ function NuovoProdotto() {
   }
 
   return (
-    <div>
+    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1a237e', marginBottom: '8px' }}>➕ Aggiungi Prodotto</h1>
+      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <button
           onClick={() => navigate('/prodotti')}
-          style={{ background: 'none', border: 'none', color: '#1a237e', cursor: 'pointer', fontSize: '0.9rem', padding: 0, textDecoration: 'underline' }}
+          style={{ background: 'none', border: '1.5px solid #c5cae9', color: '#1a237e', cursor: 'pointer', fontSize: '0.9rem', padding: '6px 14px', borderRadius: '8px', fontWeight: 600 }}
         >
-          ← Torna ai Prodotti
+          ← Prodotti
         </button>
+        <h1 style={{ color: '#1a237e', margin: 0 }}>➕ Aggiungi Prodotto</h1>
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+      {error && (
+        <div style={{ color: '#c62828', background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '8px', padding: '10px 16px', marginBottom: '16px' }}>
+          {error}
+        </div>
+      )}
 
-      {/* Two sections side by side */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {/* Two-column layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 360px', gap: '20px', alignItems: 'start' }}>
 
-        {/* Section 1 — Manual form */}
-        <div style={{ flex: '1 1 400px', backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#1a237e', marginTop: 0, marginBottom: '4px' }}>📝 Inserimento Manuale</h2>
-          <p style={{ color: '#666', marginTop: 0, marginBottom: '20px', fontSize: '0.92rem' }}>Compila il form per aggiungere un prodotto</p>
+        {/* LEFT: Form */}
+        <div style={cardStyle}>
+          <h2 style={{ color: '#1a237e', marginTop: 0, marginBottom: '18px', fontSize: '1.1rem' }}>📝 Inserimento Manuale</h2>
 
           <form onSubmit={handleSubmit}>
-            <div style={gridStyle}>
-              {[
-                { key: 'nome', label: 'Nome *', required: true },
-                { key: 'descrizione', label: 'Descrizione' },
-                { key: 'quantita', label: 'Quantità', type: 'number' },
-                { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
-                { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },
-                { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
-              ].map(({ key, label, type = 'text', required, step }) => (
-                <label key={key} style={labelStyle}>
-                  <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
-                  <input
-                    type={type}
-                    step={step}
-                    required={required}
-                    value={form[key]}
-                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    style={inputStyle}
-                  />
-                </label>
-              ))}
+            {/* Grid 2 cols */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
+                <span style={labelTextStyle}>Nome *</span>
+                <input
+                  type="text"
+                  required
+                  value={form.nome}
+                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
+                <span style={labelTextStyle}>Descrizione</span>
+                <input
+                  type="text"
+                  value={form.descrizione}
+                  onChange={(e) => setForm({ ...form, descrizione: e.target.value })}
+                  style={inputStyle}
+                />
+              </label>
 
               <label style={labelStyle}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>SKU *</span>
+                <span style={labelTextStyle}>Quantità</span>
+                <input
+                  type="number"
+                  value={form.quantita}
+                  onChange={(e) => setForm({ ...form, quantita: e.target.value })}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Quantità Minima</span>
+                <input
+                  type="number"
+                  value={form.quantita_minima}
+                  onChange={(e) => setForm({ ...form, quantita_minima: e.target.value })}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Prezzo Acquisto (€)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.prezzo_acquisto}
+                  onChange={(e) => setForm({ ...form, prezzo_acquisto: e.target.value })}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Prezzo Vendita (€)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.prezzo_vendita}
+                  onChange={(e) => setForm({ ...form, prezzo_vendita: e.target.value })}
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+
+            {/* SKU row */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>SKU *</span>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <input
                     type="text"
                     required
                     value={form.sku}
-                    onChange={(e) => {
-                      setSkuManuale(true)
-                      setForm({ ...form, sku: e.target.value })
-                    }}
+                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: e.target.value }) }}
                     style={{ ...inputStyle, flex: 1 }}
                   />
                   <button
                     type="button"
-                    onClick={() => { setSkuManuale(false) }}
-                    style={{ padding: '8px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1 }}
+                    onClick={() => setSkuManuale(false)}
+                    style={{ padding: '10px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
                     title="Rigenera SKU automaticamente"
                   >🔄</button>
                   <button
                     type="button"
                     onClick={() => setShowScanner(true)}
-                    style={{ padding: '8px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1 }}
+                    style={{ padding: '10px', backgroundColor: '#1a237e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
                     title="Scansiona codice a barre"
                   >📷</button>
                 </div>
               </label>
+            </div>
 
-              {/* Sezione Codice a Barre */}
-              {form.sku && (
-                <div style={{
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  backgroundColor: '#fafafa',
-                  textAlign: 'center',
-                  marginBottom: '8px',
-                }}>
-                  <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '6px', fontWeight: 600 }}>
-                    🔖 Codice a Barre (SKU)
-                  </div>
-                  <BarcodeCanvas value={form.sku} />
-                  <div style={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.85rem',
-                    letterSpacing: '0.12em',
-                    color: '#1a237e',
-                    marginTop: '4px',
-                    fontWeight: 'bold',
-                  }}>
-                    {form.sku}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handlePrintBarcode}
-                    style={{
-                      marginTop: '8px',
-                      backgroundColor: '#37474f',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '5px 12px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    🖨️ Stampa etichetta
-                  </button>
-                </div>
-              )}
-
+            {/* Grid 2 cols: selects */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <label style={labelStyle}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
+                <span style={labelTextStyle}>Stato di Conservazione</span>
                 <select value={form.stato_conservazione} onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })} style={inputStyle}>
                   <option value="">-- Nessuno --</option>
                   <option value="Mint">Mint</option>
@@ -400,11 +388,8 @@ function NuovoProdotto() {
               </label>
 
               <label style={labelStyle}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>Lingua</span>
-                <select
-                  value={form.lingua}
-                  onChange={(e) => setForm({ ...form, lingua: e.target.value })}
-                  style={inputStyle}>
+                <span style={labelTextStyle}>Lingua</span>
+                <select value={form.lingua} onChange={(e) => setForm({ ...form, lingua: e.target.value })} style={inputStyle}>
                   <option value="">-- Nessuna --</option>
                   <option value="Italiano">Italiano</option>
                   <option value="Inglese">Inglese</option>
@@ -415,7 +400,7 @@ function NuovoProdotto() {
               </label>
 
               <label style={labelStyle}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
+                <span style={labelTextStyle}>Categoria</span>
                 <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })} style={inputStyle}>
                   <option value="">-- Nessuna --</option>
                   {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -423,7 +408,7 @@ function NuovoProdotto() {
               </label>
 
               <label style={labelStyle}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>Ubicazione</span>
+                <span style={labelTextStyle}>Ubicazione</span>
                 <select value={form.ubicazione_id} onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })} style={inputStyle}>
                   <option value="">-- Nessuna --</option>
                   {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
@@ -431,13 +416,13 @@ function NuovoProdotto() {
               </label>
             </div>
 
-            {/* Upload Foto */}
-            <div style={{ marginBottom: '16px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555', display: 'block', marginBottom: '8px' }}>Foto prodotto</span>
+            {/* Foto upload */}
+            <div style={{ marginBottom: '20px' }}>
+              <span style={{ ...labelTextStyle, display: 'block', marginBottom: '8px' }}>Foto prodotto</span>
               <div
                 onClick={() => fotoInputRef.current && fotoInputRef.current.click()}
                 style={{
-                  width: '120px', height: '120px', border: '2px dashed #c5cae9', borderRadius: '8px',
+                  width: '140px', height: '140px', border: '2px dashed #c5cae9', borderRadius: '10px',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', backgroundColor: '#f8f9ff', overflow: 'hidden', position: 'relative',
                 }}
@@ -446,8 +431,8 @@ function NuovoProdotto() {
                   <img src={fotoPreview} alt="anteprima" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <>
-                    <span style={{ fontSize: '2rem' }}>📷</span>
-                    <span style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px', textAlign: 'center', padding: '0 8px' }}>
+                    <span style={{ fontSize: '2.5rem' }}>📷</span>
+                    <span style={{ fontSize: '0.75rem', color: '#888', marginTop: '6px', textAlign: 'center', padding: '0 8px' }}>
                       Clicca per aggiungere foto
                     </span>
                   </>
@@ -462,69 +447,89 @@ function NuovoProdotto() {
                   ✕ Rimuovi foto
                 </button>
               )}
-              <input
-                ref={fotoInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleFotoChange}
-              />
+              <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
             </div>
 
-            <button type="submit" style={btnStyle('#2e7d32')}>Crea Prodotto</button>
+            <button type="submit" style={submitBtnStyle}>✓ Crea Prodotto</button>
           </form>
         </div>
 
-        {/* Divider "OPPURE" */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '40px', paddingTop: '80px' }}>
-          <div style={{ width: '1px', height: '40px', backgroundColor: '#ddd' }} />
-          <span style={{ padding: '8px', color: '#888', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>OPPURE</span>
-          <div style={{ width: '1px', height: '40px', backgroundColor: '#ddd' }} />
-        </div>
+        {/* RIGHT: Barcode + CSV */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-        {/* Section 2 — CSV import */}
-        <div style={{ flex: '1 1 320px', backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#6a1b9a', marginTop: 0, marginBottom: '4px' }}>📂 Importa da CSV</h2>
-          <p style={{ color: '#666', marginTop: 0, marginBottom: '16px', fontSize: '0.92rem' }}>Carica un file CSV per aggiungere più prodotti contemporaneamente</p>
-
-          <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f3e5f5', borderRadius: '6px', fontSize: '0.85rem', color: '#555' }}>
-            <strong>Colonne attese:</strong><br />
-            <code style={{ fontSize: '0.8rem', wordBreak: 'break-all' }}>nome, sku, quantita, quantita_minima, prezzo_acquisto, prezzo_vendita, descrizione, stato_conservazione, lingua</code>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={() => csvInputRef.current && csvInputRef.current.click()}
-              style={btnStyle('#6a1b9a')}
-            >📂 Carica file CSV</button>
-            <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
-
-            <button
-              onClick={handleDownloadSample}
-              style={{ background: 'none', border: 'none', color: '#6a1b9a', cursor: 'pointer', fontSize: '0.88rem', textDecoration: 'underline', padding: 0, textAlign: 'left' }}
-            >Scarica CSV di esempio</button>
-          </div>
-
-          {importMsg && (
-            <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '6px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7' }}>
-              <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
-                ✅ Importati {importMsg.importati} prodotti.{importMsg.saltati > 0 ? ` ${importMsg.saltati} saltati.` : ''}
-              </span>
-              {importMsg.errori && importMsg.errori.length > 0 && (
-                <ul style={{ marginTop: '8px', marginBottom: 0, color: '#c62828', fontSize: '0.9rem' }}>
-                  {importMsg.errori.map((e, i) => <li key={i}>{e}</li>)}
-                </ul>
-              )}
-              {importMsg.importati > 0 && (
-                <button
-                  onClick={() => navigate('/prodotti')}
-                  style={{ ...btnStyle('#2e7d32'), marginTop: '12px', display: 'block' }}
-                >Vai ai Prodotti</button>
-              )}
+          {/* Barcode card */}
+          {form.sku && (
+            <div style={cardStyle}>
+              <h3 style={{ color: '#1a237e', marginTop: 0, marginBottom: '14px', fontSize: '1rem' }}>🔖 Codice a Barre</h3>
+              <BarcodeCanvas value={form.sku} canvasRef={barcodeCanvasRef} />
+              <button
+                type="button"
+                onClick={handlePrintBarcode}
+                style={{
+                  marginTop: '12px', width: '100%',
+                  backgroundColor: '#37474f', color: 'white', border: 'none',
+                  borderRadius: '8px', padding: '8px 14px', cursor: 'pointer',
+                  fontSize: '0.88rem', fontWeight: 'bold',
+                }}
+              >
+                🖨️ Stampa etichetta
+              </button>
             </div>
           )}
+
+          {/* CSV card */}
+          <div style={cardStyle}>
+            <h3 style={{ color: '#6a1b9a', marginTop: 0, marginBottom: '10px', fontSize: '1rem' }}>📂 Importa da CSV</h3>
+            <p style={{ color: '#666', marginTop: 0, marginBottom: '12px', fontSize: '0.88rem' }}>
+              Carica un file CSV per aggiungere più prodotti contemporaneamente
+            </p>
+
+            <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#f3e5f5', borderRadius: '6px', fontSize: '0.82rem', color: '#555' }}>
+              <strong>Colonne attese:</strong><br />
+              <code style={{ fontSize: '0.78rem', wordBreak: 'break-all' }}>nome, sku, quantita, quantita_minima, prezzo_acquisto, prezzo_vendita, descrizione, stato_conservazione, lingua</code>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => csvInputRef.current && csvInputRef.current.click()}
+                style={{ backgroundColor: '#6a1b9a', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.92rem' }}
+              >
+                📂 Carica file CSV
+              </button>
+              <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
+
+              <button
+                onClick={handleDownloadSample}
+                style={{ background: 'none', border: 'none', color: '#6a1b9a', cursor: 'pointer', fontSize: '0.88rem', textDecoration: 'underline', padding: 0, textAlign: 'left' }}
+              >
+                Scarica CSV di esempio
+              </button>
+            </div>
+
+            {importMsg && (
+              <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '8px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7' }}>
+                <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                  ✅ Importati {importMsg.importati} prodotti.{importMsg.saltati > 0 ? ` ${importMsg.saltati} saltati.` : ''}
+                </span>
+                {importMsg.errori && importMsg.errori.length > 0 && (
+                  <ul style={{ marginTop: '8px', marginBottom: 0, color: '#c62828', fontSize: '0.9rem' }}>
+                    {importMsg.errori.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                )}
+                {importMsg.importati > 0 && (
+                  <button
+                    onClick={() => navigate('/prodotti')}
+                    style={{ backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px', display: 'block', width: '100%' }}
+                  >
+                    Vai ai Prodotti
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
       {showScanner && (
         <BarcodeScanner
           onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
@@ -535,9 +540,34 @@ function NuovoProdotto() {
   )
 }
 
-const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px' }
-const btnStyle = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' })
+const cardStyle = {
+  backgroundColor: 'white',
+  borderRadius: '12px',
+  padding: '24px',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(26,35,126,0.06)',
+  border: '1px solid #e8eaf6',
+}
+const inputStyle = {
+  padding: '10px 12px',
+  border: '1.5px solid #c5cae9',
+  borderRadius: '8px',
+  fontSize: '0.95rem',
+  width: '100%',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+const labelStyle = { display: 'flex', flexDirection: 'column', gap: '5px' }
+const labelTextStyle = { fontSize: '0.85rem', color: '#444', fontWeight: 600 }
+const submitBtnStyle = {
+  backgroundColor: '#2e7d32',
+  color: 'white',
+  border: 'none',
+  borderRadius: '8px',
+  padding: '12px 20px',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+  fontSize: '1rem',
+  width: '100%',
+}
 
 export default NuovoProdotto
