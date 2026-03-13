@@ -10,3 +10,4 @@ from .fattura import Fattura
 from .ordine import Ordine, RigaOrdine
 from .spesa_gestione import SpesaGestione
 from .dato_storico import DatoStorico
+from .fornitura import Fornitura, RigaFornitura

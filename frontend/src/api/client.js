@@ -166,6 +166,14 @@ export const ordiniAPI = {
     }),
 }
 
+export const fornitureAPI = {
+  getAll: (params = {}) => client.get('/api/forniture/', { params }),
+  getById: (id) => client.get(`/api/forniture/${id}`),
+  create: (data) => client.post('/api/forniture/', data),
+  update: (id, data) => client.put(`/api/forniture/${id}`, data),
+  delete: (id) => client.delete(`/api/forniture/${id}`),
+}
+
 export const cardtraderAPI = {
   getStatus: () => client.get('/api/cardtrader/status'),
   getListings: () => client.get('/api/cardtrader/listings'),

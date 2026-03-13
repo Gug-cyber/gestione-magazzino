@@ -11,6 +11,7 @@ const baseLinks = [
   { to: '/movimenti', label: '🔄 Movimenti' },
   { to: '/fatture', label: '🧾 Fatture' },
   { to: '/fornitori', label: '🏢 Fornitori' },
+  { to: '/forniture', label: '🚚 Forniture' },
   { to: '/ubicazioni', label: '📍 Ubicazioni' },
   { to: '/categorie', label: '🏷️ Categorie' },
 ]
