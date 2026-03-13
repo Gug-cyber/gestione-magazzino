@@ -55,10 +55,10 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
     if (!canvasRef.current || !value) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    const narrowW = 1.5
+    const narrowW = 2
     const wideW = narrowW * 3
-    const barcodeHeight = 50
-    const quietZone = 8
+    const barcodeHeight = 60
+    const quietZone = narrowW * 10
     // Strip characters not supported by Code 39 (keep only valid charset)
     const sanitized = value.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
     const chars = ('*' + sanitized + '*').split('')
@@ -74,7 +74,7 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
     }
 
     canvas.width = Math.ceil(totalWidth)
-    canvas.height = barcodeHeight + 20
+    canvas.height = barcodeHeight + 24
 
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -89,7 +89,7 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
         const isBar = i % 2 === 0
         const isWide = pattern[i] === '1'
         const w = isWide ? wideW : narrowW
-        if (isBar) ctx.fillRect(x, 0, w, barcodeHeight)
+        if (isBar) ctx.fillRect(Math.round(x), 0, Math.round(w), barcodeHeight)
         x += w
       }
       if (ci < chars.length - 1) x += narrowW
@@ -101,7 +101,7 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
     ctx.fillText(sanitized, canvas.width / 2, barcodeHeight + 12)
   }, [value])
 
-  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto', imageRendering: 'pixelated' }} />
 }
 
 const emptyForm = {
