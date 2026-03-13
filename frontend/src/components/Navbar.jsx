@@ -39,40 +39,47 @@ function Navbar({ onMenuClick }) {
       <nav style={{
         backgroundColor: '#1a237e',
         color: 'white',
-        padding: '0 12px',
-        height: '64px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
         position: 'sticky',
         top: 0,
         zIndex: 1000,
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
       }}>
-        {/* Left: hamburger */}
-        <button onClick={onMenuClick} aria-label="Apri menu" style={iconBtnStyle}>☰</button>
-
-        {/* Center: title */}
-        <span style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontWeight: 'bold',
-          fontSize: '1.1rem',
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none',
+        {/* Inner row with fixed height for the actual controls */}
+        <div style={{
+          height: '64px',
+          paddingLeft: '12px',
+          paddingRight: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'relative',
         }}>
-          🏭 Gestione Magazzino
-        </span>
+          {/* Left: hamburger */}
+          <button onClick={onMenuClick} aria-label="Apri menu" style={iconBtnStyle}>☰</button>
 
-        {/* Right: icon-only buttons */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {user && (
-            <Link to="/profilo" aria-label="Profilo" style={iconBtnStyle}>⚙️</Link>
-          )}
-          {user && (
-            <button onClick={handleLogout} aria-label="Logout" style={iconBtnStyle}>🚪</button>
-          )}
+          {/* Center: title */}
+          <span style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontWeight: 'bold',
+            fontSize: '1.1rem',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+          }}>
+            🏭 Gestione Magazzino
+          </span>
+
+          {/* Right: icon-only buttons */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {user && (
+              <Link to="/profilo" aria-label="Profilo" style={iconBtnStyle}>⚙️</Link>
+            )}
+            {user && (
+              <button onClick={handleLogout} aria-label="Logout" style={iconBtnStyle}>🚪</button>
+            )}
+          </div>
         </div>
       </nav>
     )
@@ -83,7 +90,8 @@ function Navbar({ onMenuClick }) {
       backgroundColor: '#1a237e',
       color: 'white',
       padding: '0 24px',
-      height: '64px',
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      minHeight: '64px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
