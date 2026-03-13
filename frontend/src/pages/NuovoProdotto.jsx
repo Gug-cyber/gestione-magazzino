@@ -3,6 +3,78 @@ import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 
+function generateSKU(nome, statoConservazione, lingua) {
+  const parenMatch = nome.match(/\(([^)]+)\)/)
+  const parenCode = parenMatch
+    ? parenMatch[1].replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toUpperCase()
+    : null
+
+  const nomePulito = nome.replace(/\([^)]*\)/g, '').replace(/[^a-zA-Z0-9 ]/g, '').trim()
+  const prefix = nomePulito.replace(/\s+/g, '').substring(0, 3).toUpperCase()
+
+  const statoMap = {
+    'Mint': 'MT', 'Near Mint': 'NM', 'Excellent': 'EX',
+    'Good': 'GD', 'Light Played': 'LP', 'Played': 'PL', 'Poor': 'PO',
+  }
+  const statoCode = statoMap[statoConservazione] || null
+
+  const linguaMap = {
+    'Italiano': 'IT', 'Inglese': 'EN', 'Giapponese': 'JP',
+    'Cinese': 'CN', 'Coreano': 'KR',
+  }
+  const linguaCode = linguaMap[lingua] || null
+
+  const parts = [prefix, parenCode, statoCode, linguaCode].filter(Boolean)
+  return parts.join('-')
+}
+
+function BarcodeCanvas({ value }) {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || !value) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+
+    canvas.width = 280
+    canvas.height = 80
+
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const barWidth = 2
+    const quietZone = 10
+    let x = quietZone
+
+    ctx.fillStyle = '#000000'
+
+    ctx.fillRect(x, 5, barWidth, 60); x += barWidth + barWidth
+    ctx.fillRect(x, 5, barWidth * 2, 60); x += barWidth * 2 + barWidth
+    ctx.fillRect(x, 5, barWidth, 60); x += barWidth + barWidth * 2
+
+    for (let i = 0; i < value.length && x < canvas.width - quietZone - 20; i++) {
+      const charCode = value.charCodeAt(i)
+      const pattern = charCode % 16
+      for (let b = 0; b < 8; b++) {
+        const isFilled = (pattern >> b) & 1
+        const w = barWidth + (isFilled ? barWidth : 0)
+        if (isFilled) {
+          ctx.fillRect(x, 5, w, 60)
+        }
+        x += w + barWidth
+      }
+    }
+
+    if (x < canvas.width - quietZone - 10) {
+      ctx.fillRect(x, 5, barWidth * 2, 60); x += barWidth * 2 + barWidth
+      ctx.fillRect(x, 5, barWidth, 60); x += barWidth + barWidth
+      ctx.fillRect(x, 5, barWidth * 2, 60)
+    }
+  }, [value])
+
+  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+}
+
 const emptyForm = {
   nome: '', descrizione: '', sku: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
@@ -21,6 +93,13 @@ function NuovoProdotto() {
   const [fotoPreview, setFotoPreview] = useState(null)
   const fotoInputRef = useRef(null)
   const [showScanner, setShowScanner] = useState(false)
+  const [skuManuale, setSkuManuale] = useState(false)
+
+  useEffect(() => {
+    if (skuManuale) return
+    const generated = generateSKU(form.nome, form.stato_conservazione, form.lingua)
+    setForm(f => ({ ...f, sku: generated }))
+  }, [form.nome, form.stato_conservazione, form.lingua, skuManuale])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -163,9 +242,18 @@ function NuovoProdotto() {
                     type="text"
                     required
                     value={form.sku}
-                    onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                    onChange={(e) => {
+                      setSkuManuale(true)
+                      setForm({ ...form, sku: e.target.value })
+                    }}
                     style={{ ...inputStyle, flex: 1 }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => { setSkuManuale(false) }}
+                    style={{ padding: '8px 10px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1.1rem' }}
+                    title="Rigenera SKU automaticamente"
+                  >🔄</button>
                   <button
                     type="button"
                     onClick={() => setShowScanner(true)}
@@ -174,6 +262,34 @@ function NuovoProdotto() {
                   >📷</button>
                 </div>
               </label>
+
+              {/* Sezione Codice a Barre */}
+              {form.sku && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  backgroundColor: '#fafafa',
+                  textAlign: 'center',
+                  marginBottom: '8px',
+                }}>
+                  <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '8px', fontWeight: 600 }}>
+                    🔖 Codice a Barre (SKU)
+                  </div>
+                  <BarcodeCanvas value={form.sku} />
+                  <div style={{
+                    fontFamily: 'monospace',
+                    fontSize: '1.1rem',
+                    letterSpacing: '0.15em',
+                    color: '#1a237e',
+                    marginTop: '8px',
+                    fontWeight: 'bold',
+                  }}>
+                    {form.sku}
+                  </div>
+                </div>
+              )}
 
               <label style={labelStyle}>
                 <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
@@ -317,7 +433,7 @@ function NuovoProdotto() {
       </div>
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
+          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
           onClose={() => setShowScanner(false)}
         />
       )}
