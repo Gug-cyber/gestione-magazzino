@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { useIsMobile } from '../hooks/useIsMobile'
+import JsBarcode from 'jsbarcode'
 
 function generateSKU(nome, statoConservazione, lingua) {
   const parenMatch = nome.match(/\(([^)]+)\)/)
@@ -29,79 +30,36 @@ function generateSKU(nome, statoConservazione, lingua) {
   return parts.join('-')
 }
 
-const CODE39_CHARS = {
-  '0': '101001101101', '1': '110100101011', '2': '101100101011',
-  '3': '110110010101', '4': '101001101011', '5': '110100110101',
-  '6': '101100110101', '7': '101001011011', '8': '110100101101',
-  '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
-  'C': '110110100101', 'D': '101011001011', 'E': '110101100101',
-  'F': '101101100101', 'G': '101010011011', 'H': '110101001101',
-  'I': '101101001101', 'J': '101011001101', 'K': '110101010011',
-  'L': '101101010011', 'M': '110110101001', 'N': '101011010011',
-  'O': '110101101001', 'P': '101101101001', 'Q': '101010110011',
-  'R': '110101011001', 'S': '101101011001', 'T': '101011011001',
-  'U': '110010101011', 'V': '100110101011', 'W': '110011010101',
-  'X': '100101101011', 'Y': '110010110101', 'Z': '100110110101',
-  '-': '100101011011', '.': '110010101101', ' ': '100110101101',
-  '$': '100100100101', '/': '100100101001', '+': '100101001001',
-  '%': '101001001001', '*': '100101101101',
-}
-
 function BarcodeCanvas({ value, canvasRef: extRef }) {
   const localRef = useRef(null)
   const canvasRef = extRef || localRef
 
   useEffect(() => {
     if (!canvasRef.current || !value) return
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    const narrowW = 2
-    const wideW = narrowW * 3
-    const barcodeHeight = 60
-    const quietZone = narrowW * 10
     // Strip characters not supported by Code 39 (keep only valid charset)
     const sanitized = value.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
-    const chars = ('*' + sanitized + '*').split('')
-
-    let totalWidth = quietZone * 2
-    for (let ci = 0; ci < chars.length; ci++) {
-      const pattern = CODE39_CHARS[chars[ci]]
-      if (!pattern) continue
-      for (let i = 0; i < pattern.length; i++) {
-        totalWidth += pattern[i] === '1' ? wideW : narrowW
-      }
-      if (ci < chars.length - 1) totalWidth += narrowW
+    if (!sanitized) {
+      const ctx = canvasRef.current.getContext('2d')
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      return
     }
-
-    canvas.width = Math.ceil(totalWidth)
-    canvas.height = barcodeHeight + 24
-
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    let x = quietZone
-    ctx.fillStyle = '#000000'
-    for (let ci = 0; ci < chars.length; ci++) {
-      const char = chars[ci]
-      const pattern = CODE39_CHARS[char]
-      if (!pattern) continue
-      for (let i = 0; i < pattern.length; i++) {
-        const isBar = i % 2 === 0
-        const isWide = pattern[i] === '1'
-        const w = isWide ? wideW : narrowW
-        if (isBar) ctx.fillRect(Math.round(x), 0, Math.round(w), barcodeHeight)
-        x += w
-      }
-      if (ci < chars.length - 1) x += narrowW
+    try {
+      JsBarcode(canvasRef.current, sanitized, {
+        format: 'CODE39',
+        width: 2,
+        height: 60,
+        displayValue: true,
+        fontSize: 12,
+        margin: 10,
+        background: '#ffffff',
+        lineColor: '#000000',
+      })
+    } catch (e) {
+      console.warn('Barcode generation failed:', e)
     }
-
-    ctx.font = '9px monospace'
-    ctx.fillStyle = '#000'
-    ctx.textAlign = 'center'
-    ctx.fillText(sanitized, canvas.width / 2, barcodeHeight + 12)
   }, [value])
 
-  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto', imageRendering: 'pixelated' }} />
+  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
 }
 
 const emptyForm = {
