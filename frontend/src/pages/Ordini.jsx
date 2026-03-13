@@ -156,7 +156,7 @@ export default function Ordini() {
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>🛒 Ordini</h1>
-        <button onClick={openNewModal} className={styles.newBtn}>+ Nuovo Ordine</button>
+        <button onClick={() => navigate('/ordini/nuovo')} className={styles.newBtn}>+ Nuovo Ordine</button>
       </div>
 
       {/* Stats */}
