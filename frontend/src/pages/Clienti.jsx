@@ -4,20 +4,13 @@ import { clientiAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 const primaryColor = '#1a237e'
-const cardStyle = {
+const statCardStyle = {
   backgroundColor: '#fff',
   borderRadius: '8px',
   padding: '16px 20px',
   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
   flex: 1,
   minWidth: '140px',
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—'
-  const parts = dateStr.split('-')
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
-  return dateStr
 }
 
 function formatCurrency(amount) {
@@ -46,6 +39,7 @@ export default function Clienti() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -81,18 +75,47 @@ export default function Clienti() {
 
   const openNewModal = () => {
     setForm(emptyForm)
+    setEditingId(null)
+    setFormError('')
+    setShowModal(true)
+  }
+
+  const openEditModal = (c) => {
+    setForm({
+      tipo: c.tipo || 'privato',
+      nome: c.nome || '',
+      cognome: c.cognome || '',
+      email: c.email || '',
+      telefono: c.telefono || '',
+      indirizzo: c.indirizzo || '',
+      citta: c.citta || '',
+      cap: c.cap || '',
+      provincia: c.provincia || '',
+      partita_iva: c.partita_iva || '',
+      codice_fiscale: c.codice_fiscale || '',
+      note: c.note || '',
+    })
+    setEditingId(c.id)
     setFormError('')
     setShowModal(true)
   }
 
   const closeModal = () => {
     setShowModal(false)
+    setEditingId(null)
     setFormError('')
   }
 
   const handleFormChange = (e) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => {
+      const updated = { ...prev, [name]: value }
+      // Clear cognome when switching to azienda (companies don't have a surname)
+      if (name === 'tipo' && value === 'azienda') {
+        updated.cognome = ''
+      }
+      return updated
+    })
   }
 
   const handleSubmit = async (e) => {
@@ -108,7 +131,11 @@ export default function Clienti() {
     setSubmitting(true)
     setFormError('')
     try {
-      await clientiAPI.create(form)
+      if (editingId) {
+        await clientiAPI.update(editingId, form)
+      } else {
+        await clientiAPI.create(form)
+      }
       closeModal()
       fetchClienti(search ? { search } : {})
     } catch (err) {
@@ -118,13 +145,22 @@ export default function Clienti() {
     }
   }
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Sei sicuro di voler eliminare questo cliente?')) return
+    try {
+      await clientiAPI.delete(id)
+      fetchClienti(search ? { search } : {})
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore durante l\'eliminazione del cliente')
+    }
+  }
+
   // Stats
   const totaleClienti = clienti.length
   const numAziende = clienti.filter((c) => c.tipo === 'azienda').length
   const numPrivati = clienti.filter((c) => c.tipo === 'privato').length
   const fatturatoTotale = clienti.reduce((sum, c) => sum + (c.totale_ordini || 0), 0)
 
-  // ---- LIST VIEW ----
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -154,7 +190,7 @@ export default function Clienti() {
           { label: '👤 Privati', value: numPrivati, color: '#e8f5e9', textColor: '#2e7d32' },
           { label: '💰 Totale Ordini', value: formatCurrency(fatturatoTotale), color: '#fff8e1', textColor: '#e65100' },
         ].map(({ label, value, color, textColor }) => (
-          <div key={label} style={{ ...cardStyle, backgroundColor: color }}>
+          <div key={label} style={{ ...statCardStyle, backgroundColor: color }}>
             <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>{label}</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: textColor }}>{value}</div>
           </div>
@@ -209,19 +245,33 @@ export default function Clienti() {
             {clienti.map((c) => {
               const nomeCompleto = c.cognome ? `${c.nome} ${c.cognome}` : c.nome
               return (
-                <div key={c.id} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: primaryColor, fontSize: '1rem' }}>
-                        {c.tipo === 'azienda' ? '🏢' : '👤'} {nomeCompleto}
-                      </div>
-                      {c.email && <div style={{ fontSize: '0.85rem', color: '#555', marginTop: '2px' }}>✉️ {c.email}</div>}
-                      {c.telefono && <div style={{ fontSize: '0.85rem', color: '#555' }}>📞 {c.telefono}</div>}
-                      {c.citta && <div style={{ fontSize: '0.85rem', color: '#888' }}>📍 {c.citta}{c.provincia ? ` (${c.provincia})` : ''}</div>}
+                <div key={c.id} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 700, color: primaryColor, fontSize: '1rem' }}>
+                      {c.tipo === 'azienda' ? '🏢' : '👤'} {nomeCompleto}
                     </div>
+                    <span style={{
+                      backgroundColor: c.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
+                      color: c.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
+                      borderRadius: '12px',
+                      padding: '2px 10px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      marginLeft: '8px',
+                    }}>
+                      {c.tipo === 'azienda' ? 'Azienda' : 'Privato'}
+                    </span>
+                  </div>
+                  {c.email && <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '2px' }}>✉️ {c.email}</div>}
+                  {c.telefono && <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '2px' }}>📞 {c.telefono}</div>}
+                  {c.citta && <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>📍 {c.citta}{c.provincia ? ` (${c.provincia})` : ''}</div>}
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                    <button onClick={() => openEditModal(c)} style={btnSmall('#1565c0')}>✏️</button>
+                    <button onClick={() => handleDelete(c.id)} style={btnSmall('#c62828')}>🗑️</button>
                     <button
                       onClick={() => navigate(`/clienti/${c.id}`)}
-                      style={{ backgroundColor: primaryColor, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', marginLeft: '8px' }}
+                      style={{ ...btnSmall('#455a64'), marginLeft: 'auto' }}
                     >
                       Dettagli →
                     </button>
@@ -234,69 +284,60 @@ export default function Clienti() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f5f5f5' }}>
-                  {['#', 'Nome', 'Tipo', 'Email', 'Telefono', 'Città', 'Ordini', 'Totale Ordini', 'Azioni'].map((h) => (
-                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{h}</th>
+                <tr style={{ backgroundColor: primaryColor, color: '#fff' }}>
+                  {['ID', 'Nome', 'Cognome', 'Tipo', 'Email', 'Telefono', 'Città', 'P.IVA', 'Azioni'].map((h) => (
+                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#fff' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {clienti.map((c, idx) => {
-                  const nomeCompleto = c.cognome ? `${c.nome} ${c.cognome}` : c.nome
-                  return (
-                    <tr key={c.id} style={{ borderTop: '1px solid #f0f0f0', transition: 'background 0.15s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafafa'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
-                    >
-                      <td style={{ padding: '12px 16px', color: '#999', fontSize: '0.85rem' }}>{idx + 1}</td>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#333' }}>{nomeCompleto}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          backgroundColor: c.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
-                          color: c.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
-                          borderRadius: '12px',
-                          padding: '4px 12px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap',
-                        }}>
-                          {c.tipo === 'azienda' ? '🏢 Azienda' : '👤 Privato'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.email || '—'}</td>
-                      <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.telefono || '—'}</td>
-                      <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.citta || '—'}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        <span style={{ fontWeight: 600, color: primaryColor }}>{c.num_ordini || 0}</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#2e7d32' }}>
-                        {formatCurrency(c.totale_ordini || 0)}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <button
-                          onClick={() => navigate(`/clienti/${c.id}`)}
-                          title="Dettaglio cliente"
-                          style={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.9rem' }}
-                        >
-                          🔍
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {clienti.map((c) => (
+                  <tr key={c.id} style={{ borderTop: '1px solid #f0f0f0', transition: 'background 0.15s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafafa'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
+                  >
+                    <td style={{ padding: '12px 16px', color: '#999', fontSize: '0.85rem' }}>{c.id}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#333' }}>{c.nome}</td>
+                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.cognome || '—'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        backgroundColor: c.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
+                        color: c.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
+                        borderRadius: '12px',
+                        padding: '4px 12px',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {c.tipo === 'azienda' ? '🏢 Azienda' : '👤 Privato'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.email || '—'}</td>
+                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.telefono || '—'}</td>
+                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.citta || '—'}</td>
+                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.partita_iva || '—'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button onClick={() => openEditModal(c)} title="Modifica" style={btnSmall('#1565c0')}>✏️</button>
+                        <button onClick={() => handleDelete(c.id)} title="Elimina" style={btnSmall('#c62828')}>🗑️</button>
+                        <button onClick={() => navigate(`/clienti/${c.id}`)} title="Dettagli" style={btnSmall('#455a64')}>🔍</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Create / Edit Modal */}
       {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '8px' : '0' }}>
-          <div className="modal-inner" style={{ backgroundColor: '#fff', borderRadius: '10px', padding: isMobile ? '20px 16px' : '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: isMobile ? '20px 16px' : '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ color: primaryColor, margin: 0 }}>
-                ➕ Nuovo Cliente
+                {editingId ? '✏️ Modifica Cliente' : '➕ Nuovo Cliente'}
               </h2>
               <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
@@ -394,9 +435,9 @@ export default function Clienti() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: submitting ? 0.7 : 1 }}
+                  style={{ backgroundColor: editingId ? '#2e7d32' : primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: submitting ? 0.7 : 1 }}
                 >
-                  {submitting ? 'Salvataggio...' : 'Crea Cliente'}
+                  {submitting ? 'Salvataggio...' : editingId ? 'Salva Modifiche' : 'Crea Cliente'}
                 </button>
               </div>
             </form>
@@ -406,6 +447,16 @@ export default function Clienti() {
     </div>
   )
 }
+
+const btnSmall = (bg) => ({
+  backgroundColor: bg,
+  color: '#fff',
+  border: 'none',
+  borderRadius: '6px',
+  padding: '4px 10px',
+  cursor: 'pointer',
+  fontSize: '0.85rem',
+})
 
 const labelStyle = {
   display: 'block',
