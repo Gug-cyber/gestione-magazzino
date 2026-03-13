@@ -36,4 +36,7 @@ class Fattura(Base):
     annullata = Column(Boolean, default=False)
     auto_generata = Column(Boolean, default=False)
 
-    ordine = relationship("Ordine", backref="fatture")
+    # foreign_keys= espliciti per evitare AmbiguousForeignKeysError (f405)
+    ordine = relationship("Ordine", foreign_keys=[ordine_id], backref="fatture")
+    # self-referential: nota di credito punta alla fattura originale
+    fattura_originale = relationship("Fattura", foreign_keys=[nota_credito_di], remote_side=[id], backref="note_credito")
