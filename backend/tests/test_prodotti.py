@@ -3,7 +3,6 @@ Test per la logica dei prodotti.
 """
 import pytest
 from app.models.prodotto import Prodotto as ProdottoModel
-from app.auth import create_access_token
 
 
 def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", quantita=10):
@@ -147,7 +146,7 @@ def test_get_foto_prodotto_cloudinary_no_auth(client, auth_headers, db):
 
 
 def test_get_foto_prodotto_valid_query_token(client, auth_headers, db):
-    """Verifica che GET /foto accetti un ?token= valido e restituisca la foto."""
+    """Verifica che GET /foto restituisca la foto anche senza token (endpoint pubblico)."""
     resp = _crea_prodotto(client, auth_headers, sku="FOTO-TOKEN-001")
     assert resp.status_code == 201
     prodotto_id = resp.json()["id"]
@@ -156,16 +155,13 @@ def test_get_foto_prodotto_valid_query_token(client, auth_headers, db):
     prodotto.foto_path = "/tmp/foto_inesistente_token.jpg"
     db.commit()
 
-    # Genera un token valido
-    valid_token = create_access_token(data={"sub": "admin_test"})
-
-    # Richiesta con token come query param: deve restituire 404 (file mancante), NON 401
-    resp = client.get(f"/api/prodotti/{prodotto_id}/foto?token={valid_token}")
+    # Richiesta senza token: deve restituire 404 (file mancante), NON 401
+    resp = client.get(f"/api/prodotti/{prodotto_id}/foto")
     assert resp.status_code == 404
 
 
 def test_get_foto_prodotto_invalid_token(client, auth_headers, db):
-    """Verifica che GET /foto rifiuti un token non valido con 401."""
+    """Verifica che GET /foto ignori un token non valido (endpoint pubblico, nessun 401)."""
     resp = _crea_prodotto(client, auth_headers, sku="FOTO-INVALID-001")
     assert resp.status_code == 201
     prodotto_id = resp.json()["id"]
@@ -174,20 +170,20 @@ def test_get_foto_prodotto_invalid_token(client, auth_headers, db):
     prodotto.foto_path = "/tmp/foto_inesistente_invalid.jpg"
     db.commit()
 
-    # Token non valido come query param
+    # Token non valido come query param: deve essere ignorato, risultato 404 (non 401)
     resp = client.get(f"/api/prodotti/{prodotto_id}/foto?token=invalid.jwt.token")
-    assert resp.status_code == 401
+    assert resp.status_code == 404
 
-    # Token non valido come Bearer header
+    # Token non valido come Bearer header: deve essere ignorato, risultato 404 (non 401)
     resp_bearer = client.get(
         f"/api/prodotti/{prodotto_id}/foto",
         headers={"Authorization": "Bearer invalid.jwt.token"},
     )
-    assert resp_bearer.status_code == 401
+    assert resp_bearer.status_code == 404
 
 
 def test_get_foto_prodotto_valid_bearer_header(client, auth_headers, db):
-    """Verifica che GET /foto accetti un Bearer token valido nell'header."""
+    """Verifica che GET /foto restituisca la foto indipendentemente dall'header Authorization (endpoint pubblico)."""
     resp = _crea_prodotto(client, auth_headers, sku="FOTO-BEARER-001")
     assert resp.status_code == 201
     prodotto_id = resp.json()["id"]
