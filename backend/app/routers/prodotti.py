@@ -34,8 +34,11 @@ def _build_foto_url(prodotto, request: Request) -> Optional[str]:
     # Se è già un URL completo (Cloudinary), restituiscilo direttamente
     if prodotto.foto_path.startswith("http://") or prodotto.foto_path.startswith("https://"):
         return prodotto.foto_path
-    # Retrocompatibilità per path locali vecchi
-    return f"/api/prodotti/{prodotto.id}/foto"
+    # Path locale: restituisci il path API solo se il file esiste, altrimenti None
+    if os.path.exists(prodotto.foto_path):
+        return f"/api/prodotti/{prodotto.id}/foto"
+    # File locale non trovato (filesystem effimero) — non restituire un URL destinato a 404
+    return None
 
 
 @router.get("/", response_model=List[ProdottoResponse])
@@ -85,6 +88,29 @@ def get_prodotti_sotto_scorta(request: Request, db: Session = Depends(get_db), c
         d["foto_url"] = _build_foto_url(p, request)
         result.append(d)
     return result
+
+
+@router.post("/admin/clear-local-foto", status_code=200)
+def clear_local_foto_paths(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Azzera i foto_path locali obsoleti (non URL Cloudinary) da tutti i prodotti."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Solo gli admin possono eseguire questa operazione")
+
+    prodotti = db.query(Prodotto).filter(
+        Prodotto.foto_path.isnot(None),
+        ~Prodotto.foto_path.like("http://%"),
+        ~Prodotto.foto_path.like("https://%"),
+    ).all()
+
+    count = len(prodotti)
+    for p in prodotti:
+        p.foto_path = None
+    db.commit()
+
+    return {"cleared": count, "message": f"Azzerati {count} foto_path locali obsoleti"}
 
 
 @router.get("/{prodotto_id}/scheda")

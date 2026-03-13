@@ -100,9 +100,15 @@ function Prodotti() {
               <div className={styles.cardHeader}>
                 <div className={styles.cardInfo}>
                   {p.foto_url
-                    ? <img src={getFotoUrl(p.foto_url)} alt={p.nome} style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />
-                    : <span style={{ fontSize: '2rem' }}>📷</span>
+                    ? <img
+                        src={getFotoUrl(p.foto_url)}
+                        alt={p.nome}
+                        style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }}
+                        onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'inline' }}
+                      />
+                    : null
                   }
+                  <span style={{ fontSize: '2rem', display: p.foto_url ? 'none' : 'inline' }}>📷</span>
                   <div>
                     <div className={styles.cardName}>{p.nome}</div>
                   </div>
@@ -164,9 +170,15 @@ function Prodotti() {
                   <td className={styles.td}>{p.id}</td>
                   <td className={styles.td}>
                     {p.foto_url
-                      ? <img src={getFotoUrl(p.foto_url)} alt={p.nome} className={styles.productImg} />
-                      : <span style={{ fontSize: '1.4rem' }}>📷</span>
+                      ? <img
+                          src={getFotoUrl(p.foto_url)}
+                          alt={p.nome}
+                          className={styles.productImg}
+                          onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'inline' }}
+                        />
+                      : null
                     }
+                    <span style={{ fontSize: '1.4rem', display: p.foto_url ? 'none' : 'inline' }}>📷</span>
                   </td>
                   <td className={styles.td}>{p.nome}</td>
                   <td className={`${styles.td} ${p.quantita < p.quantita_minima ? styles.qtyLow : styles.qtyOk}`}>

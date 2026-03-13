@@ -319,8 +319,15 @@ function DettaglioProdotto() {
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               {prodotto.foto_url
-                ? <img src={getFotoUrl(prodotto.foto_url)} alt={prodotto.nome}
-                    style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover', display: 'block' }} />
+                ? <>
+                    <img
+                      src={getFotoUrl(prodotto.foto_url)}
+                      alt={prodotto.nome}
+                      style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                      onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'inline' }}
+                    />
+                    <span style={{ fontSize: '3.5rem', lineHeight: 1, display: 'none' }}>📦</span>
+                  </>
                 : <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>📦</span>
               }
               <button
