@@ -3,6 +3,7 @@ Test per la logica dei prodotti.
 """
 import pytest
 from app.models.prodotto import Prodotto as ProdottoModel
+from app.auth import create_access_token
 
 
 def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", quantita=10):
@@ -137,9 +138,64 @@ def test_get_foto_prodotto_cloudinary_no_auth(client, auth_headers, db):
     prodotto.foto_path = "https://res.cloudinary.com/test/image/upload/v1/prodotti/1.jpg"
     db.commit()
 
-    # Richiesta senza header di autenticazione: deve fare redirect (307), NON 401
+    # Richiesta senza header di autenticazione: deve fare redirect (302), NON 401
     resp_no_auth = client.get(f"/api/prodotti/{prodotto_id}/foto", follow_redirects=False)
     assert resp_no_auth.status_code != 401, (
         "L'endpoint GET /foto non deve richiedere autenticazione neanche per URL Cloudinary"
     )
-    assert resp_no_auth.status_code == 307
+    assert resp_no_auth.status_code == 302
+
+
+def test_get_foto_prodotto_valid_query_token(client, auth_headers, db):
+    """Verifica che GET /foto accetti un ?token= valido e restituisca la foto."""
+    resp = _crea_prodotto(client, auth_headers, sku="FOTO-TOKEN-001")
+    assert resp.status_code == 201
+    prodotto_id = resp.json()["id"]
+
+    prodotto = db.query(ProdottoModel).filter(ProdottoModel.id == prodotto_id).first()
+    prodotto.foto_path = "/tmp/foto_inesistente_token.jpg"
+    db.commit()
+
+    # Genera un token valido
+    valid_token = create_access_token(data={"sub": "admin_test"})
+
+    # Richiesta con token come query param: deve restituire 404 (file mancante), NON 401
+    resp = client.get(f"/api/prodotti/{prodotto_id}/foto?token={valid_token}")
+    assert resp.status_code == 404
+
+
+def test_get_foto_prodotto_invalid_token(client, auth_headers, db):
+    """Verifica che GET /foto rifiuti un token non valido con 401."""
+    resp = _crea_prodotto(client, auth_headers, sku="FOTO-INVALID-001")
+    assert resp.status_code == 201
+    prodotto_id = resp.json()["id"]
+
+    prodotto = db.query(ProdottoModel).filter(ProdottoModel.id == prodotto_id).first()
+    prodotto.foto_path = "/tmp/foto_inesistente_invalid.jpg"
+    db.commit()
+
+    # Token non valido come query param
+    resp = client.get(f"/api/prodotti/{prodotto_id}/foto?token=invalid.jwt.token")
+    assert resp.status_code == 401
+
+    # Token non valido come Bearer header
+    resp_bearer = client.get(
+        f"/api/prodotti/{prodotto_id}/foto",
+        headers={"Authorization": "Bearer invalid.jwt.token"},
+    )
+    assert resp_bearer.status_code == 401
+
+
+def test_get_foto_prodotto_valid_bearer_header(client, auth_headers, db):
+    """Verifica che GET /foto accetti un Bearer token valido nell'header."""
+    resp = _crea_prodotto(client, auth_headers, sku="FOTO-BEARER-001")
+    assert resp.status_code == 201
+    prodotto_id = resp.json()["id"]
+
+    prodotto = db.query(ProdottoModel).filter(ProdottoModel.id == prodotto_id).first()
+    prodotto.foto_path = "/tmp/foto_inesistente_bearer.jpg"
+    db.commit()
+
+    # Usa l'header Authorization dalla fixture auth_headers (token valido)
+    resp = client.get(f"/api/prodotti/{prodotto_id}/foto", headers=auth_headers)
+    assert resp.status_code == 404  # file non trovato, ma autenticazione OK
