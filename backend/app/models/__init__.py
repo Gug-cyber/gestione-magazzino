@@ -1,9 +1,12 @@
 from .categoria import Categoria
 from .fornitore import Fornitore
 from .ubicazione import Ubicazione
+from .utente import Utente
 from .prodotto import Prodotto
 from .movimento import Movimento
 from .reset_token import ResetToken
-from .fattura import Fattura
 from .cliente import Cliente
+from .fattura import Fattura
 from .ordine import Ordine, RigaOrdine
+from .spesa_gestione import SpesaGestione
+from .dato_storico import DatoStorico
