@@ -24,6 +24,8 @@ import DettaglioOrdine from './pages/DettaglioOrdine.jsx'
 import Ordini from './pages/Ordini.jsx'
 import CardTrader from './pages/CardTrader.jsx'
 import Amministrazione from './pages/Amministrazione.jsx'
+import Forniture from './pages/Forniture.jsx'
+import DettaglioFornitura from './pages/DettaglioFornitura.jsx'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -142,6 +144,16 @@ function App() {
           <Route path="/amministrazione" element={
             <ProtectedRoute>
               <AppLayout><Amministrazione /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/forniture/:id" element={
+            <ProtectedRoute>
+              <AppLayout><DettaglioFornitura /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/forniture" element={
+            <ProtectedRoute>
+              <AppLayout><Forniture /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>

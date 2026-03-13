@@ -22,6 +22,15 @@ export const STATO_ORDINE_COLORS = {
   annullato:  { bg: '#ffebee',  text: '#c62828' },
 }
 
+/** Colori per lo stato delle forniture */
+export const STATO_FORNITURA_COLORS = {
+  bozza:      { bg: '#e3f2fd', text: '#1565c0' },
+  confermato: { bg: '#fff3e0', text: '#e65100' },
+  spedito:    { bg: '#f3e5f5', text: '#6a1b9a' },
+  ricevuto:   { bg: '#e8f5e9', text: '#2e7d32' },
+  annullato:  { bg: '#ffebee', text: '#c62828' },
+}
+
 /** Colori per il tipo di movimento (carico/scarico) */
 export const TIPO_MOVIMENTO_COLORS = {
   carico:  { bg: '#e8f5e9', text: '#2e7d32' },
