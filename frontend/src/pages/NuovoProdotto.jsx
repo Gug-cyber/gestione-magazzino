@@ -251,13 +251,13 @@ function NuovoProdotto() {
                   <button
                     type="button"
                     onClick={() => { setSkuManuale(false) }}
-                    style={{ padding: '8px 10px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1.1rem' }}
+                    style={{ padding: '8px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1 }}
                     title="Rigenera SKU automaticamente"
                   >🔄</button>
                   <button
                     type="button"
                     onClick={() => setShowScanner(true)}
-                    style={{ padding: '8px 10px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1.1rem' }}
+                    style={{ padding: '8px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1 }}
                     title="Scansiona codice a barre"
                   >📷</button>
                 </div>
