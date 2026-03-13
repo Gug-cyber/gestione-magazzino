@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import HTTPException
@@ -12,10 +13,19 @@ from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, gene
 
 def _genera_numero_ordine(db: Session) -> str:
     anno = datetime.now(timezone.utc).year
-    count = db.query(func.count(Ordine.id)).filter(
-        func.extract("year", Ordine.created_at) == anno
-    ).scalar() or 0
-    return f"ORD-{anno}-{count + 1:04d}"
+    prefix = f"ORD-{anno}-"
+    # Usa MAX invece di COUNT: i buchi per cancellazioni non causano duplicati
+    ultimo = db.query(func.max(Ordine.numero_ordine)).filter(
+        Ordine.numero_ordine.like(f"{prefix}%")
+    ).scalar()
+    if ultimo:
+        try:
+            num = int(ultimo.split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            num = 1
+    else:
+        num = 1
+    return f"{prefix}{num:04d}"
 
 
 def get_ordini(
@@ -90,32 +100,38 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
                 detail=f"Quantità insufficiente per '{prodotto.nome}': disponibili {prodotto.quantita}, richiesti {r.quantita}"
             )
 
-    numero_ordine = _genera_numero_ordine(db)
-
-    righe = []
+    righe_data = []
     totale = 0.0
     for r in ordine_data.righe:
         subtotale = r.quantita * r.prezzo_unitario
         totale += subtotale
-        righe.append(RigaOrdine(
-            prodotto_id=r.prodotto_id,
-            quantita=r.quantita,
-            prezzo_unitario=r.prezzo_unitario,
-            subtotale=subtotale,
-        ))
+        righe_data.append({
+            "prodotto_id": r.prodotto_id,
+            "quantita": r.quantita,
+            "prezzo_unitario": r.prezzo_unitario,
+            "subtotale": subtotale,
+        })
 
-    ordine = Ordine(
-        numero_ordine=numero_ordine,
-        cliente_id=ordine_data.cliente_id,
-        cliente_nome=cliente_nome,
-        note=ordine_data.note,
-        totale=totale,
-        righe=righe,
-    )
-    db.add(ordine)
-    db.commit()
-    db.refresh(ordine)
-    return ordine
+    for tentativo in range(5):
+        numero_ordine = _genera_numero_ordine(db)
+        righe = [RigaOrdine(**rd) for rd in righe_data]
+        ordine = Ordine(
+            numero_ordine=numero_ordine,
+            cliente_id=ordine_data.cliente_id,
+            cliente_nome=cliente_nome,
+            note=ordine_data.note,
+            totale=totale,
+            righe=righe,
+        )
+        db.add(ordine)
+        try:
+            db.commit()
+            db.refresh(ordine)
+            return ordine
+        except IntegrityError:
+            db.rollback()
+            if tentativo == 4:
+                raise HTTPException(status_code=500, detail="Impossibile generare numero ordine univoco dopo 5 tentativi")
 
 
 def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional[Ordine]:
