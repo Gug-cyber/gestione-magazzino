@@ -4,6 +4,7 @@ import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { useIsMobile } from '../hooks/useIsMobile'
 import JsBarcode from 'jsbarcode'
+import { normalizeSkuForCode39 } from '../utils/formatters'
 
 function generateSKU(nome, statoConservazione, lingua) {
   const parenMatch = nome.match(/\(([^)]+)\)/)
@@ -37,15 +38,24 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
   useEffect(() => {
     if (!canvasRef.current || !value) return
 
-    // CODE128 supports full ASCII - no sanitization needed
+    // Convert to uppercase and remove characters not supported by CODE39
+    // CODE39 charset: 0-9, A-Z, - . $ / + % (space)
+    const sanitized = value.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
+
+    if (!sanitized) {
+      const ctx = canvasRef.current.getContext('2d')
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      return
+    }
+
     try {
-      JsBarcode(canvasRef.current, value, {
-        format: 'CODE128',
-        width: 2,
-        height: 100,
+      JsBarcode(canvasRef.current, sanitized, {
+        format: 'CODE39',
+        width: 3,
+        height: 120,
         displayValue: true,
-        fontSize: 14,
-        margin: 20,
+        fontSize: 16,
+        margin: 15,
         background: '#ffffff',
         lineColor: '#000000',
       })
@@ -88,7 +98,7 @@ function NuovoProdotto() {
   useEffect(() => {
     if (skuManuale) return
     const generated = generateSKU(form.nome, form.stato_conservazione, form.lingua)
-    setForm(f => ({ ...f, sku: generated }))
+    setForm(f => ({ ...f, sku: normalizeSkuForCode39(generated) }))
   }, [form.nome, form.stato_conservazione, form.lingua, skuManuale])
 
   useEffect(() => {
@@ -311,7 +321,7 @@ function NuovoProdotto() {
                     type="text"
                     required
                     value={form.sku}
-                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: e.target.value }) }}
+                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: normalizeSkuForCode39(e.target.value) }) }}
                     style={{ ...inputStyle, flex: 1 }}
                   />
                   <button
@@ -329,7 +339,7 @@ function NuovoProdotto() {
                 </div>
               </label>
               <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '-8px', marginBottom: '14px' }}>
-                ℹ️ Tutti i caratteri sono supportati (formato CODE128)
+                ℹ️ Lo SKU verrà convertito automaticamente in MAIUSCOLO. Caratteri validi: 0-9, A-Z, - . $ / + % (spazio)
               </div>
             </div>
 
@@ -494,7 +504,7 @@ function NuovoProdotto() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
+          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: normalizeSkuForCode39(value) })); setShowScanner(false) }}
           onClose={() => setShowScanner(false)}
         />
       )}

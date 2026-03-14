@@ -9,10 +9,11 @@ const STATUS = {
 }
 
 // Decode hints: explicitly list the formats to scan so the reader focuses on common
-// product barcode types. CODE_128 is first priority, CODE_39 as fallback for old labels,
-// with EAN/UPC/QR support as fallback. TRY_HARDER improves detection at low resolution.
+// product barcode types. CODE_39 is first priority for best smartphone compatibility,
+// CODE_128 as fallback for newer labels, with EAN/UPC/QR support as fallback.
+// TRY_HARDER improves detection at low resolution.
 const READER_HINTS = new Map([
-  [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.QR_CODE]],
+  [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_39, BarcodeFormat.CODE_128, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.QR_CODE]],
   [DecodeHintType.TRY_HARDER, true],
 ])
 

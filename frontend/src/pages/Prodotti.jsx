@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_CONSERVAZIONE_COLORS } from '../constants/colors'
 import styles from './Prodotti.module.css'
+import { normalizeSkuForCode39 } from '../utils/formatters'
 
 const PAGE_SIZE = 50
 
@@ -232,9 +233,10 @@ function Prodotti() {
       {showScanner && (
         <BarcodeScanner
           onScan={(value) => {
-            pendingScanAlertRef.current = value
-            setSearchInput(value)
-            handleSearchSubmit(value)
+            const normalized = normalizeSkuForCode39(value)
+            pendingScanAlertRef.current = normalized
+            setSearchInput(normalized)
+            handleSearchSubmit(normalized)
             setShowScanner(false)
           }}
           onClose={() => setShowScanner(false)}
