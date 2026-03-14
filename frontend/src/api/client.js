@@ -37,6 +37,7 @@ export const prodottiAPI = {
   create: (data) => client.post('/api/prodotti/', data),
   update: (id, data) => client.put(`/api/prodotti/${id}`, data),
   delete: (id) => client.delete(`/api/prodotti/${id}`),
+  deleteAll: () => client.delete('/api/prodotti/all'),
   importCSV: (file) => {
     const formData = new FormData()
     formData.append('file', file)

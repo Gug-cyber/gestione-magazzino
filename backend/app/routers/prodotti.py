@@ -241,6 +241,28 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
     return d
 
 
+@router.delete("/all", status_code=200)
+def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    """
+    Elimina tutti i prodotti dal database.
+    Operazione riservata agli utenti autenticati.
+    ATTENZIONE: Operazione irreversibile!
+    """
+    try:
+        count = db.query(Prodotto).delete()
+        db.commit()
+        return {
+            "message": "Tutti i prodotti sono stati eliminati con successo",
+            "deleted_count": count,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante l'eliminazione dei prodotti: {str(e)}",
+        )
+
+
 @router.delete("/{prodotto_id}", status_code=204)
 def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     prodotto = crud.get_prodotto(db, prodotto_id)
