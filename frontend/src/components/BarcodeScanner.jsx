@@ -33,24 +33,23 @@ function BarcodeScanner({ onScan, onClose }) {
     // Stop continuous decode first (important: BEFORE closing the stream)
     try {
       if (readerRef.current) {
-        readerRef.current.stopContinuousDecode()
+        try { readerRef.current.stopContinuousDecode?.() } catch { /* ignore */ }
         readerRef.current.reset()
       }
     } catch { /* ignore */ }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
+      const tracks = streamRef.current.getTracks()
+      tracks.forEach(track => {
         track.stop()
         // On mobile, force-disable the track in case stop() alone isn't enough
-        if (track.readyState !== 'ended') {
-          track.enabled = false
-        }
+        try { track.enabled = false } catch { /* ignore */ }
       })
       streamRef.current = null
     }
     if (videoRef.current) {
-      videoRef.current.pause()
+      try { videoRef.current.pause() } catch { /* ignore */ }
       videoRef.current.srcObject = null
-      videoRef.current.load()
+      try { videoRef.current.load() } catch { /* ignore */ }
     }
   }, [])
 
