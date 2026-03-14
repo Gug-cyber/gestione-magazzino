@@ -46,11 +46,11 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
     try {
       JsBarcode(canvasRef.current, sanitized, {
         format: 'CODE39',
-        width: 3,
-        height: 80,
+        width: 2,
+        height: 100,
         displayValue: true,
         fontSize: 14,
-        margin: 15,
+        margin: 20,
         background: '#ffffff',
         lineColor: '#000000',
       })
