@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { BrowserMultiFormatReader } from '@zxing/browser'
-import { DecodeHintType, BarcodeFormat } from '@zxing/library'
+import { useEffect, useRef, useState } from 'react'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 
 const STATUS = {
   INIT: '⏳ Inizializzazione fotocamera...',
@@ -8,240 +7,198 @@ const STATUS = {
   DETECTED: '✅ Codice rilevato!',
 }
 
-// Decode hints: explicitly list the formats to scan so the reader focuses on common
-// product barcode types. CODE_39 is first priority for best smartphone compatibility,
-// CODE_128 as fallback for newer labels, with EAN/UPC/QR support as fallback.
-// TRY_HARDER improves detection at low resolution.
-const READER_HINTS = new Map([
-  [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_39, BarcodeFormat.CODE_128, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.QR_CODE]],
-  [DecodeHintType.TRY_HARDER, true],
-])
+// Formats to scan: CODE_39 first (primary for product labels), CODE_128 as fallback,
+// plus common retail formats.
+const FORMATS_TO_SUPPORT = [
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.QR_CODE,
+]
+
+// Scanning region dimensions — shared between the html5-qrcode config and the
+// viewfinder overlay so both stay in sync.
+const QRBOX = { width: 250, height: 150 }
 
 function BarcodeScanner({ onScan, onClose }) {
-  const videoRef = useRef(null)
-  const readerRef = useRef(null)
-  const streamRef = useRef(null)
-  // Counter to detect stale async startCamera calls after unmount or re-invocation
-  const startIdRef = useRef(0)
   const [error, setError] = useState('')
-  const [zoom, setZoom] = useState(1)
   const [status, setStatus] = useState(STATUS.INIT)
   const [scanning, setScanning] = useState(false)
   const [cameras, setCameras] = useState([])
   const [selectedCamera, setSelectedCamera] = useState(null)
 
-  const stopStream = useCallback(() => {
-    // Stop continuous decode first (important: BEFORE closing the stream)
-    try {
-      if (readerRef.current) {
-        try { readerRef.current.stopContinuousDecode?.() } catch { /* ignore */ }
-        readerRef.current.reset()
-      }
-    } catch { /* ignore */ }
-    if (streamRef.current) {
-      const tracks = streamRef.current.getTracks()
-      tracks.forEach(track => {
-        track.stop()
-        // On mobile, force-disable the track in case stop() alone isn't enough
-        try { track.enabled = false } catch { /* ignore */ }
-      })
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      try { videoRef.current.pause() } catch { /* ignore */ }
-      videoRef.current.srcObject = null
-      try { videoRef.current.load() } catch { /* ignore */ }
-    }
-  }, [])
+  const scannerRef = useRef(null)
+  const mountedRef = useRef(true)
+  const successHandledRef = useRef(false)
 
-  const startCamera = useCallback(async (deviceId) => {
-    // Claim this start slot; any previous in-flight call will see a mismatched id and abort
-    const startId = ++startIdRef.current
-
-    // Helper: stop a newly acquired stream when this call has been superseded
-    const abortIfSuperseded = (s) => {
-      if (startId !== startIdRef.current) {
-        s.getTracks().forEach(t => t.stop())
-        return true
-      }
-      return false
-    }
-
-    stopStream()
-    setError('')
-    setStatus(STATUS.INIT)
-    setScanning(false)
-
-    // Brief pause to let the browser fully release the previous camera stream before
-    // requesting a new one — mobile browsers (especially Safari iOS and Chrome Android)
-    // require significantly more time to release the stream than desktop browsers.
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    const delay = isMobile ? 500 : 150
-    await new Promise(resolve => setTimeout(resolve, delay))
-    if (startId !== startIdRef.current) return // a newer call superseded this one
-
-    let stream
-    try {
-      const videoConstraints = deviceId
-        ? { deviceId: { exact: deviceId } }
-        : { facingMode: { ideal: 'environment' } }
-      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints })
-    } catch {
-      // Fallback: try any camera
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      } catch (e) {
-        if (startId !== startIdRef.current) return
-        const httpsRequiredMsg = 'Per usare la webcam da telefono/tablet è necessario HTTPS. Riavvia l\'app con VITE_HTTPS=true oppure accedi da localhost.'
-        if (e.name === 'NotAllowedError') {
-          const isLAN = !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/)
-          if (isLAN && window.location.protocol !== 'https:') {
-            setError(httpsRequiredMsg)
-          } else {
-            setError('Permesso fotocamera negato. Vai nelle impostazioni del browser e abilita la fotocamera.')
-          }
-        } else if (e.name === 'NotFoundError') {
-          setError('Nessuna fotocamera trovata su questo dispositivo.')
-        } else if (e.name === 'NotReadableError') {
-          setError('Fotocamera ancora in uso. Attendi qualche secondo e riprova.')
-        } else if (e.name === 'SecurityError') {
-          setError(httpsRequiredMsg)
-        } else {
-          setError('Impossibile accedere alla fotocamera: ' + (e.message || 'Errore sconosciuto'))
-        }
-        return
-      }
-    }
-
-    if (abortIfSuperseded(stream)) return
-
-    // Apply continuous autofocus where supported
-    try {
-      const [track] = stream.getVideoTracks()
-      if (track && typeof track.applyConstraints === 'function') {
-        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
-      }
-    } catch { /* not all cameras support this */ }
-
-    if (abortIfSuperseded(stream)) return
-
-    streamRef.current = stream
-    if (!videoRef.current) { stream.getTracks().forEach(t => t.stop()); return }
-    videoRef.current.srcObject = stream
-
-    // Explicit play() is required on iOS even with autoPlay attribute
-    try {
-      await videoRef.current.play()
-    } catch { /* ignore — some browsers auto-play without needing this */ }
-
-    if (startId !== startIdRef.current) { stopStream(); return }
-
-    // Double-check that the video element is ready (readyState >= 2 = HAVE_CURRENT_DATA).
-    // On mobile the video may not have loaded metadata yet at this point.
-    if (videoRef.current && videoRef.current.readyState < 2) {
-      await new Promise((resolve) => {
-        if (!videoRef.current) { resolve(); return }
-        const cleanup = () => {
-          clearTimeout(timeoutId)
-          if (videoRef.current) videoRef.current.onloadedmetadata = null
-          resolve()
-        }
-        const timeoutId = setTimeout(cleanup, 1000) // safety timeout
-        videoRef.current.onloadedmetadata = cleanup
-      })
-    }
-
-    if (startId !== startIdRef.current) { stopStream(); return }
-
-    const reader = new BrowserMultiFormatReader(READER_HINTS)
-    readerRef.current = reader
-
-    setStatus(STATUS.WAITING)
-    setScanning(true)
-
-    reader.decodeFromStream(stream, videoRef.current, (result) => {
-      if (result) {
-        setStatus(STATUS.DETECTED)
-        setScanning(false)
-        stopStream()
-        onScan(result.getText())
-        onClose()
-      }
-      // Scan-loop errors (NotFoundException, ChecksumException, FormatException, etc.)
-      // are emitted every frame when no barcode is visible — ignore them silently.
-    }).catch((e) => {
-      if (startId !== startIdRef.current) return // stale — ignore
-      setError('Impossibile avviare il lettore: ' + (e.message || 'Errore sconosciuto'))
-    })
-  }, [stopStream, onScan, onClose])
-
-  // Enumerate cameras on mount, then start the preferred one
+  // Initialize scanner and enumerate cameras on mount
   useEffect(() => {
-    let cancelled = false
+    mountedRef.current = true
+    successHandledRef.current = false
 
     async function init() {
-      // We need to request camera access once before enumerateDevices gives us labels
       try {
-        await navigator.mediaDevices.getUserMedia({ video: true }).then(s => s.getTracks().forEach(t => t.stop()))
-      } catch { /* ignore — we'll surface the error in startCamera */ }
+        const devices = await Html5Qrcode.getCameras()
 
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices()
-        const videoDevices = devices.filter(d => d.kind === 'videoinput')
-        if (!cancelled) {
-          setCameras(videoDevices)
-          // Restore saved camera preference if it still exists, otherwise prefer rear camera
-          let savedId = null
-          try { savedId = localStorage.getItem('barcode_preferred_camera') } catch { /* private browsing / storage disabled */ }
-          const savedExists = savedId && videoDevices.some(d => d.deviceId === savedId)
-          let preferred
-          if (savedExists) {
-            preferred = savedId
-          } else {
-            const rearCam = videoDevices.find(d =>
-              /back|rear|environment/i.test(d.label)
-            )
-            preferred = rearCam?.deviceId || videoDevices[0]?.deviceId || null
-          }
-          setSelectedCamera(preferred)
-          startCamera(preferred)
+        if (!mountedRef.current) return
+
+        if (!devices || devices.length === 0) {
+          setError('Nessuna fotocamera trovata su questo dispositivo.')
+          return
         }
-      } catch {
-        if (!cancelled) startCamera(null)
+
+        setCameras(devices)
+
+        // Restore saved camera preference or prefer rear camera
+        let preferredCameraId = null
+        try {
+          preferredCameraId = localStorage.getItem('barcode_preferred_camera')
+        } catch { /* private browsing */ }
+
+        const savedExists = preferredCameraId && devices.some(d => d.id === preferredCameraId)
+
+        let cameraId
+        if (savedExists) {
+          cameraId = preferredCameraId
+        } else {
+          // Prefer rear/back/environment camera
+          const rearCamera = devices.find(d =>
+            /back|rear|environment/i.test(d.label)
+          )
+          cameraId = rearCamera?.id || devices[0]?.id
+        }
+
+        setSelectedCamera(cameraId)
+        await startScanning(cameraId)
+      } catch (err) {
+        if (mountedRef.current) {
+          setError('Impossibile accedere alla fotocamera: ' + (err.message || 'Errore sconosciuto'))
+        }
       }
     }
 
     init()
 
     return () => {
-      cancelled = true
-      // Invalidate any in-flight startCamera call so it aborts after its next await
-      startIdRef.current++
-      stopStream()
+      mountedRef.current = false
+      stopScanning()
     }
-    // Empty deps: camera enumeration and initial stream must run only on mount.
-    // startCamera/stopStream are stable useCallback refs; re-running on parent
-    // re-renders would cause undesired camera restarts.
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const switchCamera = useCallback((deviceId) => {
-    setSelectedCamera(deviceId)
-    if (deviceId) {
-      try { localStorage.setItem('barcode_preferred_camera', deviceId) } catch { /* private browsing / storage disabled */ }
+  const startScanning = async (cameraId) => {
+    if (!mountedRef.current) return
+
+    try {
+      // Stop any existing scanner instance before creating a new one
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop() } catch { /* ignore */ }
+        try { scannerRef.current.clear() } catch { /* ignore */ }
+        scannerRef.current = null
+      }
+
+      const html5QrCode = new Html5Qrcode('barcode-reader')
+      scannerRef.current = html5QrCode
+
+      setStatus(STATUS.INIT)
+      setError('')
+
+      const config = {
+        fps: 10,
+        qrbox: QRBOX,
+        aspectRatio: 1.777778,
+        formatsToSupport: FORMATS_TO_SUPPORT,
+      }
+
+      // Success callback: called once when a barcode is detected
+      const onScanSuccess = (decodedText) => {
+        if (successHandledRef.current || !mountedRef.current) return
+
+        successHandledRef.current = true
+        setStatus(STATUS.DETECTED)
+        setScanning(false)
+
+        // Haptic feedback (vibration on mobile)
+        if (navigator.vibrate) {
+          navigator.vibrate(200)
+        }
+
+        stopScanning()
+        onScan(decodedText)
+        onClose()
+      }
+
+      // Error callback: called every frame when no barcode is visible — ignore silently
+      const onScanError = () => {}
+
+      await html5QrCode.start(
+        cameraId,
+        config,
+        onScanSuccess,
+        onScanError
+      )
+
+      if (!mountedRef.current) {
+        stopScanning()
+        return
+      }
+
+      setStatus(STATUS.WAITING)
+      setScanning(true)
+
+    } catch (err) {
+      if (!mountedRef.current) return
+
+      const httpsRequiredMsg = 'Per usare la webcam da telefono/tablet è necessario HTTPS. Riavvia l\'app con VITE_HTTPS=true oppure accedi da localhost.'
+
+      if (err.name === 'NotAllowedError' || err.message?.includes('Permission')) {
+        const isLAN = !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/)
+        if (isLAN && window.location.protocol !== 'https:') {
+          setError(httpsRequiredMsg)
+        } else {
+          setError('Permesso fotocamera negato. Vai nelle impostazioni del browser e abilita la fotocamera.')
+        }
+      } else if (err.name === 'NotFoundError' || err.message?.includes('not found')) {
+        setError('Nessuna fotocamera trovata su questo dispositivo.')
+      } else if (err.name === 'NotReadableError' || err.message?.includes('in use')) {
+        setError('Fotocamera ancora in uso. Attendi qualche secondo e riprova.')
+      } else if (err.name === 'SecurityError') {
+        setError(httpsRequiredMsg)
+      } else {
+        setError('Impossibile avviare lo scanner: ' + (err.message || 'Errore sconosciuto'))
+      }
     }
-    startCamera(deviceId)
-  }, [startCamera])
+  }
+
+  const stopScanning = () => {
+    if (scannerRef.current) {
+      try { scannerRef.current.stop().catch(() => {}) } catch { /* ignore */ }
+      try { scannerRef.current.clear() } catch { /* ignore */ }
+      scannerRef.current = null
+    }
+  }
+
+  const switchCamera = async (cameraId) => {
+    setSelectedCamera(cameraId)
+    if (cameraId) {
+      try {
+        localStorage.setItem('barcode_preferred_camera', cameraId)
+      } catch { /* private browsing */ }
+    }
+    successHandledRef.current = false
+    await startScanning(cameraId)
+  }
 
   const handleClose = () => {
-    stopStream()
+    stopScanning()
     onClose()
   }
 
   const statusColor = status === STATUS.DETECTED ? '#2e7d32'
     : status === STATUS.WAITING ? '#1565c0'
     : '#555'
-
-  const videoMaxHeight = window.innerWidth < 480 ? '50vh' : '300px'
 
   return (
     <div style={{
@@ -255,6 +212,7 @@ function BarcodeScanner({ onScan, onClose }) {
           50% { opacity: 0.4; }
         }
       `}</style>
+
       <div style={{
         backgroundColor: 'white', borderRadius: '12px', padding: '24px',
         maxWidth: '480px', width: '90%', textAlign: 'center',
@@ -270,99 +228,88 @@ function BarcodeScanner({ onScan, onClose }) {
           {error ? <span style={{ color: 'red' }}>{error}</span> : status}
         </p>
 
-        {/* Video container with viewfinder overlay */}
+        {/* html5-qrcode renders the video feed inside this div */}
         <div style={{
-          position: 'relative', overflow: 'hidden',
-          borderRadius: '8px', backgroundColor: '#000',
-          lineHeight: 0,
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: '8px',
+          marginBottom: '12px',
         }}>
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            autoPlay
+          <div
+            id="barcode-reader"
             aria-label="Flusso video fotocamera per la scansione del codice a barre"
-            style={{
-              width: '100%',
-              maxHeight: videoMaxHeight,
-              objectFit: 'cover',
-              display: 'block',
-              transform: `scale(${zoom})`,
-              transformOrigin: 'center center',
-              transition: 'transform 0.2s ease',
-            }}
-          />
+            style={{ width: '100%' }}
+          ></div>
 
-          {/* Viewfinder rectangle */}
-          <div style={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '70%', height: '35%',
-            border: '3px solid #00e5ff',
-            borderRadius: '6px',
-            boxSizing: 'border-box',
-            animation: scanning ? 'pulse-border 1.5s ease-in-out infinite' : 'none',
-            pointerEvents: 'none',
-          }}>
-            {/* Corner accents */}
-            {[
-              { top: -3, left: -3, borderTop: '4px solid #ff1744', borderLeft: '4px solid #ff1744' },
-              { top: -3, right: -3, borderTop: '4px solid #ff1744', borderRight: '4px solid #ff1744' },
-              { bottom: -3, left: -3, borderBottom: '4px solid #ff1744', borderLeft: '4px solid #ff1744' },
-              { bottom: -3, right: -3, borderBottom: '4px solid #ff1744', borderRight: '4px solid #ff1744' },
-            ].map((s, i) => (
-              <div key={i} style={{
-                position: 'absolute', width: 18, height: 18,
-                borderRadius: 2, ...s,
-              }} />
-            ))}
-          </div>
+          {/* Scanning viewfinder overlay */}
+          {scanning && (
+            <div style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '70%', maxWidth: QRBOX.width,
+              height: '40%', maxHeight: QRBOX.height,
+              border: '3px solid #00e5ff',
+              borderRadius: '8px',
+              boxSizing: 'border-box',
+              animation: 'pulse-border 1.5s ease-in-out infinite',
+              pointerEvents: 'none',
+            }}>
+              {/* Corner accents */}
+              {[
+                { top: -3, left: -3, borderTop: '4px solid #ff1744', borderLeft: '4px solid #ff1744' },
+                { top: -3, right: -3, borderTop: '4px solid #ff1744', borderRight: '4px solid #ff1744' },
+                { bottom: -3, left: -3, borderBottom: '4px solid #ff1744', borderLeft: '4px solid #ff1744' },
+                { bottom: -3, right: -3, borderBottom: '4px solid #ff1744', borderRight: '4px solid #ff1744' },
+              ].map((s, i) => (
+                <div key={i} style={{
+                  position: 'absolute', width: 18, height: 18,
+                  borderRadius: 2, ...s,
+                }} />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Camera selector (shown only when multiple cameras are available) */}
+        {/* Camera selector (only shown when multiple cameras are available) */}
         {cameras.length > 1 && (
           <select
             value={selectedCamera || ''}
             onChange={e => switchCamera(e.target.value)}
-            style={{ marginTop: '8px', width: '100%', padding: '6px', borderRadius: '4px', fontSize: '0.9rem' }}
+            style={{
+              marginBottom: '12px',
+              width: '100%',
+              padding: '8px',
+              borderRadius: '6px',
+              border: '1px solid #ccc',
+              fontSize: '0.9rem',
+            }}
             aria-label="Seleziona fotocamera"
           >
             {cameras.map(cam => (
-              <option key={cam.deviceId} value={cam.deviceId}>
-                {cam.label || `Fotocamera ${cam.deviceId.slice(0, 8)}`}
+              <option key={cam.id} value={cam.id}>
+                {cam.label || `Fotocamera ${cam.id.slice(0, 8)}`}
               </option>
             ))}
           </select>
         )}
 
-        {/* Zoom slider */}
-        <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ fontSize: '0.85rem', color: '#555', whiteSpace: 'nowrap' }}>
-            Zoom:
-          </label>
-          <input
-            type="range"
-            min={1} max={3} step={0.1}
-            value={zoom}
-            aria-label="Livello zoom"
-            aria-valuetext={`${zoom.toFixed(1)} volte`}
-            onChange={e => setZoom(parseFloat(e.target.value))}
-            style={{ flex: 1, cursor: 'pointer' }}
-          />
-          <span style={{ fontSize: '0.85rem', color: '#333', minWidth: '3ch' }}>
-            {zoom.toFixed(1)}×
-          </span>
-        </div>
-
         <button
           onClick={handleClose}
           style={{
-            marginTop: '16px', backgroundColor: '#c62828', color: 'white',
-            border: 'none', borderRadius: '6px', padding: '8px 20px',
-            cursor: 'pointer', fontWeight: 'bold',
+            marginTop: '8px',
+            backgroundColor: '#c62828',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '10px 24px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '0.95rem',
           }}
-        >✕ Chiudi</button>
+        >
+          ✕ Chiudi
+        </button>
       </div>
     </div>
   )
