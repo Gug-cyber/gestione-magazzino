@@ -309,7 +309,7 @@ function NuovoProdotto() {
             </div>
 
             {/* SKU row */}
-            <div style={{ marginBottom: '14px' }}>
+            <div>
               <label style={labelStyle}>
                 <span style={labelTextStyle}>SKU *</span>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -334,8 +334,8 @@ function NuovoProdotto() {
                   >📷</button>
                 </div>
               </label>
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-                Solo caratteri validi: 0-9, A-Z, - . $ / + % (spazio)
+              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '-8px', marginBottom: '14px' }}>
+                ℹ️ Caratteri validi: 0-9, A-Z, - . $ / + % (spazio)
               </div>
             </div>
 
