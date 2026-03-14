@@ -20,6 +20,9 @@ function Prodotti() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [showScanner, setShowScanner] = useState(false)
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
   // Holds the SKU value of the last barcode scan so we can alert when no match is found
   const pendingScanAlertRef = useRef(null)
 
@@ -50,6 +53,38 @@ function Prodotti() {
   const handleSearchSubmit = (value) => {
     setSearch(value)
     setPage(1)
+  }
+
+  const handleDeleteAll = () => {
+    const confirmed = window.confirm(
+      `⚠️ ATTENZIONE!\n\nStai per eliminare TUTTI i ${total} prodotti.\n\nQuesta operazione è IRREVERSIBILE.\n\nVuoi continuare?`
+    )
+    if (!confirmed) return
+    setShowDeleteAllModal(true)
+    setDeleteConfirmText('')
+  }
+
+  const confirmDeleteAll = async () => {
+    if (deleteConfirmText !== 'ELIMINA') {
+      alert('Devi digitare esattamente la parola "ELIMINA" per confermare.')
+      return
+    }
+    setIsDeleting(true)
+    setError('')
+    try {
+      const response = await prodottiAPI.deleteAll()
+      const deletedCount = response.data?.deleted_count ?? 0
+      setShowDeleteAllModal(false)
+      setDeleteConfirmText('')
+      alert(`✅ Operazione completata!\n\n${deletedCount} prodotti eliminati con successo.`)
+      setPage(1)
+      fetchProdotti(search, 1)
+    } catch (err) {
+      setError(err.response?.data?.detail || "Errore durante l'eliminazione massiva dei prodotti")
+      setShowDeleteAllModal(false)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -89,6 +124,14 @@ function Prodotti() {
           </div>
           <button onClick={() => navigate('/prodotti/nuovo')} className={styles.addBtn}>
             + Aggiungi Prodotto
+          </button>
+          <button
+            onClick={handleDeleteAll}
+            disabled={total === 0 || isDeleting}
+            className={styles.deleteAllBtn}
+            title={total === 0 ? 'Nessun prodotto da eliminare' : `Elimina tutti i ${total} prodotti`}
+          >
+            🗑️ Elimina Tutti
           </button>
         </div>
       </div>
@@ -241,6 +284,110 @@ function Prodotti() {
           }}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {showDeleteAllModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          }}>
+            <h2 style={{ color: '#c62828', marginTop: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⚠️ ATTENZIONE: Eliminazione massiva
+            </h2>
+            <p style={{ color: '#333', marginBottom: '16px', lineHeight: 1.6 }}>
+              Stai per eliminare <strong>TUTTI i {total} prodotti</strong> dal database.
+            </p>
+            <div style={{
+              backgroundColor: '#ffebee',
+              border: '1px solid #ef9a9a',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '20px',
+            }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#c62828' }}>
+                <strong>Questa operazione:</strong>
+              </p>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '0.9rem', color: '#c62828' }}>
+                <li>Eliminerà <strong>{total} prodotti</strong></li>
+                <li>È <strong>IRREVERSIBILE</strong></li>
+                <li>Non può essere annullata</li>
+              </ul>
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#333' }}>
+                Per confermare, digita la parola: <span style={{ color: '#c62828' }}>ELIMINA</span>
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Digita ELIMINA"
+                disabled={isDeleting}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #ccc',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setShowDeleteAllModal(false); setDeleteConfirmText('') }}
+                disabled={isDeleting}
+                style={{
+                  backgroundColor: '#f5f5f5',
+                  color: '#333',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.95rem',
+                }}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confirmDeleteAll}
+                disabled={isDeleting || deleteConfirmText !== 'ELIMINA'}
+                style={{
+                  backgroundColor: deleteConfirmText === 'ELIMINA' && !isDeleting ? '#c62828' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  cursor: deleteConfirmText === 'ELIMINA' && !isDeleting ? 'pointer' : 'not-allowed',
+                  fontWeight: 'bold',
+                  fontSize: '0.95rem',
+                  opacity: deleteConfirmText === 'ELIMINA' && !isDeleting ? 1 : 0.6,
+                }}
+              >
+                {isDeleting ? '⏳ Eliminazione...' : '🗑️ Conferma Eliminazione'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
