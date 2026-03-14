@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserMultiFormatReader } from '@zxing/browser'
+import { DecodeHintType, BarcodeFormat } from '@zxing/library'
 
 const STATUS = {
   INIT: '⏳ Inizializzazione fotocamera...',
@@ -7,10 +8,20 @@ const STATUS = {
   DETECTED: '✅ Codice rilevato!',
 }
 
+// Decode hints: explicitly list the formats to scan so the reader focuses on common
+// product barcode types. CODE_39 and CODE_128 are prioritised (first in the array),
+// with EAN/UPC/QR support as fallback. TRY_HARDER improves detection at low resolution.
+const READER_HINTS = new Map([
+  [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_39, BarcodeFormat.CODE_128, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.QR_CODE]],
+  [DecodeHintType.TRY_HARDER, true],
+])
+
 function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null)
   const readerRef = useRef(null)
   const streamRef = useRef(null)
+  // Counter to detect stale async startCamera calls after unmount or re-invocation
+  const startIdRef = useRef(0)
   const [error, setError] = useState('')
   const [zoom, setZoom] = useState(1)
   const [status, setStatus] = useState(STATUS.INIT)
@@ -30,10 +41,28 @@ function BarcodeScanner({ onScan, onClose }) {
   }, [])
 
   const startCamera = useCallback(async (deviceId) => {
+    // Claim this start slot; any previous in-flight call will see a mismatched id and abort
+    const startId = ++startIdRef.current
+
+    // Helper: stop a newly acquired stream when this call has been superseded
+    const abortIfSuperseded = (s) => {
+      if (startId !== startIdRef.current) {
+        s.getTracks().forEach(t => t.stop())
+        return true
+      }
+      return false
+    }
+
     stopStream()
     setError('')
     setStatus(STATUS.INIT)
     setScanning(false)
+
+    // Brief pause to let the browser fully release the previous camera stream before
+    // requesting a new one — this prevents the "camera flashes on then off" race condition
+    // that occurs when the component is quickly unmounted and remounted.
+    await new Promise(resolve => setTimeout(resolve, 150))
+    if (startId !== startIdRef.current) return // a newer call superseded this one
 
     let stream
     try {
@@ -46,6 +75,7 @@ function BarcodeScanner({ onScan, onClose }) {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true })
       } catch (e) {
+        if (startId !== startIdRef.current) return
         const httpsRequiredMsg = 'Per usare la webcam da telefono/tablet è necessario HTTPS. Riavvia l\'app con VITE_HTTPS=true oppure accedi da localhost.'
         if (e.name === 'NotAllowedError') {
           const isLAN = !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/)
@@ -65,6 +95,8 @@ function BarcodeScanner({ onScan, onClose }) {
       }
     }
 
+    if (abortIfSuperseded(stream)) return
+
     // Apply continuous autofocus where supported
     try {
       const [track] = stream.getVideoTracks()
@@ -72,6 +104,8 @@ function BarcodeScanner({ onScan, onClose }) {
         await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
       }
     } catch { /* not all cameras support this */ }
+
+    if (abortIfSuperseded(stream)) return
 
     streamRef.current = stream
     if (!videoRef.current) { stream.getTracks().forEach(t => t.stop()); return }
@@ -82,7 +116,9 @@ function BarcodeScanner({ onScan, onClose }) {
       await videoRef.current.play()
     } catch { /* ignore — some browsers auto-play without needing this */ }
 
-    const reader = new BrowserMultiFormatReader()
+    if (startId !== startIdRef.current) { stopStream(); return }
+
+    const reader = new BrowserMultiFormatReader(READER_HINTS)
     readerRef.current = reader
 
     setStatus(STATUS.WAITING)
@@ -99,6 +135,7 @@ function BarcodeScanner({ onScan, onClose }) {
       // Scan-loop errors (NotFoundException, ChecksumException, FormatException, etc.)
       // are emitted every frame when no barcode is visible — ignore them silently.
     }).catch((e) => {
+      if (startId !== startIdRef.current) return // stale — ignore
       setError('Impossibile avviare il lettore: ' + (e.message || 'Errore sconosciuto'))
     })
   }, [stopStream, onScan, onClose])
@@ -143,6 +180,8 @@ function BarcodeScanner({ onScan, onClose }) {
 
     return () => {
       cancelled = true
+      // Invalidate any in-flight startCamera call so it aborts after its next await
+      startIdRef.current++
       stopStream()
     }
     // Empty deps: camera enumeration and initial stream must run only on mount.
