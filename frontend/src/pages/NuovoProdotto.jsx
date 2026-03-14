@@ -51,11 +51,11 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
     try {
       JsBarcode(canvasRef.current, sanitized, {
         format: 'CODE39',
-        width: 3,
-        height: 120,
+        width: 4,
+        height: 140,
         displayValue: true,
-        fontSize: 16,
-        margin: 15,
+        fontSize: 18,
+        margin: 10,
         background: '#ffffff',
         lineColor: '#000000',
       })
@@ -188,10 +188,10 @@ function NuovoProdotto() {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @page { size: 50mm 25mm; margin: 0; } /* Standard adhesive label size (approx. 2" x 1") */
   body { width: 50mm; height: 25mm; overflow: hidden; background: white; font-family: monospace; display: flex; align-items: center; justify-content: center; }
-  .label { width: 48mm; height: 23mm; border: 0.3mm solid #888; border-radius: 1.5mm; padding: 1mm 2mm; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .label img { width: 44mm; height: auto; display: block; margin: 0 auto; }
-  .sku { font-size: 6pt; font-weight: bold; letter-spacing: 0.05em; margin-top: 1mm; }
-  .nome { font-size: 5pt; color: #333; font-family: sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 44mm; }
+  .label { width: 48mm; height: 23mm; border: 0.3mm solid #888; border-radius: 1.5mm; padding: 0.5mm 1mm; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .label img { width: 46mm; height: auto; display: block; margin: 0 auto; max-height: 18mm; }
+  .sku { font-size: 7pt; font-weight: bold; letter-spacing: 0.05em; margin-top: 0.5mm; }
+  .nome { font-size: 5.5pt; color: #333; font-family: sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46mm; }
 </style>
 </head><body>
 <div class="label">
