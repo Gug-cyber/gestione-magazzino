@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, getFotoUrl } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
@@ -19,6 +19,8 @@ function Prodotti() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [showScanner, setShowScanner] = useState(false)
+  // Holds the SKU value of the last barcode scan so we can alert when no match is found
+  const pendingScanAlertRef = useRef(null)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -29,7 +31,13 @@ function Prodotti() {
       setProdotti(resp.data)
       const totalCount = parseInt(resp.headers['x-total-count'] ?? '0', 10)
       setTotal(isNaN(totalCount) ? resp.data.length : totalCount)
+      // If this fetch was triggered by a barcode scan and returned no results, alert the user
+      if (pendingScanAlertRef.current !== null && resp.data.length === 0) {
+        alert(`⚠️ Nessun prodotto trovato con SKU: ${pendingScanAlertRef.current}\n\nVerifica che il codice a barre corrisponda esattamente allo SKU salvato.`)
+      }
+      pendingScanAlertRef.current = null
     } catch {
+      pendingScanAlertRef.current = null
       setError('Errore nel caricamento dei dati')
     }
   }, [])
@@ -223,7 +231,12 @@ function Prodotti() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setSearchInput(value); handleSearchSubmit(value); setShowScanner(false) }}
+          onScan={(value) => {
+            pendingScanAlertRef.current = value
+            setSearchInput(value)
+            handleSearchSubmit(value)
+            setShowScanner(false)
+          }}
           onClose={() => setShowScanner(false)}
         />
       )}

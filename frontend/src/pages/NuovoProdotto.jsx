@@ -30,6 +30,13 @@ function generateSKU(nome, statoConservazione, lingua) {
   return parts.join('-')
 }
 
+// Sanitise an SKU so it only contains characters supported by CODE39.
+// CODE39 charset: 0-9, A-Z, - . $ / + % and space.
+function sanitizeSkuForCode39(sku) {
+  if (!sku) return ''
+  return sku.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
+}
+
 function BarcodeCanvas({ value, canvasRef: extRef }) {
   const localRef = useRef(null)
   const canvasRef = extRef || localRef
@@ -87,7 +94,7 @@ function NuovoProdotto() {
   useEffect(() => {
     if (skuManuale) return
     const generated = generateSKU(form.nome, form.stato_conservazione, form.lingua)
-    setForm(f => ({ ...f, sku: generated }))
+    setForm(f => ({ ...f, sku: sanitizeSkuForCode39(generated) }))
   }, [form.nome, form.stato_conservazione, form.lingua, skuManuale])
 
   useEffect(() => {
@@ -310,7 +317,7 @@ function NuovoProdotto() {
                     type="text"
                     required
                     value={form.sku}
-                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: e.target.value }) }}
+                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: sanitizeSkuForCode39(e.target.value) }) }}
                     style={{ ...inputStyle, flex: 1 }}
                   />
                   <button
@@ -327,6 +334,9 @@ function NuovoProdotto() {
                   >📷</button>
                 </div>
               </label>
+              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+                Solo caratteri validi: 0-9, A-Z, - . $ / + % (spazio)
+              </div>
             </div>
 
             {/* Grid 2 cols: selects */}
@@ -490,7 +500,7 @@ function NuovoProdotto() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
+          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: sanitizeSkuForCode39(value) })); setShowScanner(false) }}
           onClose={() => setShowScanner(false)}
         />
       )}
