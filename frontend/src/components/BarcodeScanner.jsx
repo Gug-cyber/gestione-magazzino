@@ -30,13 +30,27 @@ function BarcodeScanner({ onScan, onClose }) {
   const [selectedCamera, setSelectedCamera] = useState(null)
 
   const stopStream = useCallback(() => {
-    try { readerRef.current?.reset() } catch { /* ignore */ }
+    // Stop continuous decode first (important: BEFORE closing the stream)
+    try {
+      if (readerRef.current) {
+        readerRef.current.stopContinuousDecode()
+        readerRef.current.reset()
+      }
+    } catch { /* ignore */ }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current.getTracks().forEach(track => {
+        track.stop()
+        // On mobile, force-disable the track in case stop() alone isn't enough
+        if (track.readyState !== 'ended') {
+          track.enabled = false
+        }
+      })
       streamRef.current = null
     }
     if (videoRef.current) {
+      videoRef.current.pause()
       videoRef.current.srcObject = null
+      videoRef.current.load()
     }
   }, [])
 
@@ -59,9 +73,11 @@ function BarcodeScanner({ onScan, onClose }) {
     setScanning(false)
 
     // Brief pause to let the browser fully release the previous camera stream before
-    // requesting a new one — this prevents the "camera flashes on then off" race condition
-    // that occurs when the component is quickly unmounted and remounted.
-    await new Promise(resolve => setTimeout(resolve, 150))
+    // requesting a new one — mobile browsers (especially Safari iOS and Chrome Android)
+    // require significantly more time to release the stream than desktop browsers.
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    const delay = isMobile ? 500 : 150
+    await new Promise(resolve => setTimeout(resolve, delay))
     if (startId !== startIdRef.current) return // a newer call superseded this one
 
     let stream
@@ -86,6 +102,8 @@ function BarcodeScanner({ onScan, onClose }) {
           }
         } else if (e.name === 'NotFoundError') {
           setError('Nessuna fotocamera trovata su questo dispositivo.')
+        } else if (e.name === 'NotReadableError') {
+          setError('Fotocamera ancora in uso. Attendi qualche secondo e riprova.')
         } else if (e.name === 'SecurityError') {
           setError(httpsRequiredMsg)
         } else {
@@ -115,6 +133,23 @@ function BarcodeScanner({ onScan, onClose }) {
     try {
       await videoRef.current.play()
     } catch { /* ignore — some browsers auto-play without needing this */ }
+
+    if (startId !== startIdRef.current) { stopStream(); return }
+
+    // Double-check that the video element is ready (readyState >= 2 = HAVE_CURRENT_DATA).
+    // On mobile the video may not have loaded metadata yet at this point.
+    if (videoRef.current && videoRef.current.readyState < 2) {
+      await new Promise((resolve) => {
+        if (!videoRef.current) { resolve(); return }
+        const cleanup = () => {
+          clearTimeout(timeoutId)
+          if (videoRef.current) videoRef.current.onloadedmetadata = null
+          resolve()
+        }
+        const timeoutId = setTimeout(cleanup, 1000) // safety timeout
+        videoRef.current.onloadedmetadata = cleanup
+      })
+    }
 
     if (startId !== startIdRef.current) { stopStream(); return }
 
