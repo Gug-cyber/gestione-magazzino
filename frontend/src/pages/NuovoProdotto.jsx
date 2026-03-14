@@ -30,29 +30,17 @@ function generateSKU(nome, statoConservazione, lingua) {
   return parts.join('-')
 }
 
-// Sanitise an SKU so it only contains characters supported by CODE39.
-// CODE39 charset: 0-9, A-Z, - . $ / + % and space.
-function sanitizeSkuForCode39(sku) {
-  if (!sku) return ''
-  return sku.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
-}
-
 function BarcodeCanvas({ value, canvasRef: extRef }) {
   const localRef = useRef(null)
   const canvasRef = extRef || localRef
 
   useEffect(() => {
     if (!canvasRef.current || !value) return
-    // Strip characters not supported by Code 39 (keep only valid charset)
-    const sanitized = value.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
-    if (!sanitized) {
-      const ctx = canvasRef.current.getContext('2d')
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-      return
-    }
+
+    // CODE128 supports full ASCII - no sanitization needed
     try {
-      JsBarcode(canvasRef.current, sanitized, {
-        format: 'CODE39',
+      JsBarcode(canvasRef.current, value, {
+        format: 'CODE128',
         width: 2,
         height: 100,
         displayValue: true,
@@ -63,6 +51,12 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
       })
     } catch (e) {
       console.warn('Barcode generation failed:', e)
+      const ctx = canvasRef.current.getContext('2d')
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      ctx.font = '14px Arial'
+      ctx.fillStyle = '#c62828'
+      ctx.textAlign = 'center'
+      ctx.fillText('Errore generazione barcode', canvasRef.current.width / 2, 50)
     }
   }, [value])
 
@@ -94,7 +88,7 @@ function NuovoProdotto() {
   useEffect(() => {
     if (skuManuale) return
     const generated = generateSKU(form.nome, form.stato_conservazione, form.lingua)
-    setForm(f => ({ ...f, sku: sanitizeSkuForCode39(generated) }))
+    setForm(f => ({ ...f, sku: generated }))
   }, [form.nome, form.stato_conservazione, form.lingua, skuManuale])
 
   useEffect(() => {
@@ -317,7 +311,7 @@ function NuovoProdotto() {
                     type="text"
                     required
                     value={form.sku}
-                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: sanitizeSkuForCode39(e.target.value) }) }}
+                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: e.target.value }) }}
                     style={{ ...inputStyle, flex: 1 }}
                   />
                   <button
@@ -335,7 +329,7 @@ function NuovoProdotto() {
                 </div>
               </label>
               <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '-8px', marginBottom: '14px' }}>
-                ℹ️ Caratteri validi: 0-9, A-Z, - . $ / + % (spazio)
+                ℹ️ Tutti i caratteri sono supportati (formato CODE128)
               </div>
             </div>
 
@@ -500,7 +494,7 @@ function NuovoProdotto() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: sanitizeSkuForCode39(value) })); setShowScanner(false) }}
+          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: value })); setShowScanner(false) }}
           onClose={() => setShowScanner(false)}
         />
       )}
