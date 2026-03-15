@@ -88,6 +88,11 @@ COLUMN_MIGRATIONS = [
         "definition": "VARCHAR",
     },
     {
+        "table": "movimenti",
+        "column": "ordine_id",
+        "definition": "INTEGER REFERENCES ordini(id) ON DELETE SET NULL",
+    },
+    {
         "table": "utenti",
         "column": "ruolo",
         "definition": "VARCHAR(20) DEFAULT 'operatore'",

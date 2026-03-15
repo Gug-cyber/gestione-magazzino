@@ -20,9 +20,11 @@ class Movimento(Base):
     note = Column(String(500), nullable=True)
     data_movimento = Column(DateTime(timezone=True), server_default=func.now())
     fornitore_id = Column(Integer, ForeignKey("fornitori.id"), nullable=True)
+    ordine_id = Column(Integer, ForeignKey("ordini.id", ondelete="SET NULL"), nullable=True)
 
     prodotto = relationship("Prodotto", backref="movimenti")
     fornitore = relationship("Fornitore", backref="movimenti")
+    ordine = relationship("Ordine", backref="movimenti")
 
     __table_args__ = (
         Index("ix_movimenti_prodotto_data", "prodotto_id", "data_movimento"),

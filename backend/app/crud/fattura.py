@@ -8,21 +8,39 @@ from datetime import date, datetime, timezone
 
 
 def _genera_numero_fattura(db: Session) -> str:
+    """Numerazione progressiva usando MAX per evitare duplicati in caso di cancellazioni."""
     anno = datetime.now(timezone.utc).year
-    count = db.query(func.count(Fattura.id)).filter(
-        func.extract("year", Fattura.created_at) == anno,
+    prefix = f"FAT-{anno}-"
+    ultimo = db.query(func.max(Fattura.numero_fattura)).filter(
+        Fattura.numero_fattura.like(f"{prefix}%"),
         Fattura.tipo_documento == "fattura",
-    ).scalar() or 0
-    return f"FAT-{anno}-{count + 1:04d}"
+    ).scalar()
+    if ultimo:
+        try:
+            num = int(ultimo.split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            num = 1
+    else:
+        num = 1
+    return f"{prefix}{num:04d}"
 
 
 def _genera_numero_nota_credito(db: Session) -> str:
+    """Numerazione progressiva usando MAX per evitare duplicati in caso di cancellazioni."""
     anno = datetime.now(timezone.utc).year
-    count = db.query(func.count(Fattura.id)).filter(
-        func.extract("year", Fattura.created_at) == anno,
+    prefix = f"NC-{anno}-"
+    ultimo = db.query(func.max(Fattura.numero_fattura)).filter(
+        Fattura.numero_fattura.like(f"{prefix}%"),
         Fattura.tipo_documento == "nota_credito",
-    ).scalar() or 0
-    return f"NC-{anno}-{count + 1:04d}"
+    ).scalar()
+    if ultimo:
+        try:
+            num = int(ultimo.split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            num = 1
+    else:
+        num = 1
+    return f"{prefix}{num:04d}"
 
 
 def get_fatture(
@@ -99,6 +117,9 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
     Genera automaticamente una fattura attiva da un ordine completato (normativa italiana).
     Numerazione progressiva nel formato FAT-YYYY-NNNN.
     Aliquota IVA standard 22%. Data fattura = data completamento ordine.
+
+    NOTA: non esegue db.commit() — il chiamante è responsabile del commit finale
+    nell'ambito della stessa transazione atomica.
     """
     aliquota_iva = 22.0
     imponibile = round(ordine.totale / (1 + aliquota_iva / 100), 2)
@@ -125,7 +146,7 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
         pagata=False,
     )
     db.add(db_fattura)
-    db.commit()
+    db.flush()
     db.refresh(db_fattura)
     return db_fattura
 
@@ -135,6 +156,9 @@ def genera_nota_credito(db: Session, fattura_originale: Fattura) -> Fattura:
     Genera una nota di credito che annulla una fattura emessa (normativa italiana).
     Numerazione progressiva nel formato NC-YYYY-NNNN.
     Segna fattura_originale.annullata = True.
+
+    NOTA: non esegue db.commit() — il chiamante è responsabile del commit finale
+    nell'ambito della stessa transazione atomica.
     """
     numero = _genera_numero_nota_credito(db)
     db_nc = Fattura(
@@ -156,7 +180,7 @@ def genera_nota_credito(db: Session, fattura_originale: Fattura) -> Fattura:
     )
     db.add(db_nc)
     fattura_originale.annullata = True
-    db.commit()
+    db.flush()
     db.refresh(db_nc)
     return db_nc
 
