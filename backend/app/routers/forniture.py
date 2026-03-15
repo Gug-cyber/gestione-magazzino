@@ -6,7 +6,7 @@ from ..database import get_db
 from ..schemas.fornitura import FornituraCreate, FornituraUpdate, FornituraResponse
 from ..crud import fornitura as crud
 from ..auth import get_current_active_user
-from ..models.fornitura import Fornitura
+from ..models.fornitura import Fornitura, RigaFornitura
 
 router = APIRouter()
 
@@ -99,11 +99,17 @@ def delete_all_forniture(db: Session = Depends(get_db), current_user=Depends(get
     ATTENZIONE: Operazione irreversibile!
     """
     try:
-        count = db.query(Fornitura).delete()
+        # STEP 1: Delete righe_fornitura FIRST (child records)
+        count_righe = db.query(RigaFornitura).delete()
+
+        # STEP 2: Delete forniture (parent records)
+        count_forniture = db.query(Fornitura).delete()
+
         db.commit()
         return {
             "message": "Tutte le forniture sono state eliminate con successo",
-            "deleted_count": count,
+            "deleted_count": count_forniture,
+            "deleted_righe_count": count_righe,
         }
     except Exception as e:
         db.rollback()
