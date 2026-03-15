@@ -97,9 +97,10 @@ export default function NuovoOrdine() {
       await ordiniAPI.create(payload)
       navigate('/ordini')
     } catch (err) {
+      const status = err.response?.status
       const detail = err.response?.data?.detail || ''
-      if (detail && detail.toLowerCase().includes('quantità insufficiente')) {
-        setError('⚠️ Quantità non disponibile: ' + detail)
+      if (status === 400 && detail) {
+        setError('⚠️ ' + detail)
       } else {
         setError(detail || 'Errore nella creazione dell\'ordine.')
       }

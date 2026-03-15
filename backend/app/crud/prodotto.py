@@ -68,7 +68,7 @@ def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
     db.commit()
     db.refresh(db_prodotto)
 
-    if db_prodotto.quantita and db_prodotto.quantita > 0:
+    if db_prodotto.quantita > 0:
         from ..models.movimento import Movimento, TipoMovimento
         from datetime import datetime
 

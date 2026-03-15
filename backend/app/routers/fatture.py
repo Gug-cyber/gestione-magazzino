@@ -125,8 +125,8 @@ def delete_all_fatture(
     current_user=Depends(get_current_active_user),
 ):
     """
-    Elimina tutte le fatture dal database.
-    Verifica prima che non ci siano ordini con fatture collegate che non possono essere rimossi.
+    Elimina tutte le fatture dal database, incluse quelle auto-generate.
+    Prima azzera i riferimenti self-referential (note di credito) per evitare errori di foreign key.
     ATTENZIONE: Operazione irreversibile!
     """
     try:
