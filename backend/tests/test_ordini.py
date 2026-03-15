@@ -67,14 +67,24 @@ def test_create_ordine_scarica_quantita(client, auth_headers):
 
 
 def test_create_ordine_quantita_insufficiente(client, auth_headers):
-    """Verifica che con quantità insufficiente venga restituito HTTP 400."""
+    """Verifica che con quantità insufficiente il completamento dell'ordine restituisca HTTP 400.
+    La creazione in bozza è sempre consentita; lo stock viene verificato al completamento."""
     prodotto = _crea_prodotto(client, auth_headers, sku="TEST-002", quantita=2)
     prodotto_id = prodotto["id"]
 
-    # Richiede più unità di quelle disponibili
+    # La creazione in bozza deve riuscire anche se la quantità supera lo stock
     resp = _crea_ordine(client, auth_headers, prodotto_id, quantita=5)
-    assert resp.status_code == 400
-    assert "insufficiente" in resp.json()["detail"].lower()
+    assert resp.status_code == 201
+    ordine_id = resp.json()["id"]
+
+    # Il completamento deve fallire per quantità insufficiente
+    resp_completato = client.put(
+        f"/api/ordini/{ordine_id}",
+        json={"stato": "completato"},
+        headers=auth_headers,
+    )
+    assert resp_completato.status_code == 400
+    assert "insufficiente" in resp_completato.json()["detail"].lower()
 
 
 def test_update_ordine_stato_completato_genera_fattura(client, auth_headers):

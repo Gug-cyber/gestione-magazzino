@@ -81,8 +81,8 @@ function BarChart({ data, labelKey, title }) {
   )
 
   const series = [
-    { key: 'costi', label: 'Costi', color: '#e53935' },
-    { key: 'ricavi', label: 'Ricavi', color: '#43a047' },
+    { key: 'costi', label: 'Costi merci (forniture ricevute)', color: '#e53935' },
+    { key: 'ricavi', label: 'Ricavi (ordini completati)', color: '#43a047' },
     { key: 'spese', label: 'Spese gestione', color: '#fb8c00' },
   ]
 
@@ -224,9 +224,9 @@ function TabGrafici() {
           {/* Riepilogo testuale */}
           <div style={{ ...cardStyle, display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             {[
-              { label: 'Totale Costi', value: totCosti, color: '#e53935' },
-              { label: 'Totale Ricavi', value: totRicavi, color: '#43a047' },
-              { label: 'Totale Spese', value: totSpese, color: '#fb8c00' },
+              { label: 'Costi merci (forniture ricevute)', value: totCosti, color: '#e53935' },
+              { label: 'Ricavi (ordini completati)', value: totRicavi, color: '#43a047' },
+              { label: 'Totale Spese gestione', value: totSpese, color: '#fb8c00' },
               { label: 'Margine', value: margine, color: margine >= 0 ? '#1a237e' : '#d32f2f' },
             ].map((item) => (
               <div key={item.label} style={{ flex: 1, minWidth: '140px', textAlign: 'center', padding: '12px', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>

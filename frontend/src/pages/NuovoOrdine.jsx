@@ -16,6 +16,8 @@ export default function NuovoOrdine() {
   const [clienteId, setClienteId] = useState('')
   const [clienteNome, setClienteNome] = useState('')
   const [note, setNote] = useState('')
+  const [corriere, setCorriere] = useState('')
+  const [trackingNumber, setTrackingNumber] = useState('')
   const [righe, setRighe] = useState([{ ...emptyRiga }])
 
   const [error, setError] = useState('')
@@ -76,6 +78,8 @@ export default function NuovoOrdine() {
       cliente_id: clienteId ? parseInt(clienteId, 10) : null,
       cliente_nome: clienteNome || null,
       note: note || null,
+      corriere: corriere || null,
+      tracking_number: trackingNumber || null,
       righe: righeValide.map(r => ({
         prodotto_id: parseInt(r.prodotto_id, 10),
         quantita: parseInt(r.quantita, 10),
@@ -264,6 +268,33 @@ export default function NuovoOrdine() {
             <div style={{ textAlign: 'right', marginTop: '16px', padding: '12px', backgroundColor: '#e8eaf6', borderRadius: '6px' }}>
               <span style={{ fontSize: '1rem', color: '#555' }}>Totale ordine: </span>
               <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#1a237e' }}>€{totale.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Spedizione */}
+          <div style={cardStyle}>
+            <h2 style={sectionTitleStyle}>🚚 Spedizione (opzionale)</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Corriere</span>
+                <input
+                  type="text"
+                  value={corriere}
+                  onChange={e => setCorriere(e.target.value)}
+                  placeholder="Es. BRT, DHL, SDA..."
+                  style={inputStyle}
+                />
+              </label>
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Tracking spedizione</span>
+                <input
+                  type="text"
+                  value={trackingNumber}
+                  onChange={e => setTrackingNumber(e.target.value)}
+                  placeholder="Numero tracking..."
+                  style={inputStyle}
+                />
+              </label>
             </div>
           </div>
 

@@ -84,6 +84,11 @@ export default function DettaglioFornitura() {
               <p style={{ margin: '4px 0', color: '#555' }}>Ricevuto il: <strong>{formatDate(fornitura.data_ricezione)}</strong></p>
             )}
             <p style={{ margin: '4px 0', color: '#555' }}>Totale: <strong style={{ color: PRIMARY_COLOR }}>{formatCurrency(fornitura.totale)}</strong></p>
+            {fornitura.corriere && (
+              <p style={{ margin: '4px 0', color: '#555' }}>Corriere: <strong>{fornitura.corriere}</strong>
+                {fornitura.tracking_number && <span> — Tracking: <strong style={{ fontFamily: 'monospace' }}>{fornitura.tracking_number}</strong></span>}
+              </p>
+            )}
             {fornitura.note && <p style={{ margin: '4px 0', color: '#555' }}>Note: {fornitura.note}</p>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

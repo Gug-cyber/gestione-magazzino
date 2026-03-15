@@ -93,6 +93,21 @@ COLUMN_MIGRATIONS = [
         "definition": "BOOLEAN DEFAULT TRUE",
     },
     {
+        "table": "forniture",
+        "column": "corriere",
+        "definition": "VARCHAR",
+    },
+    {
+        "table": "forniture",
+        "column": "tracking_number",
+        "definition": "VARCHAR",
+    },
+    {
+        "table": "forniture",
+        "column": "stock_caricato",
+        "definition": "BOOLEAN DEFAULT FALSE",
+    },
+    {
         "table": "utenti",
         "column": "ruolo",
         "definition": "VARCHAR(20) DEFAULT 'operatore'",
@@ -108,6 +123,12 @@ POST_COLUMN_SQL = [
     # Backfill stock_scalato: ordini attivi hanno gia' lo stock scalato
     "UPDATE ordini SET stock_scalato = TRUE WHERE stock_scalato IS NULL AND stato != 'annullato'",
     "UPDATE ordini SET stock_scalato = FALSE WHERE stock_scalato IS NULL AND stato = 'annullato'",
+    # Nuova logica: stock scalato solo al completamento.
+    # Gli ordini in bozza creati con la vecchia logica (stock scalato alla creazione)
+    # vengono resettati per essere coerenti con il nuovo comportamento.
+    "UPDATE ordini SET stock_scalato = FALSE WHERE stato = 'bozza' AND stock_scalato = TRUE",
+    # Forniture ricevute esistenti: segna stock_caricato = TRUE
+    "UPDATE forniture SET stock_caricato = TRUE WHERE stato = 'ricevuto' AND (stock_caricato IS NULL OR stock_caricato = FALSE)",
 ]
 
 

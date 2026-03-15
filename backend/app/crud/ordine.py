@@ -11,14 +11,6 @@ from ..models.movimento import Movimento, TipoMovimento
 from ..schemas.ordine import OrdineCreate, OrdineUpdate
 from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, genera_nota_credito
 
-# Stati per i quali lo stock è già stato scalato alla creazione ordine
-_STATI_CON_STOCK_SCALATO = {
-    StatoOrdine.bozza,
-    StatoOrdine.confermato,
-    StatoOrdine.spedito,
-    StatoOrdine.completato,
-}
-
 
 def _genera_numero_ordine(db: Session) -> str:
     anno = datetime.now(timezone.utc).year
@@ -88,13 +80,8 @@ def get_ordine(db: Session, ordine_id: int) -> Optional[Ordine]:
 
 def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     """
-    Crea un nuovo ordine con le seguenti garanzie transazionali (unico db.commit):
-    1. Lock pessimistico (SELECT ... FOR UPDATE) su ogni prodotto coinvolto.
-    2. Verifica disponibilità stock — errore 400 se insufficiente.
-    3. Crea l'ordine e le righe (db.flush per ottenere ordine.id).
-    4. Decrementa lo stock di ogni prodotto.
-    5. Registra un movimento di magazzino in uscita per ogni riga.
-    6. db.commit unico — tutto o niente.
+    Crea un nuovo ordine in stato bozza senza scalare lo stock.
+    Lo stock verrà scalato solo quando l'ordine passa a 'completato'.
     """
     if not ordine_data.righe:
         raise HTTPException(status_code=400, detail="L'ordine deve avere almeno una riga prodotto")
@@ -108,33 +95,15 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
             cliente_nome = f"{c.nome} {c.cognome}".strip() if c.cognome else c.nome
 
     # ------------------------------------------------------------------ #
-    # 1. Lock pessimistico + verifica disponibilità su tutti i prodotti   #
+    # 1. Verifica prodotti esistenti (senza bloccare lo stock)            #
     # ------------------------------------------------------------------ #
-    prodotti_map: dict = {}
     for r in ordine_data.righe:
-        prodotto = (
-            db.execute(
-                select(Prodotto)
-                .where(Prodotto.id == r.prodotto_id)
-                .with_for_update()
-            )
-            .scalars()
-            .first()
-        )
+        prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
         if not prodotto:
             raise HTTPException(
                 status_code=404,
                 detail=f"Prodotto con id {r.prodotto_id} non trovato",
             )
-        if prodotto.quantita < r.quantita:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"Quantità insufficiente per '{prodotto.nome}': "
-                    f"disponibili {prodotto.quantita}, richiesti {r.quantita}"
-                ),
-            )
-        prodotti_map[r.prodotto_id] = prodotto
 
     # ------------------------------------------------------------------ #
     # 2. Calcolo totale e struttura righe                                 #
@@ -154,7 +123,6 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     # ------------------------------------------------------------------ #
     # 3. Creazione ordine con retry per numero univoco                    #
     # ------------------------------------------------------------------ #
-    ordine = None
     for tentativo in range(5):
         numero_ordine = _genera_numero_ordine(db)
         righe = [RigaOrdine(**rd) for rd in righe_data]
@@ -163,14 +131,17 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
             cliente_id=ordine_data.cliente_id,
             cliente_nome=cliente_nome,
             note=ordine_data.note,
+            corriere=ordine_data.corriere,
+            tracking_number=ordine_data.tracking_number,
             totale=totale,
             righe=righe,
-            stock_scalato=True,  # lo stock viene scalato subito
+            stock_scalato=False,  # lo stock viene scalato solo al completamento
         )
         db.add(ordine)
         try:
-            db.flush()  # ottieni ordine.id senza ancora fare commit
-            break
+            db.commit()
+            db.refresh(ordine)
+            return ordine
         except IntegrityError:
             db.rollback()
             if tentativo == 4:
@@ -179,28 +150,6 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
                     detail="Impossibile generare numero ordine univoco dopo 5 tentativi",
                 )
 
-    # ------------------------------------------------------------------ #
-    # 4. Scarico stock + movimenti di magazzino in uscita                 #
-    # ------------------------------------------------------------------ #
-    for riga in ordine.righe:
-        prodotto = prodotti_map[riga.prodotto_id]
-        prodotto.quantita -= riga.quantita
-        movimento = Movimento(
-            prodotto_id=riga.prodotto_id,
-            tipo=TipoMovimento.scarico,
-            quantita=riga.quantita,
-            ordine_id=ordine.id,
-            note=f"Scarico automatico creazione ordine {numero_ordine}",
-        )
-        db.add(movimento)
-
-    # ------------------------------------------------------------------ #
-    # 5. Commit unico per tutta la transazione                            #
-    # ------------------------------------------------------------------ #
-    db.commit()
-    db.refresh(ordine)
-    return ordine
-
 
 def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional[Ordine]:
     """
@@ -208,12 +157,14 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
 
     Transizione → completato:
       - Imposta data_completamento.
+      - Se stock non ancora scalato: lock pessimistico, verifica disponibilità,
+        decrementa stock, registra movimenti, setta stock_scalato=True.
       - Genera fattura automatica (anti-duplicazione via get_fattura_by_ordine).
-      - NON scala di nuovo lo stock (già scalato alla creazione).
 
-    Transizione → annullato (da stato con stock già scalato):
+    Transizione → annullato (se stock già scalato):
       - Ripristina lo stock per ogni riga con lock FOR UPDATE.
       - Registra movimenti di carico.
+      - Setta stock_scalato=False.
       - Genera nota di credito se esiste fattura auto-generata non annullata.
 
     Tutto in un'unica transazione con un solo db.commit() finale.
@@ -235,6 +186,45 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     if nuovo_stato == StatoOrdine.completato and stato_precedente != StatoOrdine.completato:
         ordine.data_completamento = datetime.now(timezone.utc)
 
+        # Scala stock solo se non ancora scalato (flag anti-doppio)
+        if not ordine.stock_scalato:
+            for riga in ordine.righe:
+                prodotto = (
+                    db.execute(
+                        select(Prodotto)
+                        .where(Prodotto.id == riga.prodotto_id)
+                        .with_for_update()
+                    )
+                    .scalars()
+                    .first()
+                )
+                if prodotto:
+                    if prodotto.quantita < riga.quantita:
+                        db.rollback()
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                f"Quantità insufficiente per '{prodotto.nome}': "
+                                f"disponibili {prodotto.quantita}, richiesti {riga.quantita}"
+                            ),
+                        )
+                    prodotto.quantita -= riga.quantita
+                    movimento = Movimento(
+                        prodotto_id=riga.prodotto_id,
+                        tipo=TipoMovimento.scarico,
+                        quantita=riga.quantita,
+                        ordine_id=ordine.id,
+                        note=f"Scarico automatico ordine {ordine.numero_ordine}",
+                    )
+                    db.add(movimento)
+                else:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Prodotto con id {riga.prodotto_id} non trovato",
+                    )
+            ordine.stock_scalato = True
+
         # Genera fattura automatica se non già presente (anti-duplicazione)
         if not get_fattura_by_ordine(db, ordine.id):
             genera_fattura_da_ordine(db, ordine)
@@ -243,8 +233,8 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # Transizione → ANNULLATO                                             #
     # ------------------------------------------------------------------ #
     elif nuovo_stato == StatoOrdine.annullato and stato_precedente != StatoOrdine.annullato:
-        # Ripristina stock solo se era stato scalato (flag o stato precedente)
-        if getattr(ordine, "stock_scalato", False) or stato_precedente in _STATI_CON_STOCK_SCALATO:
+        # Ripristina stock solo se era stato scalato
+        if ordine.stock_scalato:
             for riga in ordine.righe:
                 prodotto = (
                     db.execute(
@@ -287,8 +277,9 @@ def delete_ordine(db: Session, ordine_id: int) -> bool:
         return False
     if ordine.stato == StatoOrdine.completato:
         raise HTTPException(status_code=400, detail="Non è possibile eliminare un ordine completato")
-    # Se lo stock era stato scalato, ripristinarlo prima di eliminare
-    if getattr(ordine, "stock_scalato", False) or ordine.stato in _STATI_CON_STOCK_SCALATO:
+    # Se lo stock era stato scalato (completato poi tornato indietro non dovrebbe succedere,
+    # ma per sicurezza) ripristiniamo lo stock
+    if ordine.stock_scalato:
         for riga in ordine.righe:
             prodotto = (
                 db.execute(

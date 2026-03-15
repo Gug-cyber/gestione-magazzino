@@ -23,7 +23,7 @@ export default function Forniture() {
   const [showModal, setShowModal] = useState(false)
   const [fornitori, setFornitori] = useState([])
   const [prodotti, setProdotti] = useState([])
-  const [form, setForm] = useState({ fornitore_id: '', fornitore_nome: '', note: '', righe: [{ ...emptyRiga }] })
+  const [form, setForm] = useState({ fornitore_id: '', fornitore_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -74,7 +74,7 @@ export default function Forniture() {
   }
 
   const openNewModal = () => {
-    setForm({ fornitore_id: '', fornitore_nome: '', note: '', righe: [{ ...emptyRiga }] })
+    setForm({ fornitore_id: '', fornitore_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
     setFormError('')
     setShowModal(true)
   }
@@ -116,6 +116,8 @@ export default function Forniture() {
         fornitore_id: form.fornitore_id ? parseInt(form.fornitore_id) : null,
         fornitore_nome: form.fornitore_nome || null,
         note: form.note || null,
+        corriere: form.corriere || null,
+        tracking_number: form.tracking_number || null,
         righe: righe.map(r => ({
           prodotto_id: parseInt(r.prodotto_id),
           quantita: parseInt(r.quantita),
@@ -194,7 +196,7 @@ export default function Forniture() {
           <table className={styles.table}>
             <thead>
               <tr>
-                {['N° Fornitura', 'Fornitore', 'Stato', 'Prodotti', 'Totale €', 'Data', 'Azioni'].map(h => (
+                {['N° Fornitura', 'Fornitore', 'Stato', 'Prodotti', 'Totale €', 'Corriere', 'Data', 'Azioni'].map(h => (
                   <th key={h} className={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -209,6 +211,7 @@ export default function Forniture() {
                   </td>
                   <td className={styles.td}>{fornitura.righe?.length || 0} prodotti</td>
                   <td className={`${styles.td} ${styles.totalCell}`}>{formatCurrency(fornitura.totale)}</td>
+                  <td className={styles.td}>{fornitura.corriere || '—'}</td>
                   <td className={`${styles.td} ${styles.dateCell}`}>{formatDate(fornitura.data_fornitura)}</td>
                   <td className={styles.td}>
                     <button onClick={() => navigate(`/forniture/${fornitura.id}`)} title="Vedi dettaglio" className={styles.detailBtn}>👁️ Dettaglio</button>
@@ -252,6 +255,16 @@ export default function Forniture() {
               <div className={styles.formField} style={{ marginBottom: '16px' }}>
                 <label>Note (opzionale)</label>
                 <textarea value={form.note} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="Note sulla fornitura..." className={styles.formInput} rows={2} />
+              </div>
+              <div className={styles.formGrid}>
+                <div className={styles.formField}>
+                  <label>Corriere (opzionale)</label>
+                  <input value={form.corriere} onChange={e => setForm(prev => ({ ...prev, corriere: e.target.value }))} placeholder="Es. BRT, DHL..." className={styles.formInput} />
+                </div>
+                <div className={styles.formField}>
+                  <label>Tracking spedizione (opzionale)</label>
+                  <input value={form.tracking_number} onChange={e => setForm(prev => ({ ...prev, tracking_number: e.target.value }))} placeholder="Numero tracking..." className={styles.formInput} />
+                </div>
               </div>
               <h3 className={styles.modalSubTitle}>Prodotti</h3>
               {form.righe.map((riga, i) => (
