@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -27,6 +27,8 @@ class Ordine(Base):
     totale = Column(Float, default=0.0)
     corriere = Column(String, nullable=True)
     tracking_number = Column(String, nullable=True)
+    # Flag anti-doppio-scarico: True dal momento della creazione dell'ordine
+    stock_scalato = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -45,4 +47,4 @@ class RigaOrdine(Base):
     subtotale = Column(Float, nullable=False)
 
     ordine = relationship("Ordine", back_populates="righe")
-    prodotto = relationship("Prodotto", backref="righe_ordine")
+    prodotto = relationship("Prodotto", backref="righe_ordine"),
