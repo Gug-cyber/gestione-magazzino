@@ -407,7 +407,7 @@ export default function Fatture() {
                       </button>
                       <button
                         onClick={() => handleDelete(f)}
-                        title={f.auto_generata ? "Le fatture auto-generate non possono essere eliminate" : "Elimina"}
+                        title={f.auto_generata ? "Le fatture generate automaticamente non possono essere eliminate manualmente" : "Elimina"}
                         disabled={f.auto_generata}
                         style={{
                           ...actionBtnStyle('#c62828'),
