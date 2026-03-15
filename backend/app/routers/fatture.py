@@ -13,6 +13,7 @@ from ..database import get_db
 from ..schemas.fattura import FatturaCreate, FatturaUpdate, FatturaResponse, TipoFatturaSchema
 from ..crud import fattura as crud
 from ..auth import get_current_active_user
+from ..models.fattura import Fattura
 
 router = APIRouter()
 
@@ -116,6 +117,32 @@ def toggle_pagata(
     if not db_fattura:
         raise HTTPException(status_code=404, detail="Fattura non trovata")
     return db_fattura
+
+
+@router.delete("/all", status_code=200)
+def delete_all_fatture(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    """
+    Elimina tutte le fatture dal database.
+    Nullifica prima la FK auto-referenziale nota_credito_di per evitare
+    violazioni di integrità referenziale.
+    ATTENZIONE: Operazione irreversibile!
+    """
+    try:
+        db.query(Fattura).update({"nota_credito_di": None})
+
+        count = db.query(Fattura).delete()
+        db.commit()
+
+        return {
+            "message": "Tutte le fatture sono state eliminate",
+            "deleted_count": count,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante l'eliminazione: {str(e)}",
+        )
 
 
 @router.delete("/{fattura_id}", status_code=204)
