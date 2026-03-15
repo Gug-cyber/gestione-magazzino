@@ -36,6 +36,20 @@ class Fattura(Base):
     annullata = Column(Boolean, default=False)
     auto_generata = Column(Boolean, default=False)
 
+    # Dati emittente (snapshot al momento della generazione — normativa italiana)
+    # Denormalizzati: la fattura rimane immutabile anche se i dati azienda cambiano
+    emittente_ragione_sociale = Column(String(255), nullable=True)
+    emittente_partita_iva = Column(String(20), nullable=True)
+    emittente_codice_fiscale = Column(String(20), nullable=True)
+    emittente_indirizzo = Column(String(255), nullable=True)
+    emittente_citta = Column(String(100), nullable=True)
+    emittente_cap = Column(String(10), nullable=True)
+    emittente_provincia = Column(String(2), nullable=True)
+    emittente_nazione = Column(String(100), nullable=True)
+    emittente_pec = Column(String(255), nullable=True)
+    emittente_codice_sdi = Column(String(10), nullable=True)
+    emittente_iban = Column(String(50), nullable=True)
+
     # foreign_keys= espliciti per evitare AmbiguousForeignKeysError (f405)
     ordine = relationship("Ordine", foreign_keys=[ordine_id], backref="fatture")
     # self-referential: nota di credito punta alla fattura originale

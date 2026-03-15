@@ -2,6 +2,7 @@ import os
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..models.fattura import Fattura
+from ..models.dati_azienda import DatiAzienda
 from ..schemas.fattura import FatturaCreate, FatturaUpdate
 from typing import List, Optional
 from datetime import date, datetime, timezone
@@ -41,6 +42,11 @@ def _genera_numero_nota_credito(db: Session) -> str:
     else:
         num = 1
     return f"{prefix}{num:04d}"
+
+
+def _get_dati_azienda(db: Session) -> Optional[DatiAzienda]:
+    """Restituisce il primo record DatiAzienda disponibile, o None se non configurato."""
+    return db.query(DatiAzienda).first()
 
 
 def get_fatture(
@@ -117,6 +123,7 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
     Genera automaticamente una fattura attiva da un ordine completato (normativa italiana).
     Numerazione progressiva nel formato FAT-YYYY-NNNN.
     Aliquota IVA standard 22%. Data fattura = data completamento ordine.
+    I dati dell'emittente vengono recuperati da DatiAzienda (snapshot immutabile).
 
     NOTA: non esegue db.commit() — il chiamante è responsabile del commit finale
     nell'ambito della stessa transazione atomica.
@@ -130,6 +137,10 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
         else datetime.now(timezone.utc).date()
     )
     numero = _genera_numero_fattura(db)
+
+    # Recupero dati azienda emittente (snapshot immutabile)
+    azienda = _get_dati_azienda(db)
+
     db_fattura = Fattura(
         numero_fattura=numero,
         data_fattura=data_fattura,
@@ -144,6 +155,18 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
         auto_generata=True,
         annullata=False,
         pagata=False,
+        # Dati emittente (snapshot al momento della generazione)
+        emittente_ragione_sociale=azienda.ragione_sociale if azienda else None,
+        emittente_partita_iva=azienda.partita_iva if azienda else None,
+        emittente_codice_fiscale=azienda.codice_fiscale if azienda else None,
+        emittente_indirizzo=azienda.indirizzo if azienda else None,
+        emittente_citta=azienda.citta if azienda else None,
+        emittente_cap=azienda.cap if azienda else None,
+        emittente_provincia=azienda.provincia if azienda else None,
+        emittente_nazione=azienda.nazione if azienda else None,
+        emittente_pec=azienda.pec if azienda else None,
+        emittente_codice_sdi=azienda.codice_sdi if azienda else None,
+        emittente_iban=azienda.iban if azienda else None,
     )
     db.add(db_fattura)
     db.flush()
@@ -156,6 +179,7 @@ def genera_nota_credito(db: Session, fattura_originale: Fattura) -> Fattura:
     Genera una nota di credito che annulla una fattura emessa (normativa italiana).
     Numerazione progressiva nel formato NC-YYYY-NNNN.
     Segna fattura_originale.annullata = True.
+    I dati emittente vengono copiati dalla fattura originale (stesso snapshot).
 
     NOTA: non esegue db.commit() — il chiamante è responsabile del commit finale
     nell'ambito della stessa transazione atomica.
@@ -177,6 +201,18 @@ def genera_nota_credito(db: Session, fattura_originale: Fattura) -> Fattura:
         annullata=False,
         pagata=False,
         note=f"Nota di credito per annullamento ordine — fattura {fattura_originale.numero_fattura}",
+        # Dati emittente: copiati dalla fattura originale (stesso snapshot)
+        emittente_ragione_sociale=fattura_originale.emittente_ragione_sociale,
+        emittente_partita_iva=fattura_originale.emittente_partita_iva,
+        emittente_codice_fiscale=fattura_originale.emittente_codice_fiscale,
+        emittente_indirizzo=fattura_originale.emittente_indirizzo,
+        emittente_citta=fattura_originale.emittente_citta,
+        emittente_cap=fattura_originale.emittente_cap,
+        emittente_provincia=fattura_originale.emittente_provincia,
+        emittente_nazione=fattura_originale.emittente_nazione,
+        emittente_pec=fattura_originale.emittente_pec,
+        emittente_codice_sdi=fattura_originale.emittente_codice_sdi,
+        emittente_iban=fattura_originale.emittente_iban,
     )
     db.add(db_nc)
     fattura_originale.annullata = True

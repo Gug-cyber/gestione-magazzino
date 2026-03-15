@@ -25,6 +25,18 @@ class FatturaBase(BaseModel):
     nota_credito_di: Optional[int] = None
     annullata: bool = False
     auto_generata: bool = False
+    # Dati emittente (snapshot al momento della generazione)
+    emittente_ragione_sociale: Optional[str] = None
+    emittente_partita_iva: Optional[str] = None
+    emittente_codice_fiscale: Optional[str] = None
+    emittente_indirizzo: Optional[str] = None
+    emittente_citta: Optional[str] = None
+    emittente_cap: Optional[str] = None
+    emittente_provincia: Optional[str] = None
+    emittente_nazione: Optional[str] = None
+    emittente_pec: Optional[str] = None
+    emittente_codice_sdi: Optional[str] = None
+    emittente_iban: Optional[str] = None
 
 
 class FatturaCreate(FatturaBase):
