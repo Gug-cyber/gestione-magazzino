@@ -141,6 +141,9 @@ function TabGrafici() {
   const [anno, setAnno] = useState(new Date().getFullYear())
   const [datiMensili, setDatiMensili] = useState([])
   const [datiAnnuali, setDatiAnnuali] = useState([])
+  const [topProdotti, setTopProdotti] = useState([])
+  const [marginalita, setMarginalita] = useState(null)
+  const [meseSelezionato, setMeseSelezionato] = useState(new Date().getMonth() + 1)
   const [loading, setLoading] = useState(false)
   const [errore, setErrore] = useState(null)
 
@@ -149,12 +152,16 @@ function TabGrafici() {
       setLoading(true)
       setErrore(null)
       try {
-        const [mensileRes, annualeRes] = await Promise.all([
+        const [mensileRes, annualeRes, topProdottiRes, marginalitaRes] = await Promise.all([
           analisiAPI.getMensile(anno),
           analisiAPI.getAnnuale(),
+          analisiAPI.getTopProdottiMensile(anno, meseSelezionato),
+          analisiAPI.getMarginalitaConfronto(anno, meseSelezionato),
         ])
         setDatiMensili(mensileRes.data)
         setDatiAnnuali(annualeRes.data)
+        setTopProdotti(topProdottiRes.data)
+        setMarginalita(marginalitaRes.data)
       } catch (err) {
         setErrore('Errore nel caricamento dei dati di analisi.')
       } finally {
@@ -162,7 +169,7 @@ function TabGrafici() {
       }
     }
     caricaDati()
-  }, [anno])
+  }, [anno, meseSelezionato])
 
   const datiCorrente = vista === 'mensile' ? datiMensili : datiAnnuali
   const totCosti = datiCorrente.reduce((s, d) => s + (d.costi || 0), 0)
@@ -230,6 +237,121 @@ function TabGrafici() {
               </div>
             ))}
           </div>
+
+          {/* Selettore mese per i report dettagliati */}
+          {vista === 'mensile' && (
+            <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ fontWeight: 'bold', color: '#333' }}>Report dettagliati per mese:</label>
+              <select
+                value={meseSelezionato}
+                onChange={(e) => setMeseSelezionato(Number(e.target.value))}
+                style={{ ...inputStyle, width: 'auto' }}
+              >
+                {MESI.map((m, i) => (
+                  <option key={i} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Report Top 5 Prodotti */}
+          {vista === 'mensile' && (
+            <div style={cardStyle}>
+              <h3 style={{ marginBottom: '16px', color: '#1a237e' }}>
+                📊 Top 5 Prodotti più Venduti - {MESI[meseSelezionato - 1]} {anno}
+              </h3>
+              {topProdotti.length === 0 ? (
+                <p style={{ color: '#888' }}>Nessun prodotto venduto in questo mese.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {topProdotti.map((p, i) => {
+                    const maxQta = topProdotti[0].quantita_venduta
+                    const widthPct = (p.quantita_venduta / maxQta) * 100
+                    return (
+                      <div key={p.prodotto_id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ minWidth: '30px', fontWeight: 'bold', color: '#666' }}>#{i + 1}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '4px' }}>
+                            {p.nome} <span style={{ color: '#888', fontSize: '0.8rem' }}>({p.sku})</span>
+                          </div>
+                          <div style={{
+                            height: '24px',
+                            backgroundColor: '#43a047',
+                            borderRadius: '4px',
+                            width: `${widthPct}%`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            paddingLeft: '8px',
+                            color: 'white',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            minWidth: '60px',
+                            boxSizing: 'border-box',
+                          }}>
+                            {p.quantita_venduta} pz
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Report Marginalità */}
+          {vista === 'mensile' && marginalita && (
+            <div style={cardStyle}>
+              <h3 style={{ marginBottom: '16px', color: '#1a237e' }}>
+                💰 Marginalità vs Mese Precedente
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                {/* Mese Corrente */}
+                <div style={{ padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px' }}>
+                    {MESI[marginalita.mese_corrente.mese - 1]} {marginalita.mese_corrente.anno}
+                  </div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2e7d32' }}>
+                    €{marginalita.mese_corrente.marginalita.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px' }}>Marginalità</div>
+                </div>
+
+                {/* Variazione */}
+                <div style={{ padding: '16px', backgroundColor: marginalita.variazione_assoluta >= 0 ? '#e8f5e9' : '#ffebee', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px' }}>Variazione</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: marginalita.variazione_assoluta >= 0 ? '#2e7d32' : '#c62828' }}>
+                    {marginalita.variazione_assoluta >= 0 ? '↑' : '↓'}{' '}
+                    {marginalita.variazione_percentuale !== null ? `${marginalita.variazione_percentuale.toFixed(1)}%` : 'N/A'}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#555', marginTop: '4px' }}>
+                    €{Math.abs(marginalita.variazione_assoluta).toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Mese Precedente */}
+                <div style={{ padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px' }}>
+                    {MESI[marginalita.mese_precedente.mese - 1]} {marginalita.mese_precedente.anno}
+                  </div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#666' }}>
+                    €{marginalita.mese_precedente.marginalita.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px' }}>Marginalità</div>
+                </div>
+              </div>
+
+              {/* Dettaglio breakdown */}
+              <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>Dettaglio {MESI[meseSelezionato - 1]} {anno}:</div>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+                  <div>Ricavi: <strong style={{ color: '#43a047' }}>€{marginalita.mese_corrente.ricavi.toFixed(2)}</strong></div>
+                  <div>Costi: <strong style={{ color: '#e53935' }}>€{marginalita.mese_corrente.costi.toFixed(2)}</strong></div>
+                  <div>Spese: <strong style={{ color: '#fb8c00' }}>€{marginalita.mese_corrente.spese.toFixed(2)}</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

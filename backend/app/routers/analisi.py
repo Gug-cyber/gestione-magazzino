@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, desc
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from ..database import get_db
 from ..models.movimento import Movimento, TipoMovimento
 from ..models.prodotto import Prodotto
 from ..models.spesa_gestione import SpesaGestione
 from ..models.dato_storico import DatoStorico
-from ..models.ordine import Ordine, StatoOrdine
+from ..models.ordine import Ordine, RigaOrdine, StatoOrdine
 from ..auth import get_current_active_user
 
 router = APIRouter()
@@ -201,3 +202,166 @@ def get_analisi_annuale(
         })
 
     return risultati
+
+
+@router.get("/top-prodotti-mensile")
+def get_top_prodotti_mensile(
+    anno: int = Query(default=None),
+    mese: int = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Restituisce i TOP 5 prodotti più venduti in un mese specifico.
+    Considera solo ordini completati.
+    """
+    if anno is None:
+        anno = datetime.now().year
+    if mese is None:
+        mese = datetime.now().month
+
+    risultati = (
+        db.query(
+            Prodotto.id,
+            Prodotto.nome,
+            Prodotto.sku,
+            func.sum(RigaOrdine.quantita).label("quantita_venduta"),
+        )
+        .join(RigaOrdine, RigaOrdine.prodotto_id == Prodotto.id)
+        .join(Ordine, RigaOrdine.ordine_id == Ordine.id)
+        .filter(
+            Ordine.stato == StatoOrdine.completato,
+            extract("year", Ordine.data_completamento) == anno,
+            extract("month", Ordine.data_completamento) == mese,
+        )
+        .group_by(Prodotto.id, Prodotto.nome, Prodotto.sku)
+        .order_by(desc("quantita_venduta"))
+        .limit(5)
+        .all()
+    )
+
+    return [
+        {
+            "prodotto_id": r.id,
+            "nome": r.nome,
+            "sku": r.sku,
+            "quantita_venduta": int(r.quantita_venduta),
+        }
+        for r in risultati
+    ]
+
+
+@router.get("/marginalita-confronto")
+def get_marginalita_confronto(
+    anno: int = Query(default=None),
+    mese: int = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Confronta la marginalità del mese corrente con il mese precedente.
+    Marginalità = Ricavi - Costi - Spese
+    """
+    if anno is None:
+        anno = datetime.now().year
+    if mese is None:
+        mese = datetime.now().month
+
+    data_corrente = datetime(anno, mese, 1)
+    data_precedente = data_corrente - relativedelta(months=1)
+
+    def calcola_marginalita(a, m):
+        movimenti_carico = (
+            db.query(Movimento, Prodotto)
+            .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
+            .filter(
+                Movimento.tipo == TipoMovimento.carico,
+                extract("year", Movimento.data_movimento) == a,
+                extract("month", Movimento.data_movimento) == m,
+            )
+            .all()
+        )
+        costi = sum(
+            float(mov.quantita) * float(prod.prezzo_acquisto or 0)
+            for mov, prod in movimenti_carico
+        )
+
+        ordini_completati = (
+            db.query(Ordine)
+            .filter(
+                Ordine.stato == StatoOrdine.completato,
+                extract("year", Ordine.data_completamento) == a,
+                extract("month", Ordine.data_completamento) == m,
+            )
+            .all()
+        )
+        ricavi = sum(float(o.totale or 0) for o in ordini_completati)
+
+        movimenti_scarico_manuali = (
+            db.query(Movimento, Prodotto)
+            .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
+            .filter(
+                Movimento.tipo == TipoMovimento.scarico,
+                extract("year", Movimento.data_movimento) == a,
+                extract("month", Movimento.data_movimento) == m,
+                ~Movimento.note.like("Scarico automatico ordine %"),
+            )
+            .all()
+        )
+        ricavi += sum(
+            float(mov.quantita) * float(prod.prezzo_vendita or 0)
+            for mov, prod in movimenti_scarico_manuali
+        )
+
+        spese_result = db.query(func.sum(SpesaGestione.importo)).filter(
+            extract("year", SpesaGestione.data) == a,
+            extract("month", SpesaGestione.data) == m,
+        ).scalar()
+        spese = float(spese_result or 0)
+
+        storici_costi = db.query(func.sum(DatoStorico.importo)).filter(
+            DatoStorico.tipo == "costo",
+            extract("year", DatoStorico.data) == a,
+            extract("month", DatoStorico.data) == m,
+        ).scalar()
+        costi += float(storici_costi or 0)
+
+        storici_ricavi = db.query(func.sum(DatoStorico.importo)).filter(
+            DatoStorico.tipo == "ricavo",
+            extract("year", DatoStorico.data) == a,
+            extract("month", DatoStorico.data) == m,
+        ).scalar()
+        ricavi += float(storici_ricavi or 0)
+
+        marginalita = ricavi - costi - spese
+        return {
+            "ricavi": round(ricavi, 2),
+            "costi": round(costi, 2),
+            "spese": round(spese, 2),
+            "marginalita": round(marginalita, 2),
+        }
+
+    corrente = calcola_marginalita(anno, mese)
+    precedente = calcola_marginalita(data_precedente.year, data_precedente.month)
+
+    variazione_assoluta = corrente["marginalita"] - precedente["marginalita"]
+    variazione_percentuale = (
+        round(variazione_assoluta / precedente["marginalita"] * 100, 2)
+        if precedente["marginalita"] != 0
+        else None
+    )
+
+    return {
+        "mese_corrente": {
+            "anno": anno,
+            "mese": mese,
+            **corrente,
+        },
+        "mese_precedente": {
+            "anno": data_precedente.year,
+            "mese": data_precedente.month,
+            **precedente,
+        },
+        "variazione_assoluta": round(variazione_assoluta, 2),
+        "variazione_percentuale": variazione_percentuale,
+    }
