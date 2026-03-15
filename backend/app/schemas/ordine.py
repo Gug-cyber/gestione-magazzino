@@ -32,6 +32,8 @@ class OrdineCreate(BaseModel):
     cliente_id: Optional[int] = None
     cliente_nome: Optional[str] = None
     note: Optional[str] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
     righe: List[RigaOrdineCreate]
 
 
