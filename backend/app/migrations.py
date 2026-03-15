@@ -78,61 +78,6 @@ COLUMN_MIGRATIONS = [
         "definition": "BOOLEAN DEFAULT FALSE",
     },
     {
-        "table": "fatture",
-        "column": "emittente_ragione_sociale",
-        "definition": "VARCHAR(255)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_partita_iva",
-        "definition": "VARCHAR(20)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_codice_fiscale",
-        "definition": "VARCHAR(20)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_indirizzo",
-        "definition": "VARCHAR(255)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_citta",
-        "definition": "VARCHAR(100)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_cap",
-        "definition": "VARCHAR(10)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_provincia",
-        "definition": "VARCHAR(2)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_nazione",
-        "definition": "VARCHAR(100)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_pec",
-        "definition": "VARCHAR(255)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_codice_sdi",
-        "definition": "VARCHAR(10)",
-    },
-    {
-        "table": "fatture",
-        "column": "emittente_iban",
-        "definition": "VARCHAR(50)",
-    },
-    {
         "table": "ordini",
         "column": "corriere",
         "definition": "VARCHAR",
@@ -143,9 +88,9 @@ COLUMN_MIGRATIONS = [
         "definition": "VARCHAR",
     },
     {
-        "table": "movimenti",
-        "column": "ordine_id",
-        "definition": "INTEGER REFERENCES ordini(id) ON DELETE SET NULL",
+        "table": "ordini",
+        "column": "stock_scalato",
+        "definition": "BOOLEAN DEFAULT TRUE",
     },
     {
         "table": "utenti",
@@ -160,70 +105,52 @@ POST_COLUMN_SQL = [
     "UPDATE utenti SET ruolo = 'admin' WHERE is_admin = TRUE AND ruolo != 'admin'",
     # Ensure all other users have a non-null ruolo
     "UPDATE utenti SET ruolo = 'operatore' WHERE ruolo IS NULL",
+    # Backfill stock_scalato: ordini attivi hanno gia' lo stock scalato
+    "UPDATE ordini SET stock_scalato = TRUE WHERE stock_scalato IS NULL AND stato != 'annullato'",
+    "UPDATE ordini SET stock_scalato = FALSE WHERE stock_scalato IS NULL AND stato = 'annullato'",
 ]
 
 
 def _validate_identifier(value: str, kind: str) -> None:
-    """Raises ValueError if value is not a safe SQL identifier."""
     if not _IDENTIFIER_RE.match(value):
-        raise ValueError(f"Unsafe SQL {kind}: {value!r}")
+        raise ValueError(f"Invalid {kind} identifier: {value!r}")
 
 
 def _validate_definition(value: str) -> None:
-    """Raises ValueError if value is not a safe column type definition."""
-    if not _DEFINITION_RE.match(value):
-        raise ValueError(f"Unsafe column definition: {value!r}")
+    base = re.split(r"\bREFERENCES\b", value, flags=re.IGNORECASE)[0].strip()
+    if not _DEFINITION_RE.match(base):
+        raise ValueError(f"Invalid column definition: {value!r}")
 
 
-def _column_exists_sqlite(conn, table: str, column: str) -> bool:
-    """Controlla se una colonna esiste in una tabella SQLite tramite PRAGMA."""
-    result = conn.execute(text(f"PRAGMA table_info({table})"))
-    return any(row[1] == column for row in result)
+def run_column_migrations(db) -> None:
+    for migration in COLUMN_MIGRATIONS:
+        table = migration["table"]
+        column = migration["column"]
+        definition = migration["definition"]
+        try:
+            _validate_identifier(table, "table")
+            _validate_identifier(column, "column")
+            _validate_definition(definition)
+        except ValueError as exc:
+            logger.error("Skipping unsafe migration: %s", exc)
+            continue
+        try:
+            db.execute(
+                text(
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
+                )
+            )
+            db.commit()
+            logger.info("Migration applied (or already present): %s.%s", table, column)
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Migration failed for %s.%s: %s", table, column, exc)
 
-
-def run_migrations(engine):
-    """
-    Aggiunge colonne mancanti al DB in modo idempotente all'avvio.
-    Supporta PostgreSQL (usa IF NOT EXISTS) e SQLite (usa PRAGMA table_info).
-    Non fa crashare l'app se una migrazione fallisce — logga l'errore e continua.
-    """
-    is_sqlite = engine.dialect.name == "sqlite"
-
-    with engine.connect() as conn:
-        for m in COLUMN_MIGRATIONS:
-            table = m["table"]
-            column = m["column"]
-            definition = m["definition"]
-            try:
-                _validate_identifier(table, "table name")
-                _validate_identifier(column, "column name")
-                _validate_definition(definition)
-                if is_sqlite:
-                    if _column_exists_sqlite(conn, table, column):
-                        logger.info(
-                            f"[migration] colonna {column} già presente in {table}, skip"
-                        )
-                        continue
-                    conn.execute(
-                        text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-                    )
-                else:
-                    conn.execute(
-                        text(
-                            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
-                        )
-                    )
-                conn.commit()
-                logger.info(f"[migration] aggiunta colonna {column} a {table}")
-            except Exception as e:
-                logger.warning(f"[migration] errore su {table}.{column}: {e}")
-                conn.rollback()
-
-        for sql in POST_COLUMN_SQL:
-            try:
-                conn.execute(text(sql))
-                conn.commit()
-                logger.info(f"[migration] eseguito: {sql[:60]}...")
-            except Exception as e:
-                logger.warning(f"[migration] errore post-migration SQL: {e}")
-                conn.rollback()
+    for sql in POST_COLUMN_SQL:
+        try:
+            db.execute(text(sql))
+            db.commit()
+            logger.info("Post-column SQL applied: %s", sql[:80])
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Post-column SQL failed: %s — %s", sql[:80], exc)
