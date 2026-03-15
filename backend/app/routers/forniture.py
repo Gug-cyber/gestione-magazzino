@@ -6,6 +6,7 @@ from ..database import get_db
 from ..schemas.fornitura import FornituraCreate, FornituraUpdate, FornituraResponse
 from ..crud import fornitura as crud
 from ..auth import get_current_active_user
+from ..models.fornitura import Fornitura
 
 router = APIRouter()
 
@@ -88,6 +89,28 @@ def update_fornitura(
     if not f:
         raise HTTPException(status_code=404, detail="Fornitura non trovata")
     return _fornitura_to_response(f)
+
+
+@router.delete("/all", status_code=200)
+def delete_all_forniture(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    """
+    Elimina tutte le forniture dal database.
+    Operazione riservata agli utenti autenticati.
+    ATTENZIONE: Operazione irreversibile!
+    """
+    try:
+        count = db.query(Fornitura).delete()
+        db.commit()
+        return {
+            "message": "Tutte le forniture sono state eliminate con successo",
+            "deleted_count": count,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante l'eliminazione delle forniture: {str(e)}",
+        )
 
 
 @router.delete("/{fornitura_id}", status_code=204)
