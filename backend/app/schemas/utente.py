@@ -23,6 +23,7 @@ class UtenteResponse(UtenteBase):
     id: int
     is_active: bool
     is_admin: bool
+    ruolo: str = "operatore"
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -80,6 +81,7 @@ class UtenteCreateAdmin(BaseModel):
     email: str
     password: str
     is_admin: bool = False
+    ruolo: Optional[str] = "operatore"
 
 
 class UtenteAdminUpdate(BaseModel):
@@ -89,3 +91,4 @@ class UtenteAdminUpdate(BaseModel):
     password: Optional[str] = None
     is_admin: Optional[bool] = None
     is_active: Optional[bool] = None
+    ruolo: Optional[str] = None

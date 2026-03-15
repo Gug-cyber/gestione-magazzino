@@ -31,7 +31,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     if not utente.is_active:
         raise HTTPException(status_code=400, detail="Utente non attivo")
     access_token = create_access_token(
-        data={"sub": utente.username},
+        data={"sub": utente.username, "ruolo": utente.ruolo or "operatore"},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer"}
