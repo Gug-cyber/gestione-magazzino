@@ -1,5 +1,7 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from ..models.prodotto import Prodotto
+from ..models.movimento import Movimento, TipoMovimento
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate
 from typing import List, Optional
 
@@ -65,6 +67,18 @@ def get_prodotti_sotto_scorta(db: Session) -> List[Prodotto]:
 def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
     db_prodotto = Prodotto(**prodotto.model_dump())
     db.add(db_prodotto)
+    db.flush()  # get the id without committing yet
+
+    if db_prodotto.quantita > 0:
+        movimento = Movimento(
+            prodotto_id=db_prodotto.id,
+            tipo=TipoMovimento.carico,
+            quantita=db_prodotto.quantita,
+            data_movimento=datetime.now(),
+            note="Carico iniziale alla creazione prodotto",
+        )
+        db.add(movimento)
+
     db.commit()
     db.refresh(db_prodotto)
     return db_prodotto

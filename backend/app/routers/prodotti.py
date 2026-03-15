@@ -13,7 +13,7 @@ from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
 from ..crud import prodotto as crud
 from ..auth import get_current_active_user
-from ..models.movimento import Movimento
+from ..models.movimento import Movimento, TipoMovimento
 from ..models.prodotto import Prodotto
 router = APIRouter()
 
@@ -111,6 +111,58 @@ def clear_local_foto_paths(
     db.commit()
 
     return {"cleared": count, "message": f"Azzerati {count} foto_path locali obsoleti"}
+
+
+@router.post("/admin/fix-movimenti-iniziali", status_code=200)
+def fix_movimenti_iniziali(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    RECOVERY TOOL: Crea movimenti di carico iniziali per prodotti esistenti
+    che hanno quantità > 0 ma nessun movimento registrato.
+
+    Operazione riservata agli admin.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Solo gli admin possono eseguire questa operazione")
+
+    prodotti_con_quantita = db.query(Prodotto).filter(Prodotto.quantita > 0).all()
+
+    fixed_count = 0
+    skipped_count = 0
+
+    for prodotto in prodotti_con_quantita:
+        movimenti_esistenti = db.query(Movimento).filter(
+            Movimento.prodotto_id == prodotto.id
+        ).count()
+
+        if movimenti_esistenti == 0:
+            data_movimento = (
+                prodotto.created_at
+                if hasattr(prodotto, "created_at") and prodotto.created_at
+                else dt_datetime.now()
+            )
+            movimento = Movimento(
+                prodotto_id=prodotto.id,
+                tipo=TipoMovimento.carico,
+                quantita=prodotto.quantita,
+                data_movimento=data_movimento,
+                note="Carico iniziale (recovery automatico)",
+            )
+            db.add(movimento)
+            fixed_count += 1
+        else:
+            skipped_count += 1
+
+    db.commit()
+
+    return {
+        "message": "Operazione di recovery completata",
+        "prodotti_corretti": fixed_count,
+        "prodotti_saltati": skipped_count,
+        "dettaglio": f"Creati {fixed_count} movimenti di carico iniziali mancanti",
+    }
 
 
 @router.get("/{prodotto_id}/scheda")
