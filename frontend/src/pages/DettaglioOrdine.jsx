@@ -91,6 +91,11 @@ export default function DettaglioOrdine() {
             {ordine.data_completamento && (
               <p style={{ margin: '4px 0', color: '#555' }}>Completato il: <strong>{formatDate(ordine.data_completamento)}</strong></p>
             )}
+            {ordine.corriere && (
+              <p style={{ margin: '4px 0', color: '#555' }}>Corriere: <strong>{ordine.corriere}</strong>
+                {ordine.tracking_number && <span> — Tracking: <strong style={{ fontFamily: 'monospace' }}>{ordine.tracking_number}</strong></span>}
+              </p>
+            )}
             {ordine.note && <p style={{ margin: '4px 0', color: '#555' }}>Note: {ordine.note}</p>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

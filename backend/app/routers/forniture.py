@@ -21,6 +21,8 @@ def _fornitura_to_response(f) -> FornituraResponse:
         "totale": f.totale,
         "data_fornitura": f.data_fornitura,
         "data_ricezione": f.data_ricezione,
+        "corriere": f.corriere,
+        "tracking_number": f.tracking_number,
         "created_at": f.created_at,
         "righe": [
             {

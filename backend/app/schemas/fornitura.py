@@ -25,6 +25,8 @@ class FornituraCreate(BaseModel):
     fornitore_id: Optional[int] = None
     fornitore_nome: Optional[str] = None
     note: Optional[str] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
     righe: List[RigaFornituraCreate]
 
 
@@ -33,6 +35,8 @@ class FornituraUpdate(BaseModel):
     note: Optional[str] = None
     fornitore_id: Optional[int] = None
     fornitore_nome: Optional[str] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
 
 
 class FornituraResponse(BaseModel):
@@ -45,6 +49,8 @@ class FornituraResponse(BaseModel):
     data_fornitura: Optional[datetime] = None
     data_ricezione: Optional[datetime] = None
     totale: float
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
     created_at: Optional[datetime] = None
     righe: List[RigaFornituraResponse] = []
 

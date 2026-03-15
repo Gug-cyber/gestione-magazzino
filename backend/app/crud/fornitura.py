@@ -111,6 +111,8 @@ def create_fornitura(db: Session, fornitura_data: FornituraCreate) -> Fornitura:
             fornitore_id=fornitura_data.fornitore_id,
             fornitore_nome=fornitore_nome,
             note=fornitura_data.note,
+            corriere=fornitura_data.corriere,
+            tracking_number=fornitura_data.tracking_number,
             totale=totale,
             righe=righe,
         )
@@ -135,8 +137,8 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(fornitura, field, value)
 
-    # Carico magazzino quando la fornitura passa a ricevuto
-    if update.stato == StatoFornitura.ricevuto and stato_precedente != StatoFornitura.ricevuto:
+    # Carico magazzino quando la fornitura passa a ricevuto (solo se non già caricato)
+    if update.stato == StatoFornitura.ricevuto and stato_precedente != StatoFornitura.ricevuto and not fornitura.stock_caricato:
         fornitura.data_ricezione = datetime.now(timezone.utc)
         from ..models.movimento import Movimento, TipoMovimento
         for riga in fornitura.righe:
@@ -151,10 +153,11 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
                     fornitore_id=fornitura.fornitore_id,
                 )
                 db.add(movimento)
+        fornitura.stock_caricato = True
         db.flush()
 
     # Rollback magazzino quando la fornitura viene annullata dopo essere stata ricevuta
-    elif update.stato == StatoFornitura.annullato and stato_precedente == StatoFornitura.ricevuto:
+    elif update.stato == StatoFornitura.annullato and fornitura.stock_caricato:
         from ..models.movimento import Movimento, TipoMovimento
         for riga in fornitura.righe:
             prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
@@ -168,6 +171,7 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
                     fornitore_id=fornitura.fornitore_id,
                 )
                 db.add(movimento)
+        fornitura.stock_caricato = False
         db.flush()
 
     db.commit()
