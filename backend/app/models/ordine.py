@@ -27,8 +27,9 @@ class Ordine(Base):
     totale = Column(Float, default=0.0)
     corriere = Column(String, nullable=True)
     tracking_number = Column(String, nullable=True)
-    # Flag anti-doppio-scarico: True dal momento della creazione dell'ordine
-    stock_scalato = Column(Boolean, default=True, nullable=False)
+    # Flag: True quando lo stock e' gia' stato scalato per questo ordine.
+    # Impedisce doppi scarichi in caso di aggiornamenti multipli di stato.
+    stock_scalato = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -47,4 +48,4 @@ class RigaOrdine(Base):
     subtotale = Column(Float, nullable=False)
 
     ordine = relationship("Ordine", back_populates="righe")
-    prodotto = relationship("Prodotto", backref="righe_ordine"),
+    prodotto = relationship("Prodotto", backref="righe_ordine")
