@@ -1,17 +1,22 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+from ..models.fornitura import TipoVoceFornitura
 
 
 class RigaFornituraCreate(BaseModel):
-    prodotto_id: int
+    prodotto_id: Optional[int] = None
+    tipo_voce: TipoVoceFornitura = TipoVoceFornitura.prodotto
+    descrizione: Optional[str] = None
     quantita: int
     prezzo_unitario: float
 
 
 class RigaFornituraResponse(BaseModel):
     id: int
-    prodotto_id: int
+    prodotto_id: Optional[int] = None
+    tipo_voce: str = "prodotto"
+    descrizione: Optional[str] = None
     quantita: int
     prezzo_unitario: float
     subtotale: float

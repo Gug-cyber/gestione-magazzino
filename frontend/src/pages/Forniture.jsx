@@ -10,7 +10,7 @@ import styles from './Forniture.module.css'
 const STATI = ['bozza', 'confermato', 'spedito', 'ricevuto', 'annullato']
 
 const PAGE_SIZE = 50
-const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
+const emptyRiga = { tipo_voce: 'prodotto', prodotto_id: '', descrizione: '', quantita: 1, prezzo_unitario: 0 }
 
 export default function Forniture() {
   const navigate = useNavigate()
@@ -96,6 +96,12 @@ export default function Forniture() {
         const prod = prodotti.find(p => p.id === parseInt(value))
         if (prod) righe[index].prezzo_unitario = prod.prezzo_acquisto || 0
       }
+      if (field === 'tipo_voce' && value === 'packaging') {
+        righe[index].prodotto_id = ''
+        righe[index].descrizione = ''
+      } else if (field === 'tipo_voce' && value === 'prodotto') {
+        righe[index].descrizione = ''
+      }
       return { ...prev, righe }
     })
   }
@@ -112,8 +118,8 @@ export default function Forniture() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError('')
-    const righe = form.righe.filter(r => r.prodotto_id)
-    if (!righe.length) { setFormError('Aggiungi almeno un prodotto'); return }
+    const righe = form.righe.filter(r => r.tipo_voce === 'packaging' ? (r.descrizione || '').trim() : r.prodotto_id)
+    if (!righe.length) { setFormError('Aggiungi almeno un prodotto o voce packaging'); return }
     setSubmitting(true)
     try {
       const payload = {
@@ -123,7 +129,9 @@ export default function Forniture() {
         corriere: form.corriere || null,
         tracking_number: form.tracking_number || null,
         righe: righe.map(r => ({
-          prodotto_id: parseInt(r.prodotto_id),
+          tipo_voce: r.tipo_voce || 'prodotto',
+          prodotto_id: r.tipo_voce === 'packaging' ? null : (r.prodotto_id ? parseInt(r.prodotto_id) : null),
+          descrizione: r.descrizione || null,
           quantita: parseInt(r.quantita),
           prezzo_unitario: parseFloat(r.prezzo_unitario),
         })),
@@ -310,16 +318,43 @@ export default function Forniture() {
                   <input value={form.tracking_number} onChange={e => setForm(prev => ({ ...prev, tracking_number: e.target.value }))} placeholder="Numero tracking..." className={styles.formInput} />
                 </div>
               </div>
-              <h3 className={styles.modalSubTitle}>Prodotti</h3>
+              <h3 className={styles.modalSubTitle}>Voci Fornitura</h3>
               {form.righe.map((riga, i) => (
-                <div key={i} className={styles.rigaRow}>
-                  <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect}>
-                    <option value="">— Seleziona prodotto —</option>
-                    {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>)}
-                  </select>
-                  <input type="number" min="1" value={riga.quantita} onChange={e => handleRigaChange(i, 'quantita', e.target.value)} placeholder="Qtà" className={styles.formInput} />
-                  <input type="number" min="0" step="0.01" value={riga.prezzo_unitario} onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)} placeholder="Prezzo" className={styles.formInput} />
-                  <button type="button" onClick={() => removeRiga(i)} disabled={form.righe.length === 1} className={styles.removeRigaBtn} style={{ opacity: form.righe.length === 1 ? 0.3 : 1, cursor: form.righe.length === 1 ? 'not-allowed' : 'pointer' }}>🗑️</button>
+                <div key={i} className={styles.rigaRow} style={{ flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
+                    <select
+                      value={riga.tipo_voce || 'prodotto'}
+                      onChange={e => handleRigaChange(i, 'tipo_voce', e.target.value)}
+                      className={styles.formSelect}
+                      style={{ flex: '0 0 auto', width: '220px', backgroundColor: riga.tipo_voce === 'packaging' ? '#fff8e1' : undefined }}
+                    >
+                      <option value="prodotto">📦 Prodotto magazzino</option>
+                      <option value="packaging">🏷️ Packaging / Logistica</option>
+                    </select>
+                    {riga.tipo_voce === 'packaging' ? (
+                      <input
+                        value={riga.descrizione}
+                        onChange={e => handleRigaChange(i, 'descrizione', e.target.value)}
+                        placeholder="Descrizione (es. Nastro adesivo, DHL Express...)"
+                        className={styles.formInput}
+                        style={{ flex: 1 }}
+                        required
+                      />
+                    ) : (
+                      <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect} style={{ flex: 1 }}>
+                        <option value="">— Seleziona prodotto —</option>
+                        {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>)}
+                      </select>
+                    )}
+                    <input type="number" min="1" value={riga.quantita} onChange={e => handleRigaChange(i, 'quantita', e.target.value)} placeholder="Qtà" className={styles.formInput} style={{ width: '70px', flex: '0 0 auto' }} />
+                    <input type="number" min="0" step="0.01" value={riga.prezzo_unitario} onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)} placeholder="Prezzo" className={styles.formInput} style={{ width: '90px', flex: '0 0 auto' }} />
+                    <button type="button" onClick={() => removeRiga(i)} disabled={form.righe.length === 1} className={styles.removeRigaBtn} style={{ opacity: form.righe.length === 1 ? 0.3 : 1, cursor: form.righe.length === 1 ? 'not-allowed' : 'pointer' }}>🗑️</button>
+                  </div>
+                  {riga.tipo_voce === 'packaging' && (
+                    <div style={{ fontSize: '0.8rem', color: '#e65100', backgroundColor: '#fff3e0', padding: '4px 8px', borderRadius: '4px', width: '100%' }}>
+                      ⚠️ Questa voce verrà registrata come costo e non influenzerà le giacenze
+                    </div>
+                  )}
                 </div>
               ))}
               <button type="button" onClick={addRiga} className={styles.addRigaBtn}>+ Aggiungi Riga</button>

@@ -75,6 +75,13 @@ def get_analisi_mensile(
         ).scalar()
         spese = float(spese_result or 0)
 
+        costi_packaging_result = db.query(func.sum(SpesaGestione.importo)).filter(
+            SpesaGestione.categoria == "packaging",
+            extract("year", SpesaGestione.data) == anno,
+            extract("month", SpesaGestione.data) == mese,
+        ).scalar()
+        packaging = float(costi_packaging_result or 0)
+
         storici_costi = db.query(func.sum(DatoStorico.importo)).filter(
             DatoStorico.tipo == "costo",
             extract("year", DatoStorico.data) == anno,
@@ -94,6 +101,7 @@ def get_analisi_mensile(
             "costi": round(costi, 2),
             "ricavi": round(ricavi, 2),
             "spese": round(spese, 2),
+            "packaging": round(packaging, 2),
         })
 
     return risultati
@@ -182,6 +190,12 @@ def get_analisi_annuale(
         ).scalar()
         spese = float(spese_result or 0)
 
+        costi_packaging_result = db.query(func.sum(SpesaGestione.importo)).filter(
+            SpesaGestione.categoria == "packaging",
+            extract("year", SpesaGestione.data) == anno,
+        ).scalar()
+        packaging = float(costi_packaging_result or 0)
+
         storici_costi = db.query(func.sum(DatoStorico.importo)).filter(
             DatoStorico.tipo == "costo",
             extract("year", DatoStorico.data) == anno,
@@ -199,6 +213,7 @@ def get_analisi_annuale(
             "costi": round(costi, 2),
             "ricavi": round(ricavi, 2),
             "spese": round(spese, 2),
+            "packaging": round(packaging, 2),
         })
 
     return risultati
@@ -364,4 +379,40 @@ def get_marginalita_confronto(
         },
         "variazione_assoluta": round(variazione_assoluta, 2),
         "variazione_percentuale": variazione_percentuale,
+    }
+
+
+@router.get("/packaging")
+def get_analisi_packaging(
+    anno: int = Query(default=None),
+    mese: int = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Restituisce i costi packaging/logistica da SpesaGestione con categoria='packaging'.
+    Se mese è specificato, filtra sul mese. Altrimenti restituisce tutti i mesi dell'anno.
+    """
+    if anno is None:
+        anno = datetime.now().year
+
+    query = db.query(
+        extract("month", SpesaGestione.data).label("mese"),
+        func.sum(SpesaGestione.importo).label("totale"),
+    ).filter(
+        SpesaGestione.categoria == "packaging",
+        extract("year", SpesaGestione.data) == anno,
+    )
+    if mese:
+        query = query.filter(extract("month", SpesaGestione.data) == mese)
+
+    results = query.group_by(extract("month", SpesaGestione.data)).order_by(extract("month", SpesaGestione.data)).all()
+
+    return {
+        "anno": anno,
+        "totale_annuale": round(sum(float(r.totale or 0) for r in results), 2),
+        "per_mese": [
+            {"mese": int(r.mese), "totale": round(float(r.totale or 0), 2)}
+            for r in results
+        ],
     }

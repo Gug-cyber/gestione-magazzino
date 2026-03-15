@@ -145,7 +145,7 @@ export default function DettaglioFornitura() {
       {fornitura.stato === 'ricevuto' && (
         <div style={{ backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '8px', padding: '16px 20px', marginBottom: '20px' }}>
           <span style={{ fontSize: '15px', color: '#2e7d32' }}>
-            ✅ Fornitura ricevuta: le quantità in magazzino sono state aggiornate automaticamente.
+            ✅ Fornitura ricevuta: le quantità in magazzino sono state aggiornate automaticamente. I costi packaging sono stati registrati in Analisi Finanziaria.
           </span>
         </div>
       )}
@@ -159,21 +159,33 @@ export default function DettaglioFornitura() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f5f5f5' }}>
-                {['Prodotto', 'SKU', 'Quantità', 'Prezzo Unit.', 'Subtotale'].map(h => (
+                {['Tipo', 'Prodotto / Descrizione', 'SKU', 'Quantità', 'Prezzo Unit.', 'Subtotale'].map(h => (
                   <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {(fornitura.righe || []).map((r, i) => (
-                <tr key={r.id || i} style={{ borderTop: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 500 }}>{r.prodotto_nome || '—'}</td>
-                  <td style={{ padding: '12px 16px', color: '#666', fontFamily: 'monospace', fontSize: '0.85rem' }}>{r.prodotto_sku || '—'}</td>
-                  <td style={{ padding: '12px 16px' }}>{r.quantita}</td>
-                  <td style={{ padding: '12px 16px' }}>{formatCurrency(r.prezzo_unitario)}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: PRIMARY_COLOR }}>{formatCurrency(r.subtotale)}</td>
-                </tr>
-              ))}
+              {(fornitura.righe || []).map((r, i) => {
+                const isPackaging = r.tipo_voce === 'packaging'
+                return (
+                  <tr key={r.id || i} style={{ borderTop: '1px solid #f0f0f0', backgroundColor: isPackaging ? '#fff8e1' : undefined }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      {isPackaging ? (
+                        <span style={{ backgroundColor: '#e65100', color: '#fff', borderRadius: '4px', padding: '2px 8px', fontSize: '0.78rem', fontWeight: 600 }}>🏷️ Packaging</span>
+                      ) : (
+                        <span style={{ backgroundColor: '#1565c0', color: '#fff', borderRadius: '4px', padding: '2px 8px', fontSize: '0.78rem', fontWeight: 600 }}>📦 Prodotto</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontWeight: 500 }}>
+                      {isPackaging ? (r.descrizione || '—') : (r.prodotto_nome || r.descrizione || '—')}
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#666', fontFamily: 'monospace', fontSize: '0.85rem' }}>{r.prodotto_sku || '—'}</td>
+                    <td style={{ padding: '12px 16px' }}>{r.quantita}</td>
+                    <td style={{ padding: '12px 16px' }}>{formatCurrency(r.prezzo_unitario)}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 600, color: PRIMARY_COLOR }}>{formatCurrency(r.subtotale)}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

@@ -76,7 +76,7 @@ function BarChart({ data, labelKey, title }) {
   }
 
   const maxVal = Math.max(
-    ...data.map((d) => Math.max(d.costi || 0, d.ricavi || 0, d.spese || 0)),
+    ...data.map((d) => Math.max(d.costi || 0, d.ricavi || 0, d.spese || 0, d.packaging || 0)),
     1
   )
 
@@ -84,6 +84,7 @@ function BarChart({ data, labelKey, title }) {
     { key: 'costi', label: 'Costi merci (forniture ricevute)', color: '#e53935' },
     { key: 'ricavi', label: 'Ricavi (ordini completati)', color: '#43a047' },
     { key: 'spese', label: 'Spese gestione', color: '#fb8c00' },
+    { key: 'packaging', label: 'Packaging & Logistica', color: '#7b1fa2' },
   ]
 
   return (
@@ -175,6 +176,7 @@ function TabGrafici() {
   const totCosti = datiCorrente.reduce((s, d) => s + (d.costi || 0), 0)
   const totRicavi = datiCorrente.reduce((s, d) => s + (d.ricavi || 0), 0)
   const totSpese = datiCorrente.reduce((s, d) => s + (d.spese || 0), 0)
+  const totPackaging = datiCorrente.reduce((s, d) => s + (d.packaging || 0), 0)
   const margine = totRicavi - totCosti - totSpese
 
   return (
@@ -227,6 +229,7 @@ function TabGrafici() {
               { label: 'Costi merci (forniture ricevute)', value: totCosti, color: '#e53935' },
               { label: 'Ricavi (ordini completati)', value: totRicavi, color: '#43a047' },
               { label: 'Totale Spese gestione', value: totSpese, color: '#fb8c00' },
+              { label: '📦 Packaging & Logistica', value: totPackaging, color: '#7b1fa2' },
               { label: 'Margine', value: margine, color: margine >= 0 ? '#1a237e' : '#d32f2f' },
             ].map((item) => (
               <div key={item.label} style={{ flex: 1, minWidth: '140px', textAlign: 'center', padding: '12px', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
@@ -544,6 +547,74 @@ function TabSpese() {
 
 // ─── Tab 3: Calcolatore Packaging ────────────────────────────────────────────
 
+function TabAnalisiPackaging() {
+  const [anno, setAnno] = useState(new Date().getFullYear())
+  const [dati, setDati] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const carica = async () => {
+      setLoading(true)
+      try {
+        const res = await analisiAPI.getPackaging(anno)
+        setDati(res.data)
+      } catch {
+        setDati(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    carica()
+  }, [anno])
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <h3 style={{ margin: 0, color: '#7b1fa2' }}>📦 Costi Packaging & Logistica (da Forniture)</h3>
+        <select value={anno} onChange={e => setAnno(Number(e.target.value))} style={{ ...inputStyle, width: 'auto' }}>
+          {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+      {loading ? <p>Caricamento...</p> : !dati ? <p style={{ color: '#888' }}>Nessun dato disponibile.</p> : (
+        <>
+          <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '180px', textAlign: 'center', padding: '16px', borderRadius: '8px', backgroundColor: '#f3e5f5' }}>
+              <div style={{ fontSize: '0.85rem', color: '#6a1b9a', marginBottom: '4px' }}>Totale Annuale</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#7b1fa2' }}>€{dati.totale_annuale.toFixed(2)}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: '180px', textAlign: 'center', padding: '16px', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
+              <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>Mesi con costi</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#555' }}>{dati.per_mese.length}</div>
+            </div>
+          </div>
+          {dati.per_mese.length === 0 ? (
+            <p style={{ color: '#888' }}>Nessun costo packaging registrato per questo anno.</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Mese</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Totale (€)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dati.per_mese.map(r => (
+                  <tr key={r.mese}>
+                    <td style={tdStyle}>{['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][r.mese - 1]}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: '#7b1fa2' }}>€{r.totale.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 const nuovoComponenteVuoto = { nome: '', costoAcquisto: '', numeroPezzi: '' }
 
 function TabPackaging() {
@@ -604,9 +675,12 @@ function TabPackaging() {
 
   return (
     <div>
+      {/* Analisi costi packaging da forniture */}
+      <TabAnalisiPackaging />
+
       {/* Tabella componenti */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: '#1a237e' }}>📦 Componenti Imballo</h3>
+        <h3 style={{ marginTop: 0, color: '#1a237e' }}>🧮 Calcolatore Costo Imballo per Unità</h3>
         <div className="table-wrapper">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>

@@ -142,3 +142,85 @@ def test_delete_fornitura_bozza(client, auth_headers):
     # Verifica che la fornitura non esista più
     resp_get = client.get(f"/api/forniture/{fornitura_id}", headers=auth_headers)
     assert resp_get.status_code == 404
+
+
+def test_create_fornitura_packaging_row(client, auth_headers):
+    """Verifica che una riga packaging venga creata senza prodotto_id."""
+    resp = client.post(
+        "/api/forniture/",
+        json={
+            "fornitore_nome": "Fornitore Packaging",
+            "righe": [
+                {
+                    "tipo_voce": "packaging",
+                    "descrizione": "Nastro adesivo",
+                    "quantita": 10,
+                    "prezzo_unitario": 2.50,
+                }
+            ],
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201, f"Creazione fornitura packaging fallita: {resp.text}"
+    data = resp.json()
+    assert data["totale"] == 25.0
+    assert len(data["righe"]) == 1
+    riga = data["righe"][0]
+    assert riga["tipo_voce"] == "packaging"
+    assert riga["prodotto_id"] is None
+    assert riga["descrizione"] == "Nastro adesivo"
+
+
+def test_packaging_row_non_carica_magazzino(client, auth_headers):
+    """Verifica che le righe packaging non aumentino la quantità in magazzino."""
+    prodotto = _crea_prodotto(client, auth_headers, sku="FOR-TEST-PKG-001", quantita=0)
+    prodotto_id = prodotto["id"]
+
+    # Crea fornitura con riga prodotto e riga packaging
+    resp = client.post(
+        "/api/forniture/",
+        json={
+            "fornitore_nome": "Test Packaging",
+            "righe": [
+                {
+                    "tipo_voce": "prodotto",
+                    "prodotto_id": prodotto_id,
+                    "quantita": 5,
+                    "prezzo_unitario": 10.0,
+                },
+                {
+                    "tipo_voce": "packaging",
+                    "descrizione": "Buste imbottite",
+                    "quantita": 20,
+                    "prezzo_unitario": 1.50,
+                },
+            ],
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    fornitura_id = resp.json()["id"]
+
+    # Porta a ricevuto
+    resp_update = client.put(
+        f"/api/forniture/{fornitura_id}",
+        json={"stato": "ricevuto"},
+        headers=auth_headers,
+    )
+    assert resp_update.status_code == 200
+
+    # La quantità del prodotto deve aumentare solo per la riga prodotto
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.status_code == 200
+    assert resp_prodotto.json()["quantita"] == 5  # solo riga prodotto caricata
+
+
+def test_analisi_packaging_endpoint(client, auth_headers):
+    """Verifica che l'endpoint /analisi/packaging risponda correttamente."""
+    resp = client.get("/api/analisi/packaging", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "anno" in data
+    assert "totale_annuale" in data
+    assert "per_mese" in data
+    assert isinstance(data["per_mese"], list)
