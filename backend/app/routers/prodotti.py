@@ -14,6 +14,8 @@ from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
 from ..crud import prodotto as crud
 from ..auth import get_current_active_user
 from ..models.movimento import Movimento, TipoMovimento
+from ..models.ordine import RigaOrdine
+from ..models.fornitura import RigaFornitura
 from ..models.prodotto import Prodotto
 router = APIRouter()
 
@@ -296,22 +298,26 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
 @router.delete("/all", status_code=200)
 def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     """
-    Elimina tutti i prodotti dal database.
+    Elimina tutti i prodotti dal database insieme alle loro dipendenze.
     Operazione riservata agli utenti autenticati.
     ATTENZIONE: Operazione irreversibile!
     """
     try:
+        db.query(Movimento).delete()
+        db.query(RigaOrdine).delete()
+        db.query(RigaFornitura).delete()
+
         count = db.query(Prodotto).delete()
         db.commit()
         return {
-            "message": "Tutti i prodotti sono stati eliminati con successo",
+            "message": "Tutti i prodotti e le loro dipendenze sono stati eliminati",
             "deleted_count": count,
         }
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"Errore durante l'eliminazione dei prodotti: {str(e)}",
+            detail=f"Errore durante l'eliminazione: {str(e)}",
         )
 
 
