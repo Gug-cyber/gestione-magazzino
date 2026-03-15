@@ -172,12 +172,17 @@ export default function Fatture() {
   }
 
   const handleDelete = async (fattura) => {
+    if (fattura.auto_generata) {
+      setError('Le fatture generate automaticamente non possono essere eliminate manualmente')
+      return
+    }
     if (!window.confirm(`Eliminare la fattura ${fattura.numero_fattura}?`)) return
     try {
       await fattureAPI.delete(fattura.id)
       setFatture(prev => prev.filter(f => f.id !== fattura.id))
-    } catch {
-      setError('Errore durante l\'eliminazione')
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Errore durante l\'eliminazione'
+      setError(errorMessage)
     }
   }
 
@@ -402,8 +407,13 @@ export default function Fatture() {
                       </button>
                       <button
                         onClick={() => handleDelete(f)}
-                        title="Elimina"
-                        style={actionBtnStyle('#c62828')}
+                        title={f.auto_generata ? "Le fatture generate automaticamente non possono essere eliminate manualmente" : "Elimina"}
+                        disabled={f.auto_generata}
+                        style={{
+                          ...actionBtnStyle('#c62828'),
+                          opacity: f.auto_generata ? 0.5 : 1,
+                          cursor: f.auto_generata ? 'not-allowed' : 'pointer',
+                        }}
                       >
                         🗑️
                       </button>
