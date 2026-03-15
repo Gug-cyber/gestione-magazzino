@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, prodottiAPI, clientiAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { CORRIERI } from '../constants/corrieri'
 
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: '' }
 
@@ -277,13 +278,16 @@ export default function NuovoOrdine() {
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
               <label style={labelStyle}>
                 <span style={labelTextStyle}>Corriere</span>
-                <input
-                  type="text"
+                <select
                   value={corriere}
                   onChange={e => setCorriere(e.target.value)}
-                  placeholder="Es. BRT, DHL, SDA..."
                   style={inputStyle}
-                />
+                >
+                  <option value="">— Nessun corriere —</option>
+                  {CORRIERI.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
               </label>
               <label style={labelStyle}>
                 <span style={labelTextStyle}>Tracking spedizione</span>

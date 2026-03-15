@@ -3,24 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_ORDINE_COLORS } from '../constants/colors'
+import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency } from '../utils/formatters'
 import styles from './Ordini.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
-
-const CORRIERI = [
-  { value: 'BRT',                label: 'BRT',                url: (n) => `https://vas.brt.it/vas/sped_det_show.hsm?referer=sped_numspe_input.hsm&Nspedizione=${n}` },
-  { value: 'DHL',                label: 'DHL',                url: (n) => `https://www.dhl.com/it-it/home/tracking.html?tracking-id=${n}` },
-  { value: 'SDA',                label: 'SDA',                url: (n) => `https://www.sda.it/wps/portal/Servizi-per-te/Cerca-spedizione?spedizione=${n}` },
-  { value: 'GLS',                label: 'GLS',                url: (n) => `https://gls-group.com/track/${n}` },
-  { value: 'Poste Italiane',     label: 'Poste Italiane',     url: (n) => `https://www.poste.it/cerca/index.html#/risultati-spedizioni/${n}` },
-  { value: 'UPS',                label: 'UPS',                url: (n) => `https://www.ups.com/track?tracknum=${n}` },
-  { value: 'FedEx',              label: 'FedEx',              url: (n) => `https://www.fedex.com/fedextrack/?tracknumbers=${n}` },
-  { value: 'Amazon Logistics',   label: 'Amazon Logistics',   url: (n) => `https://track.amazon.it/tracking/${n}` },
-  { value: 'TNT',                label: 'TNT',                url: (n) => `https://www.tnt.com/express/it_it/site/tracking.html?searchType=CON&cons=${n}` },
-  { value: 'InPost',             label: 'InPost',             url: (n) => `https://inpost.it/tracking?number=${n}` },
-  { value: 'Altro',              label: 'Altro',              url: () => null },
-]
 
 const PAGE_SIZE = 50
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
@@ -37,9 +24,12 @@ export default function Ordini() {
   const [showModal, setShowModal] = useState(false)
   const [clienti, setClienti] = useState([])
   const [prodotti, setProdotti] = useState([])
-  const [form, setForm] = useState({ cliente_id: '', cliente_nome: '', note: '', righe: [{ ...emptyRiga }] })
+  const [form, setForm] = useState({ cliente_id: '', cliente_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [trackingModal, setTrackingModal] = useState(null)
+  const [trackingForm, setTrackingForm] = useState({ corriere: '', tracking_number: '' })
+  const [trackingLoading, setTrackingLoading] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -88,7 +78,7 @@ export default function Ordini() {
   }
 
   const openNewModal = () => {
-    setForm({ cliente_id: '', cliente_nome: '', note: '', righe: [{ ...emptyRiga }] })
+    setForm({ cliente_id: '', cliente_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
     setFormError('')
     setShowModal(true)
   }
@@ -130,6 +120,8 @@ export default function Ordini() {
         cliente_id: form.cliente_id ? parseInt(form.cliente_id) : null,
         cliente_nome: form.cliente_nome || null,
         note: form.note || null,
+        corriere: form.corriere || null,
+        tracking_number: form.tracking_number || null,
         righe: righe.map(r => ({
           prodotto_id: parseInt(r.prodotto_id),
           quantita: parseInt(r.quantita),
@@ -236,9 +228,27 @@ export default function Ordini() {
                             <span className={styles.trackingNum}>{ordine.tracking_number}</span>
                           )
                         })()}
+                        <button
+                          onClick={() => {
+                            setTrackingModal(ordine)
+                            setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
+                          }}
+                          title="Modifica tracking"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                        >✏️</button>
                       </div>
                     ) : (
-                      <span className={styles.trackingEmpty}>—</span>
+                      <div className={styles.tracking}>
+                        <span className={styles.trackingEmpty}>—</span>
+                        <button
+                          onClick={() => {
+                            setTrackingModal(ordine)
+                            setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
+                          }}
+                          title="Modifica tracking"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                        >✏️</button>
+                      </div>
                     )}
                   </td>
                   <td className={styles.td}>{ordine.righe?.length || 0} prodotti</td>
@@ -287,6 +297,19 @@ export default function Ordini() {
                 <label>Note (opzionale)</label>
                 <input value={form.note} onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))} placeholder="Note sull'ordine..." className={styles.formInput} />
               </div>
+              <div className={styles.formGrid}>
+                <div className={styles.formField}>
+                  <label>Corriere (opzionale)</label>
+                  <select value={form.corriere} onChange={e => setForm(prev => ({ ...prev, corriere: e.target.value }))} className={styles.formSelect}>
+                    <option value="">— Nessun corriere —</option>
+                    {CORRIERI.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div className={styles.formField}>
+                  <label>Tracking spedizione (opzionale)</label>
+                  <input value={form.tracking_number} onChange={e => setForm(prev => ({ ...prev, tracking_number: e.target.value }))} placeholder="Numero tracking..." className={styles.formInput} />
+                </div>
+              </div>
               <h3 className={styles.modalTitle} style={{ fontSize: '1rem', marginBottom: '12px' }}>Prodotti</h3>
               {form.righe.map((riga, i) => (
                 <div key={i} className={styles.rigaRow}>
@@ -306,6 +329,49 @@ export default function Ordini() {
                 <button type="submit" disabled={submitting} className={styles.submitBtn}>{submitting ? 'Salvataggio...' : 'Salva come Bozza'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Tracking Edit Modal */}
+      {trackingModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal} style={{ maxWidth: '400px' }}>
+            <h3 className={styles.modalTitle}>✏️ Modifica Tracking — {trackingModal.numero_ordine}</h3>
+            <div className={styles.formField} style={{ marginBottom: '12px' }}>
+              <label>Corriere</label>
+              <select value={trackingForm.corriere} onChange={e => setTrackingForm(prev => ({ ...prev, corriere: e.target.value }))} className={styles.formSelect}>
+                <option value="">— Nessun corriere —</option>
+                {CORRIERI.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.formField} style={{ marginBottom: '16px' }}>
+              <label>Numero Tracking</label>
+              <input value={trackingForm.tracking_number} onChange={e => setTrackingForm(prev => ({ ...prev, tracking_number: e.target.value }))} placeholder="Codice tracking..." className={styles.formInput} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setTrackingModal(null)} className={styles.cancelBtn} disabled={trackingLoading}>Annulla</button>
+              <button
+                onClick={async () => {
+                  setTrackingLoading(true)
+                  try {
+                    await ordiniAPI.updateTracking(trackingModal.id, {
+                      corriere: trackingForm.corriere || null,
+                      tracking_number: trackingForm.tracking_number || null,
+                    })
+                    setOrdini(prev => prev.map(o => o.id === trackingModal.id ? { ...o, corriere: trackingForm.corriere, tracking_number: trackingForm.tracking_number } : o))
+                    setTrackingModal(null)
+                  } catch (err) {
+                    alert(err?.response?.data?.detail || 'Errore nel salvataggio')
+                  } finally {
+                    setTrackingLoading(false)
+                  }
+                }}
+                className={styles.submitBtn}
+                disabled={trackingLoading}
+              >
+                {trackingLoading ? 'Salvataggio...' : 'Salva'}
+              </button>
+            </div>
           </div>
         </div>
       )}

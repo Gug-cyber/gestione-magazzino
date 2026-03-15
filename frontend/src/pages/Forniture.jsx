@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { fornitureAPI, fornitoriAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_FORNITURA_COLORS } from '../constants/colors'
+import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency } from '../utils/formatters'
 import styles from './Forniture.module.css'
 
@@ -26,6 +27,9 @@ export default function Forniture() {
   const [form, setForm] = useState({ fornitore_id: '', fornitore_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [trackingFornituraModal, setTrackingFornituraModal] = useState(null)
+  const [trackingFornituraForm, setTrackingFornituraForm] = useState({ corriere: '', tracking_number: '' })
+  const [trackingFornituraLoading, setTrackingFornituraLoading] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -196,7 +200,7 @@ export default function Forniture() {
           <table className={styles.table}>
             <thead>
               <tr>
-                {['N° Fornitura', 'Fornitore', 'Stato', 'Prodotti', 'Totale €', 'Corriere', 'Data', 'Azioni'].map(h => (
+                {['N° Fornitura', 'Fornitore', 'Stato', 'Prodotti', 'Totale €', 'Corriere / Tracking', 'Data', 'Azioni'].map(h => (
                   <th key={h} className={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -211,7 +215,44 @@ export default function Forniture() {
                   </td>
                   <td className={styles.td}>{fornitura.righe?.length || 0} prodotti</td>
                   <td className={`${styles.td} ${styles.totalCell}`}>{formatCurrency(fornitura.totale)}</td>
-                  <td className={styles.td}>{fornitura.corriere || '—'}</td>
+                  <td className={styles.td}>
+                    {fornitura.tracking_number ? (
+                      <div className={styles.tracking}>
+                        <span className={styles.trackingCorriere}>{fornitura.corriere || '—'}</span>
+                        {(() => {
+                          const corriere = CORRIERI.find(c => c.value === fornitura.corriere)
+                          const url = corriere ? corriere.url(fornitura.tracking_number) : null
+                          return url ? (
+                            <a href={url} target="_blank" rel="noopener noreferrer" className={styles.trackingLink}>
+                              {fornitura.tracking_number} 🔗
+                            </a>
+                          ) : (
+                            <span className={styles.trackingNum}>{fornitura.tracking_number}</span>
+                          )
+                        })()}
+                        <button
+                          onClick={() => {
+                            setTrackingFornituraModal(fornitura)
+                            setTrackingFornituraForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' })
+                          }}
+                          title="Modifica tracking"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                        >✏️</button>
+                      </div>
+                    ) : (
+                      <div className={styles.tracking}>
+                        <span className={styles.trackingEmpty}>—</span>
+                        <button
+                          onClick={() => {
+                            setTrackingFornituraModal(fornitura)
+                            setTrackingFornituraForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' })
+                          }}
+                          title="Modifica tracking"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                        >✏️</button>
+                      </div>
+                    )}
+                  </td>
                   <td className={`${styles.td} ${styles.dateCell}`}>{formatDate(fornitura.data_fornitura)}</td>
                   <td className={styles.td}>
                     <button onClick={() => navigate(`/forniture/${fornitura.id}`)} title="Vedi dettaglio" className={styles.detailBtn}>👁️ Dettaglio</button>
@@ -259,7 +300,10 @@ export default function Forniture() {
               <div className={styles.formGrid}>
                 <div className={styles.formField}>
                   <label>Corriere (opzionale)</label>
-                  <input value={form.corriere} onChange={e => setForm(prev => ({ ...prev, corriere: e.target.value }))} placeholder="Es. BRT, DHL..." className={styles.formInput} />
+                  <select value={form.corriere} onChange={e => setForm(prev => ({ ...prev, corriere: e.target.value }))} className={styles.formSelect}>
+                    <option value="">— Nessun corriere —</option>
+                    {CORRIERI.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
                 </div>
                 <div className={styles.formField}>
                   <label>Tracking spedizione (opzionale)</label>
@@ -285,6 +329,50 @@ export default function Forniture() {
                 <button type="submit" disabled={submitting} className={styles.submitBtn}>{submitting ? 'Salvataggio...' : 'Crea Fornitura'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Tracking Edit Modal */}
+      {trackingFornituraModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal} style={{ maxWidth: '400px' }}>
+            <h3 className={styles.modalTitle}>✏️ Modifica Tracking — {trackingFornituraModal.numero_fornitura}</h3>
+            <div className={styles.formField} style={{ marginBottom: '12px' }}>
+              <label>Corriere</label>
+              <select value={trackingFornituraForm.corriere} onChange={e => setTrackingFornituraForm(prev => ({ ...prev, corriere: e.target.value }))} className={styles.formSelect}>
+                <option value="">— Nessun corriere —</option>
+                {CORRIERI.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className={styles.formField} style={{ marginBottom: '16px' }}>
+              <label>Numero Tracking</label>
+              <input value={trackingFornituraForm.tracking_number} onChange={e => setTrackingFornituraForm(prev => ({ ...prev, tracking_number: e.target.value }))} placeholder="Codice tracking..." className={styles.formInput} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setTrackingFornituraModal(null)} className={styles.cancelBtn} disabled={trackingFornituraLoading}>Annulla</button>
+              <button
+                onClick={async () => {
+                  setTrackingFornituraLoading(true)
+                  try {
+                    await fornitureAPI.update(trackingFornituraModal.id, {
+                      corriere: trackingFornituraForm.corriere || null,
+                      tracking_number: trackingFornituraForm.tracking_number || null,
+                    })
+                    setForniture(prev => prev.map(f => f.id === trackingFornituraModal.id ? { ...f, corriere: trackingFornituraForm.corriere, tracking_number: trackingFornituraForm.tracking_number } : f))
+                    setTrackingFornituraModal(null)
+                  } catch (err) {
+                    alert(err?.response?.data?.detail || 'Errore nel salvataggio')
+                  } finally {
+                    setTrackingFornituraLoading(false)
+                  }
+                }}
+                className={styles.submitBtn}
+                disabled={trackingFornituraLoading}
+              >
+                {trackingFornituraLoading ? 'Salvataggio...' : 'Salva'}
+              </button>
+            </div>
           </div>
         </div>
       )}

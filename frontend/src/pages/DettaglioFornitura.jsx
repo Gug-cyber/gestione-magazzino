@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { fornitureAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_FORNITURA_COLORS, PRIMARY_COLOR } from '../constants/colors'
+import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency } from '../utils/formatters'
 
 const STATO_NEXT = {
@@ -23,6 +24,9 @@ export default function DettaglioFornitura() {
   const [fornitura, setFornitura] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [trackingEdit, setTrackingEdit] = useState(false)
+  const [trackingForm, setTrackingForm] = useState({ corriere: '', tracking_number: '' })
+  const [trackingLoading, setTrackingLoading] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -67,6 +71,7 @@ export default function DettaglioFornitura() {
   const isTerminale = fornitura.stato === 'ricevuto' || fornitura.stato === 'annullato'
 
   return (
+    <>
     <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
       {/* Breadcrumb/Back nav */}
       <button onClick={() => navigate('/forniture')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: PRIMARY_COLOR, fontSize: '14px', marginBottom: '16px' }}>
@@ -84,9 +89,24 @@ export default function DettaglioFornitura() {
               <p style={{ margin: '4px 0', color: '#555' }}>Ricevuto il: <strong>{formatDate(fornitura.data_ricezione)}</strong></p>
             )}
             <p style={{ margin: '4px 0', color: '#555' }}>Totale: <strong style={{ color: PRIMARY_COLOR }}>{formatCurrency(fornitura.totale)}</strong></p>
-            {fornitura.corriere && (
-              <p style={{ margin: '4px 0', color: '#555' }}>Corriere: <strong>{fornitura.corriere}</strong>
+            {(fornitura.corriere || fornitura.tracking_number) ? (
+              <p style={{ margin: '4px 0', color: '#555' }}>
+                Corriere: <strong>{fornitura.corriere || '—'}</strong>
                 {fornitura.tracking_number && <span> — Tracking: <strong style={{ fontFamily: 'monospace' }}>{fornitura.tracking_number}</strong></span>}
+                <button
+                  onClick={() => { setTrackingForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' }); setTrackingEdit(true) }}
+                  title="Modifica tracking"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', marginLeft: '6px' }}
+                >✏️</button>
+              </p>
+            ) : (
+              <p style={{ margin: '4px 0', color: '#555' }}>
+                <span style={{ color: '#aaa' }}>Nessun tracking</span>
+                <button
+                  onClick={() => { setTrackingForm({ corriere: '', tracking_number: '' }); setTrackingEdit(true) }}
+                  title="Aggiungi tracking"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', marginLeft: '6px' }}
+                >✏️</button>
               </p>
             )}
             {fornitura.note && <p style={{ margin: '4px 0', color: '#555' }}>Note: {fornitura.note}</p>}
@@ -164,5 +184,59 @@ export default function DettaglioFornitura() {
         </div>
       </div>
     </div>
+
+    {/* Tracking Edit Modal */}
+    {trackingEdit && (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '28px', width: '90%', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <h3 style={{ marginTop: 0, color: PRIMARY_COLOR }}>✏️ Modifica Tracking — {fornitura.numero_fornitura}</h3>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#555' }}>Corriere</label>
+            <select
+              value={trackingForm.corriere}
+              onChange={e => setTrackingForm(prev => ({ ...prev, corriere: e.target.value }))}
+              style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+            >
+              <option value="">— Nessun corriere —</option>
+              {CORRIERI.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#555' }}>Numero Tracking</label>
+            <input
+              value={trackingForm.tracking_number}
+              onChange={e => setTrackingForm(prev => ({ ...prev, tracking_number: e.target.value }))}
+              placeholder="Codice tracking..."
+              style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button onClick={() => setTrackingEdit(false)} disabled={trackingLoading} style={{ backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer' }}>Annulla</button>
+            <button
+              onClick={async () => {
+                setTrackingLoading(true)
+                try {
+                  await fornitureAPI.update(fornitura.id, {
+                    corriere: trackingForm.corriere || null,
+                    tracking_number: trackingForm.tracking_number || null,
+                  })
+                  setFornitura(prev => ({ ...prev, corriere: trackingForm.corriere, tracking_number: trackingForm.tracking_number }))
+                  setTrackingEdit(false)
+                } catch (err) {
+                  alert(err?.response?.data?.detail || 'Errore nel salvataggio')
+                } finally {
+                  setTrackingLoading(false)
+                }
+              }}
+              disabled={trackingLoading}
+              style={{ backgroundColor: PRIMARY_COLOR, color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: trackingLoading ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+            >
+              {trackingLoading ? 'Salvataggio...' : 'Salva'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
