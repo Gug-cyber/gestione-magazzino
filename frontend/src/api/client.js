@@ -156,7 +156,6 @@ export const fattureAPI = {
   update: (id, data) => client.put(`/api/fatture/${id}`, data),
   togglePagata: (id) => client.patch(`/api/fatture/${id}/pagata`),
   delete: (id) => client.delete(`/api/fatture/${id}`),
-  deleteAll: () => client.delete('/api/fatture/all'),
   getDownloadUrl: (id) => `${API_BASE_URL}/api/fatture/${id}/download`,
 }
 
@@ -188,7 +187,6 @@ export const fornitureAPI = {
   create: (data) => client.post('/api/forniture/', data),
   update: (id, data) => client.put(`/api/forniture/${id}`, data),
   delete: (id) => client.delete(`/api/forniture/${id}`),
-  deleteAll: () => client.delete('/api/forniture/all'),
 }
 
 export const cardtraderAPI = {
