@@ -22,11 +22,13 @@ def get_utenti(db: Session, skip: int = 0, limit: int = 100):
 
 def create_utente(db: Session, utente: UtenteCreate, is_admin: bool = False):
     hashed_password = get_password_hash(utente.password)
+    ruolo = getattr(utente, "ruolo", None) or ("admin" if is_admin else "operatore")
     db_utente = Utente(
         username=utente.username,
         email=utente.email,
         hashed_password=hashed_password,
         is_admin=is_admin,
+        ruolo=ruolo,
     )
     db.add(db_utente)
     db.commit()
@@ -96,6 +98,11 @@ def admin_update_utente(db: Session, utente_id: int, dati: UtenteAdminUpdate):
         db_utente.is_admin = dati.is_admin
     if dati.is_active is not None:
         db_utente.is_active = dati.is_active
+    if dati.ruolo is not None:
+        db_utente.ruolo = dati.ruolo
+        # Keep is_admin in sync with ruolo
+        if dati.is_admin is None:
+            db_utente.is_admin = dati.ruolo == "admin"
     db.commit()
     db.refresh(db_utente)
     return db_utente

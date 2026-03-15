@@ -11,11 +11,13 @@ from .routers import spese_gestione, analisi, dati_storici, fatture, clienti
 from .routers import ordini
 from .routers import cardtrader
 from .routers import forniture
+from .routers import admin
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
 from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti table is created
 from .models import ordine as _ordine_model  # noqa: F401 – ensures ordini table is created
 from .models import fornitura as _fornitura_model  # noqa: F401 – ensures forniture table is created
+from .models import dati_azienda as _dati_azienda_model  # noqa: F401 – ensures dati_azienda table is created
 
 load_dotenv()
 
@@ -81,6 +83,7 @@ app.include_router(clienti.router, prefix="/api/clienti", tags=["Clienti"])
 app.include_router(ordini.router, prefix="/api/ordini", tags=["Ordini"])
 app.include_router(cardtrader.router, prefix="/api/cardtrader", tags=["CardTrader"])
 app.include_router(forniture.router, prefix="/api/forniture", tags=["Forniture"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 
 @app.on_event("startup")

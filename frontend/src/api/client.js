@@ -100,6 +100,18 @@ export const amministrazioneAPI = {
   deleteUtente: (id) => client.delete(`/api/auth/utenti/${id}`),
 }
 
+export const adminAPI = {
+  // User management
+  getAllUsers: () => client.get('/api/admin/utenti'),
+  updateUserRole: (userId, ruolo) => client.put(`/api/admin/utenti/${userId}/ruolo`, { ruolo }),
+  deleteUser: (userId) => client.delete(`/api/admin/utenti/${userId}`),
+
+  // Company data
+  getDatiAzienda: () => client.get('/api/admin/dati-azienda'),
+  createDatiAzienda: (data) => client.post('/api/admin/dati-azienda', data),
+  updateDatiAzienda: (data) => client.put('/api/admin/dati-azienda', data),
+}
+
 export const speseGestioneAPI = {
   getAll: (params) => client.get('/api/spese-gestione/', { params }),
   getById: (id) => client.get(`/api/spese-gestione/${id}`),

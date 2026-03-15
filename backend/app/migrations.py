@@ -87,6 +87,19 @@ COLUMN_MIGRATIONS = [
         "column": "tracking_number",
         "definition": "VARCHAR",
     },
+    {
+        "table": "utenti",
+        "column": "ruolo",
+        "definition": "VARCHAR(20) DEFAULT 'operatore'",
+    },
+]
+
+# SQL statements to run after column migrations (idempotent)
+POST_COLUMN_SQL = [
+    # Set ruolo='admin' for all users with is_admin=TRUE
+    "UPDATE utenti SET ruolo = 'admin' WHERE is_admin = TRUE AND ruolo != 'admin'",
+    # Ensure all other users have a non-null ruolo
+    "UPDATE utenti SET ruolo = 'operatore' WHERE ruolo IS NULL",
 ]
 
 
@@ -144,4 +157,13 @@ def run_migrations(engine):
                 logger.info(f"[migration] aggiunta colonna {column} a {table}")
             except Exception as e:
                 logger.warning(f"[migration] errore su {table}.{column}: {e}")
+                conn.rollback()
+
+        for sql in POST_COLUMN_SQL:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info(f"[migration] eseguito: {sql[:60]}...")
+            except Exception as e:
+                logger.warning(f"[migration] errore post-migration SQL: {e}")
                 conn.rollback()
