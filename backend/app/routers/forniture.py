@@ -28,6 +28,8 @@ def _fornitura_to_response(f) -> FornituraResponse:
             {
                 "id": r.id,
                 "prodotto_id": r.prodotto_id,
+                "tipo_voce": getattr(r, "tipo_voce", None) or "prodotto",
+                "descrizione": getattr(r, "descrizione", None),
                 "quantita": r.quantita,
                 "prezzo_unitario": r.prezzo_unitario,
                 "subtotale": r.subtotale,

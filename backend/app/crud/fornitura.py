@@ -91,17 +91,35 @@ def create_fornitura(db: Session, fornitura_data: FornituraCreate) -> Fornitura:
     righe_data = []
     totale = 0.0
     for r in fornitura_data.righe:
-        prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
-        if not prodotto:
-            raise HTTPException(status_code=404, detail=f"Prodotto con id {r.prodotto_id} non trovato")
-        subtotale = r.quantita * r.prezzo_unitario
-        totale += subtotale
-        righe_data.append({
-            "prodotto_id": r.prodotto_id,
-            "quantita": r.quantita,
-            "prezzo_unitario": r.prezzo_unitario,
-            "subtotale": subtotale,
-        })
+        tipo_voce = r.tipo_voce or "prodotto"
+        if tipo_voce == "packaging":
+            # Packaging rows do not require a product lookup
+            subtotale = r.quantita * r.prezzo_unitario
+            totale += subtotale
+            righe_data.append({
+                "prodotto_id": None,
+                "tipo_voce": tipo_voce,
+                "descrizione": r.descrizione,
+                "quantita": r.quantita,
+                "prezzo_unitario": r.prezzo_unitario,
+                "subtotale": subtotale,
+            })
+        else:
+            # prodotto row
+            if r.prodotto_id:
+                prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
+                if not prodotto:
+                    raise HTTPException(status_code=404, detail=f"Prodotto con id {r.prodotto_id} non trovato")
+            subtotale = r.quantita * r.prezzo_unitario
+            totale += subtotale
+            righe_data.append({
+                "prodotto_id": r.prodotto_id,
+                "tipo_voce": tipo_voce,
+                "descrizione": r.descrizione,
+                "quantita": r.quantita,
+                "prezzo_unitario": r.prezzo_unitario,
+                "subtotale": subtotale,
+            })
 
     for tentativo in range(5):
         numero_fornitura = _genera_numero_fornitura(db)
@@ -141,18 +159,30 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
     if update.stato == StatoFornitura.ricevuto and stato_precedente != StatoFornitura.ricevuto and not fornitura.stock_caricato:
         fornitura.data_ricezione = datetime.now(timezone.utc)
         from ..models.movimento import Movimento, TipoMovimento
+        from ..models.spesa_gestione import SpesaGestione
         for riga in fornitura.righe:
-            prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
-            if prodotto:
-                prodotto.quantita += riga.quantita
-                movimento = Movimento(
-                    prodotto_id=riga.prodotto_id,
-                    tipo=TipoMovimento.carico,
-                    quantita=riga.quantita,
-                    note=f"Carico automatico fornitura {fornitura.numero_fornitura}",
-                    fornitore_id=fornitura.fornitore_id,
+            tipo_voce = getattr(riga, "tipo_voce", "prodotto") or "prodotto"
+            if tipo_voce == "packaging":
+                spesa = SpesaGestione(
+                    descrizione=f"Packaging/Logistica fornitura {fornitura.numero_fornitura}: {riga.descrizione or ''}",
+                    importo=riga.subtotale,
+                    data=datetime.now(timezone.utc),
+                    categoria="packaging",
                 )
-                db.add(movimento)
+                db.add(spesa)
+            else:
+                if riga.prodotto_id:
+                    prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
+                    if prodotto:
+                        prodotto.quantita += riga.quantita
+                        movimento = Movimento(
+                            prodotto_id=riga.prodotto_id,
+                            tipo=TipoMovimento.carico,
+                            quantita=riga.quantita,
+                            note=f"Carico automatico fornitura {fornitura.numero_fornitura}",
+                            fornitore_id=fornitura.fornitore_id,
+                        )
+                        db.add(movimento)
         fornitura.stock_caricato = True
         db.flush()
 
@@ -160,17 +190,19 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
     elif update.stato == StatoFornitura.annullato and fornitura.stock_caricato:
         from ..models.movimento import Movimento, TipoMovimento
         for riga in fornitura.righe:
-            prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
-            if prodotto:
-                prodotto.quantita -= riga.quantita
-                movimento = Movimento(
-                    prodotto_id=riga.prodotto_id,
-                    tipo=TipoMovimento.scarico,
-                    quantita=riga.quantita,
-                    note=f"Storno automatico annullamento fornitura {fornitura.numero_fornitura}",
-                    fornitore_id=fornitura.fornitore_id,
-                )
-                db.add(movimento)
+            tipo_voce = getattr(riga, "tipo_voce", "prodotto") or "prodotto"
+            if tipo_voce != "packaging" and riga.prodotto_id:
+                prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
+                if prodotto:
+                    prodotto.quantita -= riga.quantita
+                    movimento = Movimento(
+                        prodotto_id=riga.prodotto_id,
+                        tipo=TipoMovimento.scarico,
+                        quantita=riga.quantita,
+                        note=f"Storno automatico annullamento fornitura {fornitura.numero_fornitura}",
+                        fornitore_id=fornitura.fornitore_id,
+                    )
+                    db.add(movimento)
         fornitura.stock_caricato = False
         db.flush()
 

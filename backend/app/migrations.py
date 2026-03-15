@@ -112,6 +112,21 @@ COLUMN_MIGRATIONS = [
         "column": "ruolo",
         "definition": "VARCHAR(20) DEFAULT 'operatore'",
     },
+    {
+        "table": "righe_fornitura",
+        "column": "tipo_voce",
+        "definition": "VARCHAR(20)",
+    },
+    {
+        "table": "righe_fornitura",
+        "column": "descrizione",
+        "definition": "VARCHAR(255)",
+    },
+    {
+        "table": "spese_gestione",
+        "column": "categoria",
+        "definition": "VARCHAR(100)",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)
@@ -129,6 +144,8 @@ POST_COLUMN_SQL = [
     "UPDATE ordini SET stock_scalato = FALSE WHERE stato = 'bozza' AND stock_scalato = TRUE",
     # Forniture ricevute esistenti: segna stock_caricato = TRUE
     "UPDATE forniture SET stock_caricato = TRUE WHERE stato = 'ricevuto' AND (stock_caricato IS NULL OR stock_caricato = FALSE)",
+    # Backfill tipo_voce per righe fornitura esistenti
+    "UPDATE righe_fornitura SET tipo_voce = 'prodotto' WHERE tipo_voce IS NULL",
 ]
 
 
@@ -187,5 +204,18 @@ def run_migrations(engine) -> None:
     db = SessionLocal()
     try:
         run_column_migrations(db)
+        run_nullable_migrations(db)
     finally:
         db.close()
+
+
+def run_nullable_migrations(db) -> None:
+    """Rimuove eventuali vincoli NOT NULL da colonne che devono diventare nullable."""
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+    try:
+        db.execute(text("ALTER TABLE righe_fornitura ALTER COLUMN prodotto_id DROP NOT NULL"))
+        db.commit()
+        logger.info("Nullable migration applied: righe_fornitura.prodotto_id")
+    except (OperationalError, ProgrammingError) as exc:
+        db.rollback()
+        logger.info("Nullable migration skipped (already nullable or not applicable): %s", exc)

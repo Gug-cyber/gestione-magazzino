@@ -125,6 +125,7 @@ export const analisiAPI = {
   getAnnuale: () => client.get('/api/analisi/annuale'),
   getTopProdottiMensile: (anno, mese) => client.get('/api/analisi/top-prodotti-mensile', { params: { anno, mese } }),
   getMarginalitaConfronto: (anno, mese) => client.get('/api/analisi/marginalita-confronto', { params: { anno, mese } }),
+  getPackaging: (anno, mese) => client.get('/api/analisi/packaging', { params: { anno, mese } }),
 }
 
 export const datiStoriciAPI = {

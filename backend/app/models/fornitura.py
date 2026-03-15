@@ -13,6 +13,11 @@ class StatoFornitura(str, enum.Enum):
     annullato = "annullato"
 
 
+class TipoVoceFornitura(str, enum.Enum):
+    prodotto = "prodotto"
+    packaging = "packaging"
+
+
 class Fornitura(Base):
     __tablename__ = "forniture"
 
@@ -42,7 +47,9 @@ class RigaFornitura(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     fornitura_id = Column(Integer, ForeignKey("forniture.id"), nullable=False)
-    prodotto_id = Column(Integer, ForeignKey("prodotti.id"), nullable=False)
+    prodotto_id = Column(Integer, ForeignKey("prodotti.id"), nullable=True)
+    tipo_voce = Column(String(20), default="prodotto", nullable=True)
+    descrizione = Column(String(255), nullable=True)
     quantita = Column(Integer, nullable=False)
     prezzo_unitario = Column(Float, nullable=False)
     subtotale = Column(Float, nullable=False)
