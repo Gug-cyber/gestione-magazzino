@@ -10,6 +10,7 @@ from typing import List, Optional
 from datetime import date
 
 from ..database import get_db
+from ..models.fattura import Fattura
 from ..schemas.fattura import FatturaCreate, FatturaUpdate, FatturaResponse, TipoFatturaSchema
 from ..crud import fattura as crud
 from ..auth import get_current_active_user
@@ -116,6 +117,16 @@ def toggle_pagata(
     if not db_fattura:
         raise HTTPException(status_code=404, detail="Fattura non trovata")
     return db_fattura
+
+
+@router.delete("/all", status_code=204)
+def delete_all_fatture(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Elimina tutte le fatture, incluse quelle auto-generate. Usare con cautela."""
+    db.query(Fattura).delete()
+    db.commit()
 
 
 @router.delete("/{fattura_id}", status_code=204)

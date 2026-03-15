@@ -34,6 +34,9 @@ export default function Fatture() {
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
+  const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Filters
   const [filterCliente, setFilterCliente] = useState('')
@@ -173,7 +176,7 @@ export default function Fatture() {
 
   const handleDelete = async (fattura) => {
     if (fattura.auto_generata) {
-      setError('Le fatture generate automaticamente non possono essere eliminate manualmente')
+      setError('Le fatture generate automaticamente non possono essere eliminate singolarmente. Usa "Elimina Tutte" per rimuoverle.')
       return
     }
     if (!window.confirm(`Eliminare la fattura ${fattura.numero_fattura}?`)) return
@@ -183,6 +186,24 @@ export default function Fatture() {
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Errore durante l\'eliminazione'
       setError(errorMessage)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    if (deleteAllConfirmText !== 'ELIMINA') {
+      return
+    }
+    setIsDeleting(true)
+    try {
+      await fattureAPI.deleteAll()
+      setFatture([])
+      setTotalFatture(0)
+      setShowDeleteAllModal(false)
+      setDeleteAllConfirmText('')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore durante l\'eliminazione di tutte le fatture')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -215,21 +236,41 @@ export default function Fatture() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ color: PRIMARY_COLOR, margin: 0 }}>🧾 Fatture</h1>
-        <button
-          onClick={openNewModal}
-          style={{
-            backgroundColor: PRIMARY_COLOR,
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '10px 20px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '14px',
-          }}
-        >
-          ➕ Nuova Fattura
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={() => setShowDeleteAllModal(true)}
+            disabled={totalFatture === 0 || isDeleting}
+            style={{
+              backgroundColor: totalFatture === 0 || isDeleting ? '#b0bec5' : '#c62828',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              cursor: totalFatture === 0 || isDeleting ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              opacity: totalFatture === 0 || isDeleting ? 0.6 : 1,
+            }}
+            title={totalFatture === 0 ? 'Nessuna fattura da eliminare' : 'Elimina tutte le fatture'}
+          >
+            🗑️ Elimina Tutte
+          </button>
+          <button
+            onClick={openNewModal}
+            style={{
+              backgroundColor: PRIMARY_COLOR,
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px',
+            }}
+          >
+            ➕ Nuova Fattura
+          </button>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -612,6 +653,100 @@ export default function Fatture() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Elimina Tutte */}
+      {showDeleteAllModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            padding: '28px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          }}>
+            <h2 style={{ color: '#c62828', marginTop: 0, marginBottom: '20px' }}>
+              ⚠️ Elimina Tutte le Fatture
+            </h2>
+
+            <div style={{ backgroundColor: '#ffebee', padding: '16px', borderRadius: '4px', marginBottom: '20px' }}>
+              <p style={{ margin: '0 0 12px 0', fontWeight: 'bold', color: '#c62828' }}>
+                Attenzione: Questa operazione è IRREVERSIBILE!
+              </p>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '0.9rem', color: '#c62828' }}>
+                <li>Eliminerà <strong>{totalFatture} fatture</strong></li>
+                <li>Include le fatture <strong>auto-generate</strong></li>
+                <li>Non può essere annullata</li>
+              </ul>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#333' }}>
+                Per confermare, digita la parola: <span style={{ color: '#c62828' }}>ELIMINA</span>
+              </label>
+              <input
+                type="text"
+                value={deleteAllConfirmText}
+                onChange={(e) => setDeleteAllConfirmText(e.target.value)}
+                placeholder="Digita ELIMINA"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '2px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteAllModal(false)
+                  setDeleteAllConfirmText('')
+                }}
+                disabled={isDeleting}
+                style={{
+                  backgroundColor: '#fff',
+                  color: '#555',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  padding: '10px 20px',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleDeleteAll}
+                disabled={deleteAllConfirmText !== 'ELIMINA' || isDeleting}
+                style={{
+                  backgroundColor: deleteAllConfirmText !== 'ELIMINA' || isDeleting ? '#b0bec5' : '#c62828',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '10px 20px',
+                  cursor: deleteAllConfirmText !== 'ELIMINA' || isDeleting ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  opacity: deleteAllConfirmText !== 'ELIMINA' || isDeleting ? 0.6 : 1,
+                }}
+              >
+                {isDeleting ? 'Eliminazione...' : 'Elimina Tutto'}
+              </button>
+            </div>
           </div>
         </div>
       )}
