@@ -27,10 +27,12 @@ class Ordine(Base):
     totale = Column(Float, default=0.0)
     corriere = Column(String, nullable=True)
     tracking_number = Column(String, nullable=True)
+    fornitore_id = Column(Integer, ForeignKey("fornitori.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     cliente = relationship("Cliente", backref="ordini")
+    fornitore = relationship("Fornitore", backref="ordini", foreign_keys=[fornitore_id])
     righe = relationship("RigaOrdine", back_populates="ordine", cascade="all, delete-orphan")
 
 

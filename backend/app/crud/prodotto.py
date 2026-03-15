@@ -67,6 +67,21 @@ def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
     db.add(db_prodotto)
     db.commit()
     db.refresh(db_prodotto)
+
+    if db_prodotto.quantita and db_prodotto.quantita > 0:
+        from ..models.movimento import Movimento, TipoMovimento
+        from datetime import datetime
+
+        movimento = Movimento(
+            prodotto_id=db_prodotto.id,
+            tipo=TipoMovimento.carico,
+            quantita=db_prodotto.quantita,
+            data_movimento=datetime.now(),
+            note="Carico iniziale alla creazione prodotto",
+        )
+        db.add(movimento)
+        db.commit()
+
     return db_prodotto
 
 

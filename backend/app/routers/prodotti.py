@@ -245,14 +245,22 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
 def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     """
     Elimina tutti i prodotti dal database.
-    Operazione riservata agli utenti autenticati.
+    Elimina anche tutti i movimenti, righe ordine e righe fornitura collegati.
     ATTENZIONE: Operazione irreversibile!
     """
     try:
+        from ..models.ordine import RigaOrdine
+        from ..models.fornitura import RigaFornitura
+
+        db.query(Movimento).delete()
+        db.query(RigaOrdine).delete()
+        db.query(RigaFornitura).delete()
+
         count = db.query(Prodotto).delete()
         db.commit()
+
         return {
-            "message": "Tutti i prodotti sono stati eliminati con successo",
+            "message": "Tutti i prodotti e le loro dipendenze sono stati eliminati",
             "deleted_count": count,
         }
     except Exception as e:

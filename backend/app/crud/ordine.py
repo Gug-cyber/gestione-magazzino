@@ -120,6 +120,9 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
             cliente_id=ordine_data.cliente_id,
             cliente_nome=cliente_nome,
             note=ordine_data.note,
+            fornitore_id=ordine_data.fornitore_id,
+            corriere=ordine_data.corriere,
+            tracking_number=ordine_data.tracking_number,
             totale=totale,
             righe=righe,
         )

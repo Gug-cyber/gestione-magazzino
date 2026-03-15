@@ -87,6 +87,11 @@ COLUMN_MIGRATIONS = [
         "column": "tracking_number",
         "definition": "VARCHAR",
     },
+    {
+        "table": "ordini",
+        "column": "fornitore_id",
+        "definition": "INTEGER REFERENCES fornitori(id) ON DELETE SET NULL",
+    },
 ]
 
 

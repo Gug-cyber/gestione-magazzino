@@ -32,6 +32,9 @@ class OrdineCreate(BaseModel):
     cliente_id: Optional[int] = None
     cliente_nome: Optional[str] = None
     note: Optional[str] = None
+    fornitore_id: Optional[int] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
     righe: List[RigaOrdineCreate]
 
 
@@ -49,6 +52,7 @@ class OrdineResponse(BaseModel):
     numero_ordine: str
     cliente_id: Optional[int] = None
     cliente_nome: Optional[str] = None
+    fornitore_id: Optional[int] = None
     stato: str
     note: Optional[str] = None
     totale: float

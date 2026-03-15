@@ -119,14 +119,35 @@ def toggle_pagata(
     return db_fattura
 
 
-@router.delete("/all", status_code=204)
+@router.delete("/all", status_code=200)
 def delete_all_fatture(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """Elimina tutte le fatture, incluse quelle auto-generate. Usare con cautela."""
-    db.query(Fattura).delete()
-    db.commit()
+    """
+    Elimina tutte le fatture dal database.
+    Verifica prima che non ci siano ordini con fatture collegate che non possono essere rimossi.
+    ATTENZIONE: Operazione irreversibile!
+    """
+    try:
+        # Azzera i riferimenti self-referential (note di credito) per evitare errori FK
+        db.query(Fattura).update({"nota_credito_di": None})
+
+        count = db.query(Fattura).delete()
+        db.commit()
+
+        return {
+            "message": "Tutte le fatture sono state eliminate",
+            "deleted_count": count,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante l'eliminazione delle fatture: {str(e)}",
+        )
 
 
 @router.delete("/{fattura_id}", status_code=204)

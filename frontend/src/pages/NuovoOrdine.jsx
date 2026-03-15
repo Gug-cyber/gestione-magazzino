@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ordiniAPI, prodottiAPI, clientiAPI } from '../api/client'
+import { ordiniAPI, prodottiAPI, clientiAPI, fornitoriAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: '' }
@@ -11,10 +11,14 @@ export default function NuovoOrdine() {
 
   const [clienti, setClienti] = useState([])
   const [prodotti, setProdotti] = useState([])
+  const [fornitori, setFornitori] = useState([])
   const [loading, setLoading] = useState(true)
 
   const [clienteId, setClienteId] = useState('')
   const [clienteNome, setClienteNome] = useState('')
+  const [fornitoreId, setFornitoreId] = useState('')
+  const [corriere, setCorriere] = useState('')
+  const [trackingNumber, setTrackingNumber] = useState('')
   const [note, setNote] = useState('')
   const [righe, setRighe] = useState([{ ...emptyRiga }])
 
@@ -25,10 +29,12 @@ export default function NuovoOrdine() {
     Promise.all([
       clientiAPI.getAll(),
       prodottiAPI.getAll({ limit: 500 }),
+      fornitoriAPI.getAll(),
     ])
-      .then(([c, p]) => {
+      .then(([c, p, f]) => {
         setClienti(c.data)
         setProdotti(p.data)
+        setFornitori(f.data)
       })
       .catch(() => setError('Errore nel caricamento dei dati'))
       .finally(() => setLoading(false))
@@ -75,6 +81,9 @@ export default function NuovoOrdine() {
     const payload = {
       cliente_id: clienteId ? parseInt(clienteId, 10) : null,
       cliente_nome: clienteNome || null,
+      fornitore_id: fornitoreId ? parseInt(fornitoreId, 10) : null,
+      corriere: corriere || null,
+      tracking_number: trackingNumber || null,
       note: note || null,
       righe: righeValide.map(r => ({
         prodotto_id: parseInt(r.prodotto_id, 10),
@@ -88,7 +97,12 @@ export default function NuovoOrdine() {
       await ordiniAPI.create(payload)
       navigate('/ordini')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Errore nella creazione dell\'ordine.')
+      const detail = err.response?.data?.detail || ''
+      if (detail && detail.toLowerCase().includes('quantità insufficiente')) {
+        setError('⚠️ Quantità non disponibile: ' + detail)
+      } else {
+        setError(detail || 'Errore nella creazione dell\'ordine.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -150,6 +164,48 @@ export default function NuovoOrdine() {
                   value={clienteNome}
                   onChange={e => setClienteNome(e.target.value)}
                   placeholder="Es. Mario Rossi"
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Fornitore e Spedizione */}
+          <div style={cardStyle}>
+            <h2 style={sectionTitleStyle}>🚚 Fornitore e Spedizione</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '16px' }}>
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Fornitore (opzionale)</span>
+                <select
+                  value={fornitoreId}
+                  onChange={e => setFornitoreId(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="">-- Nessun fornitore --</option>
+                  {fornitori.map(f => (
+                    <option key={f.id} value={f.id}>{f.nome}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Corriere (opzionale)</span>
+                <input
+                  type="text"
+                  value={corriere}
+                  onChange={e => setCorriere(e.target.value)}
+                  placeholder="Es. DHL, GLS, BRT..."
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                <span style={labelTextStyle}>Tracking spedizione (opzionale)</span>
+                <input
+                  type="text"
+                  value={trackingNumber}
+                  onChange={e => setTrackingNumber(e.target.value)}
+                  placeholder="Codice tracking"
                   style={inputStyle}
                 />
               </label>
