@@ -11,8 +11,9 @@ from ..models.movimento import Movimento, TipoMovimento
 from ..schemas.ordine import OrdineCreate, OrdineUpdate
 from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, genera_nota_credito
 
-# Stati che hanno già effettuato lo scarico di magazzino
+# Stati per i quali lo stock è già stato scalato alla creazione ordine
 _STATI_CON_STOCK_SCALATO = {
+    StatoOrdine.bozza,
     StatoOrdine.confermato,
     StatoOrdine.spedito,
     StatoOrdine.completato,
@@ -87,11 +88,13 @@ def get_ordine(db: Session, ordine_id: int) -> Optional[Ordine]:
 
 def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     """
-    Crea un nuovo ordine con le seguenti garanzie transazionali:
-    - Verifica disponibilità stock per ogni riga (con lock FOR UPDATE per evitare race conditions).
-    - Decrementa lo stock immediatamente alla creazione.
-    - Registra un movimento di magazzino in uscita per ogni riga.
-    - Tutto in un'unica transazione atomica.
+    Crea un nuovo ordine con le seguenti garanzie transazionali (unico db.commit):
+    1. Lock pessimistico (SELECT ... FOR UPDATE) su ogni prodotto coinvolto.
+    2. Verifica disponibilità stock — errore 400 se insufficiente.
+    3. Crea l'ordine e le righe (db.flush per ottenere ordine.id).
+    4. Decrementa lo stock di ogni prodotto.
+    5. Registra un movimento di magazzino in uscita per ogni riga.
+    6. db.commit unico — tutto o niente.
     """
     if not ordine_data.righe:
         raise HTTPException(status_code=400, detail="L'ordine deve avere almeno una riga prodotto")
@@ -107,7 +110,7 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     # ------------------------------------------------------------------ #
     # 1. Lock pessimistico + verifica disponibilità su tutti i prodotti   #
     # ------------------------------------------------------------------ #
-    prodotti_map: dict[int, Prodotto] = {}
+    prodotti_map: dict = {}
     for r in ordine_data.righe:
         prodotto = (
             db.execute(
@@ -149,8 +152,9 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
         })
 
     # ------------------------------------------------------------------ #
-    # 3. Creazione ordine (con retry per numero univoco)                  #
+    # 3. Creazione ordine con retry per numero univoco                    #
     # ------------------------------------------------------------------ #
+    ordine = None
     for tentativo in range(5):
         numero_ordine = _genera_numero_ordine(db)
         righe = [RigaOrdine(**rd) for rd in righe_data]
@@ -161,6 +165,7 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
             note=ordine_data.note,
             totale=totale,
             righe=righe,
+            stock_scalato=True,  # lo stock viene scalato subito
         )
         db.add(ordine)
         try:
@@ -199,7 +204,7 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
 
 def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional[Ordine]:
     """
-    Aggiorna un ordine con le seguenti garanzie:
+    Aggiorna un ordine con le seguenti garanzie (unico db.commit):
 
     Transizione → completato:
       - Imposta data_completamento.
@@ -207,7 +212,7 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
       - NON scala di nuovo lo stock (già scalato alla creazione).
 
     Transizione → annullato (da stato con stock già scalato):
-      - Ripristina lo stock per ogni riga.
+      - Ripristina lo stock per ogni riga con lock FOR UPDATE.
       - Registra movimenti di carico.
       - Genera nota di credito se esiste fattura auto-generata non annullata.
 
@@ -235,11 +240,11 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
             genera_fattura_da_ordine(db, ordine)
 
     # ------------------------------------------------------------------ #
-    # Transizione → ANNULLATO (solo se lo stock era già stato scalato)    #
+    # Transizione → ANNULLATO                                             #
     # ------------------------------------------------------------------ #
     elif nuovo_stato == StatoOrdine.annullato and stato_precedente != StatoOrdine.annullato:
-        if stato_precedente in _STATI_CON_STOCK_SCALATO:
-            # Ripristino stock + movimenti di carico
+        # Ripristina stock solo se era stato scalato (flag o stato precedente)
+        if getattr(ordine, "stock_scalato", False) or stato_precedente in _STATI_CON_STOCK_SCALATO:
             for riga in ordine.righe:
                 prodotto = (
                     db.execute(
@@ -260,6 +265,8 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                         note=f"Ripristino automatico annullamento ordine {ordine.numero_ordine}",
                     )
                     db.add(movimento)
+            # Segna lo stock come non più scalato
+            ordine.stock_scalato = False
 
         # Emetti nota di credito per la fattura auto-generata, se presente
         fattura_esistente = get_fattura_by_ordine(db, ordine.id)
@@ -280,8 +287,8 @@ def delete_ordine(db: Session, ordine_id: int) -> bool:
         return False
     if ordine.stato == StatoOrdine.completato:
         raise HTTPException(status_code=400, detail="Non è possibile eliminare un ordine completato")
-    # Se l'ordine aveva scalato lo stock, ripristinarlo prima di eliminare
-    if ordine.stato in _STATI_CON_STOCK_SCALATO:
+    # Se lo stock era stato scalato, ripristinarlo prima di eliminare
+    if getattr(ordine, "stock_scalato", False) or ordine.stato in _STATI_CON_STOCK_SCALATO:
         for riga in ordine.righe:
             prodotto = (
                 db.execute(
