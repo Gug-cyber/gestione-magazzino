@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Index
+from sqlalchemy import Column, Integer, String, Text
 from ..database import Base
 
 
@@ -12,12 +12,5 @@ class Fornitore(Base):
     indirizzo = Column(String(255), nullable=True)
     partita_iva = Column(String(20), nullable=True)
     note = Column(Text, nullable=True)
-
-    __table_args__ = (
-        Index(
-            "ix_fornitori_partita_iva_unique",
-            "partita_iva",
-            unique=True,
-            postgresql_where=Column("partita_iva").isnot(None),
-        ),
-    )
+    # Nota: l'indice unico su partita_iva è gestito tramite migrazione Alembic
+    # (vedi backend/alembic/versions/) per compatibilità SQLite/PostgreSQL
