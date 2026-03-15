@@ -154,3 +154,17 @@ def run_column_migrations(db) -> None:
         except Exception as exc:
             db.rollback()
             logger.warning("Post-column SQL failed: %s — %s", sql[:80], exc)
+
+
+def run_migrations(engine) -> None:
+    """
+    Entry point chiamato da main.py al startup.
+    Accetta un SQLAlchemy Engine, apre una sessione e applica tutte le migrazioni.
+    """
+    from sqlalchemy.orm import sessionmaker
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+    try:
+        run_column_migrations(db)
+    finally:
+        db.close()
