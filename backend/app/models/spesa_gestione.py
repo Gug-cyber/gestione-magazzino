@@ -12,3 +12,5 @@ class SpesaGestione(Base):
     categoria = Column(String(100), nullable=True)
     ricorrente = Column(Boolean, default=False)
     data = Column(DateTime(timezone=True), server_default=func.now())
+    # Reference to the supply that generated this expense (for idempotent upsert)
+    fornitura_id = Column(Integer, nullable=True, index=True)
