@@ -30,6 +30,10 @@ export default function Forniture() {
   const [trackingFornituraModal, setTrackingFornituraModal] = useState(null)
   const [trackingFornituraForm, setTrackingFornituraForm] = useState({ corriere: '', tracking_number: '' })
   const [trackingFornituraLoading, setTrackingFornituraLoading] = useState(false)
+  const [nuovoProdottoRigaIndex, setNuovoProdottoRigaIndex] = useState(null)
+  const [nuovoProdottoForm, setNuovoProdottoForm] = useState({ nome: '', sku: '', prezzo_acquisto: '', prezzo_vendita: '', quantita: 0 })
+  const [nuovoProdottoError, setNuovoProdottoError] = useState('')
+  const [nuovoProdottoSaving, setNuovoProdottoSaving] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -86,6 +90,8 @@ export default function Forniture() {
   const closeModal = () => {
     setShowModal(false)
     setFormError('')
+    setNuovoProdottoRigaIndex(null)
+    setNuovoProdottoError('')
   }
 
   const handleRigaChange = (index, field, value) => {
@@ -114,6 +120,41 @@ export default function Forniture() {
   }))
 
   const totaleFornitura = form.righe.reduce((acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)), 0)
+
+  const generaSKU = (nome) => nome.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 20).replace(/-$/, '')
+
+  const handleSalvaNuovoProdotto = async (rigaIndex) => {
+    setNuovoProdottoError('')
+    if (!nuovoProdottoForm.nome.trim()) { setNuovoProdottoError('Il nome è obbligatorio'); return }
+    if (!nuovoProdottoForm.sku.trim()) { setNuovoProdottoError('Lo SKU è obbligatorio'); return }
+    setNuovoProdottoSaving(true)
+    try {
+      const res = await prodottiAPI.create({
+        nome: nuovoProdottoForm.nome.trim(),
+        sku: nuovoProdottoForm.sku.trim(),
+        prezzo_acquisto: nuovoProdottoForm.prezzo_acquisto ? parseFloat(nuovoProdottoForm.prezzo_acquisto) : null,
+        prezzo_vendita: nuovoProdottoForm.prezzo_vendita ? parseFloat(nuovoProdottoForm.prezzo_vendita) : null,
+        quantita: parseInt(nuovoProdottoForm.quantita) || 0,
+      })
+      const nuovoProdotto = res.data
+      setProdotti(prev => [...prev, nuovoProdotto])
+      setForm(prev => {
+        const righe = [...prev.righe]
+        righe[rigaIndex] = {
+          ...righe[rigaIndex],
+          prodotto_id: String(nuovoProdotto.id),
+          prezzo_unitario: nuovoProdotto.prezzo_acquisto || 0,
+        }
+        return { ...prev, righe }
+      })
+      setNuovoProdottoRigaIndex(null)
+      setNuovoProdottoForm({ nome: '', sku: '', prezzo_acquisto: '', prezzo_vendita: '', quantita: 0 })
+    } catch (err) {
+      setNuovoProdottoError(err?.response?.data?.detail || 'Errore nella creazione del prodotto')
+    } finally {
+      setNuovoProdottoSaving(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -341,10 +382,104 @@ export default function Forniture() {
                         required
                       />
                     ) : (
-                      <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect} style={{ flex: 1 }}>
-                        <option value="">— Seleziona prodotto —</option>
-                        {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>)}
-                      </select>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect} style={{ flex: 1 }}>
+                            <option value="">— Seleziona prodotto —</option>
+                            {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>)}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNuovoProdottoRigaIndex(i)
+                              setNuovoProdottoForm({ nome: '', sku: '', prezzo_acquisto: '', prezzo_vendita: '', quantita: 0 })
+                              setNuovoProdottoError('')
+                            }}
+                            style={{ padding: '6px 10px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#2e7d32' }}
+                            title="Crea nuovo prodotto"
+                          >
+                            ＋ Nuovo
+                          </button>
+                        </div>
+                        {nuovoProdottoRigaIndex === i && (
+                          <div style={{ border: '1px solid #a5d6a7', borderRadius: '8px', padding: '12px', backgroundColor: '#f1f8e9' }}>
+                            <div style={{ fontWeight: 600, marginBottom: '8px', color: '#2e7d32', fontSize: '0.9rem' }}>🆕 Crea nuovo prodotto</div>
+                            {nuovoProdottoError && (
+                              <div style={{ color: '#c62828', background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '4px', padding: '6px 10px', marginBottom: '8px', fontSize: '0.83rem' }}>
+                                {nuovoProdottoError}
+                              </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
+                                Nome *
+                                <input
+                                  value={nuovoProdottoForm.nome}
+                                  onChange={e => {
+                                    const nome = e.target.value
+                                    setNuovoProdottoForm(prev => ({
+                                      ...prev,
+                                      nome,
+                                      sku: prev.sku || generaSKU(nome),
+                                    }))
+                                  }}
+                                  placeholder="Nome prodotto"
+                                  className={styles.formInput}
+                                  style={{ padding: '6px' }}
+                                />
+                              </label>
+                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
+                                SKU *
+                                <input
+                                  value={nuovoProdottoForm.sku}
+                                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, sku: e.target.value }))}
+                                  placeholder="Es. PROD-001"
+                                  className={styles.formInput}
+                                  style={{ padding: '6px' }}
+                                />
+                              </label>
+                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
+                                Prezzo acquisto (€)
+                                <input
+                                  type="number" min="0" step="0.01"
+                                  value={nuovoProdottoForm.prezzo_acquisto}
+                                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, prezzo_acquisto: e.target.value }))}
+                                  placeholder="0.00"
+                                  className={styles.formInput}
+                                  style={{ padding: '6px' }}
+                                />
+                              </label>
+                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
+                                Prezzo vendita (€)
+                                <input
+                                  type="number" min="0" step="0.01"
+                                  value={nuovoProdottoForm.prezzo_vendita}
+                                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, prezzo_vendita: e.target.value }))}
+                                  placeholder="0.00"
+                                  className={styles.formInput}
+                                  style={{ padding: '6px' }}
+                                />
+                              </label>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleSalvaNuovoProdotto(i)}
+                                disabled={nuovoProdottoSaving}
+                                style={{ padding: '6px 14px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                              >
+                                {nuovoProdottoSaving ? 'Salvataggio...' : '✔ Salva prodotto'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setNuovoProdottoRigaIndex(null); setNuovoProdottoError('') }}
+                                style={{ padding: '6px 12px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}
+                              >
+                                Annulla
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                     <input type="number" min="1" value={riga.quantita} onChange={e => handleRigaChange(i, 'quantita', e.target.value)} placeholder="Qtà" className={styles.formInput} style={{ width: '70px', flex: '0 0 auto' }} />
                     <input type="number" min="0" step="0.01" value={riga.prezzo_unitario} onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)} placeholder="Prezzo" className={styles.formInput} style={{ width: '90px', flex: '0 0 auto' }} />

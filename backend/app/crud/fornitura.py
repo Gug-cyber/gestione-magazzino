@@ -160,29 +160,53 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
         fornitura.data_ricezione = datetime.now(timezone.utc)
         from ..models.movimento import Movimento, TipoMovimento
         from ..models.spesa_gestione import SpesaGestione
-        for riga in fornitura.righe:
-            tipo_voce = getattr(riga, "tipo_voce", "prodotto") or "prodotto"
-            if tipo_voce == "packaging":
+
+        # Aggregate all packaging rows into a single expense entry (idempotent upsert)
+        righe_packaging = [
+            riga for riga in fornitura.righe
+            if (getattr(riga, "tipo_voce", "prodotto") or "prodotto") == "packaging"
+        ]
+        totale_packaging = sum(float(riga.subtotale) for riga in righe_packaging)
+
+        if totale_packaging > 0:
+            # UPSERT: update existing packaging expense for this supply, or create a new one
+            spesa_esistente = db.query(SpesaGestione).filter(
+                SpesaGestione.fornitura_id == fornitura.id,
+                SpesaGestione.categoria == "packaging",
+            ).first()
+
+            if spesa_esistente:
+                spesa_esistente.importo = totale_packaging
+                spesa_esistente.data = datetime.now(timezone.utc)
+            else:
+                descrizione_righe = ", ".join(
+                    riga.descrizione or f"voce {idx + 1}"
+                    for idx, riga in enumerate(righe_packaging)
+                )
                 spesa = SpesaGestione(
-                    descrizione=f"Packaging/Logistica fornitura {fornitura.numero_fornitura}: {riga.descrizione or ''}",
-                    importo=riga.subtotale,
+                    descrizione=f"Packaging/Logistica fornitura {fornitura.numero_fornitura}: {descrizione_righe}",
+                    importo=totale_packaging,
                     data=datetime.now(timezone.utc),
                     categoria="packaging",
+                    fornitura_id=fornitura.id,
                 )
                 db.add(spesa)
-            else:
-                if riga.prodotto_id:
-                    prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
-                    if prodotto:
-                        prodotto.quantita += riga.quantita
-                        movimento = Movimento(
-                            prodotto_id=riga.prodotto_id,
-                            tipo=TipoMovimento.carico,
-                            quantita=riga.quantita,
-                            note=f"Carico automatico fornitura {fornitura.numero_fornitura}",
-                            fornitore_id=fornitura.fornitore_id,
-                        )
-                        db.add(movimento)
+
+        # Load stock for product rows
+        for riga in fornitura.righe:
+            tipo_voce = getattr(riga, "tipo_voce", "prodotto") or "prodotto"
+            if tipo_voce != "packaging" and riga.prodotto_id:
+                prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
+                if prodotto:
+                    prodotto.quantita += riga.quantita
+                    movimento = Movimento(
+                        prodotto_id=riga.prodotto_id,
+                        tipo=TipoMovimento.carico,
+                        quantita=riga.quantita,
+                        note=f"Carico automatico fornitura {fornitura.numero_fornitura}",
+                        fornitore_id=fornitura.fornitore_id,
+                    )
+                    db.add(movimento)
         fornitura.stock_caricato = True
         db.flush()
 

@@ -127,6 +127,11 @@ COLUMN_MIGRATIONS = [
         "column": "categoria",
         "definition": "VARCHAR(100)",
     },
+    {
+        "table": "spese_gestione",
+        "column": "fornitura_id",
+        "definition": "INTEGER",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)
