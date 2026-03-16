@@ -69,11 +69,12 @@ def get_analisi_mensile(
             for m, p in movimenti_scarico_manuali
         )
 
-        spese_result = db.query(func.sum(SpesaGestione.importo)).filter(
+        spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == anno,
             extract("month", SpesaGestione.data) == mese,
+            (SpesaGestione.categoria != "packaging") | (SpesaGestione.categoria.is_(None)),
         ).scalar()
-        spese = float(spese_result or 0)
+        spese = float(spese_generali_result or 0)
 
         costi_packaging_result = db.query(func.sum(SpesaGestione.importo)).filter(
             SpesaGestione.categoria == "packaging",
@@ -102,6 +103,7 @@ def get_analisi_mensile(
             "ricavi": round(ricavi, 2),
             "spese": round(spese, 2),
             "packaging": round(packaging, 2),
+            "totale_spese": round(spese + packaging, 2),
         })
 
     return risultati
@@ -138,6 +140,16 @@ def get_analisi_annuale(
     ordini_anni = {int(row.anno) for row in ordini_anni_query if row.anno is not None}
 
     anni = sorted(set(anni) | storici_anni | ordini_anni)
+
+    # Also include years that only appear in spese_gestione
+    spese_anni_query = (
+        db.query(extract("year", SpesaGestione.data).label("anno"))
+        .distinct()
+        .all()
+    )
+    spese_anni = {int(row.anno) for row in spese_anni_query if row.anno is not None}
+
+    anni = sorted(set(anni) | spese_anni)
 
     if not anni:
         return []
@@ -185,10 +197,11 @@ def get_analisi_annuale(
             for m, p in movimenti_scarico_manuali
         )
 
-        spese_result = db.query(func.sum(SpesaGestione.importo)).filter(
+        spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == anno,
+            (SpesaGestione.categoria != "packaging") | (SpesaGestione.categoria.is_(None)),
         ).scalar()
-        spese = float(spese_result or 0)
+        spese = float(spese_generali_result or 0)
 
         costi_packaging_result = db.query(func.sum(SpesaGestione.importo)).filter(
             SpesaGestione.categoria == "packaging",
@@ -214,6 +227,7 @@ def get_analisi_annuale(
             "ricavi": round(ricavi, 2),
             "spese": round(spese, 2),
             "packaging": round(packaging, 2),
+            "totale_spese": round(spese + packaging, 2),
         })
 
     return risultati
@@ -328,11 +342,19 @@ def get_marginalita_confronto(
             for mov, prod in movimenti_scarico_manuali
         )
 
-        spese_result = db.query(func.sum(SpesaGestione.importo)).filter(
+        spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
+            extract("year", SpesaGestione.data) == a,
+            extract("month", SpesaGestione.data) == m,
+            (SpesaGestione.categoria != "packaging") | (SpesaGestione.categoria.is_(None)),
+        ).scalar()
+        spese = float(spese_generali_result or 0)
+
+        costi_packaging_result = db.query(func.sum(SpesaGestione.importo)).filter(
+            SpesaGestione.categoria == "packaging",
             extract("year", SpesaGestione.data) == a,
             extract("month", SpesaGestione.data) == m,
         ).scalar()
-        spese = float(spese_result or 0)
+        packaging = float(costi_packaging_result or 0)
 
         storici_costi = db.query(func.sum(DatoStorico.importo)).filter(
             DatoStorico.tipo == "costo",
@@ -348,11 +370,13 @@ def get_marginalita_confronto(
         ).scalar()
         ricavi += float(storici_ricavi or 0)
 
-        marginalita = ricavi - costi - spese
+        marginalita = ricavi - costi - spese - packaging
         return {
             "ricavi": round(ricavi, 2),
             "costi": round(costi, 2),
             "spese": round(spese, 2),
+            "packaging": round(packaging, 2),
+            "totale_spese": round(spese + packaging, 2),
             "marginalita": round(marginalita, 2),
         }
 
