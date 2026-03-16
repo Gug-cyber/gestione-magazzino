@@ -177,7 +177,8 @@ function TabGrafici() {
   const totRicavi = datiCorrente.reduce((s, d) => s + (d.ricavi || 0), 0)
   const totSpese = datiCorrente.reduce((s, d) => s + (d.spese || 0), 0)
   const totPackaging = datiCorrente.reduce((s, d) => s + (d.packaging || 0), 0)
-  const margine = totRicavi - totCosti - totSpese
+  const totaleSpese = datiCorrente.reduce((s, d) => s + (d.totale_spese || (d.spese || 0) + (d.packaging || 0)), 0)
+  const margine = totRicavi - totCosti - totSpese - totPackaging
 
   return (
     <div>
@@ -228,8 +229,9 @@ function TabGrafici() {
             {[
               { label: 'Costi merci (forniture ricevute)', value: totCosti, color: '#e53935' },
               { label: 'Ricavi (ordini completati)', value: totRicavi, color: '#43a047' },
-              { label: 'Totale Spese gestione', value: totSpese, color: '#fb8c00' },
+              { label: 'Spese di gestione', value: totSpese, color: '#fb8c00' },
               { label: '📦 Packaging & Logistica', value: totPackaging, color: '#7b1fa2' },
+              { label: '📊 Totale Spese', value: totaleSpese, color: '#455a64' },
               { label: 'Margine', value: margine, color: margine >= 0 ? '#1a237e' : '#d32f2f' },
             ].map((item) => (
               <div key={item.label} style={{ flex: 1, minWidth: '140px', textAlign: 'center', padding: '12px', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
@@ -351,6 +353,7 @@ function TabGrafici() {
                   <div>Ricavi: <strong style={{ color: '#43a047' }}>€{marginalita.mese_corrente.ricavi.toFixed(2)}</strong></div>
                   <div>Costi: <strong style={{ color: '#e53935' }}>€{marginalita.mese_corrente.costi.toFixed(2)}</strong></div>
                   <div>Spese: <strong style={{ color: '#fb8c00' }}>€{marginalita.mese_corrente.spese.toFixed(2)}</strong></div>
+                  <div>Packaging: <strong style={{ color: '#7b1fa2' }}>€{(marginalita.mese_corrente.packaging || 0).toFixed(2)}</strong></div>
                 </div>
               </div>
             </div>
