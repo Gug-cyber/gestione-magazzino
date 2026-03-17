@@ -70,7 +70,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 
@@ -82,7 +82,7 @@
   background: white;
   page-break-inside: avoid;
   break-inside: avoid;
-  height: 165px;
+  height: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -126,7 +126,7 @@
 /* Force uniform height on all barcode SVGs in the preview */
 .labelBarcode svg {
   width: 100% !important;
-  height: 60px !important;
+  height: 52px !important;
   max-width: 100%;
   display: block;
 }
@@ -139,64 +139,3 @@
   margin-top: 2px;
 }
 
-/* ─── Print fallback ─────────────────────────────────────────────────────────
-   Only used when the popup (window.open) is blocked by the browser.
-   Hides everything else on the page and reveals only the modal overlay.      */
-@media print {
-  body * {
-    visibility: hidden !important;
-  }
-
-  .overlay,
-  .overlay * {
-    visibility: visible !important;
-  }
-
-  .overlay {
-    position: static;
-    background: none;
-    padding: 0;
-    display: block;
-  }
-
-  .modal {
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .header {
-    display: none;
-  }
-
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-  }
-
-  .label {
-    border: 1px solid #999;
-    padding: 6px 4px;
-    height: auto;
-    min-height: 120px;
-  }
-
-  .labelBarcode svg {
-    width: 100% !important;
-    height: 50px !important;
-  }
-
-  .labelName {
-    font-size: 0.7rem;
-  }
-
-  .labelSku {
-    font-size: 0.62rem;
-  }
-
-  .labelValue {
-    font-size: 0.58rem;
-  }
-}

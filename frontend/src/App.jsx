@@ -31,7 +31,7 @@ import ScannerBarcode from './pages/ScannerBarcode.jsx'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', fontFamily: 'var(--font-family)' }}>
       <Navbar onMenuClick={() => setMenuOpen(true)} />
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -39,7 +39,7 @@ function AppLayout({ children }) {
           flex: 1,
           padding: 'clamp(12px, 3vw, 24px)',
           paddingBottom: 'max(clamp(12px, 3vw, 24px), env(safe-area-inset-bottom, 0px))',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: 'var(--color-bg)',
           minWidth: 0,
           overflowX: 'hidden',
         }}>

@@ -22,10 +22,10 @@ function Navbar({ onMenuClick }) {
 
   if (isMobile) {
     const iconBtnStyle = {
-      backgroundColor: 'rgba(255,255,255,0.15)',
+      backgroundColor: 'rgba(255,255,255,0.12)',
       color: 'white',
-      border: '1px solid rgba(255,255,255,0.3)',
-      borderRadius: '6px',
+      border: '1px solid rgba(255,255,255,0.2)',
+      borderRadius: '8px',
       width: '36px',
       height: '36px',
       display: 'flex',
@@ -39,13 +39,13 @@ function Navbar({ onMenuClick }) {
 
     return (
       <nav style={{
-        backgroundColor: '#1a237e',
+        background: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)',
         color: 'white',
         paddingTop: 'env(safe-area-inset-top, 0px)',
         position: 'sticky',
         top: 0,
         zIndex: 1000,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15), 0 4px 12px rgba(79,70,229,0.2)',
       }}>
         {/* Inner row with fixed height for the actual controls */}
         <div style={{
@@ -65,8 +65,9 @@ function Navbar({ onMenuClick }) {
             position: 'absolute',
             left: '50%',
             transform: 'translateX(-50%)',
-            fontWeight: 'bold',
+            fontWeight: '600',
             fontSize: '1.1rem',
+            letterSpacing: '0.01em',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
             display: 'flex',
@@ -93,7 +94,7 @@ function Navbar({ onMenuClick }) {
 
   return (
     <nav style={{
-      backgroundColor: '#1a237e',
+      background: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)',
       color: 'white',
       padding: '0 24px',
       paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -101,18 +102,18 @@ function Navbar({ onMenuClick }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.15), 0 4px 12px rgba(79,70,229,0.2)',
       position: 'sticky',
       top: 0,
       zIndex: 1000,
     }}>
-      <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontSize: '1.4rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontSize: '1.4rem', fontWeight: '600', letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: '10px' }}>
         {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
         <span>{portalTitle}</span>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {user && (
-          <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+          <span style={{ fontSize: '0.875rem', opacity: 0.85 }}>
             👤 {user.username}
           </span>
         )}
@@ -125,8 +126,8 @@ function Navbar({ onMenuClick }) {
               fontSize: '14px',
               fontWeight: 600,
               backgroundColor: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.4)',
-              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px',
               padding: '0 14px',
               height: '36px',
               display: 'inline-flex',
@@ -142,8 +143,8 @@ function Navbar({ onMenuClick }) {
             style={{
               backgroundColor: 'rgba(255,255,255,0.15)',
               color: 'white',
-              border: '1px solid rgba(255,255,255,0.4)',
-              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px',
               padding: '0 14px',
               height: '36px',
               cursor: 'pointer',
@@ -157,7 +158,7 @@ function Navbar({ onMenuClick }) {
             🚪 Logout
           </button>
         ) : (
-          <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>v1.0.0</span>
+          <span style={{ fontSize: '0.875rem', opacity: 0.8 }}>v1.0.0</span>
         )}
       </div>
     </nav>
