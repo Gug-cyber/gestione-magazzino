@@ -1,11 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateProfilo } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
+import useLogoSettings from '../hooks/useLogoSettings'
 
 function Profilo() {
   const { user, setUser } = useAuth()
   const isMobile = useIsMobile()
+  const { logoUrl, portalTitle, setLogo, setPortalTitle, resetToDefault, DEFAULT_TITLE } = useLogoSettings()
+  const fileInputRef = useRef(null)
+  const [logoMsg, setLogoMsg] = useState(null)
+  const [customTitle, setCustomTitle] = useState(portalTitle === DEFAULT_TITLE ? '' : portalTitle)
 
   const [nuovoUsername, setNuovoUsername] = useState(user?.username || '')
   const [usernameMsg, setUsernameMsg] = useState(null)
@@ -71,6 +76,42 @@ function Profilo() {
     } catch (err) {
       setPasswordError(err.response?.data?.detail || 'Errore durante il cambio password')
     }
+  }
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setLogoMsg({ type: 'error', text: 'Seleziona un file immagine valido (PNG, JPG, SVG, ecc.)' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoMsg({ type: 'error', text: 'Il file è troppo grande. Dimensione massima: 2 MB.' })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setLogo(ev.target.result)
+      setLogoMsg({ type: 'success', text: 'Logo aggiornato con successo!' })
+    }
+    reader.onerror = () => {
+      setLogoMsg({ type: 'error', text: 'Errore durante la lettura del file. Riprova.' })
+    }
+    reader.readAsDataURL(file)
+    // reset input so the same file can be re-selected
+    e.target.value = ''
+  }
+
+  const handleSaveTitolo = (e) => {
+    e.preventDefault()
+    setPortalTitle(customTitle.trim() || DEFAULT_TITLE)
+    setLogoMsg({ type: 'success', text: 'Titolo del portale aggiornato!' })
+  }
+
+  const handleReset = () => {
+    resetToDefault()
+    setCustomTitle('')
+    setLogoMsg({ type: 'success', text: 'Impostazioni ripristinate ai valori predefiniti.' })
   }
 
   return (
@@ -193,28 +234,136 @@ function Profilo() {
           </button>
         </form>
       </div>
+
+      {/* Sezione personalizzazione portale (logo + titolo) */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: isMobile ? '16px' : '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        marginTop: '24px',
+        maxWidth: isMobile ? '100%' : '480px',
+      }}>
+        <h2 style={{ marginBottom: '16px', color: '#333' }}>🎨 Personalizzazione Portale</h2>
+        <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '16px' }}>
+          Carica un logo personalizzato e imposta il nome del portale. Le modifiche sono salvate nel browser.
+        </p>
+
+        {/* Anteprima logo corrente */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '6px', color: '#555', fontWeight: 600 }}>
+            Logo attuale
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {logoUrl
+              ? <img src={logoUrl} alt="Logo corrente" style={{ height: '48px', width: 'auto', maxWidth: '180px', objectFit: 'contain', border: '1px solid #ddd', borderRadius: '6px', padding: '4px', background: '#f9f9f9' }} />
+              : <span style={{ fontSize: '0.85rem', color: '#999', fontStyle: 'italic' }}>Nessun logo caricato (viene mostrato il testo del portale)</span>
+            }
+          </div>
+        </div>
+
+        {/* Upload logo */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '6px', color: '#555', fontWeight: 600 }}>
+            Carica nuovo logo
+          </label>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              style={{ display: 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={btnStyle}
+            >
+              📁 Scegli immagine
+            </button>
+            {logoUrl && (
+              <button
+                type="button"
+                onClick={() => { setLogo(null); setLogoMsg({ type: 'success', text: 'Logo rimosso.' }) }}
+                style={{ ...btnStyle, backgroundColor: '#c62828' }}
+              >
+                🗑️ Rimuovi
+              </button>
+            )}
+          </div>
+          <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '6px' }}>Formati supportati: PNG, JPG, SVG. Max 2 MB.</p>
+        </div>
+
+        {/* Titolo portale */}
+        <form onSubmit={handleSaveTitolo}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#555', fontWeight: 600 }}>
+              Titolo del portale
+            </label>
+            <input
+              type="text"
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              placeholder={DEFAULT_TITLE}
+              maxLength={60}
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '4px' }}>
+              Lascia vuoto per usare il titolo predefinito: <em>{DEFAULT_TITLE}</em>
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="submit" style={btnStyle}>
+              💾 Salva titolo
+            </button>
+            <button type="button" onClick={handleReset} style={{ ...btnStyle, backgroundColor: '#546e7a' }}>
+              ↩️ Ripristina predefiniti
+            </button>
+          </div>
+        </form>
+
+        {logoMsg && (
+          <p style={logoMsg.type === 'success' ? successStyle : errorStyle} aria-live="polite">
+            {logoMsg.text}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
 
 const inputStyle = {
   width: '100%',
-  padding: '8px 12px',
+  height: '38px',
+  padding: '0 12px',
   borderRadius: '6px',
-  border: '1px solid #ccc',
-  fontSize: '1rem',
+  border: '1.5px solid #e0e4ef',
+  fontSize: '14px',
   boxSizing: 'border-box',
+  fontFamily: 'inherit',
+  color: '#1a1a2e',
+  background: '#fff',
+  outline: 'none',
+  transition: 'border-color 0.18s, box-shadow 0.18s',
 }
 
 const btnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '6px',
+  height: '36px',
+  padding: '0 16px',
   backgroundColor: '#1a237e',
   color: 'white',
   border: 'none',
   borderRadius: '6px',
-  padding: '8px 20px',
   cursor: 'pointer',
-  fontSize: '0.95rem',
+  fontSize: '14px',
   fontWeight: 600,
+  fontFamily: 'inherit',
+  whiteSpace: 'nowrap',
 }
 
 const successStyle = {

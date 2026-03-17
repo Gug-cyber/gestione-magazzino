@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import useLogoSettings from '../hooks/useLogoSettings'
 
 function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const { logoUrl, portalTitle } = useLogoSettings()
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -58,7 +60,7 @@ function Navbar({ onMenuClick }) {
           {/* Left: hamburger */}
           <button onClick={onMenuClick} aria-label="Apri menu" style={iconBtnStyle}>☰</button>
 
-          {/* Center: title */}
+          {/* Center: logo/title */}
           <span style={{
             position: 'absolute',
             left: '50%',
@@ -67,8 +69,12 @@ function Navbar({ onMenuClick }) {
             fontSize: '1.1rem',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}>
-            🏭 Gestione Magazzino
+            {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+            <span>{portalTitle}</span>
           </span>
 
           {/* Right: icon-only buttons */}
@@ -100,8 +106,9 @@ function Navbar({ onMenuClick }) {
       top: 0,
       zIndex: 1000,
     }}>
-      <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontSize: '1.4rem', fontWeight: 'bold' }}>
-        🏭 Gestione Magazzino
+      <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontSize: '1.4rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+        <span>{portalTitle}</span>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {user && (
@@ -115,12 +122,15 @@ function Navbar({ onMenuClick }) {
             style={{
               color: 'white',
               textDecoration: 'none',
-              fontSize: '0.9rem',
+              fontSize: '14px',
               fontWeight: 600,
               backgroundColor: 'rgba(255,255,255,0.15)',
               border: '1px solid rgba(255,255,255,0.4)',
               borderRadius: '6px',
-              padding: '6px 14px',
+              padding: '0 14px',
+              height: '36px',
+              display: 'inline-flex',
+              alignItems: 'center',
             }}
           >
             ⚙️ Profilo
@@ -134,10 +144,14 @@ function Navbar({ onMenuClick }) {
               color: 'white',
               border: '1px solid rgba(255,255,255,0.4)',
               borderRadius: '6px',
-              padding: '6px 14px',
+              padding: '0 14px',
+              height: '36px',
               cursor: 'pointer',
-              fontSize: '0.9rem',
+              fontSize: '14px',
               fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
             🚪 Logout
