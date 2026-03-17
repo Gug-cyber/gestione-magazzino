@@ -543,6 +543,7 @@ function DettaglioProdotto() {
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555' }}>QR Code</div>
             <QRCodeDisplay value={`prodotto:${prodotto.id}`} size={100} productName={prodotto.nome} />
             <div style={{ fontSize: '0.75rem', color: '#555', textAlign: 'center' }}>📱 Scansiona con fotocamera</div>
           </div>
@@ -554,12 +555,10 @@ function DettaglioProdotto() {
             >
               {generatingBarcode ? '⏳ Generazione...' : prodotto.barcode ? '🔄 Rigenera Barcode' : '🔖 Genera Barcode'}
             </button>
-            {prodotto.barcode && (
-              <button
-                onClick={() => setShowPrintModal(true)}
-                style={btnStyle('#1565c0')}
-              >🖨️ Stampa Barcode</button>
-            )}
+            <button
+              onClick={() => setShowPrintModal(true)}
+              style={btnStyle('#1565c0')}
+            >🖨️ Stampa Etichetta</button>
           </div>
         </div>
       </div>

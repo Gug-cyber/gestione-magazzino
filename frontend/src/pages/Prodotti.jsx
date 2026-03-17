@@ -114,11 +114,11 @@ function Prodotti() {
   const openPrintAll = async () => {
     setIsPrintLoading(true)
     try {
-      // Carica tutti i prodotti (senza paginazione) con barcode
+      // Carica tutti i prodotti (senza paginazione)
       const resp = await prodottiAPI.getAll({ limit: 10000 })
-      const tutti = (resp.data || []).filter(p => p.barcode)
+      const tutti = resp.data || []
       if (tutti.length === 0) {
-        alert('Nessun prodotto con barcode da stampare.')
+        alert('Nessun prodotto da stampare.')
         return
       }
       setPrintProdotti(tutti)
@@ -195,7 +195,7 @@ function Prodotti() {
               onClick={openPrintSelected}
               className={styles.addBtn}
               style={{ backgroundColor: '#1565c0' }}
-              title={`Stampa barcode dei ${selectedIds.size} prodotti selezionati`}
+              title={`Stampa etichette dei ${selectedIds.size} prodotti selezionati`}
             >🖨️ Stampa selezionati ({selectedIds.size})</button>
           ) : null}
           <button
@@ -203,7 +203,7 @@ function Prodotti() {
             disabled={isPrintLoading}
             className={styles.addBtn}
             style={{ backgroundColor: isPrintLoading ? '#90a4ae' : '#1565c0' }}
-            title="Stampa barcode di tutti i prodotti"
+            title="Stampa etichette di tutti i prodotti"
           >{isPrintLoading ? '⏳ Caricamento...' : '🖨️ Stampa tutti'}</button>
           <button
             onClick={handleBulkGenerate}
