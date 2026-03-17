@@ -20,6 +20,8 @@ class Prodotto(Base):
     stato_conservazione = Column(String(50), nullable=True)
     lingua = Column(String(50), nullable=True)
     foto_path = Column(String(255), nullable=True)
+    barcode = Column(String(100), nullable=True, index=True)
+    barcode_generated_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

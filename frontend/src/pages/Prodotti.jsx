@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, getFotoUrl } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_CONSERVAZIONE_COLORS } from '../constants/colors'
@@ -23,6 +24,10 @@ function Prodotti() {
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [showPrintModal, setShowPrintModal] = useState(false)
+  const [printProdotti, setPrintProdotti] = useState([])
+  const [isBulkGenerating, setIsBulkGenerating] = useState(false)
   // Holds the SKU value of the last barcode scan so we can alert when no match is found
   const pendingScanAlertRef = useRef(null)
 
@@ -87,6 +92,44 @@ function Prodotti() {
     }
   }
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => setSelectedIds(new Set(prodotti.map(p => p.id)))
+  const deselectAll = () => setSelectedIds(new Set())
+
+  const openPrintSelected = () => {
+    const selected = prodotti.filter(p => selectedIds.has(p.id))
+    setPrintProdotti(selected)
+    setShowPrintModal(true)
+  }
+
+  const openPrintAll = () => {
+    setPrintProdotti(prodotti)
+    setShowPrintModal(true)
+  }
+
+  const handleBulkGenerate = async () => {
+    setIsBulkGenerating(true)
+    setError('')
+    try {
+      const res = await prodottiAPI.bulkGenerateBarcodes({ all: true })
+      const count = res.data?.generated ?? 0
+      alert(`✅ Barcode generati: ${count}`)
+      fetchProdotti(search, page)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Errore durante la generazione massiva dei barcode')
+    } finally {
+      setIsBulkGenerating(false)
+    }
+  }
+
   return (
     <div>
       <div className={styles.header}>
@@ -126,6 +169,32 @@ function Prodotti() {
             + Aggiungi Prodotto
           </button>
           <button
+            onClick={() => navigate('/barcode/scanner')}
+            className={styles.scanBtn}
+            title="Vai allo scanner barcode"
+          >📷 Scanner</button>
+          {selectedIds.size > 0 ? (
+            <button
+              onClick={openPrintSelected}
+              className={styles.addBtn}
+              style={{ backgroundColor: '#1565c0' }}
+              title={`Stampa barcode dei ${selectedIds.size} prodotti selezionati`}
+            >🖨️ Stampa selezionati ({selectedIds.size})</button>
+          ) : null}
+          <button
+            onClick={openPrintAll}
+            className={styles.addBtn}
+            style={{ backgroundColor: '#1565c0' }}
+            title="Stampa barcode di tutti i prodotti"
+          >🖨️ Stampa tutti</button>
+          <button
+            onClick={handleBulkGenerate}
+            disabled={isBulkGenerating}
+            className={styles.addBtn}
+            style={{ backgroundColor: '#388e3c' }}
+            title="Genera barcode per i prodotti che non ce l'hanno ancora"
+          >{isBulkGenerating ? '⏳ Generazione...' : '⚡ Genera barcode'}</button>
+          <button
             onClick={handleDeleteAll}
             disabled={total === 0 || isDeleting}
             className={styles.deleteAllBtn}
@@ -135,6 +204,14 @@ function Prodotti() {
           </button>
         </div>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.9rem', color: '#555' }}>{selectedIds.size} selezionati</span>
+          <button onClick={selectAll} style={{ fontSize: '0.85rem', padding: '4px 10px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', background: 'white' }}>Seleziona tutti</button>
+          <button onClick={deselectAll} style={{ fontSize: '0.85rem', padding: '4px 10px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', background: 'white' }}>Deseleziona tutti</button>
+        </div>
+      )}
 
       {error && <div className={styles.errorMsg}>{error}</div>}
 
@@ -150,6 +227,13 @@ function Prodotti() {
               className={`${styles.card} ${p.quantita < p.quantita_minima ? styles.cardLowStock : ''}`}
             >
               <div className={styles.cardHeader}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(p.id)}
+                  onChange={() => toggleSelect(p.id)}
+                  style={{ marginRight: 8, cursor: 'pointer' }}
+                  aria-label={`Seleziona ${p.nome}`}
+                />
                 <div className={styles.cardInfo}>
                   {p.foto_url
                     ? <img
@@ -174,6 +258,10 @@ function Prodotti() {
                 <span className={p.quantita < p.quantita_minima ? styles.qtyLow : styles.qtyOk}>
                   {p.quantita} {p.quantita < p.quantita_minima ? '⚠️' : ''}
                 </span>
+              </div>
+              <div className={styles.cardRow}>
+                <span className={styles.cardLabel}>Barcode</span>
+                <span title={p.barcode || ''}>{p.barcode ? '✅' : '⬜'}</span>
               </div>
               {p.prezzo_vendita && (
                 <div className={styles.cardRow}>
@@ -201,7 +289,16 @@ function Prodotti() {
           <table className={styles.table}>
             <thead>
               <tr>
-                {['ID', 'Foto', 'Nome', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
+                <th className={styles.th}>
+                  <input
+                    type="checkbox"
+                    onChange={e => e.target.checked ? selectAll() : deselectAll()}
+                    checked={prodotti.length > 0 && selectedIds.size === prodotti.length}
+                    title="Seleziona/deseleziona tutti"
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
+                {['ID', 'Foto', 'Nome', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Barcode', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
                   <th key={h} className={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -209,7 +306,7 @@ function Prodotti() {
             <tbody>
               {prodotti.length === 0 ? (
                 <tr className={styles.trEmpty}>
-                  <td colSpan={10}>
+                  <td colSpan={12}>
                     {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
                   </td>
                 </tr>
@@ -219,6 +316,15 @@ function Prodotti() {
                   className={p.quantita < p.quantita_minima ? styles.trLowStock : styles.trNormal}
                   style={{ borderBottom: '1px solid #eee' }}
                 >
+                  <td className={styles.td}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      style={{ cursor: 'pointer' }}
+                      aria-label={`Seleziona ${p.nome}`}
+                    />
+                  </td>
                   <td className={styles.td}>{p.id}</td>
                   <td className={styles.td}>
                     {p.foto_url
@@ -239,6 +345,9 @@ function Prodotti() {
                   <td className={styles.td}>{p.quantita_minima}</td>
                   <td className={styles.td}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>
                   <td className={styles.td}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>
+                  <td className={styles.td} title={p.barcode || ''}>
+                    {p.barcode ? '✅' : '⬜'}
+                  </td>
                   <td className={styles.td}>
                     <StatoBadge value={p.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />
                   </td>
@@ -283,6 +392,13 @@ function Prodotti() {
             setShowScanner(false)
           }}
           onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      {showPrintModal && (
+        <PrintBarcodeModal
+          prodotti={printProdotti}
+          onClose={() => setShowPrintModal(false)}
         />
       )}
 

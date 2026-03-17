@@ -52,6 +52,10 @@ export const prodottiAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  generateBarcode: (id) => client.post(`/api/prodotti/${id}/barcode`),
+  lookupByBarcode: (barcodeValue) => client.get(`/api/prodotti/barcode/${encodeURIComponent(barcodeValue)}`),
+  bulkGenerateBarcodes: (data) => client.post('/api/prodotti/barcodes/bulk-generate', data),
+  getBarcodeImageUrl: (id) => `${API_BASE_URL}/api/prodotti/${id}/barcode/image`,
 }
 
 export const categorieAPI = {

@@ -132,6 +132,16 @@ COLUMN_MIGRATIONS = [
         "column": "fornitura_id",
         "definition": "INTEGER",
     },
+    {
+        "table": "prodotti",
+        "column": "barcode",
+        "definition": "VARCHAR(100)",
+    },
+    {
+        "table": "prodotti",
+        "column": "barcode_generated_at",
+        "definition": "TIMESTAMP WITH TIME ZONE",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)
@@ -151,6 +161,8 @@ POST_COLUMN_SQL = [
     "UPDATE forniture SET stock_caricato = TRUE WHERE stato = 'ricevuto' AND (stock_caricato IS NULL OR stock_caricato = FALSE)",
     # Backfill tipo_voce per righe fornitura esistenti
     "UPDATE righe_fornitura SET tipo_voce = 'prodotto' WHERE tipo_voce IS NULL",
+    # Unique index for barcode (partial: only non-null values)
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_prodotti_barcode ON prodotti(barcode) WHERE barcode IS NOT NULL",
 ]
 
 

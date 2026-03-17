@@ -17,6 +17,7 @@ class ProdottoBase(BaseModel):
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
     foto_path: Optional[str] = None
+    barcode: Optional[str] = None
 
 
 class ProdottoCreate(ProdottoBase):
@@ -42,6 +43,7 @@ class ProdottoResponse(ProdottoBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     foto_url: Optional[str] = None
+    barcode_generated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

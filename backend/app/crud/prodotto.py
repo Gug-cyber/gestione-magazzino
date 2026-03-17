@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..models.prodotto import Prodotto
 from ..models.movimento import Movimento, TipoMovimento
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate
+from ..barcode_utils import generate_barcode_value
 from typing import List, Optional
 
 
@@ -12,6 +13,10 @@ def get_prodotto(db: Session, prodotto_id: int) -> Optional[Prodotto]:
 
 def get_prodotto_by_sku(db: Session, sku: str) -> Optional[Prodotto]:
     return db.query(Prodotto).filter(Prodotto.sku == sku).first()
+
+
+def get_prodotto_by_barcode(db: Session, barcode: str) -> Optional[Prodotto]:
+    return db.query(Prodotto).filter(Prodotto.barcode == barcode).first()
 
 
 def get_prodotti(
@@ -102,3 +107,31 @@ def delete_prodotto(db: Session, prodotto_id: int) -> bool:
     db.delete(db_prodotto)
     db.commit()
     return True
+
+
+def generate_barcode_for_prodotto(db: Session, prodotto_id: int) -> Optional[Prodotto]:
+    """
+    Genera (o rigenera) il valore barcode per un prodotto.
+    Usa lo SKU normalizzato CODE39. Se già in uso da un altro prodotto,
+    aggiunge il suffisso -<id> per garantire unicità.
+    """
+    db_prodotto = get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        return None
+
+    barcode_value = generate_barcode_value(db_prodotto.sku)
+
+    # Verifica unicità: se già usato da un altro prodotto, aggiungi suffisso
+    existing = (
+        db.query(Prodotto)
+        .filter(Prodotto.barcode == barcode_value, Prodotto.id != prodotto_id)
+        .first()
+    )
+    if existing:
+        barcode_value = f"{barcode_value}-{prodotto_id}"
+
+    db_prodotto.barcode = barcode_value
+    db_prodotto.barcode_generated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(db_prodotto)
+    return db_prodotto
