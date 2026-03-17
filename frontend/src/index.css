@@ -356,9 +356,11 @@ body {
     background: white !important;
   }
 
-  /* Evita page break nei barcode */
+  /* Evita page break nei barcode e stampa colori esatti */
   svg {
     page-break-inside: avoid;
     break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }
