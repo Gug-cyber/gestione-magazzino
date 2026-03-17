@@ -116,7 +116,7 @@ function Prodotti() {
     try {
       // Carica tutti i prodotti (senza paginazione) con barcode
       const resp = await prodottiAPI.getAll({ limit: 10000 })
-      const tutti = resp.data.filter(p => p.barcode)
+      const tutti = (resp.data || []).filter(p => p.barcode)
       if (tutti.length === 0) {
         alert('Nessun prodotto con barcode da stampare.')
         return

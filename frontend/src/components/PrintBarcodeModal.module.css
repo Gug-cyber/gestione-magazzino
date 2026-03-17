@@ -52,6 +52,11 @@
   font-size: 0.95rem;
 }
 
+.btnPrint:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btnClose {
   background: #f5f5f5;
   color: #333;
@@ -77,50 +82,67 @@
   background: white;
   page-break-inside: avoid;
   break-inside: avoid;
-  min-height: 120px;
+  height: 165px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
 }
 
 .labelName {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #1a237e;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
 }
 
 .labelSku {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: #666;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   font-family: monospace;
-}
-
-.labelBarcode {
-  margin: 0 auto 2px auto;
-  max-width: 100%;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
+/* Barcode area fills available vertical space */
+.labelBarcode {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Force uniform height on all barcode SVGs in the preview */
 .labelBarcode svg {
+  width: 100% !important;
+  height: 60px !important;
   max-width: 100%;
-  height: auto;
+  display: block;
 }
 
 .labelValue {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: #333;
   font-family: monospace;
   word-break: break-all;
+  margin-top: 2px;
 }
 
-/* Print styles — fallback when window.open popup is blocked by the browser */
+/* ─── Print fallback ─────────────────────────────────────────────────────────
+   Only used when the popup (window.open) is blocked by the browser.
+   Hides everything else on the page and reveals only the modal overlay.      */
 @media print {
-  /* Hide everything except the modal overlay (print fallback) */
   body * {
     visibility: hidden !important;
   }
@@ -151,23 +173,30 @@
 
   .grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    gap: 6px;
   }
 
   .label {
     border: 1px solid #999;
-    padding: 8px 6px;
+    padding: 6px 4px;
+    height: auto;
+    min-height: 120px;
+  }
+
+  .labelBarcode svg {
+    width: 100% !important;
+    height: 50px !important;
   }
 
   .labelName {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 
   .labelSku {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
   }
 
   .labelValue {
-    font-size: 0.6rem;
+    font-size: 0.58rem;
   }
 }
