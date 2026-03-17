@@ -403,6 +403,11 @@ function Prodotti() {
       {showScanner && (
         <BarcodeScanner
           onScan={(value) => {
+            if (/^prodotto:\d+$/i.test(value)) {
+              navigate(`/prodotti/${value.split(':')[1]}`)
+              setShowScanner(false)
+              return
+            }
             const normalized = normalizeSkuForCode39(value)
             pendingScanAlertRef.current = normalized
             setSearchInput(normalized)
