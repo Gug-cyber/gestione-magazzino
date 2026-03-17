@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { movimentiAPI, prodottiAPI, fornitoriAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import RicercaRapidaProdotto from '../components/RicercaRapidaProdotto'
 
 const emptyForm = { prodotto_id: '', tipo: 'carico', quantita: 1, note: '', fornitore_id: '' }
 
 function NuovoMovimento() {
   const navigate = useNavigate()
   const [form, setForm] = useState(emptyForm)
-  const [prodotti, setProdotti] = useState([])
   const [fornitori, setFornitori] = useState([])
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
@@ -16,11 +16,7 @@ function NuovoMovimento() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [p, f] = await Promise.all([
-          prodottiAPI.getAll({ limit: 1000 }),
-          fornitoriAPI.getAll(),
-        ])
-        setProdotti(p.data)
+        const f = await fornitoriAPI.getAll()
         setFornitori(f.data)
       } catch {
         setError('Errore nel caricamento dei dati')
@@ -32,6 +28,10 @@ function NuovoMovimento() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!form.prodotto_id) {
+      setError('Seleziona un prodotto dalla lista o scansiona un QR code')
+      return
+    }
     const payload = {
       prodotto_id: parseInt(form.prodotto_id),
       tipo: form.tipo,
@@ -70,23 +70,15 @@ function NuovoMovimento() {
           <div style={gridStyle}>
             <label style={labelStyle}>
               <span style={{ fontSize: '0.85rem', color: '#555' }}>Prodotto *</span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <select
-                  required
-                  value={form.prodotto_id}
-                  onChange={(e) => setForm({ ...form, prodotto_id: e.target.value })}
-                  style={{ ...inputStyle, flex: 1 }}
-                >
-                  <option value="">-- Seleziona --</option>
-                  {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.sku})</option>)}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', padding: '0 10px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1.1rem' }}
-                  title="Scansiona codice a barre"
-                >📷</button>
-              </div>
+              <RicercaRapidaProdotto
+                onSelect={(prodotto) => setForm(f => ({ ...f, prodotto_id: String(prodotto.id) }))}
+                placeholder="Cerca prodotto per nome, SKU..."
+                showScanner={true}
+                onScannerOpen={() => setShowScanner(true)}
+              />
+              {form.prodotto_id && (
+                <span style={{ fontSize: '0.78rem', color: '#2e7d32' }}>✓ Prodotto selezionato</span>
+              )}
             </label>
 
             <label style={labelStyle}>
@@ -143,10 +135,28 @@ function NuovoMovimento() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => {
-            const prodotto = prodotti.find(p => p.sku === value)
-            if (prodotto) setForm(f => ({ ...f, prodotto_id: String(prodotto.id) }))
+          onScan={async (value) => {
             setShowScanner(false)
+            // Handle QR code format "prodotto:<id>"
+            if (/^prodotto:\d+$/i.test(value)) {
+              const id = parseInt(value.split(':')[1])
+              setForm(f => ({ ...f, prodotto_id: String(id) }))
+              return
+            }
+            // Fallback: lookup barcode/SKU via API
+            try {
+              const res = await prodottiAPI.lookupByBarcode(value)
+              if (res.data?.id) {
+                setForm(f => ({ ...f, prodotto_id: String(res.data.id) }))
+              }
+            } catch {
+              // Try text search as last resort
+              try {
+                const res2 = await prodottiAPI.getAll({ search: value, limit: 1 })
+                const items = Array.isArray(res2.data) ? res2.data : (res2.data?.items || [])
+                if (items.length > 0) setForm(f => ({ ...f, prodotto_id: String(items[0].id) }))
+              } catch { /* ignore */ }
+            }
           }}
           onClose={() => setShowScanner(false)}
         />
