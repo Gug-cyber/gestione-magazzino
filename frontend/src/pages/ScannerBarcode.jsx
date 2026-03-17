@@ -16,25 +16,46 @@ function ScannerBarcode() {
     if (!value) return
     setSearching(true)
     setError('')
+
+    // 1. Try exact barcode match
     try {
       const res = await prodottiAPI.lookupByBarcode(value)
       navigate(`/prodotti/${res.data.id}`)
-    } catch {
-      // Fallback: cerca per SKU normalizzato
-      const normalized = normalizeSkuForCode39(value)
+      return
+    } catch { /* continue */ }
+
+    // 2. Try normalized barcode match
+    const normalized = normalizeSkuForCode39(value)
+    if (normalized !== value) {
       try {
-        const res2 = await prodottiAPI.getAll({ search: normalized, limit: 1 })
-        if (res2.data && res2.data.length > 0) {
-          navigate(`/prodotti/${res2.data[0].id}`)
-        } else {
-          setError(`Nessun prodotto trovato per il codice: ${value}`)
-        }
-      } catch {
-        setError(`Nessun prodotto trovato per il codice: ${value}`)
-      }
-    } finally {
-      setSearching(false)
+        const res2 = await prodottiAPI.lookupByBarcode(normalized)
+        navigate(`/prodotti/${res2.data.id}`)
+        return
+      } catch { /* continue */ }
     }
+
+    // 3. Search by SKU in list with exact matching
+    try {
+      const MAX_SKU_SEARCH_RESULTS = 5
+      const res3 = await prodottiAPI.getAll({ search: normalized, limit: MAX_SKU_SEARCH_RESULTS })
+      if (res3.data && res3.data.length === 1) {
+        navigate(`/prodotti/${res3.data[0].id}`)
+        return
+      } else if (res3.data && res3.data.length > 1) {
+        const exact = res3.data.find(p =>
+          p.sku === value ||
+          p.sku === normalized ||
+          p.barcode === value
+        )
+        if (exact) {
+          navigate(`/prodotti/${exact.id}`)
+          return
+        }
+      }
+    } catch { /* continue */ }
+
+    setError(`Nessun prodotto trovato per il codice: "${value}". Verifica che il barcode sia stato generato correttamente.`)
+    setSearching(false)
   }
 
   const handleScan = (value) => {

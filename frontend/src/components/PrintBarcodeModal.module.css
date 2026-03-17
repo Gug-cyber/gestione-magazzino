@@ -65,18 +65,22 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
 }
 
 .label {
   border: 1px solid #ccc;
   border-radius: 6px;
-  padding: 10px 8px;
+  padding: 8px 6px;
   text-align: center;
   background: white;
   page-break-inside: avoid;
   break-inside: avoid;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .labelName {
@@ -102,6 +106,11 @@
   overflow: hidden;
 }
 
+.labelBarcode svg {
+  max-width: 100%;
+  height: auto;
+}
+
 .labelValue {
   font-size: 0.65rem;
   color: #333;
@@ -109,8 +118,18 @@
   word-break: break-all;
 }
 
-/* Print styles */
+/* Print styles — fallback when window.open popup is blocked by the browser */
 @media print {
+  /* Hide everything except the modal overlay (print fallback) */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .overlay,
+  .overlay * {
+    visibility: visible !important;
+  }
+
   .overlay {
     position: static;
     background: none;
@@ -131,7 +150,7 @@
   }
 
   .grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
   }
 
