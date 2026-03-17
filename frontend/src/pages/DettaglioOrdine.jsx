@@ -97,7 +97,7 @@ export default function DettaglioOrdine() {
               <p style={{ margin: '4px 0', color: '#555' }}>Completato il: <strong>{formatDate(ordine.data_completamento)}</strong></p>
             )}
             {(ordine.corriere || ordine.tracking_number) ? (
-              <p style={{ margin: '4px 0', color: '#555' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0', color: '#555' }}>
                 Corriere: <strong>{ordine.corriere || '—'}</strong>
                 {ordine.tracking_number && <span> — Tracking: <strong style={{ fontFamily: 'monospace' }}>{ordine.tracking_number}</strong></span>}
                 <button
@@ -107,13 +107,13 @@ export default function DettaglioOrdine() {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: '26px', height: '26px', border: 'none', borderRadius: '5px',
                     background: 'transparent', cursor: 'pointer', fontSize: '14px',
-                    color: '#666', padding: 0, verticalAlign: 'middle', lineHeight: 1,
+                    color: '#666', padding: 0, flexShrink: 0, lineHeight: 1,
                     transition: 'background 0.15s'
                   }}
                 >✏️</button>
-              </p>
+              </div>
             ) : (
-              <p style={{ margin: '4px 0', color: '#555' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
                 <span style={{ color: '#aaa' }}>Nessun tracking</span>
                 <button
                   onClick={() => { setTrackingForm({ corriere: '', tracking_number: '' }); setTrackingEdit(true) }}
@@ -122,11 +122,11 @@ export default function DettaglioOrdine() {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: '26px', height: '26px', border: 'none', borderRadius: '5px',
                     background: 'transparent', cursor: 'pointer', fontSize: '14px',
-                    color: '#666', padding: 0, verticalAlign: 'middle', lineHeight: 1,
+                    color: '#666', padding: 0, flexShrink: 0, lineHeight: 1,
                     transition: 'background 0.15s'
                   }}
                 >✏️</button>
-              </p>
+              </div>
             )}
             {ordine.note && <p style={{ margin: '4px 0', color: '#555' }}>Note: {ordine.note}</p>}
           </div>
