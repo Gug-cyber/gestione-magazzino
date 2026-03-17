@@ -336,3 +336,29 @@ body {
   flex: 1;
   min-width: 130px;
 }
+
+/* ── Print: nascondi UI chrome quando si stampa ──────────────────────────── */
+@media print {
+  nav,
+  aside,
+  .navbar,
+  .sidebar,
+  [class*="Navbar"],
+  [class*="Sidebar"],
+  [class*="navbar"],
+  [class*="sidebar"] {
+    display: none !important;
+  }
+
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+
+  /* Evita page break nei barcode */
+  svg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
