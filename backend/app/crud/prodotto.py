@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..models.prodotto import Prodotto
 from ..models.movimento import Movimento, TipoMovimento
@@ -131,7 +131,7 @@ def generate_barcode_for_prodotto(db: Session, prodotto_id: int) -> Optional[Pro
         barcode_value = f"{barcode_value}-{prodotto_id}"
 
     db_prodotto.barcode = barcode_value
-    db_prodotto.barcode_generated_at = datetime.utcnow()
+    db_prodotto.barcode_generated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_prodotto)
     return db_prodotto
