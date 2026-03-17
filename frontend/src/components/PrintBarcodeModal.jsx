@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
+import JsBarcode from 'jsbarcode'
 import styles from './PrintBarcodeModal.module.css'
 
 // Delay in ms before removing the print iframe from the DOM after printing.
@@ -36,9 +37,35 @@ async function renderQRToHighResPng(value) {
 }
 
 /**
+ * Generate a barcode for `value` and return it as a PNG data-URL.
+ * Uses JsBarcode on a temporary canvas. Returns null on error or missing value.
+ */
+function renderBarcodeToDataUrl(value) {
+  if (!value) return null
+  try {
+    const canvas = document.createElement('canvas')
+    JsBarcode(canvas, value, {
+      format: 'CODE128',
+      width: 2,
+      height: 50,
+      displayValue: true,
+      lineColor: '#000000',
+      background: '#ffffff',
+      margin: 4,
+      fontSize: 10,
+      textMargin: 2,
+    })
+    return canvas.toDataURL('image/png')
+  } catch (err) {
+    console.error('Failed to generate barcode for value:', value, err)
+    return null
+  }
+}
+
+/**
  * Build the full HTML document for the print iframe.
- * Layout: 5-column grid, 30mm × 25mm labels, A4 portrait with 8mm/6mm margins.
- * Labels that have no QR image are skipped.
+ * Layout: 5-column grid, 36mm × 35mm labels, A4 portrait with 8mm/6mm margins.
+ * Each label shows: name, sku, barcode image (if available), QR code.
  */
 function buildPrintHtml(labels) {
   return `<!DOCTYPE html><html lang="it"><head>
@@ -56,7 +83,7 @@ function buildPrintHtml(labels) {
       }
       .label {
         width: 36mm;
-        height: 25mm;
+        height: 35mm;
         box-sizing: border-box;
         border: 0.3pt solid #ccc;
         padding: 1.5mm;
@@ -78,26 +105,31 @@ function buildPrintHtml(labels) {
         white-space: nowrap;
         text-align: center;
       }
-      .label-sku  { font-size: 3.5pt; color: #555; text-align: center; }
+      .label-sku { font-size: 3.5pt; color: #555; text-align: center; }
+      .label-barcode img {
+        width: 32mm;
+        height: auto;
+        max-height: 10mm;
+        display: block;
+      }
       .label-qr img {
-        width: 12mm;
-        height: 12mm;
+        width: 10mm;
+        height: 10mm;
         image-rendering: pixelated;
         display: block;
       }
-      .label-value { font-size: 4pt; font-family: monospace; text-align: center; }
       @media print {
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     </style>
   </head><body>
     <div class="grid">
-      ${labels.filter(l => l.qrData).map(l => `
+      ${labels.map(l => `
         <div class="label">
           <div class="label-name" title="${escapeHtml(l.nome)}">${escapeHtml(l.nome)}</div>
           <div class="label-sku">${escapeHtml(l.codice || l.sku || String(l.id || ''))}</div>
-          <div class="label-qr"><img src="${l.qrData}" alt="QR ${escapeHtml(l.qrValue)}"></div>
-          <div class="label-value">${escapeHtml(l.sku || String(l.id || ''))}</div>
+          ${l.barcodeData ? `<div class="label-barcode"><img src="${l.barcodeData}" alt="Barcode ${escapeHtml(l.barcode)}"></div>` : ''}
+          ${l.qrData ? `<div class="label-qr"><img src="${l.qrData}" alt="QR ${escapeHtml(l.qrValue)}"></div>` : ''}
         </div>
       `).join('')}
     </div>
@@ -117,7 +149,7 @@ function PrintBarcodeModal({ prodotti, onClose }) {
   const [labelsWithQr, setLabelsWithQr] = useState([])
   const [loadingQr, setLoadingQr] = useState(true)
 
-  // Generate QR codes asynchronously for all products
+  // Generate QR codes and barcodes asynchronously for all products
   useEffect(() => {
     let cancelled = false
     async function generateQRs() {
@@ -126,7 +158,8 @@ function PrintBarcodeModal({ prodotti, onClose }) {
         prodotti.map(async (p) => {
           const qrValue = `prodotto:${p.id}`
           const qrData = await renderQRToHighResPng(qrValue)
-          return { ...p, qrValue, qrData }
+          const barcodeData = renderBarcodeToDataUrl(p.barcode)
+          return { ...p, qrValue, qrData, barcodeData }
         })
       )
       if (!cancelled) {
@@ -168,7 +201,7 @@ function PrintBarcodeModal({ prodotti, onClose }) {
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.header}>
-          <h2 className={styles.title}>🖨️ Stampa Etichette QR ({prodotti.length} etichette)</h2>
+          <h2 className={styles.title}>🖨️ Stampa Etichette ({prodotti.length} etichette)</h2>
           <div className={styles.actions}>
             <button
               onClick={handlePrint}
@@ -197,11 +230,13 @@ function PrintBarcodeModal({ prodotti, onClose }) {
               <div key={p.id} className={styles.label}>
                 <div className={styles.labelName} title={p.nome}>{p.nome}</div>
                 <div className={styles.labelSku}>{p.codice ?? p.sku ?? String(p.id ?? '')}</div>
+                {p.barcodeData && (
+                  <img src={p.barcodeData} alt={`Barcode ${p.barcode}`} className={styles.labelBarcode} />
+                )}
                 {p.qrData
                   ? <img src={p.qrData} alt={`QR ${p.qrValue}`} className={styles.labelQr} />
                   : <span style={{ fontSize: 9, color: '#aaa' }}>N/D</span>
                 }
-                <div className={styles.labelValue}>{p.sku ?? p.barcode}</div>
               </div>
             ))}
           </div>
