@@ -19,6 +19,7 @@ const baseLinks = [
 
 function NavLinks({ onLinkClick }) {
   const { user } = useAuth()
+  const [hoveredTo, setHoveredTo] = useState(null)
   const links = user?.is_admin
     ? [...baseLinks, { to: '/amministrazione', label: '⚙️ Amministrazione' }]
     : baseLinks
@@ -28,14 +29,23 @@ function NavLinks({ onLinkClick }) {
       to={to}
       end={to === '/'}
       onClick={onLinkClick}
+      onMouseEnter={() => setHoveredTo(to)}
+      onMouseLeave={() => setHoveredTo(null)}
       style={({ isActive }) => ({
         display: 'block',
         padding: '12px 24px',
         color: isActive ? '#ffeb3b' : 'rgba(255,255,255,0.85)',
         textDecoration: 'none',
-        backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+        backgroundColor: isActive
+          ? 'rgba(255,255,255,0.1)'
+          : hoveredTo === to
+            ? 'rgba(255,255,255,0.06)'
+            : 'transparent',
         borderLeft: isActive ? '4px solid #ffeb3b' : '4px solid transparent',
+        borderRadius: '0 6px 6px 0',
+        marginRight: '12px',
         fontWeight: isActive ? 'bold' : 'normal',
+        fontSize: '0.92rem',
         transition: 'all 0.2s',
       })}
     >
@@ -79,7 +89,7 @@ function Sidebar({ isOpen, onClose }) {
             left: 0,
             bottom: 0,
             width: '240px',
-            backgroundColor: '#283593',
+            backgroundColor: '#1e2a78',
             zIndex: 1100,
             overflowY: 'auto',
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -96,7 +106,8 @@ function Sidebar({ isOpen, onClose }) {
     <aside style={{
       width: '220px',
       flexShrink: 0,
-      backgroundColor: '#283593',
+      backgroundColor: '#1e2a78',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
       minHeight: 'calc(100vh - 64px)',
       padding: '16px 0',
     }}>

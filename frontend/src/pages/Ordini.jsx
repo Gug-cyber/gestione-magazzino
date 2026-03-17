@@ -215,7 +215,7 @@ export default function Ordini() {
                   </td>
                   <td className={styles.td}>
                     {ordine.tracking_number ? (
-                      <div className={styles.tracking}>
+                      <div className={`${styles.tracking} ${styles.trackingRow}`}>
                         <span className={styles.trackingCorriere}>{ordine.corriere || '—'}</span>
                         {(() => {
                           const corriere = CORRIERI.find(c => c.value === ordine.corriere)
@@ -234,11 +234,11 @@ export default function Ordini() {
                             setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
                           }}
                           title="Modifica tracking"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                          className={styles.editTrackingBtn}
                         >✏️</button>
                       </div>
                     ) : (
-                      <div className={styles.tracking}>
+                      <div className={`${styles.tracking} ${styles.trackingRow}`}>
                         <span className={styles.trackingEmpty}>—</span>
                         <button
                           onClick={() => {
@@ -246,7 +246,7 @@ export default function Ordini() {
                             setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
                           }}
                           title="Modifica tracking"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                          className={styles.editTrackingBtn}
                         >✏️</button>
                       </div>
                     )}
