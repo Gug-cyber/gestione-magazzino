@@ -458,6 +458,7 @@
   padding: 0;
   vertical-align: middle;
   flex-shrink: 0;
+  align-self: center;
   transition: background 0.15s, color 0.15s;
   line-height: 1;
 }

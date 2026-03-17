@@ -90,7 +90,7 @@ export default function DettaglioFornitura() {
             )}
             <p style={{ margin: '4px 0', color: '#555' }}>Totale: <strong style={{ color: PRIMARY_COLOR }}>{formatCurrency(fornitura.totale)}</strong></p>
             {(fornitura.corriere || fornitura.tracking_number) ? (
-              <p style={{ margin: '4px 0', color: '#555' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0', color: '#555' }}>
                 Corriere: <strong>{fornitura.corriere || '—'}</strong>
                 {fornitura.tracking_number && <span> — Tracking: <strong style={{ fontFamily: 'monospace' }}>{fornitura.tracking_number}</strong></span>}
                 <button
@@ -100,13 +100,13 @@ export default function DettaglioFornitura() {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: '26px', height: '26px', border: 'none', borderRadius: '5px',
                     background: 'transparent', cursor: 'pointer', fontSize: '14px',
-                    color: '#666', padding: 0, verticalAlign: 'middle', lineHeight: 1,
+                    color: '#666', padding: 0, flexShrink: 0, lineHeight: 1,
                     transition: 'background 0.15s'
                   }}
                 >✏️</button>
-              </p>
+              </div>
             ) : (
-              <p style={{ margin: '4px 0', color: '#555' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
                 <span style={{ color: '#aaa' }}>Nessun tracking</span>
                 <button
                   onClick={() => { setTrackingForm({ corriere: '', tracking_number: '' }); setTrackingEdit(true) }}
@@ -115,11 +115,11 @@ export default function DettaglioFornitura() {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: '26px', height: '26px', border: 'none', borderRadius: '5px',
                     background: 'transparent', cursor: 'pointer', fontSize: '14px',
-                    color: '#666', padding: 0, verticalAlign: 'middle', lineHeight: 1,
+                    color: '#666', padding: 0, flexShrink: 0, lineHeight: 1,
                     transition: 'background 0.15s'
                   }}
                 >✏️</button>
-              </p>
+              </div>
             )}
             {fornitura.note && <p style={{ margin: '4px 0', color: '#555' }}>Note: {fornitura.note}</p>}
           </div>
