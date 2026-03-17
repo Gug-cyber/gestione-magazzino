@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import RicercaRapidaProdotto from '../components/RicercaRapidaProdotto'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { PRIMARY_COLOR } from '../constants/colors'
 
@@ -19,6 +20,13 @@ function ScannerBarcode() {
 
     // Normalize the API response data to a consistent array format
     const toItems = (data) => Array.isArray(data) ? data : (data?.items || [])
+
+    // 0. QR code formato "prodotto:<id>" — naviga direttamente senza API call
+    if (/^prodotto:\d+$/i.test(value)) {
+      const id = value.split(':')[1]
+      navigate(`/prodotti/${id}`)
+      return
+    }
 
     // 1. Try exact barcode match via dedicated endpoint
     try {
@@ -87,25 +95,37 @@ function ScannerBarcode() {
           onClick={() => navigate('/prodotti')}
           style={{ backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
         >← Prodotti</button>
-        <h1 style={{ color: PRIMARY_COLOR, margin: 0 }}>📷 Scanner Barcode</h1>
+        <h1 style={{ color: PRIMARY_COLOR, margin: 0 }}>📷 Scanner QR / Barcode</h1>
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: 8, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: 20 }}>
         <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>Scansiona con webcam</h2>
         <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: 16 }}>
-          Usa la fotocamera del dispositivo per scansionare il codice a barre di un prodotto.
+          Scansiona il QR code sulle etichette prodotto — più affidabile dei codici a barre lineari.
           Il sistema reindirizzerà automaticamente alla scheda del prodotto.
         </p>
         <button
           onClick={() => setShowScanner(true)}
           style={{ backgroundColor: PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: 6, padding: '12px 24px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}
         >
-          📷 Apri Scanner
+          📷 Apri Scanner QR
         </button>
       </div>
 
+      <div style={{ backgroundColor: 'white', borderRadius: 8, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: 20 }}>
+        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>🔍 Ricerca rapida prodotto</h2>
+        <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: 16 }}>
+          Cerca per nome, SKU o barcode mentre digiti — funziona da desktop e da mobile.
+        </p>
+        <RicercaRapidaProdotto
+          showScanner={true}
+          onScannerOpen={() => setShowScanner(true)}
+          placeholder="Cerca prodotto per nome, SKU o barcode..."
+        />
+      </div>
+
       <div style={{ backgroundColor: 'white', borderRadius: 8, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>Inserimento manuale</h2>
+        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>Inserimento manuale barcode</h2>
         <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: 16 }}>
           Inserisci manualmente il valore del codice a barre o lo SKU del prodotto.
         </p>

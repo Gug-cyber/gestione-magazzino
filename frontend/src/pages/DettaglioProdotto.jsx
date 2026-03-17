@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
+import QRCodeDisplay from '../components/QRCodeDisplay'
 import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 
@@ -530,7 +531,7 @@ function DettaglioProdotto() {
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔖 Codice a Barre</h2>
         {barcodeError && <div style={{ color: 'red', marginBottom: 8, fontSize: '0.9rem' }}>{barcodeError}</div>}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           {prodotto.barcode ? (
             <div>
               <BarcodeDisplay value={prodotto.barcode} productName={prodotto.nome} width={2} height={60} />
@@ -541,6 +542,10 @@ function DettaglioProdotto() {
               Nessun barcode generato
             </div>
           )}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <QRCodeDisplay value={`prodotto:${prodotto.id}`} size={100} productName={prodotto.nome} />
+            <div style={{ fontSize: '0.75rem', color: '#555', textAlign: 'center' }}>📱 Scansiona con fotocamera</div>
+          </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               onClick={handleGenerateBarcode}

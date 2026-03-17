@@ -168,6 +168,11 @@ function App() {
               <AppLayout><ScannerBarcode /></AppLayout>
             </ProtectedRoute>
           } />
+          <Route path="/scanner" element={
+            <ProtectedRoute>
+              <AppLayout><ScannerBarcode /></AppLayout>
+            </ProtectedRoute>
+          } />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

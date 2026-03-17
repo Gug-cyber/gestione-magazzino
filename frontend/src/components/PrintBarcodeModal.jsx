@@ -1,12 +1,9 @@
-import { useMemo } from 'react'
-import JsBarcode from 'jsbarcode'
+import { useState, useEffect } from 'react'
+import QRCode from 'qrcode'
 import styles from './PrintBarcodeModal.module.css'
 
 // Delay in ms before removing the print iframe from the DOM after printing.
 const IFRAME_CLEANUP_DELAY_MS = 1000
-// High-resolution canvas for crisp barcode rendering at 30×20mm label size.
-const CANVAS_W = 900
-const CANVAS_H = 600
 
 /** Escape HTML special chars to prevent injection in the print iframe. */
 function escapeHtml(str) {
@@ -20,63 +17,46 @@ function escapeHtml(str) {
 }
 
 /**
- * Render a CODE128 barcode for `value` at high resolution and return it as
- * a PNG data-URL on a fixed CANVAS_W × CANVAS_H canvas.
- * Returns null if the value is invalid or JsBarcode throws.
+ * Generate a QR code for `value` and return it as a PNG data-URL.
+ * Uses the `qrcode` library asynchronously. Returns null on error.
  */
-function renderBarcodeToHighResPng(value) {
+async function renderQRToHighResPng(value) {
   try {
     if (!value) return null
-    const canvas = document.createElement('canvas')
-    JsBarcode(canvas, value, {
-      format: 'CODE128',
-      width: 3,
-      height: 90,
-      displayValue: false,
-      margin: 8,
-      lineColor: '#000000',
-      background: '#ffffff',
+    return await QRCode.toDataURL(value, {
+      width: 256,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
     })
-
-    const out = document.createElement('canvas')
-    out.width = CANVAS_W
-    out.height = CANVAS_H
-    const ctx = out.getContext('2d')
-    ctx.fillStyle = '#fff'
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-    const scale = Math.min((CANVAS_W - 16) / canvas.width, (CANVAS_H - 16) / canvas.height)
-    const dw = canvas.width * scale
-    const dh = canvas.height * scale
-    ctx.drawImage(canvas, (CANVAS_W - dw) / 2, (CANVAS_H - dh) / 2, dw, dh)
-    return out.toDataURL('image/png')
   } catch (err) {
-    console.error('Barcode generation failed for value:', value, err)
+    console.error('QR generation failed for value:', value, err)
     return null
   }
 }
 
 /**
  * Build the full HTML document for the print iframe.
- * Layout: 6-column grid, 30mm × 20mm labels, A4 portrait with 8mm/6mm margins.
- * Labels that have no barcode image are skipped.
+ * Layout: 5-column grid, 30mm × 25mm labels, A4 portrait with 8mm/6mm margins.
+ * Labels that have no QR image are skipped.
  */
 function buildPrintHtml(labels) {
   return `<!DOCTYPE html><html lang="it"><head>
     <meta charset="utf-8">
-    <title>Stampa Barcode</title>
+    <title>Stampa Etichette</title>
     <style>
       @page { size: A4 portrait; margin: 8mm 6mm; }
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, sans-serif; background: white; }
       .grid {
         display: grid;
-        grid-template-columns: repeat(6, 30mm);
+        grid-template-columns: repeat(5, 36mm);
         gap: 1mm;
         width: 100%;
       }
       .label {
-        width: 30mm;
-        height: 20mm;
+        width: 36mm;
+        height: 25mm;
         box-sizing: border-box;
         border: 0.3pt solid #ccc;
         padding: 1.5mm;
@@ -99,11 +79,10 @@ function buildPrintHtml(labels) {
         text-align: center;
       }
       .label-sku  { font-size: 3.5pt; color: #555; text-align: center; }
-      .label-barcode img {
-        width: 100%;
-        height: auto;
-        max-height: 9mm;
-        image-rendering: auto;
+      .label-qr img {
+        width: 12mm;
+        height: 12mm;
+        image-rendering: pixelated;
         display: block;
       }
       .label-value { font-size: 4pt; font-family: monospace; text-align: center; }
@@ -113,12 +92,12 @@ function buildPrintHtml(labels) {
     </style>
   </head><body>
     <div class="grid">
-      ${labels.filter(l => l.imgData).map(l => `
+      ${labels.filter(l => l.qrData).map(l => `
         <div class="label">
           <div class="label-name" title="${escapeHtml(l.nome)}">${escapeHtml(l.nome)}</div>
           <div class="label-sku">${escapeHtml(l.codice || l.sku || String(l.id || ''))}</div>
-          <div class="label-barcode"><img src="${l.imgData}" alt="barcode ${escapeHtml(l.barcode)}"></div>
-          <div class="label-value">${escapeHtml(l.barcode)}</div>
+          <div class="label-qr"><img src="${l.qrData}" alt="QR ${escapeHtml(l.qrValue)}"></div>
+          <div class="label-value">${escapeHtml(l.sku || String(l.id || ''))}</div>
         </div>
       `).join('')}
     </div>
@@ -126,29 +105,41 @@ function buildPrintHtml(labels) {
 }
 
 /**
- * Modal for printing product barcodes.
+ * Modal for printing product labels with QR codes.
  * Printing happens in a hidden iframe — avoids popup blockers and does not
  * print the main application UI.
  *
  * Props:
- *   prodotti  — array of product objects with a `barcode` field
+ *   prodotti  — array of product objects
  *   onClose   — callback to close the modal
  */
 function PrintBarcodeModal({ prodotti, onClose }) {
-  const prodottiConBarcode = prodotti.filter(p => p.barcode)
+  const [labelsWithQr, setLabelsWithQr] = useState([])
+  const [loadingQr, setLoadingQr] = useState(true)
 
-  // Compute barcode images once per render cycle, keyed by product list identity.
-  const labelsWithImg = useMemo(
-    () => prodottiConBarcode.map(p => ({
-      ...p,
-      imgData: renderBarcodeToHighResPng(p.barcode),
-    })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prodotti]
-  )
+  // Generate QR codes asynchronously for all products
+  useEffect(() => {
+    let cancelled = false
+    async function generateQRs() {
+      setLoadingQr(true)
+      const results = await Promise.all(
+        prodotti.map(async (p) => {
+          const qrValue = `prodotto:${p.id}`
+          const qrData = await renderQRToHighResPng(qrValue)
+          return { ...p, qrValue, qrData }
+        })
+      )
+      if (!cancelled) {
+        setLabelsWithQr(results)
+        setLoadingQr(false)
+      }
+    }
+    generateQRs()
+    return () => { cancelled = true }
+  }, [prodotti])
 
   const handlePrint = () => {
-    const html = buildPrintHtml(labelsWithImg)
+    const html = buildPrintHtml(labelsWithQr)
 
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;'
@@ -177,14 +168,14 @@ function PrintBarcodeModal({ prodotti, onClose }) {
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.header}>
-          <h2 className={styles.title}>🖨️ Stampa Barcode ({prodottiConBarcode.length} etichette)</h2>
+          <h2 className={styles.title}>🖨️ Stampa Etichette QR ({prodotti.length} etichette)</h2>
           <div className={styles.actions}>
             <button
               onClick={handlePrint}
               className={styles.btnPrint}
-              disabled={prodottiConBarcode.length === 0}
+              disabled={prodotti.length === 0 || loadingQr}
             >
-              🖨️ Stampa
+              {loadingQr ? '⏳ Generazione...' : '🖨️ Stampa'}
             </button>
             <button onClick={onClose} className={styles.btnClose}>
               ✕ Chiudi
@@ -192,21 +183,25 @@ function PrintBarcodeModal({ prodotti, onClose }) {
           </div>
         </div>
 
-        {prodottiConBarcode.length === 0 ? (
+        {prodotti.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#888', padding: '32px 0' }}>
-            Nessun prodotto con barcode generato da stampare.
+            Nessun prodotto da stampare.
+          </p>
+        ) : loadingQr ? (
+          <p style={{ textAlign: 'center', color: '#888', padding: '32px 0' }}>
+            ⏳ Generazione QR code in corso...
           </p>
         ) : (
           <div className={styles.grid}>
-            {labelsWithImg.map(p => (
+            {labelsWithQr.map(p => (
               <div key={p.id} className={styles.label}>
                 <div className={styles.labelName} title={p.nome}>{p.nome}</div>
                 <div className={styles.labelSku}>{p.codice ?? p.sku ?? String(p.id ?? '')}</div>
-                {p.imgData
-                  ? <img src={p.imgData} alt={`barcode ${p.barcode}`} className={styles.labelBarcode} />
+                {p.qrData
+                  ? <img src={p.qrData} alt={`QR ${p.qrValue}`} className={styles.labelQr} />
                   : <span style={{ fontSize: 9, color: '#aaa' }}>N/D</span>
                 }
-                <div className={styles.labelValue}>{p.barcode}</div>
+                <div className={styles.labelValue}>{p.sku ?? p.barcode}</div>
               </div>
             ))}
           </div>

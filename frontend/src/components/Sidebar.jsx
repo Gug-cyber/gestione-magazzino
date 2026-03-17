@@ -7,7 +7,7 @@ const baseLinks = [
   { to: '/analisi', label: '📈 Analisi' },
   { to: '/ordini', label: '🛒 Ordini' },
   { to: '/prodotti', label: '📦 Prodotti' },
-  { to: '/barcode/scanner', label: '📷 Scanner Barcode' },
+  { to: '/barcode/scanner', label: '📷 Scanner QR / Barcode' },
   { to: '/clienti', label: '👥 Clienti' },
   { to: '/movimenti', label: '🔄 Movimenti' },
   { to: '/fatture', label: '🧾 Fatture' },

@@ -7,21 +7,21 @@ const STATUS = {
   DETECTED: '✅ Codice rilevato!',
 }
 
-// Formats to scan: CODE_128 first (primary format used for product labels),
-// then common retail formats as fallback. CODE_39 is excluded as it often
-// causes false positives with CODE_128 barcodes.
+// Formats to scan: QR_CODE first (most reliable with any camera),
+// then common 1D barcode formats for backward compatibility with existing labels.
+// CODE_39 is excluded as it often causes false positives with CODE_128 barcodes.
 const FORMATS_TO_SUPPORT = [
+  Html5QrcodeSupportedFormats.QR_CODE,      // ← primo: più affidabile con qualsiasi fotocamera
   Html5QrcodeSupportedFormats.CODE_128,
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.UPC_A,
   Html5QrcodeSupportedFormats.UPC_E,
-  Html5QrcodeSupportedFormats.QR_CODE,
 ]
 
-// Scanning region dimensions — wider and shorter for CODE128 1D barcodes.
+// Scanning region dimensions — square for QR codes, also works for 1D barcodes.
 // Shared between the html5-qrcode config and the viewfinder overlay so both stay in sync.
-const QRBOX = { width: 300, height: 120 }
+const QRBOX = { width: 280, height: 280 }
 
 function BarcodeScanner({ onScan, onClose }) {
   const [error, setError] = useState('')
@@ -226,7 +226,7 @@ function BarcodeScanner({ onScan, onClose }) {
         maxWidth: '480px', width: '90%', textAlign: 'center',
         maxHeight: '90vh', overflowY: 'auto',
       }}>
-        <h3 style={{ color: '#1a237e', marginTop: 0 }}>📷 Scansiona Codice a Barre</h3>
+        <h3 style={{ color: '#1a237e', marginTop: 0 }}>📷 Scansiona QR / Barcode</h3>
 
         {/* Status indicator */}
         <p style={{
@@ -245,7 +245,7 @@ function BarcodeScanner({ onScan, onClose }) {
         }}>
           <div
             id="barcode-reader"
-            aria-label="Flusso video fotocamera per la scansione del codice a barre"
+            aria-label="Flusso video fotocamera per la scansione QR / barcode"
             style={{ width: '100%' }}
           ></div>
 
@@ -256,7 +256,7 @@ function BarcodeScanner({ onScan, onClose }) {
               top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
               width: '70%', maxWidth: QRBOX.width,
-              height: '40%', maxHeight: QRBOX.height,
+              height: '70%', maxHeight: QRBOX.height,
               border: '3px solid #00e5ff',
               borderRadius: '8px',
               boxSizing: 'border-box',
@@ -281,7 +281,7 @@ function BarcodeScanner({ onScan, onClose }) {
 
         {/* Guide text */}
         <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '8px' }}>
-          📐 Allinea il codice a barre al centro del riquadro
+          📐 Allinea il QR code o il barcode al centro del riquadro
         </p>
 
         {/* Camera selector (only shown when multiple cameras are available) */}
