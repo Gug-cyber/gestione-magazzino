@@ -466,6 +466,26 @@ def generate_barcode(
     return d
 
 
+@router.delete("/{prodotto_id}/barcode", response_model=ProdottoResponse)
+def delete_barcode(
+    prodotto_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Rimuove il barcode dal prodotto (imposta barcode = None, barcode_generated_at = None)."""
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    db_prodotto.barcode = None
+    db_prodotto.barcode_generated_at = None
+    db.commit()
+    db.refresh(db_prodotto)
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
+
+
 @router.get("/{prodotto_id}/barcode/image")
 def get_barcode_image(
     prodotto_id: int,
