@@ -11,28 +11,42 @@ import JsBarcode from 'jsbarcode'
  *   width        - spessore delle barre (default 2)
  *   height       - altezza barre in pixel (default 60)
  *   showLabel    - mostra il valore testuale sotto il barcode (default true)
+ *   forPrint     - se true, usa parametri ottimizzati per la stampa (default false)
  */
-function BarcodeDisplay({ value, productName, width = 2, height = 60, showLabel = true }) {
+function BarcodeDisplay({ value, productName, width = 2, height = 60, showLabel = true, forPrint = false }) {
   const svgRef = useRef(null)
 
   useEffect(() => {
     if (!svgRef.current || !value) return
     try {
-      JsBarcode(svgRef.current, value, {
-        format: 'CODE128',
-        width,
-        height,
-        displayValue: showLabel,
-        lineColor: '#000000',
-        background: '#ffffff',
-        margin: 8,
-        fontSize: 12,
-        textMargin: 4,
-      })
+      const opts = forPrint
+        ? {
+            format: 'CODE128',
+            width: 3,
+            height: 80,
+            displayValue: showLabel,
+            lineColor: '#000000',
+            background: '#ffffff',
+            margin: 12,
+            fontSize: 12,
+            textMargin: 4,
+          }
+        : {
+            format: 'CODE128',
+            width: Math.max(2, width),
+            height,
+            displayValue: showLabel,
+            lineColor: '#000000',
+            background: '#ffffff',
+            margin: 10,
+            fontSize: 12,
+            textMargin: 4,
+          }
+      JsBarcode(svgRef.current, value, opts)
     } catch {
       // Valore barcode non valido: lascia SVG vuoto
     }
-  }, [value, width, height, showLabel])
+  }, [value, width, height, showLabel, forPrint])
 
   if (!value) {
     return (

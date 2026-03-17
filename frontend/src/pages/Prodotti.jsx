@@ -28,6 +28,7 @@ function Prodotti() {
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [printProdotti, setPrintProdotti] = useState([])
   const [isBulkGenerating, setIsBulkGenerating] = useState(false)
+  const [isPrintLoading, setIsPrintLoading] = useState(false)
   // Holds the SKU value of the last barcode scan so we can alert when no match is found
   const pendingScanAlertRef = useRef(null)
 
@@ -110,9 +111,25 @@ function Prodotti() {
     setShowPrintModal(true)
   }
 
-  const openPrintAll = () => {
-    setPrintProdotti(prodotti)
-    setShowPrintModal(true)
+  const openPrintAll = async () => {
+    setIsPrintLoading(true)
+    try {
+      // Carica tutti i prodotti (senza paginazione) con barcode
+      const resp = await prodottiAPI.getAll({ limit: 10000 })
+      const tutti = resp.data.filter(p => p.barcode)
+      if (tutti.length === 0) {
+        alert('Nessun prodotto con barcode da stampare.')
+        return
+      }
+      setPrintProdotti(tutti)
+      setShowPrintModal(true)
+    } catch {
+      // Fallback: usa i prodotti già caricati nella pagina corrente
+      setPrintProdotti(prodotti)
+      setShowPrintModal(true)
+    } finally {
+      setIsPrintLoading(false)
+    }
   }
 
   const handleBulkGenerate = async () => {
@@ -183,10 +200,11 @@ function Prodotti() {
           ) : null}
           <button
             onClick={openPrintAll}
+            disabled={isPrintLoading}
             className={styles.addBtn}
-            style={{ backgroundColor: '#1565c0' }}
+            style={{ backgroundColor: isPrintLoading ? '#90a4ae' : '#1565c0' }}
             title="Stampa barcode di tutti i prodotti"
-          >🖨️ Stampa tutti</button>
+          >{isPrintLoading ? '⏳ Caricamento...' : '🖨️ Stampa tutti'}</button>
           <button
             onClick={handleBulkGenerate}
             disabled={isBulkGenerating}

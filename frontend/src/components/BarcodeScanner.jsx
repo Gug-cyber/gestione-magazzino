@@ -7,11 +7,11 @@ const STATUS = {
   DETECTED: '✅ Codice rilevato!',
 }
 
-// Formats to scan: CODE_39 first (primary for product labels), CODE_128 as fallback,
-// plus common retail formats.
+// Formats to scan: CODE_128 first (primary format used for product labels),
+// then CODE_39 and common retail formats as fallback.
 const FORMATS_TO_SUPPORT = [
-  Html5QrcodeSupportedFormats.CODE_39,
   Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.UPC_A,
@@ -19,9 +19,9 @@ const FORMATS_TO_SUPPORT = [
   Html5QrcodeSupportedFormats.QR_CODE,
 ]
 
-// Scanning region dimensions — shared between the html5-qrcode config and the
-// viewfinder overlay so both stay in sync.
-const QRBOX = { width: 250, height: 150 }
+// Scanning region dimensions — wider and shorter for CODE128 1D barcodes.
+// Shared between the html5-qrcode config and the viewfinder overlay so both stay in sync.
+const QRBOX = { width: 300, height: 120 }
 
 function BarcodeScanner({ onScan, onClose }) {
   const [error, setError] = useState('')
@@ -106,10 +106,13 @@ function BarcodeScanner({ onScan, onClose }) {
       setError('')
 
       const config = {
-        fps: 10,
+        fps: 15,
         qrbox: QRBOX,
         aspectRatio: 1.777778,
         formatsToSupport: FORMATS_TO_SUPPORT,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
       }
 
       // Success callback: called once when a barcode is detected
@@ -270,6 +273,11 @@ function BarcodeScanner({ onScan, onClose }) {
             </div>
           )}
         </div>
+
+        {/* Guide text */}
+        <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '8px' }}>
+          📐 Allinea il codice a barre al centro del riquadro
+        </p>
 
         {/* Camera selector (only shown when multiple cameras are available) */}
         {cameras.length > 1 && (
