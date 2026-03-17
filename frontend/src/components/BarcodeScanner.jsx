@@ -8,10 +8,10 @@ const STATUS = {
 }
 
 // Formats to scan: CODE_128 first (primary format used for product labels),
-// then CODE_39 and common retail formats as fallback.
+// then common retail formats as fallback. CODE_39 is excluded as it often
+// causes false positives with CODE_128 barcodes.
 const FORMATS_TO_SUPPORT = [
   Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.CODE_39,
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.UPC_A,

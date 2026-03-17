@@ -13,39 +13,51 @@ function ScannerBarcode() {
   const [error, setError] = useState('')
 
   const lookupBarcode = async (value) => {
-    if (!value) return
+    if (!value || searching) return
     setSearching(true)
     setError('')
 
-    // 1. Try exact barcode match
+    // Normalize the API response data to a consistent array format
+    const toItems = (data) => Array.isArray(data) ? data : (data?.items || [])
+
+    // 1. Try exact barcode match via dedicated endpoint
     try {
       const res = await prodottiAPI.lookupByBarcode(value)
-      navigate(`/prodotti/${res.data.id}`)
-      return
-    } catch { /* continue */ }
-
-    // 2. Try normalized barcode match
-    const normalized = normalizeSkuForCode39(value)
-    if (normalized !== value) {
-      try {
-        const res2 = await prodottiAPI.lookupByBarcode(normalized)
-        navigate(`/prodotti/${res2.data.id}`)
+      if (res.data?.id) {
+        navigate(`/prodotti/${res.data.id}`)
         return
-      } catch { /* continue */ }
+      }
+    } catch (err) {
+      if (err.response?.status !== 404) {
+        setError(`Errore durante la ricerca: ${err.message}`)
+        setSearching(false)
+        return
+      }
     }
 
-    // 3. Search by SKU in list with exact matching
+    // 2. Try barcode as exact text filter in product list
     try {
-      const MAX_SKU_SEARCH_RESULTS = 5
-      const res3 = await prodottiAPI.getAll({ search: normalized, limit: MAX_SKU_SEARCH_RESULTS })
-      if (res3.data && res3.data.length === 1) {
-        navigate(`/prodotti/${res3.data[0].id}`)
+      const res2 = await prodottiAPI.getAll({ barcode: value, limit: 1 })
+      const items = toItems(res2.data)
+      if (items.length > 0) {
+        navigate(`/prodotti/${items[0].id}`)
         return
-      } else if (res3.data && res3.data.length > 1) {
-        const exact = res3.data.find(p =>
+      }
+    } catch { /* continue */ }
+
+    // 3. Fallback: text search by normalized value with exact matching
+    const normalized = normalizeSkuForCode39(value)
+    try {
+      const res3 = await prodottiAPI.getAll({ search: normalized, limit: 5 })
+      const items = toItems(res3.data)
+      if (items.length === 1) {
+        navigate(`/prodotti/${items[0].id}`)
+        return
+      } else if (items.length > 1) {
+        const exact = items.find(p =>
+          p.barcode === value ||
           p.sku === value ||
-          p.sku === normalized ||
-          p.barcode === value
+          p.sku === normalized
         )
         if (exact) {
           navigate(`/prodotti/${exact.id}`)

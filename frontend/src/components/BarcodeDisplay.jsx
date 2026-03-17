@@ -38,9 +38,10 @@ function BarcodeDisplay({ value, productName, width = 2, height = 60, showLabel 
             displayValue: showLabel,
             lineColor: '#000000',
             background: '#ffffff',
-            margin: 10,
-            fontSize: 12,
-            textMargin: 4,
+            margin: 4,
+            fontSize: 11,
+            textMargin: 3,
+            quiet: 0,
           }
       JsBarcode(svgRef.current, value, opts)
     } catch {

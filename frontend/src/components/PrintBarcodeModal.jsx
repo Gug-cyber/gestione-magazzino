@@ -100,13 +100,13 @@ function PrintBarcodeModal({ prodotti, onClose }) {
         body { font-family: Arial, sans-serif; background: white; }
         .grid {
           display: grid;
-          grid-template-columns: repeat(4, 46mm);
+          grid-template-columns: repeat(3, 1fr);
           gap: 3mm;
           justify-content: center;
         }
         .label {
-          width: 46mm;
-          height: 52mm;
+          width: 100%;
+          height: 55mm;
           border: 0.4mm solid #aaa;
           border-radius: 1.5mm;
           padding: 2.5mm 2mm;
@@ -215,8 +215,8 @@ function PrintBarcodeModal({ prodotti, onClose }) {
                     value={p.barcode}
                     productName={p.nome}
                     width={2}
-                    height={60}
-                    showLabel={false}
+                    height={55}
+                    showLabel={true}
                   />
                 </div>
                 <div className={styles.labelValue}>{p.barcode}</div>
