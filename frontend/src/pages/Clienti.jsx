@@ -168,14 +168,19 @@ export default function Clienti() {
         <button
           onClick={openNewModal}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
             backgroundColor: primaryColor,
             color: '#fff',
             border: 'none',
             borderRadius: '6px',
-            padding: '10px 20px',
+            height: '36px',
+            padding: '0 20px',
             cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '0.95rem',
+            fontWeight: '600',
+            fontSize: '14px',
           }}
         >
           ➕ Nuovo Cliente
@@ -208,18 +213,18 @@ export default function Clienti() {
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Cerca cliente..."
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+              style={{ width: '100%', height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
             />
           </div>
           <button
             onClick={handleSearch}
-            style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 20px', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', height: '36px', padding: '0 20px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
           >
             🔍 Cerca
           </button>
           <button
             onClick={handleReset}
-            style={{ backgroundColor: '#fff', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '8px 20px', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#fff', color: '#555', border: '1.5px solid #e0e4ef', borderRadius: '6px', height: '36px', padding: '0 20px', cursor: 'pointer', fontSize: '14px' }}
           >
             ✕ Reset
           </button>
@@ -429,13 +434,13 @@ export default function Clienti() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                <button type="button" onClick={closeModal} style={{ backgroundColor: '#fff', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 24px', cursor: 'pointer' }}>
+                <button type="button" onClick={closeModal} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', color: '#555', border: '1.5px solid #e0e4ef', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: 'pointer', fontSize: '14px' }}>
                   Annulla
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ backgroundColor: editingId ? '#2e7d32' : primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: submitting ? 0.7 : 1 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: editingId ? '#2e7d32' : primaryColor, color: '#fff', border: 'none', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '14px', opacity: submitting ? 0.7 : 1 }}
                 >
                   {submitting ? 'Salvataggio...' : editingId ? 'Salva Modifiche' : 'Crea Cliente'}
                 </button>
@@ -449,13 +454,18 @@ export default function Clienti() {
 }
 
 const btnSmall = (bg) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '4px',
   backgroundColor: bg,
   color: '#fff',
   border: 'none',
   borderRadius: '6px',
-  padding: '4px 10px',
+  height: '28px',
+  padding: '0 10px',
   cursor: 'pointer',
-  fontSize: '0.85rem',
+  fontSize: '13px',
 })
 
 const labelStyle = {
@@ -468,10 +478,12 @@ const labelStyle = {
 
 const inputStyle = {
   width: '100%',
-  padding: '8px 12px',
-  border: '1px solid #ddd',
+  height: '36px',
+  padding: '0 12px',
+  border: '1.5px solid #e0e4ef',
   borderRadius: '6px',
-  fontSize: '0.9rem',
+  fontSize: '14px',
   boxSizing: 'border-box',
   outline: 'none',
+  transition: 'border-color 0.18s, box-shadow 0.18s',
 }

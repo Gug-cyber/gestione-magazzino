@@ -161,11 +161,11 @@ function Fornitori() {
   )
 }
 
-const thStyle = { textAlign: 'left', padding: '12px 16px', fontWeight: '600' }
-const tdStyle = { padding: '10px 16px', color: '#333' }
-const btnStyle = (bg) => ({ backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' })
-const btnSmall = (bg) => ({ ...btnStyle(bg), padding: '4px 10px', marginRight: '4px', fontSize: '0.85rem' })
-const inputStyle = { padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }
+const thStyle = { textAlign: 'left', padding: '11px 16px', fontWeight: '700', fontSize: '12px', color: '#555770', background: '#f5f7ff', borderBottom: '2px solid #e0e4ef', whiteSpace: 'nowrap' }
+const tdStyle = { padding: '10px 16px', color: '#333', verticalAlign: 'middle' }
+const btnStyle = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'filter 0.15s' })
+const btnSmall = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '28px', padding: '0 10px', cursor: 'pointer', fontSize: '13px', marginRight: '4px' })
+const inputStyle = { height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.18s, box-shadow 0.18s' }
 const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', color: '#555' }

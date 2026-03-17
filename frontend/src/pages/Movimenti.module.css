@@ -24,15 +24,17 @@
   height: 36px;
   width: clamp(160px, 30vw, 280px);
   padding: 0 12px;
-  border: 1.5px solid #c5cae9;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
   font-size: 0.95rem;
   outline: none;
   box-sizing: border-box;
+  transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .searchInput:focus {
   border-color: #1a237e;
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.10);
 }
 
 .clearBtn {
@@ -125,13 +127,20 @@
 .deleteBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 4px;
   background-color: #c62828;
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 4px 10px;
+  height: 28px;
+  padding: 0 10px;
   font-size: 0.85rem;
   cursor: pointer;
+  transition: background 0.15s;
+}
+.deleteBtn:hover {
+  background-color: #b71c1c;
 }
 
 /* Card mobile */

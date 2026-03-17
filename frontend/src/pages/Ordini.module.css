@@ -19,13 +19,25 @@
 }
 
 .newBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background-color: #1a237e;
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 10px 20px;
+  height: 36px;
+  padding: 0 20px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.newBtn:hover:not(:disabled) {
+  background-color: #0d1b60;
+  box-shadow: 0 2px 8px rgba(26,35,126,0.18);
 }
 
 /* Stats cards */
@@ -69,35 +81,73 @@
 .filterInput {
   flex: 1;
   min-width: 200px;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
+  height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
   font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.filterInput:focus {
+  border-color: #1a237e;
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.10);
 }
 
 .filterSelect {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
+  height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
   font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.filterSelect:focus {
+  border-color: #1a237e;
 }
 
 .searchBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background-color: #1a237e;
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  height: 36px;
+  padding: 0 16px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.18s;
+}
+.searchBtn:hover {
+  background-color: #0d1b60;
 }
 
 .resetBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background-color: #f5f5f5;
   color: #333;
-  border: 1px solid #ddd;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
-  padding: 8px 16px;
+  height: 36px;
+  padding: 0 16px;
   cursor: pointer;
+  font-size: 14px;
+  transition: background 0.18s, border-color 0.18s;
+}
+.resetBtn:hover {
+  background-color: #eee;
+  border-color: #bbb;
 }
 
 .errorMsg {
@@ -324,11 +374,19 @@
 .formInput,
 .formSelect {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
+  height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
   font-size: 14px;
   box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.formInput:focus,
+.formSelect:focus {
+  border-color: #1a237e;
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.10);
 }
 
 .rigaRow {
@@ -347,13 +405,24 @@
 }
 
 .addRigaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background-color: #f5f5f5;
   color: #333;
-  border: 1px solid #ddd;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
-  padding: 8px 16px;
+  height: 36px;
+  padding: 0 16px;
   cursor: pointer;
+  font-size: 14px;
   margin-bottom: 16px;
+  transition: background 0.18s, border-color 0.18s;
+}
+.addRigaBtn:hover {
+  background-color: #eee;
+  border-color: #bbb;
 }
 
 .totaleOrdine {
@@ -371,22 +440,42 @@
 }
 
 .cancelBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background-color: #f5f5f5;
   color: #333;
-  border: 1px solid #ddd;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
-  padding: 10px 20px;
+  height: 36px;
+  padding: 0 20px;
   cursor: pointer;
+  font-size: 14px;
+  transition: background 0.18s, border-color 0.18s;
+}
+.cancelBtn:hover:not(:disabled) {
+  background-color: #eee;
 }
 
 .submitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background-color: #1a237e;
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 10px 20px;
+  height: 36px;
+  padding: 0 20px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
+  transition: background 0.18s;
+}
+.submitBtn:hover:not(:disabled) {
+  background-color: #0d1b60;
 }
 
 .submitBtn:disabled {

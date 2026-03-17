@@ -213,13 +213,18 @@ export default function Fatture() {
         <button
           onClick={openNewModal}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
             backgroundColor: PRIMARY_COLOR,
             color: '#fff',
             border: 'none',
             borderRadius: '6px',
-            padding: '10px 20px',
+            height: '36px',
+            padding: '0 20px',
             cursor: 'pointer',
-            fontWeight: 'bold',
+            fontWeight: '600',
             fontSize: '14px',
           }}
         >
@@ -266,7 +271,7 @@ export default function Fatture() {
             value={filterCliente}
             onChange={e => setFilterCliente(e.target.value)}
             placeholder="Cerca cliente..."
-            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', width: '100%' }}
+            style={{ height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none' }}
           />
         </div>
         <div style={{ flex: 1, minWidth: '130px' }}>
@@ -275,7 +280,7 @@ export default function Fatture() {
             type="date"
             value={filterDataDa}
             onChange={e => setFilterDataDa(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', width: '100%' }}
+            style={{ height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none' }}
           />
         </div>
         <div style={{ flex: 1, minWidth: '130px' }}>
@@ -284,19 +289,25 @@ export default function Fatture() {
             type="date"
             value={filterDataA}
             onChange={e => setFilterDataA(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', width: '100%' }}
+            style={{ height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none' }}
           />
         </div>
         <button
           onClick={handleSearch}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
             backgroundColor: PRIMARY_COLOR,
             color: '#fff',
             border: 'none',
-            borderRadius: '4px',
-            padding: '8px 16px',
+            borderRadius: '6px',
+            height: '36px',
+            padding: '0 16px',
             cursor: 'pointer',
             fontSize: '14px',
+            fontWeight: '600',
           }}
         >
           Cerca
@@ -304,11 +315,16 @@ export default function Fatture() {
         <button
           onClick={handleReset}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
             backgroundColor: '#fff',
             color: PRIMARY_COLOR,
-            border: `1px solid ${PRIMARY_COLOR}`,
-            borderRadius: '4px',
-            padding: '8px 16px',
+            border: `1.5px solid ${PRIMARY_COLOR}`,
+            borderRadius: '6px',
+            height: '36px',
+            padding: '0 16px',
             cursor: 'pointer',
             fontSize: '14px',
           }}
@@ -422,13 +438,13 @@ export default function Fatture() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            style={{ backgroundColor: page === 1 ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: page === 1 ? 'default' : 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: page === 1 ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 14px', cursor: page === 1 ? 'default' : 'pointer', fontSize: '14px' }}
           >← Precedente</button>
           <span>Pagina {page} di {totalPages} ({totalFatture} fatture)</span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            style={{ backgroundColor: page === totalPages ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: page === totalPages ? 'default' : 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: page === totalPages ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 14px', cursor: page === totalPages ? 'default' : 'pointer', fontSize: '14px' }}
           >Successiva →</button>
         </div>
       )}
@@ -572,11 +588,15 @@ export default function Fatture() {
                   type="button"
                   onClick={closeModal}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     backgroundColor: '#fff',
                     color: '#555',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    padding: '10px 20px',
+                    border: '1.5px solid #e0e4ef',
+                    borderRadius: '6px',
+                    height: '36px',
+                    padding: '0 20px',
                     cursor: 'pointer',
                     fontSize: '14px',
                   }}
@@ -587,14 +607,18 @@ export default function Fatture() {
                   type="submit"
                   disabled={submitting}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     backgroundColor: PRIMARY_COLOR,
                     color: '#fff',
                     border: 'none',
-                    borderRadius: '4px',
-                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    height: '36px',
+                    padding: '0 20px',
                     cursor: submitting ? 'not-allowed' : 'pointer',
                     fontSize: '14px',
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     opacity: submitting ? 0.7 : 1,
                   }}
                 >
@@ -610,14 +634,18 @@ export default function Fatture() {
 }
 
 const thStyle = {
-  padding: '12px 16px',
+  padding: '11px 16px',
   textAlign: 'left',
-  fontWeight: '600',
-  fontSize: '13px',
+  fontWeight: '700',
+  fontSize: '12px',
+  color: '#555770',
+  background: '#f5f7ff',
+  borderBottom: '2px solid #e0e4ef',
+  whiteSpace: 'nowrap',
 }
 
 const tdStyle = {
-  padding: '12px 16px',
+  padding: '10px 16px',
   borderBottom: '1px solid #f0f0f0',
   verticalAlign: 'middle',
 }
@@ -636,20 +664,26 @@ const labelStyle = {
 }
 
 const inputStyle = {
-  padding: '8px 12px',
-  border: '1px solid #ddd',
-  borderRadius: '4px',
+  height: '36px',
+  padding: '0 12px',
+  border: '1.5px solid #e0e4ef',
+  borderRadius: '6px',
   fontSize: '14px',
   outline: 'none',
+  boxSizing: 'border-box',
+  transition: 'border-color 0.18s, box-shadow 0.18s',
 }
 
 const actionBtnStyle = (color) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   backgroundColor: color,
   color: '#fff',
   border: 'none',
-  borderRadius: '4px',
-  padding: '4px 8px',
+  borderRadius: '6px',
+  height: '28px',
+  padding: '0 8px',
   cursor: 'pointer',
-  fontSize: '14px',
-  lineHeight: 1,
+  fontSize: '13px',
 })
