@@ -36,6 +36,7 @@ class ProdottoUpdate(BaseModel):
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
+    barcode: Optional[str] = None
 
 
 class ProdottoResponse(ProdottoBase):
