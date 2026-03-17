@@ -371,7 +371,13 @@ body {
   [class*="Navbar"],
   [class*="Sidebar"],
   [class*="navbar"],
-  [class*="sidebar"] {
+  [class*="sidebar"],
+  header,
+  footer,
+  button,
+  .btn,
+  [class*="modal"] > *:not(.printContent),
+  .no-print {
     display: none !important;
   }
 
@@ -381,11 +387,14 @@ body {
     background: white !important;
   }
 
-  /* Evita page break nei barcode e stampa colori esatti */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Evita page break nei barcode */
   svg {
     page-break-inside: avoid;
     break-inside: avoid;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
   }
 }
