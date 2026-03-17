@@ -34,17 +34,17 @@ function NavLinks({ onLinkClick }) {
       style={({ isActive }) => ({
         display: 'block',
         padding: '12px 24px',
-        color: isActive ? '#ffeb3b' : 'rgba(255,255,255,0.85)',
+        color: isActive ? '#a5b4fc' : 'rgba(255,255,255,0.72)',
         textDecoration: 'none',
         backgroundColor: isActive
-          ? 'rgba(255,255,255,0.1)'
+          ? 'rgba(165,180,252,0.15)'
           : hoveredTo === to
-            ? 'rgba(255,255,255,0.06)'
+            ? 'rgba(255,255,255,0.07)'
             : 'transparent',
-        borderLeft: isActive ? '4px solid #ffeb3b' : '4px solid transparent',
-        borderRadius: '0 6px 6px 0',
-        marginRight: '12px',
-        fontWeight: isActive ? 'bold' : 'normal',
+        borderLeft: isActive ? '4px solid #6366f1' : '4px solid transparent',
+        borderRadius: '0 8px 8px 0',
+        marginRight: '8px',
+        fontWeight: isActive ? '600' : 'normal',
         fontSize: '0.92rem',
         transition: 'all 0.2s',
       })}
@@ -89,7 +89,7 @@ function Sidebar({ isOpen, onClose }) {
             left: 0,
             bottom: 0,
             width: '240px',
-            backgroundColor: '#1e2a78',
+            backgroundColor: '#1e1b4b',
             zIndex: 1100,
             overflowY: 'auto',
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -106,8 +106,9 @@ function Sidebar({ isOpen, onClose }) {
     <aside style={{
       width: '220px',
       flexShrink: 0,
-      backgroundColor: '#1e2a78',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
+      backgroundColor: '#1e1b4b',
+      borderRight: '1px solid rgba(255,255,255,0.04)',
+      boxShadow: '2px 0 8px rgba(0,0,0,0.12)',
       minHeight: 'calc(100vh - 64px)',
       padding: '16px 0',
     }}>

@@ -1,43 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* ── Design System Variables ─────────────────────────────────────────────── */
 :root {
-  --color-primary: #1a237e;
-  --color-primary-dark: #0d1b60;
-  --color-primary-light: #283593;
-  --color-secondary: #1565c0;
-  --color-surface: #ffffff;
-  --color-bg: #f0f2f5;
-  --color-border: #e0e4ef;
-  --color-border-focus: #1a237e;
-  --color-text: #1a1a2e;
-  --color-text-secondary: #555770;
-  --color-text-muted: #9096b0;
-  --color-success: #2e7d32;
-  --color-success-bg: #e8f5e9;
-  --color-warning: #e65100;
-  --color-warning-bg: #fff3e0;
-  --color-danger: #c62828;
-  --color-danger-bg: #ffebee;
-  --color-info: #1565c0;
-  --color-info-bg: #e3f2fd;
+  /* Palette blu/indigo moderna (Linear/Notion style) */
+  --color-primary:        #4f46e5;   /* indigo-600 */
+  --color-primary-dark:   #3730a3;   /* indigo-800 */
+  --color-primary-light:  #6366f1;   /* indigo-500 */
+  --color-secondary:      #0ea5e9;   /* sky-500 accent */
 
+  /* Surface */
+  --color-surface:        #ffffff;
+  --color-bg:             #f8fafc;   /* slate-50 */
+  --color-border:         #e2e8f0;   /* slate-200 */
+  --color-border-focus:   #6366f1;
+
+  /* Text */
+  --color-text:           #0f172a;   /* slate-900 */
+  --color-text-secondary: #475569;   /* slate-600 */
+  --color-text-muted:     #94a3b8;   /* slate-400 */
+
+  /* Semantic */
+  --color-success:        #16a34a;
+  --color-success-bg:     #f0fdf4;
+  --color-warning:        #d97706;
+  --color-warning-bg:     #fffbeb;
+  --color-danger:         #dc2626;
+  --color-danger-bg:      #fef2f2;
+  --color-info:           #0ea5e9;
+  --color-info-bg:        #f0f9ff;
+
+  /* Layout */
+  --sidebar-width:        240px;
+  --navbar-height:        64px;
+  --border-radius:        8px;
+  --border-radius-lg:     12px;
+  --card-shadow:          0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --card-shadow-hover:    0 4px 12px rgba(79,70,229,0.12);
+
+  /* Typography */
+  --font-family:          'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-xs:         0.75rem;
+  --font-size-sm:         0.875rem;
+  --font-size-base:       1rem;
+  --font-size-lg:         1.125rem;
+
+  /* Form */
+  --input-height:         36px;
+  --input-padding:        0 12px;
+  --input-radius:         6px;
+
+  /* Legacy aliases kept for backward compatibility */
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
 
-  --shadow-sm: 0 1px 3px rgba(26,35,126,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(26,35,126,0.10), 0 2px 6px rgba(0,0,0,0.06);
-  --shadow-lg: 0 8px 24px rgba(26,35,126,0.12), 0 4px 8px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 3px rgba(79,70,229,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(79,70,229,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(79,70,229,0.12), 0 4px 8px rgba(0,0,0,0.08);
 
-  --font-size-xs: 11px;
-  --font-size-sm: 13px;
-  --font-size-base: 14px;
-  --font-size-md: 15px;
-  --font-size-lg: 16px;
-  --font-size-xl: 18px;
-
-  --input-height: 38px;
-  --input-padding: 0 12px;
   --btn-height: 36px;
   --icon-size-sm: 14px;
   --icon-size-md: 16px;
@@ -72,7 +93,11 @@ html, body {
 
 /* ── Safe area per iPhone X+ (notch / home indicator) ───────── */
 body {
+  font-family: var(--font-family);
   background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
