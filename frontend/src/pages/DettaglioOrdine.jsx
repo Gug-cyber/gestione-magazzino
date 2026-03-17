@@ -103,7 +103,13 @@ export default function DettaglioOrdine() {
                 <button
                   onClick={() => { setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' }); setTrackingEdit(true) }}
                   title="Modifica tracking"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', marginLeft: '6px' }}
+                  style={{ 
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: '26px', height: '26px', border: 'none', borderRadius: '5px',
+                    background: 'transparent', cursor: 'pointer', fontSize: '14px',
+                    color: '#666', padding: 0, verticalAlign: 'middle', lineHeight: 1,
+                    transition: 'background 0.15s'
+                  }}
                 >✏️</button>
               </p>
             ) : (
@@ -112,7 +118,13 @@ export default function DettaglioOrdine() {
                 <button
                   onClick={() => { setTrackingForm({ corriere: '', tracking_number: '' }); setTrackingEdit(true) }}
                   title="Aggiungi tracking"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', marginLeft: '6px' }}
+                  style={{ 
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: '26px', height: '26px', border: 'none', borderRadius: '5px',
+                    background: 'transparent', cursor: 'pointer', fontSize: '14px',
+                    color: '#666', padding: 0, verticalAlign: 'middle', lineHeight: 1,
+                    transition: 'background 0.15s'
+                  }}
                 >✏️</button>
               </p>
             )}

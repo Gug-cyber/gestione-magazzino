@@ -68,13 +68,29 @@
 }
 
 .addBtn {
-  background-color: #1a237e;
-  color: white;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
   border-radius: 6px;
-  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: bold;
+  border: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+  background-color: #1a237e;
+  color: #fff;
+}
+.addBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 2px 8px rgba(26,35,126,0.18);
+}
+.addBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .deleteAllBtn {
@@ -101,8 +117,9 @@
 /* Tabella desktop */
 .tableWrapper {
   background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(26,35,126,0.08);
+  border: 1px solid #e8eaf6;
   overflow: hidden;
 }
 
@@ -113,10 +130,13 @@
 
 .th {
   text-align: left;
-  padding: 12px 16px;
-  font-weight: 600;
-  color: white;
-  background-color: #1a237e;
+  padding: 11px 16px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #555770;
+  background: #f5f7ff;
+  border-bottom: 2px solid #e0e4ef;
+  white-space: nowrap;
 }
 
 .td {

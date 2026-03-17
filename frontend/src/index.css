@@ -1,3 +1,51 @@
+/* ── Design System Variables ─────────────────────────────────────────────── */
+:root {
+  --color-primary: #1a237e;
+  --color-primary-dark: #0d1b60;
+  --color-primary-light: #283593;
+  --color-secondary: #1565c0;
+  --color-surface: #ffffff;
+  --color-bg: #f0f2f5;
+  --color-border: #e0e4ef;
+  --color-border-focus: #1a237e;
+  --color-text: #1a1a2e;
+  --color-text-secondary: #555770;
+  --color-text-muted: #9096b0;
+  --color-success: #2e7d32;
+  --color-success-bg: #e8f5e9;
+  --color-warning: #e65100;
+  --color-warning-bg: #fff3e0;
+  --color-danger: #c62828;
+  --color-danger-bg: #ffebee;
+  --color-info: #1565c0;
+  --color-info-bg: #e3f2fd;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-sm: 0 1px 3px rgba(26,35,126,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(26,35,126,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(26,35,126,0.12), 0 4px 8px rgba(0,0,0,0.08);
+
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+
+  --input-height: 38px;
+  --input-padding: 0 12px;
+  --btn-height: 36px;
+  --icon-size-sm: 14px;
+  --icon-size-md: 16px;
+  --icon-size-lg: 18px;
+
+  --transition: all 0.18s ease;
+}
+
 /* ── Global reset & responsive base ─────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -24,6 +72,7 @@ html, body {
 
 /* ── Safe area per iPhone X+ (notch / home indicator) ───────── */
 body {
+  background-color: var(--color-bg);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -68,4 +117,222 @@ body {
     flex-direction: column !important;
     align-items: stretch !important;
   }
+}
+
+/* ── Global input/select/textarea uniformati ─────────────────────────────── */
+.gm-input,
+.gm-select,
+.gm-textarea {
+  display: block;
+  width: 100%;
+  height: var(--input-height);
+  padding: var(--input-padding);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  font-family: inherit;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  box-sizing: border-box;
+  outline: none;
+  line-height: 1;
+}
+
+.gm-textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.gm-input:focus,
+.gm-select:focus,
+.gm-textarea:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.12);
+}
+
+.gm-input::placeholder,
+.gm-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ── Form field wrapper ───────────────────────────────────────────────────── */
+.gm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.gm-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.01em;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.gm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--btn-height);
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  white-space: nowrap;
+  text-decoration: none;
+  outline: none;
+}
+
+.gm-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.gm-btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+.gm-btn-secondary {
+  background: #fff;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-border);
+}
+.gm-btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: rgba(26,35,126,0.03);
+}
+
+.gm-btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+.gm-btn-danger:hover:not(:disabled) {
+  background: #b71c1c;
+}
+
+.gm-btn-sm {
+  height: 30px;
+  padding: 0 10px;
+  font-size: var(--font-size-sm);
+}
+
+.gm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Icon action button (matita, occhio, ecc.) ───────────────────────────── */
+.gm-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--icon-size-md);
+  color: var(--color-text-secondary);
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  vertical-align: middle;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.gm-icon-btn:hover {
+  background: rgba(26,35,126,0.08);
+  color: var(--color-primary);
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.gm-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  margin-bottom: 20px;
+}
+
+/* ── Badge stati ──────────────────────────────────────────────────────────── */
+.gm-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gm-badge-bozza        { background: #f5f5f5;  color: #757575; }
+.gm-badge-confermato   { background: #e3f2fd;  color: #1565c0; }
+.gm-badge-spedito      { background: #fff3e0;  color: #e65100; }
+.gm-badge-completato   { background: #e8f5e9;  color: #2e7d32; }
+.gm-badge-annullato    { background: #ffebee;  color: #c62828; }
+.gm-badge-pagata       { background: #e8f5e9;  color: #2e7d32; }
+.gm-badge-in_attesa    { background: #fff8e1;  color: #f57f17; }
+.gm-badge-scaduta      { background: #ffebee;  color: #c62828; }
+.gm-badge-parziale     { background: #e8eaf6;  color: #3949ab; }
+
+/* ── Table base ───────────────────────────────────────────────────────────── */
+.gm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+
+.gm-table th {
+  text-align: left;
+  padding: 11px 14px;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: #f5f7ff;
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.gm-table td {
+  padding: 10px 14px;
+  color: var(--color-text);
+  border-bottom: 1px solid #f0f2f8;
+  vertical-align: middle;
+}
+
+.gm-table tbody tr:hover {
+  background: #f8f9ff;
+}
+
+/* ── Tracking cell ─────────────────────────────────────────────────────────── */
+.gm-tracking-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+/* ── Stat card ────────────────────────────────────────────────────────────── */
+.gm-stat-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  flex: 1;
+  min-width: 130px;
 }

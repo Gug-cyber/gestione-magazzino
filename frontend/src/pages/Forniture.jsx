@@ -300,7 +300,7 @@ export default function Forniture() {
                   <td className={`${styles.td} ${styles.totalCell}`}>{formatCurrency(fornitura.totale)}</td>
                   <td className={styles.td}>
                     {fornitura.tracking_number ? (
-                      <div className={styles.tracking}>
+                      <div className={`${styles.tracking} ${styles.trackingRow}`}>
                         <span className={styles.trackingCorriere}>{fornitura.corriere || '—'}</span>
                         {(() => {
                           const corriere = CORRIERI.find(c => c.value === fornitura.corriere)
@@ -319,11 +319,11 @@ export default function Forniture() {
                             setTrackingFornituraForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' })
                           }}
                           title="Modifica tracking"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                          className={styles.editTrackingBtn}
                         >✏️</button>
                       </div>
                     ) : (
-                      <div className={styles.tracking}>
+                      <div className={`${styles.tracking} ${styles.trackingRow}`}>
                         <span className={styles.trackingEmpty}>—</span>
                         <button
                           onClick={() => {
@@ -331,7 +331,7 @@ export default function Forniture() {
                             setTrackingFornituraForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' })
                           }}
                           title="Modifica tracking"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '4px' }}
+                          className={styles.editTrackingBtn}
                         >✏️</button>
                       </div>
                     )}
