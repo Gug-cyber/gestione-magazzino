@@ -28,18 +28,20 @@
 }
 
 .searchInput {
-  padding: 8px 12px;
+  padding: 0 12px;
   height: 36px;
   box-sizing: border-box;
-  border: 1.5px solid #c5cae9;
+  border: 1.5px solid #e0e4ef;
   border-radius: 6px;
   font-size: 0.95rem;
   width: clamp(160px, 30vw, 280px);
   outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .searchInput:focus {
   border-color: #1a237e;
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.10);
 }
 
 .clearBtn {
@@ -58,13 +60,21 @@
 }
 
 .scanBtn {
-  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
   background-color: #1565c0;
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 1.1rem;
+  transition: background 0.18s;
+}
+.scanBtn:hover {
+  background-color: #0d47a1;
 }
 
 .addBtn {
@@ -94,13 +104,20 @@
 }
 
 .deleteAllBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background-color: #c62828;
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  height: 36px;
+  padding: 0 16px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.18s;
 }
 
 .deleteAllBtn:disabled {

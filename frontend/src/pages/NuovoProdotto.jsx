@@ -201,7 +201,7 @@ function NuovoProdotto() {
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <button
           onClick={() => navigate('/prodotti')}
-          style={{ background: 'none', border: '1.5px solid #c5cae9', color: '#1a237e', cursor: 'pointer', fontSize: '0.9rem', padding: '6px 14px', borderRadius: '8px', fontWeight: 600 }}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'none', border: '1.5px solid #e0e4ef', color: '#1a237e', cursor: 'pointer', fontSize: '14px', height: '36px', padding: '0 14px', borderRadius: '6px', fontWeight: 600 }}
         >
           ← Prodotti
         </button>
@@ -303,13 +303,13 @@ function NuovoProdotto() {
                   <button
                     type="button"
                     onClick={() => setSkuManuale(false)}
-                    style={{ padding: '10px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', padding: '0 10px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}
                     title="Rigenera SKU automaticamente"
                   >🔄</button>
                   <button
                     type="button"
                     onClick={() => setShowScanner(true)}
-                    style={{ padding: '10px', backgroundColor: '#1a237e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', padding: '0 10px', backgroundColor: '#1a237e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}
                     title="Scansiona codice a barre"
                   >📷</button>
                 </div>
@@ -496,25 +496,32 @@ const cardStyle = {
   border: '1px solid #e8eaf6',
 }
 const inputStyle = {
-  padding: '10px 12px',
-  border: '1.5px solid #c5cae9',
-  borderRadius: '8px',
-  fontSize: '0.95rem',
+  height: '36px',
+  padding: '0 12px',
+  border: '1.5px solid #e0e4ef',
+  borderRadius: '6px',
+  fontSize: '14px',
   width: '100%',
   outline: 'none',
   boxSizing: 'border-box',
+  transition: 'border-color 0.18s, box-shadow 0.18s',
 }
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '5px' }
 const labelTextStyle = { fontSize: '0.85rem', color: '#444', fontWeight: 600 }
 const submitBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '6px',
   backgroundColor: '#2e7d32',
   color: 'white',
   border: 'none',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  borderRadius: '6px',
+  height: '40px',
+  padding: '0 20px',
   cursor: 'pointer',
-  fontWeight: 'bold',
-  fontSize: '1rem',
+  fontWeight: '600',
+  fontSize: '15px',
   width: '100%',
 }
 

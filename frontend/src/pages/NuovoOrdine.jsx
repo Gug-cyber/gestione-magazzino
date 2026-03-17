@@ -260,7 +260,7 @@ export default function NuovoOrdine() {
             <button
               type="button"
               onClick={addRiga}
-              style={{ backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', marginTop: '4px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', marginTop: '4px' }}
             >
               + Aggiungi prodotto
             </button>
@@ -322,14 +322,14 @@ export default function NuovoOrdine() {
             <button
               type="button"
               onClick={() => navigate('/ordini')}
-              style={{ backgroundColor: '#757575', color: 'white', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#757575', color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
             >
               Annulla
             </button>
             <button
               type="submit"
               disabled={submitting}
-              style={{ backgroundColor: submitting ? '#a5d6a7' : '#2e7d32', color: 'white', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: submitting ? '#a5d6a7' : '#2e7d32', color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '14px' }}
             >
               {submitting ? 'Creazione in corso...' : '✅ Crea Ordine'}
             </button>
@@ -356,12 +356,15 @@ const sectionTitleStyle = {
 }
 
 const inputStyle = {
-  padding: '8px',
-  border: '1px solid #ddd',
-  borderRadius: '4px',
-  fontSize: '0.95rem',
+  height: '36px',
+  padding: '0 12px',
+  border: '1.5px solid #e0e4ef',
+  borderRadius: '6px',
+  fontSize: '14px',
   width: '100%',
   boxSizing: 'border-box',
+  outline: 'none',
+  transition: 'border-color 0.18s, box-shadow 0.18s',
 }
 
 const labelStyle = {

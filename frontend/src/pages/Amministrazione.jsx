@@ -225,11 +225,14 @@ export default function Amministrazione() {
 
   const inputStyle = {
     width: '100%',
-    padding: '8px 12px',
-    border: '1px solid #ddd',
+    height: '36px',
+    padding: '0 12px',
+    border: '1.5px solid #e0e4ef',
     borderRadius: 6,
     fontSize: 14,
     boxSizing: 'border-box',
+    outline: 'none',
+    transition: 'border-color 0.18s, box-shadow 0.18s',
   }
 
   const labelStyle = { display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#333' }
@@ -286,11 +289,16 @@ export default function Amministrazione() {
             <button
               onClick={openCreate}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
                 backgroundColor: '#1a237e',
                 color: '#fff',
                 border: 'none',
-                borderRadius: 8,
-                padding: '10px 20px',
+                borderRadius: 6,
+                height: '36px',
+                padding: '0 20px',
                 cursor: 'pointer',
                 fontSize: 14,
                 fontWeight: 600,
@@ -538,13 +546,18 @@ export default function Amministrazione() {
                   type="submit"
                   disabled={datiSubmitting}
                   style={{
-                    padding: '12px 32px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    height: '36px',
+                    padding: '0 32px',
                     border: 'none',
-                    borderRadius: 8,
+                    borderRadius: 6,
                     backgroundColor: '#1a237e',
                     color: '#fff',
                     cursor: datiSubmitting ? 'not-allowed' : 'pointer',
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 700,
                     opacity: datiSubmitting ? 0.7 : 1,
                   }}
@@ -657,7 +670,7 @@ export default function Amministrazione() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '9px 20px', border: '1px solid #ddd', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 14 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', padding: '0 20px', border: '1.5px solid #e0e4ef', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 14 }}
                 >
                   Annulla
                 </button>
@@ -665,7 +678,11 @@ export default function Amministrazione() {
                   type="submit"
                   disabled={submitting}
                   style={{
-                    padding: '9px 20px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '36px',
+                    padding: '0 20px',
                     border: 'none',
                     borderRadius: 6,
                     backgroundColor: '#1a237e',
