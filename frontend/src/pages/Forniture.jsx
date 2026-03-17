@@ -1,16 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fornitureAPI, fornitoriAPI, prodottiAPI } from '../api/client'
+import { fornitureAPI, fornitoriAPI, prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_FORNITURA_COLORS } from '../constants/colors'
 import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency } from '../utils/formatters'
+import { generateSKU, STATO_MAP, LINGUA_MAP } from '../utils/skuGenerator'
+import { normalizeSkuForCode39 } from '../utils/formatters'
 import styles from './Forniture.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'ricevuto', 'annullato']
 
 const PAGE_SIZE = 50
 const emptyRiga = { tipo_voce: 'prodotto', prodotto_id: '', descrizione: '', quantita: 1, prezzo_unitario: 0 }
+const emptyNuovoProdottoForm = {
+  nome: '', descrizione: '', stato_conservazione: '', lingua: '',
+  categoria_id: '', ubicazione_id: '',
+  quantita: 1, quantita_minima: 0,
+  prezzo_acquisto: '', prezzo_vendita: '',
+  skuManuale: false, skuManualeValore: '',
+}
 
 export default function Forniture() {
   const navigate = useNavigate()
@@ -31,9 +40,12 @@ export default function Forniture() {
   const [trackingFornituraForm, setTrackingFornituraForm] = useState({ corriere: '', tracking_number: '' })
   const [trackingFornituraLoading, setTrackingFornituraLoading] = useState(false)
   const [nuovoProdottoRigaIndex, setNuovoProdottoRigaIndex] = useState(null)
-  const [nuovoProdottoForm, setNuovoProdottoForm] = useState({ nome: '', sku: '', prezzo_acquisto: '', prezzo_vendita: '', quantita: 0 })
+  const [nuovoProdottoForm, setNuovoProdottoForm] = useState(emptyNuovoProdottoForm)
   const [nuovoProdottoError, setNuovoProdottoError] = useState('')
   const [nuovoProdottoSaving, setNuovoProdottoSaving] = useState(false)
+  const [skuGenerato, setSkuGenerato] = useState('')
+  const [categorie, setCategorie] = useState([])
+  const [ubicazioni, setUbicazioni] = useState([])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -63,7 +75,15 @@ export default function Forniture() {
   useEffect(() => {
     fornitoriAPI.getAll().then(r => setFornitori(r.data)).catch(() => {})
     prodottiAPI.getAll({ limit: 500 }).then(r => setProdotti(r.data)).catch(() => {})
+    categorieAPI.getAll().then(r => setCategorie(r.data)).catch(() => {})
+    ubicazioniAPI.getAll().then(r => setUbicazioni(r.data)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (nuovoProdottoForm.skuManuale) return
+    const gen = generateSKU(nuovoProdottoForm.nome, nuovoProdottoForm.stato_conservazione, nuovoProdottoForm.lingua)
+    setSkuGenerato(normalizeSkuForCode39(gen))
+  }, [nuovoProdottoForm.nome, nuovoProdottoForm.stato_conservazione, nuovoProdottoForm.lingua, nuovoProdottoForm.skuManuale])
 
   const handleSearch = () => {
     setPage(1)
@@ -91,6 +111,8 @@ export default function Forniture() {
     setShowModal(false)
     setFormError('')
     setNuovoProdottoRigaIndex(null)
+    setNuovoProdottoForm({ ...emptyNuovoProdottoForm })
+    setSkuGenerato('')
     setNuovoProdottoError('')
   }
 
@@ -121,20 +143,31 @@ export default function Forniture() {
 
   const totaleFornitura = form.righe.reduce((acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)), 0)
 
-  const generaSKU = (nome) => nome.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 20).replace(/-$/, '')
-
   const handleSalvaNuovoProdotto = async (rigaIndex) => {
     setNuovoProdottoError('')
-    if (!nuovoProdottoForm.nome.trim()) { setNuovoProdottoError('Il nome è obbligatorio'); return }
-    if (!nuovoProdottoForm.sku.trim()) { setNuovoProdottoError('Lo SKU è obbligatorio'); return }
+    if (!nuovoProdottoForm.nome.trim()) {
+      setNuovoProdottoError('Il nome è obbligatorio')
+      return
+    }
+    const skuFinale = nuovoProdottoForm.skuManuale ? nuovoProdottoForm.skuManualeValore : skuGenerato
+    if (!skuFinale || !skuFinale.trim()) {
+      setNuovoProdottoError('SKU non disponibile: inserisci un nome oppure attiva SKU manuale e inseriscilo manualmente')
+      return
+    }
     setNuovoProdottoSaving(true)
     try {
       const res = await prodottiAPI.create({
         nome: nuovoProdottoForm.nome.trim(),
-        sku: nuovoProdottoForm.sku.trim(),
+        descrizione: nuovoProdottoForm.descrizione.trim() || null,
+        sku: skuFinale.trim(),
+        stato_conservazione: nuovoProdottoForm.stato_conservazione || null,
+        lingua: nuovoProdottoForm.lingua || null,
+        categoria_id: nuovoProdottoForm.categoria_id ? parseInt(nuovoProdottoForm.categoria_id) : null,
+        ubicazione_id: nuovoProdottoForm.ubicazione_id ? parseInt(nuovoProdottoForm.ubicazione_id) : null,
+        quantita: parseInt(nuovoProdottoForm.quantita) || 0,
+        quantita_minima: parseInt(nuovoProdottoForm.quantita_minima) || 0,
         prezzo_acquisto: nuovoProdottoForm.prezzo_acquisto ? parseFloat(nuovoProdottoForm.prezzo_acquisto) : null,
         prezzo_vendita: nuovoProdottoForm.prezzo_vendita ? parseFloat(nuovoProdottoForm.prezzo_vendita) : null,
-        quantita: parseInt(nuovoProdottoForm.quantita) || 0,
       })
       const nuovoProdotto = res.data
       setProdotti(prev => [...prev, nuovoProdotto])
@@ -148,7 +181,8 @@ export default function Forniture() {
         return { ...prev, righe }
       })
       setNuovoProdottoRigaIndex(null)
-      setNuovoProdottoForm({ nome: '', sku: '', prezzo_acquisto: '', prezzo_vendita: '', quantita: 0 })
+      setNuovoProdottoForm({ ...emptyNuovoProdottoForm })
+      setSkuGenerato('')
     } catch (err) {
       setNuovoProdottoError(err?.response?.data?.detail || 'Errore nella creazione del prodotto')
     } finally {
@@ -392,7 +426,8 @@ export default function Forniture() {
                             type="button"
                             onClick={() => {
                               setNuovoProdottoRigaIndex(i)
-                              setNuovoProdottoForm({ nome: '', sku: '', prezzo_acquisto: '', prezzo_vendita: '', quantita: 0 })
+                              setNuovoProdottoForm({ ...emptyNuovoProdottoForm })
+                              setSkuGenerato('')
                               setNuovoProdottoError('')
                             }}
                             style={{ padding: '6px 10px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#2e7d32' }}
@@ -402,81 +437,8 @@ export default function Forniture() {
                           </button>
                         </div>
                         {nuovoProdottoRigaIndex === i && (
-                          <div style={{ border: '1px solid #a5d6a7', borderRadius: '8px', padding: '12px', backgroundColor: '#f1f8e9' }}>
-                            <div style={{ fontWeight: 600, marginBottom: '8px', color: '#2e7d32', fontSize: '0.9rem' }}>🆕 Crea nuovo prodotto</div>
-                            {nuovoProdottoError && (
-                              <div style={{ color: '#c62828', background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '4px', padding: '6px 10px', marginBottom: '8px', fontSize: '0.83rem' }}>
-                                {nuovoProdottoError}
-                              </div>
-                            )}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
-                                Nome *
-                                <input
-                                  value={nuovoProdottoForm.nome}
-                                  onChange={e => {
-                                    const nome = e.target.value
-                                    setNuovoProdottoForm(prev => ({
-                                      ...prev,
-                                      nome,
-                                      sku: prev.sku || generaSKU(nome),
-                                    }))
-                                  }}
-                                  placeholder="Nome prodotto"
-                                  className={styles.formInput}
-                                  style={{ padding: '6px' }}
-                                />
-                              </label>
-                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
-                                SKU *
-                                <input
-                                  value={nuovoProdottoForm.sku}
-                                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, sku: e.target.value }))}
-                                  placeholder="Es. PROD-001"
-                                  className={styles.formInput}
-                                  style={{ padding: '6px' }}
-                                />
-                              </label>
-                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
-                                Prezzo acquisto (€)
-                                <input
-                                  type="number" min="0" step="0.01"
-                                  value={nuovoProdottoForm.prezzo_acquisto}
-                                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, prezzo_acquisto: e.target.value }))}
-                                  placeholder="0.00"
-                                  className={styles.formInput}
-                                  style={{ padding: '6px' }}
-                                />
-                              </label>
-                              <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.83rem' }}>
-                                Prezzo vendita (€)
-                                <input
-                                  type="number" min="0" step="0.01"
-                                  value={nuovoProdottoForm.prezzo_vendita}
-                                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, prezzo_vendita: e.target.value }))}
-                                  placeholder="0.00"
-                                  className={styles.formInput}
-                                  style={{ padding: '6px' }}
-                                />
-                              </label>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleSalvaNuovoProdotto(i)}
-                                disabled={nuovoProdottoSaving}
-                                style={{ padding: '6px 14px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
-                              >
-                                {nuovoProdottoSaving ? 'Salvataggio...' : '✔ Salva prodotto'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => { setNuovoProdottoRigaIndex(null); setNuovoProdottoError('') }}
-                                style={{ padding: '6px 12px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}
-                              >
-                                Annulla
-                              </button>
-                            </div>
+                          <div style={{ fontSize: '0.8rem', color: '#2e7d32', fontStyle: 'italic' }}>
+                            Compilare il form nel pannello sopra...
                           </div>
                         )}
                       </div>
@@ -499,6 +461,173 @@ export default function Forniture() {
                 <button type="submit" disabled={submitting} className={styles.submitBtn}>{submitting ? 'Salvataggio...' : 'Crea Fornitura'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Nuovo Prodotto Modal */}
+      {nuovoProdottoRigaIndex !== null && (
+        <div className={styles.modalOverlay} style={{ zIndex: 1100 }}>
+          <div className={styles.modal} style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 className={styles.modalTitle}>🆕 Nuovo prodotto</h2>
+            {nuovoProdottoError && (
+              <div className={styles.modalError}>{nuovoProdottoError}</div>
+            )}
+            <div className={styles.formGrid}>
+              <div className={styles.formField} style={{ gridColumn: '1 / -1' }}>
+                <label>Nome prodotto *</label>
+                <input
+                  value={nuovoProdottoForm.nome}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, nome: e.target.value }))}
+                  placeholder="Nome prodotto"
+                  className={styles.formInput}
+                />
+              </div>
+              <div className={styles.formField} style={{ gridColumn: '1 / -1' }}>
+                <label>Descrizione</label>
+                <textarea
+                  value={nuovoProdottoForm.descrizione}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, descrizione: e.target.value }))}
+                  placeholder="Descrizione opzionale..."
+                  className={styles.formInput}
+                  rows={2}
+                />
+              </div>
+              <div className={styles.formField}>
+                <label>Stato di conservazione</label>
+                <select
+                  value={nuovoProdottoForm.stato_conservazione}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, stato_conservazione: e.target.value }))}
+                  className={styles.formSelect}
+                >
+                  <option value="">— Seleziona —</option>
+                  {Object.keys(STATO_MAP).map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value="Altro">Altro</option>
+                </select>
+              </div>
+              <div className={styles.formField}>
+                <label>Lingua</label>
+                <select
+                  value={nuovoProdottoForm.lingua}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, lingua: e.target.value }))}
+                  className={styles.formSelect}
+                >
+                  <option value="">— Seleziona —</option>
+                  {Object.keys(LINGUA_MAP).map(l => <option key={l} value={l}>{l}</option>)}
+                  <option value="Altra">Altra</option>
+                </select>
+              </div>
+              <div className={styles.formField}>
+                <label>Categoria</label>
+                <select
+                  value={nuovoProdottoForm.categoria_id}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, categoria_id: e.target.value }))}
+                  className={styles.formSelect}
+                >
+                  <option value="">— Nessuna categoria —</option>
+                  {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div className={styles.formField}>
+                <label>Ubicazione</label>
+                <select
+                  value={nuovoProdottoForm.ubicazione_id}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, ubicazione_id: e.target.value }))}
+                  className={styles.formSelect}
+                >
+                  <option value="">— Nessuna ubicazione —</option>
+                  {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                </select>
+              </div>
+              <div className={styles.formField}>
+                <label>Quantità</label>
+                <input
+                  type="number" min="0"
+                  value={nuovoProdottoForm.quantita}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, quantita: e.target.value }))}
+                  className={styles.formInput}
+                />
+              </div>
+              <div className={styles.formField}>
+                <label>Quantità minima</label>
+                <input
+                  type="number" min="0"
+                  value={nuovoProdottoForm.quantita_minima}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, quantita_minima: e.target.value }))}
+                  className={styles.formInput}
+                />
+              </div>
+              <div className={styles.formField}>
+                <label>Prezzo acquisto (€)</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={nuovoProdottoForm.prezzo_acquisto}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, prezzo_acquisto: e.target.value }))}
+                  placeholder="0.00"
+                  className={styles.formInput}
+                />
+              </div>
+              <div className={styles.formField}>
+                <label>Prezzo vendita (€)</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={nuovoProdottoForm.prezzo_vendita}
+                  onChange={e => setNuovoProdottoForm(prev => ({ ...prev, prezzo_vendita: e.target.value }))}
+                  placeholder="0.00"
+                  className={styles.formInput}
+                />
+              </div>
+              <div className={styles.formField} style={{ gridColumn: '1 / -1' }}>
+                <label>SKU generato automaticamente</label>
+                {!nuovoProdottoForm.skuManuale ? (
+                  <input
+                    value={skuGenerato}
+                    readOnly
+                    placeholder="Verrà generato da nome, stato e lingua..."
+                    className={styles.formInput}
+                    style={{ backgroundColor: '#f5f5f5', color: skuGenerato ? '#1b5e20' : '#999', fontWeight: skuGenerato ? 600 : 400 }}
+                  />
+                ) : (
+                  <input
+                    value={nuovoProdottoForm.skuManualeValore}
+                    onChange={e => setNuovoProdottoForm(prev => ({ ...prev, skuManualeValore: e.target.value }))}
+                    placeholder="Inserisci SKU manuale..."
+                    className={styles.formInput}
+                  />
+                )}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={nuovoProdottoForm.skuManuale}
+                    onChange={e => setNuovoProdottoForm(prev => ({ ...prev, skuManuale: e.target.checked, skuManualeValore: '' }))}
+                  />
+                  SKU manuale
+                </label>
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                onClick={() => {
+                  setNuovoProdottoRigaIndex(null)
+                  setNuovoProdottoForm({ ...emptyNuovoProdottoForm })
+                  setSkuGenerato('')
+                  setNuovoProdottoError('')
+                }}
+                className={styles.cancelBtn}
+                disabled={nuovoProdottoSaving}
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSalvaNuovoProdotto(nuovoProdottoRigaIndex)}
+                disabled={nuovoProdottoSaving}
+                className={styles.submitBtn}
+              >
+                {nuovoProdottoSaving ? 'Salvataggio...' : '✔ Salva prodotto'}
+              </button>
+            </div>
           </div>
         </div>
       )}

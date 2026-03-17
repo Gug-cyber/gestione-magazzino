@@ -5,31 +5,7 @@ import BarcodeScanner from '../components/BarcodeScanner'
 import { useIsMobile } from '../hooks/useIsMobile'
 import JsBarcode from 'jsbarcode'
 import { normalizeSkuForCode39 } from '../utils/formatters'
-
-function generateSKU(nome, statoConservazione, lingua) {
-  const parenMatch = nome.match(/\(([^)]+)\)/)
-  const parenCode = parenMatch
-    ? parenMatch[1].replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toUpperCase()
-    : null
-
-  const nomePulito = nome.replace(/\([^)]*\)/g, '').replace(/[^a-zA-Z0-9 ]/g, '').trim()
-  const prefix = nomePulito.replace(/\s+/g, '').substring(0, 3).toUpperCase()
-
-  const statoMap = {
-    'Mint': 'MT', 'Near Mint': 'NM', 'Excellent': 'EX',
-    'Good': 'GD', 'Light Played': 'LP', 'Played': 'PL', 'Poor': 'PO',
-  }
-  const statoCode = statoMap[statoConservazione] || null
-
-  const linguaMap = {
-    'Italiano': 'IT', 'Inglese': 'EN', 'Giapponese': 'JP',
-    'Cinese': 'CN', 'Coreano': 'KR',
-  }
-  const linguaCode = linguaMap[lingua] || null
-
-  const parts = [prefix, parenCode, statoCode, linguaCode].filter(Boolean)
-  return parts.join('-')
-}
+import { generateSKU } from '../utils/skuGenerator'
 
 function BarcodeCanvas({ value, canvasRef: extRef }) {
   const localRef = useRef(null)
