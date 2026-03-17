@@ -106,10 +106,15 @@ function BarcodeScanner({ onScan, onClose }) {
       setError('')
 
       const config = {
-        fps: 15,
+        fps: 20,
         qrbox: QRBOX,
         aspectRatio: 1.777778,
         formatsToSupport: FORMATS_TO_SUPPORT,
+        videoConstraints: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true,
         },
@@ -129,7 +134,7 @@ function BarcodeScanner({ onScan, onClose }) {
         }
 
         stopScanning()
-        onScan(decodedText)
+        onScan(decodedText.trim())
         onClose()
       }
 

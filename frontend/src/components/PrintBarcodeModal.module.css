@@ -70,72 +70,48 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
 }
 
 .label {
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 8px 6px;
-  text-align: center;
-  background: white;
-  page-break-inside: avoid;
-  break-inside: avoid;
-  height: 140px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  font-size: 9px;
   overflow: hidden;
+  background: white;
+  width: 90px;
+  min-height: 60px;
 }
 
 .labelName {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #1a237e;
-  margin-bottom: 1px;
+  font-weight: bold;
+  font-size: 8px;
+  text-align: center;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  width: 100%;
 }
 
 .labelSku {
-  font-size: 0.7rem;
+  font-size: 7px;
   color: #666;
-  margin-bottom: 2px;
-  font-family: monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
+  text-align: center;
 }
 
-/* Barcode area fills available vertical space */
 .labelBarcode {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  overflow: hidden;
-  min-height: 0;
-}
-
-/* Force uniform height on all barcode SVGs in the preview */
-.labelBarcode svg {
-  width: 100% !important;
-  height: 52px !important;
-  max-width: 100%;
-  display: block;
+  height: auto;
 }
 
 .labelValue {
-  font-size: 0.62rem;
-  color: #333;
   font-family: monospace;
-  word-break: break-all;
-  margin-top: 2px;
+  font-size: 7px;
+  text-align: center;
 }
 
