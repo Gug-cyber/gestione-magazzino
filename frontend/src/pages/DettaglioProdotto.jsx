@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
+import BarcodeDisplay from '../components/BarcodeDisplay'
+import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 
 function QuantitaChart({ storico }) {
@@ -105,6 +107,9 @@ function DettaglioProdotto() {
   const [ubicazioni, setUbicazioni] = useState([])
   const [uploadingFoto, setUploadingFoto] = useState(false)
   const [fotoError, setFotoError] = useState('')
+  const [generatingBarcode, setGeneratingBarcode] = useState(false)
+  const [barcodeError, setBarcodeError] = useState('')
+  const [showPrintModal, setShowPrintModal] = useState(false)
   const fotoInputRef = useRef(null)
 
   const loadScheda = () => {
@@ -172,6 +177,19 @@ function DettaglioProdotto() {
       navigate('/prodotti')
     } catch (err) {
       setError(err.response?.data?.detail || 'Errore durante l\'eliminazione')
+    }
+  }
+
+  const handleGenerateBarcode = async () => {
+    setGeneratingBarcode(true)
+    setBarcodeError('')
+    try {
+      await prodottiAPI.generateBarcode(id)
+      loadScheda()
+    } catch (err) {
+      setBarcodeError(err.response?.data?.detail || 'Errore nella generazione del barcode')
+    } finally {
+      setGeneratingBarcode(false)
     }
   }
 
@@ -508,6 +526,39 @@ function DettaglioProdotto() {
         )}
       </div>
 
+      {/* Sezione Barcode */}
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔖 Codice a Barre</h2>
+        {barcodeError && <div style={{ color: 'red', marginBottom: 8, fontSize: '0.9rem' }}>{barcodeError}</div>}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {prodotto.barcode ? (
+            <div>
+              <BarcodeDisplay value={prodotto.barcode} productName={prodotto.nome} width={2} height={60} />
+              <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#555', fontFamily: 'monospace', textAlign: 'center' }}>{prodotto.barcode}</div>
+            </div>
+          ) : (
+            <div style={{ color: '#aaa', fontStyle: 'italic', fontSize: '0.9rem', padding: '8px 0' }}>
+              Nessun barcode generato
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              onClick={handleGenerateBarcode}
+              disabled={generatingBarcode}
+              style={{ ...btnStyle(PRIMARY_COLOR), opacity: generatingBarcode ? 0.6 : 1, cursor: generatingBarcode ? 'not-allowed' : 'pointer' }}
+            >
+              {generatingBarcode ? '⏳ Generazione...' : prodotto.barcode ? '🔄 Rigenera Barcode' : '🔖 Genera Barcode'}
+            </button>
+            {prodotto.barcode && (
+              <button
+                onClick={() => setShowPrintModal(true)}
+                style={btnStyle('#1565c0')}
+              >🖨️ Stampa Barcode</button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Prodotti correlati */}
       {prodotti_correlati.length > 0 && (
         <div style={{ ...cardStyle, marginBottom: 24 }}>
@@ -542,6 +593,13 @@ function DettaglioProdotto() {
             ))}
           </div>
         </div>
+      )}
+
+      {showPrintModal && (
+        <PrintBarcodeModal
+          prodotti={[prodotto]}
+          onClose={() => setShowPrintModal(false)}
+        />
       )}
     </div>
   )

@@ -17,6 +17,7 @@ from ..models.movimento import Movimento, TipoMovimento
 from ..models.ordine import RigaOrdine
 from ..models.fornitura import RigaFornitura
 from ..models.prodotto import Prodotto
+from ..barcode_utils import generate_barcode_svg
 router = APIRouter()
 
 
@@ -165,6 +166,63 @@ def fix_movimenti_iniziali(
         "prodotti_saltati": skipped_count,
         "dettaglio": f"Creati {fixed_count} movimenti di carico iniziali mancanti",
     }
+
+
+@router.get("/barcode/{barcode_value}", response_model=ProdottoResponse)
+def lookup_by_barcode(
+    barcode_value: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Cerca un prodotto per valore barcode. Fallback su SKU e SKU normalizzato."""
+    from ..barcode_utils import normalize_for_code39
+    db_prodotto = crud.get_prodotto_by_barcode(db, barcode_value)
+    if not db_prodotto:
+        # Fallback: cerca per SKU esatto
+        db_prodotto = crud.get_prodotto_by_sku(db, barcode_value)
+    if not db_prodotto:
+        # Fallback: cerca per SKU normalizzato
+        normalized = normalize_for_code39(barcode_value)
+        if normalized:
+            db_prodotto = crud.get_prodotto_by_sku(db, normalized)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato per questo barcode")
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
+
+
+@router.post("/barcodes/bulk-generate")
+def bulk_generate_barcodes(
+    body: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Genera barcode per più prodotti in una sola richiesta.
+    Body: { "prodotto_ids": [1, 2, 3] } oppure { "all": true }
+    """
+    if body.get("all"):
+        prodotti_da_aggiornare = (
+            db.query(Prodotto).filter(Prodotto.barcode.is_(None)).all()
+        )
+        prodotto_ids = [p.id for p in prodotti_da_aggiornare]
+    else:
+        prodotto_ids = body.get("prodotto_ids", [])
+
+    generated = 0
+    result_prodotti = []
+    for pid in prodotto_ids:
+        db_prodotto = crud.generate_barcode_for_prodotto(db, pid)
+        if db_prodotto:
+            d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+            d["foto_url"] = _build_foto_url(db_prodotto, request)
+            result_prodotti.append(d)
+            generated += 1
+
+    return {"generated": generated, "prodotti": result_prodotti}
 
 
 @router.get("/{prodotto_id}/scheda")
@@ -390,6 +448,44 @@ def get_foto_prodotto(
     if not os.path.exists(db_prodotto.foto_path):
         raise HTTPException(status_code=404, detail="File foto non trovato")
     return FileResponse(db_prodotto.foto_path)
+
+
+@router.post("/{prodotto_id}/barcode", response_model=ProdottoResponse)
+def generate_barcode(
+    prodotto_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Genera (o rigenera) il barcode per il prodotto specificato."""
+    db_prodotto = crud.generate_barcode_for_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
+
+
+@router.get("/{prodotto_id}/barcode/image")
+def get_barcode_image(
+    prodotto_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Restituisce l'immagine SVG del barcode per il prodotto."""
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    if not db_prodotto.barcode:
+        raise HTTPException(status_code=404, detail="Barcode non ancora generato per questo prodotto")
+
+    svg_content = generate_barcode_svg(db_prodotto.barcode)
+    if svg_content is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Generazione immagine non disponibile lato server. Usa la visualizzazione client-side.",
+        )
+    return Response(content=svg_content, media_type="image/svg+xml")
 
 
 @router.post("/import/csv")
