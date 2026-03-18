@@ -197,7 +197,10 @@ export default function Ordini() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <h1 className={styles.title}>🛒 Ordini</h1>
+        <div>
+          <h1 className={styles.title}>🛒 Ordini di Vendita</h1>
+          <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Gestisci le vendite al cliente</p>
+        </div>
         <button onClick={() => navigate('/ordini/nuovo')} className={styles.newBtn}>+ Nuovo Ordine</button>
       </div>
 

@@ -6,6 +6,7 @@ import BarcodeDisplay from '../components/BarcodeDisplay'
 import QRCodeDisplay from '../components/QRCodeDisplay'
 import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
+import QRCode from 'qrcode'
 
 function QuantitaChart({ storico }) {
   if (!storico || storico.length === 0) {
@@ -527,9 +528,9 @@ function DettaglioProdotto() {
         )}
       </div>
 
-      {/* Sezione Barcode */}
+      {/* Sezione Codici & Etichette */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔖 Codice a Barre</h2>
+        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔖 Codici &amp; Etichette</h2>
         {barcodeError && <div style={{ color: 'red', marginBottom: 8, fontSize: '0.9rem' }}>{barcodeError}</div>}
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           {prodotto.barcode ? (
@@ -559,6 +560,27 @@ function DettaglioProdotto() {
               onClick={() => setShowPrintModal(true)}
               style={btnStyle('#1565c0')}
             >🖨️ Stampa Etichetta</button>
+            <button
+              onClick={() => {
+                const canvas = document.createElement('canvas')
+                QRCode.toCanvas(canvas, `prodotto:${prodotto.id}`, { width: 256, margin: 2 }, (err) => {
+                  if (err) {
+                    alert('Errore nella generazione del QR code.')
+                    return
+                  }
+                  const win = window.open('', '_blank')
+                  if (!win) {
+                    alert('Il popup è stato bloccato dal browser. Consenti i popup per questa pagina e riprova.')
+                    return
+                  }
+                  win.document.write(`<html><head><title>QR - ${prodotto.nome}</title></head><body style="display:flex;align-items:center;justify-content:center;padding:32px;font-family:sans-serif"><div style="text-align:center"><img src="${canvas.toDataURL()}" style="width:200px;height:200px"><p style="margin-top:12px;font-size:14px;color:#555">${prodotto.nome}</p><p style="font-size:11px;color:#888;font-family:monospace">prodotto:${prodotto.id}</p></div></body></html>`)
+                  win.document.close()
+                  win.focus()
+                  setTimeout(() => win.print(), 500)
+                })
+              }}
+              style={btnStyle('#7c3aed')}
+            >🖨️ Stampa QR</button>
           </div>
         </div>
       </div>

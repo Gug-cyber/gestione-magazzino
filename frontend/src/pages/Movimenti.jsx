@@ -75,7 +75,10 @@ function Movimenti() {
   return (
     <div>
       <div className={styles.header}>
-        <h1 className={styles.title}>🔄 Movimenti</h1>
+        <div>
+          <h1 className={styles.title}>🔄 Movimenti di Magazzino</h1>
+          <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Storico carico e scarico merce</p>
+        </div>
         <div className={styles.toolbar}>
           <input
             type="text"

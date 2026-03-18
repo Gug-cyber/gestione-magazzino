@@ -155,7 +155,10 @@ function Prodotti() {
   return (
     <div>
       <div className={styles.header}>
-        <h1 className={styles.title}>📦 Prodotti</h1>
+        <div>
+          <h1 className={styles.title}>📦 Catalogo Prodotti</h1>
+          <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Inventario collectibles, TCG e articoli specializzati</p>
+        </div>
         <div className={styles.toolbar}>
           <div className={styles.searchBar}>
             <input
