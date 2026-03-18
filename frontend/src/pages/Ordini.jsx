@@ -373,7 +373,7 @@ export default function Ordini() {
                 <div key={i} className={styles.rigaRow}>
                   <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect}>
                     <option value="">— Seleziona prodotto —</option>
-                    {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (disp: {p.quantita})</option>)}
+                    {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} — SKU: {p.sku} (disp: {p.quantita})</option>)}
                   </select>
                   <button
                     type="button"
