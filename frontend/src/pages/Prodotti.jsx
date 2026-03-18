@@ -111,6 +111,11 @@ function Prodotti() {
     setShowPrintModal(true)
   }
 
+  const openPrintLabel = (prodotto) => {
+    setPrintProdotti([prodotto])
+    setShowPrintModal(true)
+  }
+
   const openPrintAll = async () => {
     setIsPrintLoading(true)
     try {
@@ -269,6 +274,7 @@ function Prodotti() {
                 </div>
                 <div className={styles.cardActions}>
                   <button onClick={() => navigate(`/prodotti/${p.id}`)} className={styles.actionBtn} title="Scheda dettaglio">🔍</button>
+                  <button onClick={() => openPrintLabel(p)} className={styles.actionBtn} title="Stampa etichetta">🖨️</button>
                 </div>
               </div>
               <div className={styles.cardRow}>
@@ -316,7 +322,7 @@ function Prodotti() {
                     style={{ cursor: 'pointer' }}
                   />
                 </th>
-                {['ID', 'Foto', 'Nome', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Barcode', 'Conservazione', 'Lingua', 'Azioni'].map(h => (
+                {['ID', 'Foto', 'Nome', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Barcode', 'Conservazione', 'Lingua', 'Azioni', 'Etichetta'].map(h => (
                   <th key={h} className={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -324,7 +330,7 @@ function Prodotti() {
             <tbody>
               {prodotti.length === 0 ? (
                 <tr className={styles.trEmpty}>
-                  <td colSpan={12}>
+                  <td colSpan={13}>
                     {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
                   </td>
                 </tr>
@@ -376,6 +382,13 @@ function Prodotti() {
                       className={styles.actionBtn}
                       title="Scheda dettaglio"
                     >🔍</button>
+                  </td>
+                  <td className={styles.td}>
+                    <button
+                      onClick={() => openPrintLabel(p)}
+                      className={styles.actionBtn}
+                      title="Stampa etichetta"
+                    >🖨️</button>
                   </td>
                 </tr>
               ))}

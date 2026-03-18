@@ -476,9 +476,9 @@ export default function Forniture() {
                     ) : (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect} style={{ flex: 1 }}>
+                          <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect} style={{ flex: 1, minWidth: 0 }}>
                             <option value="">— Seleziona prodotto —</option>
-                            {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>)}
+                            {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                           </select>
                           <button
                             type="button"
@@ -502,6 +502,14 @@ export default function Forniture() {
                             ＋ Nuovo
                           </button>
                         </div>
+                        {riga.prodotto_id && (() => {
+                          const sel = prodotti.find(p => String(p.id) === String(riga.prodotto_id))
+                          return sel ? (
+                            <div style={{ fontSize: '0.78rem', color: '#555', fontFamily: 'monospace', paddingLeft: '4px' }}>
+                              SKU: {sel.sku} | Disp: {sel.quantita}
+                            </div>
+                          ) : null
+                        })()}
                         {nuovoProdottoRigaIndex === i && (
                           <div style={{ fontSize: '0.8rem', color: '#2e7d32', fontStyle: 'italic' }}>
                             Compilare il form nel pannello sopra...
