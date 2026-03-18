@@ -2,55 +2,113 @@ import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-const baseLinks = [
-  { to: '/', label: '📊 Dashboard' },
-  { to: '/analisi', label: '📈 Analisi' },
-  { to: '/ordini', label: '🛒 Ordini' },
-  { to: '/prodotti', label: '📦 Prodotti' },
-  { to: '/clienti', label: '👥 Clienti' },
-  { to: '/movimenti', label: '🔄 Movimenti' },
-  { to: '/fatture', label: '🧾 Fatture' },
-  { to: '/fornitori', label: '🏢 Fornitori' },
-  { to: '/forniture', label: '🚚 Forniture' },
-  { to: '/ubicazioni', label: '📍 Ubicazioni' },
-  { to: '/categorie', label: '🏷️ Categorie' },
+const sectionLabelStyle = {
+  display: 'block',
+  padding: '16px 16px 4px',
+  fontSize: '0.68rem',
+  fontWeight: '700',
+  letterSpacing: '0.1em',
+  color: '#94a3b8',
+  textTransform: 'uppercase',
+  userSelect: 'none',
+}
+
+const BASE_SECTIONS = [
+  {
+    label: '📊 Panoramica',
+    links: [
+      { to: '/', label: '📊 Dashboard', end: true },
+      { to: '/analisi', label: '📈 Analisi' },
+    ],
+  },
+  {
+    label: '📦 Catalogo',
+    links: [
+      { to: '/prodotti', label: '📦 Prodotti' },
+      { to: '/categorie', label: '🏷️ Categorie' },
+      { to: '/ubicazioni', label: '📍 Ubicazioni' },
+    ],
+  },
+  {
+    label: '🛒 Vendite',
+    links: [
+      { to: '/ordini', label: '🛒 Ordini' },
+      { to: '/clienti', label: '👥 Clienti' },
+      { to: '/fatture', label: '🧾 Fatture' },
+    ],
+  },
+  {
+    label: '🚚 Acquisti',
+    links: [
+      { to: '/fornitori', label: '🏢 Fornitori' },
+      { to: '/forniture', label: '🚚 Forniture' },
+    ],
+  },
+  {
+    label: '🏭 Magazzino',
+    links: [
+      { to: '/movimenti', label: '🔄 Movimenti' },
+      { to: '/barcode/scanner', label: '📷 Scanner' },
+    ],
+  },
+]
+
+const SISTEMA_LINKS_BASE = [
+  { to: '/profilo', label: '👤 Profilo' },
+  { to: '/cardtrader', label: '🃏 CardTrader' },
 ]
 
 function NavLinks({ onLinkClick }) {
   const { user } = useAuth()
   const [hoveredTo, setHoveredTo] = useState(null)
-  const links = user?.is_admin
-    ? [...baseLinks, { to: '/amministrazione', label: '⚙️ Amministrazione' }]
-    : baseLinks
-  return links.map(({ to, label }) => (
-    <NavLink
-      key={to}
-      to={to}
-      end={to === '/'}
-      onClick={onLinkClick}
-      onMouseEnter={() => setHoveredTo(to)}
-      onMouseLeave={() => setHoveredTo(null)}
-      style={({ isActive }) => ({
-        display: 'block',
-        padding: '12px 24px',
-        color: isActive ? '#a5b4fc' : 'rgba(255,255,255,0.72)',
-        textDecoration: 'none',
-        backgroundColor: isActive
-          ? 'rgba(165,180,252,0.15)'
-          : hoveredTo === to
-            ? 'rgba(255,255,255,0.07)'
-            : 'transparent',
-        borderLeft: isActive ? '4px solid #6366f1' : '4px solid transparent',
-        borderRadius: '0 8px 8px 0',
-        marginRight: '8px',
-        fontWeight: isActive ? '600' : 'normal',
-        fontSize: '0.92rem',
-        transition: 'all 0.2s',
-      })}
-    >
-      {label}
-    </NavLink>
-  ))
+
+  const sistemaLinks = user?.is_admin
+    ? [{ to: '/amministrazione', label: '⚙️ Amministrazione' }, ...SISTEMA_LINKS_BASE]
+    : SISTEMA_LINKS_BASE
+
+  const sections = [
+    ...BASE_SECTIONS,
+    { label: '⚙️ Sistema', links: sistemaLinks },
+  ]
+
+  return (
+    <div>
+      {sections.map((section) => (
+        <div key={section.label}>
+          <span style={sectionLabelStyle}>{section.label}</span>
+          {section.links.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              onClick={onLinkClick}
+              onMouseEnter={() => setHoveredTo(to)}
+              onMouseLeave={() => setHoveredTo(null)}
+              style={({ isActive }) => ({
+                display: 'block',
+                padding: '9px 16px 9px 20px',
+                color: isActive ? '#ffffff' : 'rgba(255,255,255,0.72)',
+                textDecoration: 'none',
+                backgroundColor: isActive
+                  ? 'rgba(99,102,241,0.35)'
+                  : hoveredTo === to
+                    ? 'rgba(255,255,255,0.07)'
+                    : 'transparent',
+                borderLeft: isActive ? '3px solid #818cf8' : '3px solid transparent',
+                borderRadius: '0 8px 8px 0',
+                marginRight: '8px',
+                fontWeight: isActive ? '600' : '400',
+                fontSize: '0.875rem',
+                transition: 'all 0.15s ease',
+              })}
+            >
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function Sidebar({ isOpen, onClose }) {

@@ -280,7 +280,10 @@ export default function Forniture() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <h1 className={styles.title}>🚚 Forniture</h1>
+        <div>
+          <h1 className={styles.title}>🚚 Forniture &amp; Approvvigionamenti</h1>
+          <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Traccia gli acquisti dai fornitori</p>
+        </div>
         <button onClick={openNewModal} className={styles.newBtn}>+ Nuova Fornitura</button>
       </div>
 
