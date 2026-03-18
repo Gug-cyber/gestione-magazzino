@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_ORDINE_COLORS } from '../constants/colors'
 import { CORRIERI } from '../constants/corrieri'
-import { formatDate, formatCurrency } from '../utils/formatters'
+import { formatDate, formatCurrency, normalizeSkuForCode39 } from '../utils/formatters'
+import BarcodeScanner from '../components/BarcodeScanner'
 import styles from './Ordini.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
@@ -30,6 +31,12 @@ export default function Ordini() {
   const [trackingModal, setTrackingModal] = useState(null)
   const [trackingForm, setTrackingForm] = useState({ corriere: '', tracking_number: '' })
   const [trackingLoading, setTrackingLoading] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const [scannerRigaIndex, setScannerRigaIndex] = useState(null)
+  const [scanError, setScanError] = useState('')
+  const scanErrorTimerRef = useRef(null)
+
+  useEffect(() => () => { if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current) }, [])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -75,6 +82,35 @@ export default function Ordini() {
     setFiltroStato('')
     setPage(1)
     fetchOrdini({ page: 1 })
+  }
+
+  const handleScan = (value) => {
+    setShowScanner(false)
+    if (scannerRigaIndex !== null) {
+      let prodotto = null
+      if (/^prodotto:\d+$/i.test(value)) {
+        const id = parseInt(value.split(':')[1])
+        prodotto = prodotti.find(p => p.id === id)
+      }
+      if (!prodotto) {
+        const normalized = normalizeSkuForCode39(value)
+        prodotto = prodotti.find(p =>
+          p.barcode === value || p.sku === value || p.sku === normalized
+        )
+      }
+      if (prodotto) {
+        handleRigaChange(scannerRigaIndex, 'prodotto_id', String(prodotto.id))
+      } else {
+        setScanError(`Prodotto non trovato per il codice: "${value}"`)
+        if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
+        scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+      }
+      setScannerRigaIndex(null)
+    } else {
+      setSearch(value)
+      fetchOrdini({ search: value, page: 1 })
+      setPage(1)
+    }
   }
 
   const openNewModal = () => {
@@ -180,6 +216,13 @@ export default function Ordini() {
           placeholder="Cerca per N° ordine o cliente..."
           className={styles.filterInput}
         />
+        <button
+          type="button"
+          onClick={() => { setScannerRigaIndex(null); setShowScanner(true) }}
+          title="Scansiona QR / barcode per cercare"
+          className={styles.searchBtn}
+          style={{ padding: '0 12px' }}
+        >📷</button>
         <select value={filtroStato} onChange={e => setFiltroStato(e.target.value)} className={styles.filterSelect}>
           <option value="">Tutti gli stati</option>
           {STATI.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
@@ -311,12 +354,20 @@ export default function Ordini() {
                 </div>
               </div>
               <h3 className={styles.modalTitle} style={{ fontSize: '1rem', marginBottom: '12px' }}>Prodotti</h3>
+              {scanError && <div className={styles.modalError}>{scanError}</div>}
               {form.righe.map((riga, i) => (
                 <div key={i} className={styles.rigaRow}>
                   <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect}>
                     <option value="">— Seleziona prodotto —</option>
                     {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (disp: {p.quantita})</option>)}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => { setScannerRigaIndex(i); setShowScanner(true) }}
+                    title="Scansiona QR / barcode per selezionare prodotto"
+                    className={styles.formSelect}
+                    style={{ flex: '0 0 auto', padding: '0 10px', cursor: 'pointer' }}
+                  >📷</button>
                   <input type="number" min="1" value={riga.quantita} onChange={e => handleRigaChange(i, 'quantita', e.target.value)} placeholder="Qtà" className={styles.formInput} />
                   <input type="number" min="0" step="0.01" value={riga.prezzo_unitario} onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)} placeholder="Prezzo" className={styles.formInput} />
                   <button type="button" onClick={() => removeRiga(i)} disabled={form.righe.length === 1} className={styles.removeRigaBtn} style={{ opacity: form.righe.length === 1 ? 0.3 : 1, cursor: form.righe.length === 1 ? 'not-allowed' : 'pointer' }}>🗑️</button>
@@ -374,6 +425,9 @@ export default function Ordini() {
             </div>
           </div>
         </div>
+      )}
+      {showScanner && (
+        <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fornitureAPI, fornitoriAPI, prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
@@ -7,6 +7,7 @@ import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency } from '../utils/formatters'
 import { generateSKU, STATO_MAP, LINGUA_MAP } from '../utils/skuGenerator'
 import { normalizeSkuForCode39 } from '../utils/formatters'
+import BarcodeScanner from '../components/BarcodeScanner'
 import styles from './Forniture.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'ricevuto', 'annullato']
@@ -46,6 +47,12 @@ export default function Forniture() {
   const [skuGenerato, setSkuGenerato] = useState('')
   const [categorie, setCategorie] = useState([])
   const [ubicazioni, setUbicazioni] = useState([])
+  const [showScanner, setShowScanner] = useState(false)
+  const [scannerRigaIndex, setScannerRigaIndex] = useState(null)
+  const [scanError, setScanError] = useState('')
+  const scanErrorTimerRef = useRef(null)
+
+  useEffect(() => () => { if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current) }, [])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -99,6 +106,35 @@ export default function Forniture() {
     setFiltroStato('')
     setPage(1)
     fetchForniture({ page: 1 })
+  }
+
+  const handleScan = (value) => {
+    setShowScanner(false)
+    if (scannerRigaIndex !== null) {
+      let prodotto = null
+      if (/^prodotto:\d+$/i.test(value)) {
+        const id = parseInt(value.split(':')[1])
+        prodotto = prodotti.find(p => p.id === id)
+      }
+      if (!prodotto) {
+        const normalized = normalizeSkuForCode39(value)
+        prodotto = prodotti.find(p =>
+          p.barcode === value || p.sku === value || p.sku === normalized
+        )
+      }
+      if (prodotto) {
+        handleRigaChange(scannerRigaIndex, 'prodotto_id', String(prodotto.id))
+      } else {
+        setScanError(`Prodotto non trovato per il codice: "${value}"`)
+        if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
+        scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+      }
+      setScannerRigaIndex(null)
+    } else {
+      setSearch(value)
+      fetchForniture({ search: value, page: 1 })
+      setPage(1)
+    }
   }
 
   const openNewModal = () => {
@@ -263,6 +299,13 @@ export default function Forniture() {
           placeholder="Cerca per N° fornitura o fornitore..."
           className={styles.filterInput}
         />
+        <button
+          type="button"
+          onClick={() => { setScannerRigaIndex(null); setShowScanner(true) }}
+          title="Scansiona QR / barcode per cercare"
+          className={styles.searchBtn}
+          style={{ padding: '0 12px' }}
+        >📷</button>
         <select value={filtroStato} onChange={e => setFiltroStato(e.target.value)} className={styles.filterSelect}>
           <option value="">Tutti gli stati</option>
           {STATI.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
@@ -394,6 +437,7 @@ export default function Forniture() {
                 </div>
               </div>
               <h3 className={styles.modalSubTitle}>Voci Fornitura</h3>
+              {scanError && <div className={styles.modalError}>{scanError}</div>}
               {form.righe.map((riga, i) => (
                 <div key={i} className={styles.rigaRow} style={{ flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
@@ -422,6 +466,14 @@ export default function Forniture() {
                             <option value="">— Seleziona prodotto —</option>
                             {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>)}
                           </select>
+                          <button
+                            type="button"
+                            onClick={() => { setScannerRigaIndex(i); setShowScanner(true) }}
+                            title="Scansiona QR / barcode per selezionare prodotto"
+                            style={{ padding: '6px 10px', backgroundColor: '#e3f2fd', border: '1px solid #90caf9', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#1565c0' }}
+                          >
+                            📷
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -674,6 +726,9 @@ export default function Forniture() {
             </div>
           </div>
         </div>
+      )}
+      {showScanner && (
+        <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
       )}
     </div>
   )
