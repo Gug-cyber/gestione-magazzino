@@ -91,6 +91,20 @@ export default function Ordini() {
       if (/^prodotto:\d+$/i.test(value)) {
         const id = parseInt(value.split(':')[1])
         prodotto = prodotti.find(p => p.id === id)
+        if (!prodotto) {
+          prodottiAPI.getById(id)
+            .then(res => {
+              if (!res.data?.id) throw new Error('not found')
+              handleRigaChange(scannerRigaIndex, 'prodotto_id', String(res.data.id))
+            })
+            .catch(() => {
+              setScanError(`Prodotto non trovato per il codice: "${value}"`)
+              if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
+              scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+            })
+            .finally(() => setScannerRigaIndex(null))
+          return
+        }
       }
       if (!prodotto) {
         const normalized = normalizeSkuForCode39(value)
