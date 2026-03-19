@@ -223,10 +223,10 @@ def delete_utente_admin(
         raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
     if utente_id == current_user.id:
         raise HTTPException(status_code=400, detail="Non puoi eliminare il tuo stesso account")
-    if not crud.get_utente(db, utente_id):
-        raise HTTPException(status_code=404, detail="Utente non trovato")
     target = crud.get_utente(db, utente_id)
-    target_username = target.username if target else None
+    if not target:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    target_username = target.username
     crud.delete_utente(db, utente_id)
     try:
         log_activity(db, azione="elimina_utente", utente_id=current_user.id, username=current_user.username, entita="utente", entita_id=utente_id, dettagli=target_username)

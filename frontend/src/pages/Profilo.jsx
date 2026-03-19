@@ -4,15 +4,7 @@ import { updateProfilo, activityLogAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import useLogoSettings from '../hooks/useLogoSettings'
 import { PRIMARY_COLOR } from '../constants/colors'
-
-function getAzioneBadge(azione) {
-  if (!azione) return { bg: '#f5f5f5', color: '#616161' }
-  if (azione.startsWith('crea_')) return { bg: '#e8f5e9', color: '#2e7d32' }
-  if (azione.startsWith('modifica_')) return { bg: '#fff3e0', color: '#e65100' }
-  if (azione.startsWith('elimina_')) return { bg: '#ffebee', color: '#c62828' }
-  if (azione === 'login' || azione === 'logout') return { bg: '#e3f2fd', color: '#1565c0' }
-  return { bg: '#f5f5f5', color: '#616161' }
-}
+import { getAzioneBadge } from '../utils/formatters'
 
 function getPasswordStrength(password) {  if (!password) return null
   const hasLetters = /[a-zA-Z]/.test(password)
@@ -66,15 +58,14 @@ function Profilo() {
   const [attivitaError, setAttivitaError] = useState(null)
 
   useEffect(() => {
-    if (activeTab === 'attivita' && attivita.length === 0 && !attivitaLoading) {
-      setAttivitaLoading(true)
-      setAttivitaError(null)
-      activityLogAPI.getMine({ limit: 20 })
-        .then(res => setAttivita(res.data || []))
-        .catch(err => setAttivitaError(err.response?.data?.detail || 'Errore nel caricamento'))
-        .finally(() => setAttivitaLoading(false))
-    }
-  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (activeTab !== 'attivita') return
+    setAttivitaLoading(true)
+    setAttivitaError(null)
+    activityLogAPI.getMine({ limit: 20 })
+      .then(res => setAttivita(res.data || []))
+      .catch(err => setAttivitaError(err.response?.data?.detail || 'Errore nel caricamento'))
+      .finally(() => setAttivitaLoading(false))
+  }, [activeTab])
 
   // Set message with auto-dismiss for success
   const setMsgWithAutoDismiss = (setter, msg) => {

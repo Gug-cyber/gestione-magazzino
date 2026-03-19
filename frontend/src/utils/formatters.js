@@ -41,3 +41,16 @@ export function formatCurrency(amount) {
     currency: 'EUR',
   }).format(amount)
 }
+
+/**
+ * Returns background and text color for an activity log action badge.
+ * crea_* → green, modifica_* → orange, elimina_* → red, login/logout → blue, default → gray
+ */
+export function getAzioneBadge(azione) {
+  if (!azione) return { bg: '#f5f5f5', color: '#616161' }
+  if (azione.startsWith('crea_')) return { bg: '#e8f5e9', color: '#2e7d32' }
+  if (azione.startsWith('modifica_')) return { bg: '#fff3e0', color: '#e65100' }
+  if (azione.startsWith('elimina_')) return { bg: '#ffebee', color: '#c62828' }
+  if (azione === 'login' || azione === 'logout') return { bg: '#e3f2fd', color: '#1565c0' }
+  return { bg: '#f5f5f5', color: '#616161' }
+}

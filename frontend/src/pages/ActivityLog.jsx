@@ -1,17 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { activityLogAPI, amministrazioneAPI } from '../api/client'
 import { PRIMARY_COLOR } from '../constants/colors'
+import { getAzioneBadge } from '../utils/formatters'
 
 const PAGE_SIZE = 50
-
-function getAzioneBadge(azione) {
-  if (!azione) return { bg: '#f5f5f5', color: '#616161' }
-  if (azione.startsWith('crea_')) return { bg: '#e8f5e9', color: '#2e7d32' }
-  if (azione.startsWith('modifica_')) return { bg: '#fff3e0', color: '#e65100' }
-  if (azione.startsWith('elimina_')) return { bg: '#ffebee', color: '#c62828' }
-  if (azione === 'login' || azione === 'logout') return { bg: '#e3f2fd', color: '#1565c0' }
-  return { bg: '#f5f5f5', color: '#616161' }
-}
 
 function formatDate(dt) {
   if (!dt) return '—'
