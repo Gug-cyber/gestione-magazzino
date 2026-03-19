@@ -26,6 +26,7 @@ import CardTrader from './pages/CardTrader.jsx'
 import Amministrazione from './pages/Amministrazione.jsx'
 import Forniture from './pages/Forniture.jsx'
 import DettaglioFornitura from './pages/DettaglioFornitura.jsx'
+import NuovaFornitura from './pages/NuovaFornitura.jsx'
 import NuovoOrdine from './pages/NuovoOrdine.jsx'
 import ScannerBarcode from './pages/ScannerBarcode.jsx'
 import AppHome from './pages/AppHome.jsx'
@@ -157,6 +158,11 @@ function App() {
           <Route path="/amministrazione" element={
             <ProtectedRoute>
               <AppLayout><Amministrazione /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/forniture/nuova" element={
+            <ProtectedRoute>
+              <AppLayout><NuovaFornitura /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/forniture/:id" element={
