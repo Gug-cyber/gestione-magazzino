@@ -30,6 +30,10 @@ import NuovoOrdine from './pages/NuovoOrdine.jsx'
 import ScannerBarcode from './pages/ScannerBarcode.jsx'
 import AppHome from './pages/AppHome.jsx'
 import CaricoFornitura from './pages/CaricoFornitura.jsx'
+import MobileAppLayout from './components/MobileAppLayout.jsx'
+import MobileHome from './pages/mobile/MobileHome.jsx'
+import MobileCaricoFornitura from './pages/mobile/MobileCaricoFornitura.jsx'
+import MobileNuovoOrdine from './pages/mobile/MobileNuovoOrdine.jsx'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -183,6 +187,21 @@ function App() {
           <Route path="/carico-fornitura" element={
             <ProtectedRoute>
               <AppLayout><CaricoFornitura /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/mobile" element={
+            <ProtectedRoute>
+              <MobileAppLayout><MobileHome /></MobileAppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/mobile/carico-fornitura" element={
+            <ProtectedRoute>
+              <MobileAppLayout><MobileCaricoFornitura /></MobileAppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/mobile/nuovo-ordine" element={
+            <ProtectedRoute>
+              <MobileAppLayout><MobileNuovoOrdine /></MobileAppLayout>
             </ProtectedRoute>
           } />
         </Routes>
