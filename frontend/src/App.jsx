@@ -28,6 +28,8 @@ import Forniture from './pages/Forniture.jsx'
 import DettaglioFornitura from './pages/DettaglioFornitura.jsx'
 import NuovoOrdine from './pages/NuovoOrdine.jsx'
 import ScannerBarcode from './pages/ScannerBarcode.jsx'
+import AppHome from './pages/AppHome.jsx'
+import CaricoFornitura from './pages/CaricoFornitura.jsx'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -171,6 +173,16 @@ function App() {
           <Route path="/scanner" element={
             <ProtectedRoute>
               <AppLayout><ScannerBarcode /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app" element={
+            <ProtectedRoute>
+              <AppLayout><AppHome /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/carico-fornitura" element={
+            <ProtectedRoute>
+              <AppLayout><CaricoFornitura /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>
