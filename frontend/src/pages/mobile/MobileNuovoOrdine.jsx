@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { prodottiAPI, clientiAPI } from '../../api/client'
+import { prodottiAPI, clientiAPI, ordiniAPI } from '../../api/client'
 import BarcodeScanner from '../../components/BarcodeScanner'
 import CreazioneRapidaProdotto from '../../components/CreazioneRapidaProdotto'
 
@@ -36,6 +36,11 @@ function MobileNuovoOrdine() {
 
   // Codice manuale
   const [codiceManuale, setCodiceManuale] = useState('')
+
+  // Salvataggio ordine
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [ordineCompletato, setOrdineCompletato] = useState(null)
 
   // Caricamento clienti
   useEffect(() => {
@@ -137,6 +142,40 @@ function MobileNuovoOrdine() {
     setRighe(prev => prev.filter(r => r.prodotto.id !== prodottoId))
   }
 
+  async function completaOrdine() {
+    if (righe.length === 0) return
+    if (righe.some(r => r.stockAlert)) return
+
+    setSaving(true)
+    setSaveError('')
+    try {
+      const payload = {
+        cliente_id: clienteSelezionato?.id ?? null,
+        cliente_nome: clienteSelezionato
+          ? `${clienteSelezionato.nome}${clienteSelezionato.cognome ? ' ' + clienteSelezionato.cognome : ''}`
+          : null,
+        righe: righe.map(r => ({
+          prodotto_id: r.prodotto.id,
+          quantita: r.quantita,
+          prezzo_unitario: r.prodotto.prezzo_vendita ?? 0,
+        })),
+      }
+      const res = await ordiniAPI.create(payload)
+      setOrdineCompletato(res.data)
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') {
+        setSaveError(detail)
+      } else if (Array.isArray(detail)) {
+        setSaveError(detail.map(e => e.msg || JSON.stringify(e)).join(', '))
+      } else {
+        setSaveError("Errore durante il salvataggio dell'ordine. Riprova.")
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // --- Computed ---
 
   const clientiFiltrati = clienteSearch.trim()
@@ -158,6 +197,92 @@ function MobileNuovoOrdine() {
     padding: '20px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     marginBottom: 20,
+  }
+
+  if (ordineCompletato) {
+    return (
+      <div style={{ backgroundColor: BG, minHeight: '100vh', padding: '24px 16px' }}>
+        {/* Successo header */}
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '8px' }}>✅</div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: '700', color: '#2e7d32', margin: '0 0 6px' }}>
+            Ordine Completato!
+          </h1>
+          <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0 }}>
+            Ordine registrato con successo
+          </p>
+        </div>
+
+        {/* Card riepilogo */}
+        <div style={{
+          backgroundColor: '#ffffff', borderRadius: '14px',
+          padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '20px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Numero ordine</span>
+            <span style={{ fontWeight: '700', color: '#1a237e', fontSize: '1rem' }}>
+              {ordineCompletato.numero_ordine}
+            </span>
+          </div>
+
+          {ordineCompletato.cliente_nome && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
+              <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Cliente</span>
+              <span style={{ fontWeight: '600', color: '#374151' }}>{ordineCompletato.cliente_nome}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Stato</span>
+            <span style={{ backgroundColor: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', borderRadius: '999px', padding: '2px 12px', fontWeight: '600', fontSize: '0.85rem' }}>
+              {ordineCompletato.stato}
+            </span>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 8px', fontWeight: '600' }}>Prodotti ordinati</p>
+            {ordineCompletato.righe.map(r => (
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '0.9rem', color: '#374151' }}>
+                <span>{r.prodotto_nome || 'Prodotto'} × {r.quantita}</span>
+                <span style={{ fontWeight: '600' }}>€{(r.subtotale ?? r.quantita * r.prezzo_unitario).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '2px solid #e2e8f0' }}>
+            <span style={{ fontWeight: '700', color: '#1a237e', fontSize: '1rem' }}>Totale</span>
+            <span style={{ fontWeight: '700', color: '#1a237e', fontSize: '1.2rem' }}>€{(ordineCompletato.totale ?? 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Nota stock */}
+        <div style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', borderRadius: '10px', padding: '12px 16px', fontSize: '0.85rem', marginBottom: '20px', border: '1px solid #a5d6a7' }}>
+          📦 Stock aggiornato automaticamente. Movimenti di scarico registrati.
+        </div>
+
+        {/* Bottone nuovo ordine */}
+        <button
+          onClick={() => {
+            setOrdineCompletato(null)
+            setRighe([])
+            setClienteSelezionato(null)
+            setClienteSearch('')
+            setSaveError('')
+          }}
+          style={{ display: 'block', width: '100%', padding: '14px', backgroundColor: '#2e7d32', color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', marginBottom: '12px', minHeight: '44px' }}
+        >
+          ➕ Nuovo Ordine
+        </button>
+
+        {/* Bottone home */}
+        <button
+          onClick={() => navigate('/mobile')}
+          style={{ display: 'block', width: '100%', padding: '14px', backgroundColor: 'transparent', color: '#2e7d32', border: '2px solid #2e7d32', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', minHeight: '44px' }}
+        >
+          ← Torna alla Home
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -496,24 +621,38 @@ function MobileNuovoOrdine() {
             </span>
           </div>
 
+          {saveError && (
+            <div style={{
+              backgroundColor: '#ffebee',
+              color: '#c62828',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              fontSize: '0.9rem',
+              border: '1px solid #ef9a9a',
+            }}>
+              ❌ {saveError}
+            </div>
+          )}
+
           <button
-            disabled={completaDisabled}
-            onClick={() => alert('Salvataggio ordine: funzionalità in arrivo')}
+            onClick={completaOrdine}
+            disabled={righe.length === 0 || righe.some(r => r.stockAlert) || saving}
             style={{
               display: 'block',
               width: '100%',
               padding: '16px',
-              backgroundColor: completaDisabled ? '#b0bec5' : '#2e7d32',
-              color: WHITE,
+              backgroundColor: (righe.length === 0 || righe.some(r => r.stockAlert) || saving) ? '#9e9e9e' : '#2e7d32',
+              color: '#ffffff',
               border: 'none',
-              borderRadius: 12,
+              borderRadius: '12px',
               fontSize: '1rem',
               fontWeight: '700',
-              cursor: completaDisabled ? 'not-allowed' : 'pointer',
-              minHeight: 52,
+              cursor: (righe.length === 0 || righe.some(r => r.stockAlert) || saving) ? 'not-allowed' : 'pointer',
+              minHeight: '52px',
             }}
           >
-            ✅ Completa Ordine
+            {saving ? '⏳ Salvataggio in corso...' : '✅ Completa Ordine'}
           </button>
 
           {anyStockAlert && (
