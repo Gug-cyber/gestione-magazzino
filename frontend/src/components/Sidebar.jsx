@@ -5,13 +5,6 @@ import { useAuth } from '../context/AuthContext'
 
 const BASE_SECTIONS = [
   {
-    label: '📱 Mobile',
-    links: [
-      { to: '/app', label: '📱 App Home' },
-      { to: '/carico-fornitura', label: '📦 Carico Fornitura' },
-    ],
-  },
-  {
     label: '📊 Panoramica',
     links: [
       { to: '/', label: '📊 Dashboard', end: true },
