@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, prodottiAPI, clientiAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { CORRIERI } from '../constants/corrieri'
+import BarcodeScanner from '../components/BarcodeScanner'
+import { normalizeSkuForCode39 } from '../utils/formatters'
 
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: '' }
 
@@ -23,6 +25,13 @@ export default function NuovoOrdine() {
 
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const [showScanner, setShowScanner] = useState(false)
+  const [scannerRigaIndex, setScannerRigaIndex] = useState(null)
+  const [scanError, setScanError] = useState('')
+  const scanErrorTimerRef = useRef(null)
+
+  useEffect(() => () => { if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current) }, [])
 
   useEffect(() => {
     Promise.all([
@@ -63,6 +72,44 @@ export default function NuovoOrdine() {
   const removeRiga = (index) => {
     if (righe.length === 1) return
     setRighe(righe.filter((_, i) => i !== index))
+  }
+
+  const handleScan = (value) => {
+    setShowScanner(false)
+    if (scannerRigaIndex === null) return
+    let prodotto = null
+    if (/^prodotto:\d+$/i.test(value)) {
+      const id = parseInt(value.split(':')[1])
+      prodotto = prodotti.find(p => p.id === id)
+      if (!prodotto) {
+        prodottiAPI.getById(id)
+          .then(res => {
+            if (!res.data?.id) throw new Error('not found')
+            handleRigaChange(scannerRigaIndex, 'prodotto_id', String(res.data.id))
+          })
+          .catch(() => {
+            setScanError(`Prodotto non trovato per il codice: "${value}"`)
+            if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
+            scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+          })
+          .finally(() => setScannerRigaIndex(null))
+        return
+      }
+    }
+    if (!prodotto) {
+      const normalized = normalizeSkuForCode39(value)
+      prodotto = prodotti.find(p =>
+        p.barcode === value || p.sku === value || p.sku === normalized
+      )
+    }
+    if (prodotto) {
+      handleRigaChange(scannerRigaIndex, 'prodotto_id', String(prodotto.id))
+    } else {
+      setScanError(`Prodotto non trovato per il codice: "${value}"`)
+      if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
+      scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+    }
+    setScannerRigaIndex(null)
   }
 
   const handleSubmit = async (e) => {
@@ -165,6 +212,12 @@ export default function NuovoOrdine() {
           <div style={cardStyle}>
             <h2 style={sectionTitleStyle}>📦 Prodotti</h2>
 
+            {scanError && (
+              <div style={{ color: '#c62828', backgroundColor: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 6, padding: '8px 12px', marginBottom: 12, fontSize: '0.9rem' }}>
+                {scanError}
+              </div>
+            )}
+
             {righe.map((riga, i) => {
               const prodottoSel = prodotti.find(p => String(p.id) === String(riga.prodotto_id))
               const subtotale = (parseFloat(riga.quantita) || 0) * (parseFloat(riga.prezzo_unitario) || 0)
@@ -186,19 +239,37 @@ export default function NuovoOrdine() {
                 >
                   <label style={labelStyle}>
                     <span style={labelTextStyle}>Prodotto *</span>
-                    <select
-                      required
-                      value={riga.prodotto_id}
-                      onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)}
-                      style={inputStyle}
-                    >
-                      <option value="">-- Seleziona prodotto --</option>
-                      {prodotti.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome} — SKU: {p.sku} (disp: {p.quantita ?? 0})
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        required
+                        value={riga.prodotto_id}
+                        onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)}
+                        style={{ ...inputStyle, flex: 1 }}
+                      >
+                        <option value="">-- Seleziona prodotto --</option>
+                        {prodotti.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.nome} — SKU: {p.sku} (disp: {p.quantita ?? 0})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => { setScannerRigaIndex(i); setShowScanner(true) }}
+                        title="Scansiona QR / barcode per selezionare prodotto"
+                        style={{
+                          padding: '0 10px',
+                          height: '36px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #90caf9',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          flexShrink: 0,
+                          color: '#1565c0',
+                        }}
+                      >📷</button>
+                    </div>
                   </label>
 
                   <label style={labelStyle}>
@@ -335,6 +406,13 @@ export default function NuovoOrdine() {
             </button>
           </div>
         </form>
+      )}
+
+      {showScanner && (
+        <BarcodeScanner
+          onScan={handleScan}
+          onClose={() => { setShowScanner(false); setScannerRigaIndex(null) }}
+        />
       )}
     </div>
   )
