@@ -6,6 +6,7 @@ from ..database import get_db
 from ..schemas.fornitura import FornituraCreate, FornituraUpdate, FornituraResponse
 from ..crud import fornitura as crud
 from ..auth import get_current_active_user
+from ..crud.activity_log import log_activity
 
 router = APIRouter()
 
@@ -66,7 +67,12 @@ def create_fornitura(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    return _fornitura_to_response(crud.create_fornitura(db, fornitura))
+    nuova = crud.create_fornitura(db, fornitura)
+    try:
+        log_activity(db, azione="crea_fornitura", utente_id=current_user.id, username=current_user.username, entita="fornitura", entita_id=nuova.id, dettagli=nuova.numero_fornitura)
+    except Exception:
+        pass
+    return _fornitura_to_response(nuova)
 
 
 @router.get("/{fornitura_id}", response_model=FornituraResponse)
@@ -100,5 +106,11 @@ def delete_fornitura(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
+    f = crud.get_fornitura(db, fornitura_id)
+    numero = f.numero_fornitura if f else None
     if not crud.delete_fornitura(db, fornitura_id):
         raise HTTPException(status_code=404, detail="Fornitura non trovata")
+    try:
+        log_activity(db, azione="elimina_fornitura", utente_id=current_user.id, username=current_user.username, entita="fornitura", entita_id=fornitura_id, dettagli=numero)
+    except Exception:
+        pass

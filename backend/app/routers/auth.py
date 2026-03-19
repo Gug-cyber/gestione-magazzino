@@ -13,6 +13,7 @@ from ..schemas.utente import (
 )
 from ..crud import utente as crud
 from ..crud import reset_token as crud_token
+from ..crud.activity_log import log_activity
 from ..auth import create_access_token, get_current_active_user, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
 from ..email_utils import send_forgot_username_email, send_reset_password_email
 
@@ -34,6 +35,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         data={"sub": utente.username, "ruolo": utente.ruolo or "operatore"},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+    try:
+        log_activity(db, azione="login", utente_id=utente.id, username=utente.username)
+    except Exception:
+        pass
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -89,7 +94,14 @@ def update_me(
 
 
 @router.post("/logout")
-def logout():
+def logout(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    try:
+        log_activity(db, azione="logout", utente_id=current_user.id, username=current_user.username)
+    except Exception:
+        pass
     return {"message": "Logout effettuato. Rimuovi il token lato client."}
 
 
@@ -168,7 +180,12 @@ def create_utente_admin(
         raise HTTPException(status_code=400, detail="Username già in uso")
     if crud.get_utente_by_email(db, utente.email):
         raise HTTPException(status_code=400, detail="Email già in uso")
-    return crud.create_utente(db, utente, is_admin=utente.is_admin)
+    nuovo = crud.create_utente(db, utente, is_admin=utente.is_admin)
+    try:
+        log_activity(db, azione="crea_utente", utente_id=current_user.id, username=current_user.username, entita="utente", entita_id=nuovo.id, dettagli=nuovo.username)
+    except Exception:
+        pass
+    return nuovo
 
 
 @router.put("/utenti/{utente_id}", response_model=UtenteResponse)
@@ -208,4 +225,10 @@ def delete_utente_admin(
         raise HTTPException(status_code=400, detail="Non puoi eliminare il tuo stesso account")
     if not crud.get_utente(db, utente_id):
         raise HTTPException(status_code=404, detail="Utente non trovato")
+    target = crud.get_utente(db, utente_id)
+    target_username = target.username if target else None
     crud.delete_utente(db, utente_id)
+    try:
+        log_activity(db, azione="elimina_utente", utente_id=current_user.id, username=current_user.username, entita="utente", entita_id=utente_id, dettagli=target_username)
+    except Exception:
+        pass

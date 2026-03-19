@@ -6,6 +6,7 @@ from ..database import get_db
 from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse
 from ..crud import ordine as crud
 from ..auth import get_current_active_user
+from ..crud.activity_log import log_activity
 
 router = APIRouter()
 
@@ -63,7 +64,12 @@ def create_ordine(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    return _ordine_to_response(crud.create_ordine(db, ordine))
+    nuovo = crud.create_ordine(db, ordine)
+    try:
+        log_activity(db, azione="crea_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=nuovo.id, dettagli=nuovo.numero_ordine)
+    except Exception:
+        pass
+    return _ordine_to_response(nuovo)
 
 
 @router.get("/{ordine_id}", response_model=OrdineResponse)
@@ -88,6 +94,10 @@ def update_ordine(
     o = crud.update_ordine(db, ordine_id, ordine_update)
     if not o:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+    try:
+        log_activity(db, azione="aggiorna_stato_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=o.numero_ordine)
+    except Exception:
+        pass
     return _ordine_to_response(o)
 
 
@@ -97,8 +107,14 @@ def delete_ordine(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
+    o = crud.get_ordine(db, ordine_id)
+    numero = o.numero_ordine if o else None
     if not crud.delete_ordine(db, ordine_id):
         raise HTTPException(status_code=404, detail="Ordine non trovato")
+    try:
+        log_activity(db, azione="elimina_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=numero)
+    except Exception:
+        pass
 
 
 @router.patch("/{ordine_id}/tracking", response_model=OrdineResponse)

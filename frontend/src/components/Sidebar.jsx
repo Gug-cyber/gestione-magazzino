@@ -54,7 +54,7 @@ function NavLinks({ onLinkClick }) {
   const [hoveredTo, setHoveredTo] = useState(null)
 
   const sistemaLinks = user?.is_admin
-    ? [{ to: '/amministrazione', label: '⚙️ Amministrazione' }, ...SISTEMA_LINKS_BASE]
+    ? [{ to: '/amministrazione', label: '⚙️ Amministrazione' }, { to: '/activity-log', label: '📋 Log Attività' }, ...SISTEMA_LINKS_BASE]
     : SISTEMA_LINKS_BASE
 
   const sections = [

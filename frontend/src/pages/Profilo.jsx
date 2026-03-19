@@ -1,12 +1,20 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { updateProfilo } from '../api/client'
+import { updateProfilo, activityLogAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import useLogoSettings from '../hooks/useLogoSettings'
 import { PRIMARY_COLOR } from '../constants/colors'
 
-function getPasswordStrength(password) {
-  if (!password) return null
+function getAzioneBadge(azione) {
+  if (!azione) return { bg: '#f5f5f5', color: '#616161' }
+  if (azione.startsWith('crea_')) return { bg: '#e8f5e9', color: '#2e7d32' }
+  if (azione.startsWith('modifica_')) return { bg: '#fff3e0', color: '#e65100' }
+  if (azione.startsWith('elimina_')) return { bg: '#ffebee', color: '#c62828' }
+  if (azione === 'login' || azione === 'logout') return { bg: '#e3f2fd', color: '#1565c0' }
+  return { bg: '#f5f5f5', color: '#616161' }
+}
+
+function getPasswordStrength(password) {  if (!password) return null
   const hasLetters = /[a-zA-Z]/.test(password)
   const hasNumbers = /[0-9]/.test(password)
   const hasSymbols = /[^a-zA-Z0-9]/.test(password)
@@ -29,7 +37,7 @@ function Profilo() {
   const isAdmin = user?.is_admin
 
   // Tab state — show Portale only for admins
-  const tabs = isAdmin ? ['account', 'sicurezza', 'portale'] : ['account', 'sicurezza']
+  const tabs = isAdmin ? ['account', 'sicurezza', 'attivita', 'portale'] : ['account', 'sicurezza', 'attivita']
   const [activeTab, setActiveTab] = useState('account')
 
   // Account tab state
@@ -51,6 +59,22 @@ function Profilo() {
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  // Attività tab state
+  const [attivita, setAttivita] = useState([])
+  const [attivitaLoading, setAttivitaLoading] = useState(false)
+  const [attivitaError, setAttivitaError] = useState(null)
+
+  useEffect(() => {
+    if (activeTab === 'attivita' && attivita.length === 0 && !attivitaLoading) {
+      setAttivitaLoading(true)
+      setAttivitaError(null)
+      activityLogAPI.getMine({ limit: 20 })
+        .then(res => setAttivita(res.data || []))
+        .catch(err => setAttivitaError(err.response?.data?.detail || 'Errore nel caricamento'))
+        .finally(() => setAttivitaLoading(false))
+    }
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Set message with auto-dismiss for success
   const setMsgWithAutoDismiss = (setter, msg) => {
@@ -142,6 +166,7 @@ function Profilo() {
   const tabLabels = {
     account: '👤 Account',
     sicurezza: '🔐 Sicurezza',
+    attivita: '📋 Attività',
     portale: '🎨 Portale',
   }
 
@@ -361,9 +386,61 @@ function Profilo() {
           </form>
         )}
 
-        {/* ── Portale tab (admin only) ── */}
-        {activeTab === 'portale' && (
+        {/* ── Attività tab ── */}
+        {activeTab === 'attivita' && (
           <div>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '16px' }}>
+              Le ultime 20 attività del tuo account.
+            </p>
+            {attivitaLoading && (
+              <div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>⏳ Caricamento...</div>
+            )}
+            {attivitaError && (
+              <div style={errorStyle}>{attivitaError}</div>
+            )}
+            {!attivitaLoading && !attivitaError && attivita.length === 0 && (
+              <div style={{ textAlign: 'center', color: '#aaa', padding: '20px' }}>Nessuna attività registrata.</div>
+            )}
+            {attivita.map(log => {
+              const badge = getAzioneBadge(log.azione)
+              return (
+                <div key={log.id} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '10px 0',
+                  borderBottom: '1px solid #f0f0f0',
+                }}>
+                  <div style={{ minWidth: '130px', fontSize: '12px', color: '#888', paddingTop: '2px' }}>
+                    {new Date(log.eseguito_il).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '2px 10px',
+                      borderRadius: '12px',
+                      background: badge.bg,
+                      color: badge.color,
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      marginRight: '8px',
+                    }}>
+                      {log.azione}
+                    </span>
+                    {log.entita && (
+                      <span style={{ fontSize: '13px', color: '#555' }}>
+                        {log.entita}{log.entita_id ? ` #${log.entita_id}` : ''}{log.dettagli ? ` — ${log.dettagli}` : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── Portale tab (admin only) ── */}
+        {activeTab === 'portale' && (          <div>
             <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '20px' }}>
               Carica un logo personalizzato e imposta il nome del portale. Le modifiche sono salvate nel browser.
             </p>
