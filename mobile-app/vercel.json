@@ -1,0 +1,1 @@
+{\n  "buildCommand": "npm run build",\n  "outputDirectory": ".next",\n  "framework": "nextjs",\n  "rewrites": [\n    {\n      "source": "/api/(.*)",\n      "destination": "https://gestione-magazzino-0bpq.onrender.com/api/$1"\n    }\n  ]\n}
