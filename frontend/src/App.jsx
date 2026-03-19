@@ -29,6 +29,7 @@ import DettaglioFornitura from './pages/DettaglioFornitura.jsx'
 import NuovaFornitura from './pages/NuovaFornitura.jsx'
 import NuovoOrdine from './pages/NuovoOrdine.jsx'
 import ScannerBarcode from './pages/ScannerBarcode.jsx'
+import ActivityLog from './pages/ActivityLog.jsx'
 import AppHome from './pages/AppHome.jsx'
 import CaricoFornitura from './pages/CaricoFornitura.jsx'
 import MobileAppLayout from './components/MobileAppLayout.jsx'
@@ -158,6 +159,11 @@ function App() {
           <Route path="/amministrazione" element={
             <ProtectedRoute>
               <AppLayout><Amministrazione /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/activity-log" element={
+            <ProtectedRoute>
+              <AppLayout><ActivityLog /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/forniture/nuova" element={

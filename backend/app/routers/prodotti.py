@@ -18,6 +18,7 @@ from ..models.ordine import RigaOrdine
 from ..models.fornitura import RigaFornitura
 from ..models.prodotto import Prodotto
 from ..barcode_utils import generate_barcode_svg
+from ..crud.activity_log import log_activity
 router = APIRouter()
 
 
@@ -334,6 +335,10 @@ def create_prodotto(prodotto: ProdottoCreate, request: Request, db: Session = De
     if crud.get_prodotto_by_sku(db, prodotto.sku):
         raise HTTPException(status_code=400, detail="SKU già esistente")
     db_prodotto = crud.create_prodotto(db, prodotto)
+    try:
+        log_activity(db, azione="crea_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=db_prodotto.id, dettagli=db_prodotto.nome)
+    except Exception:
+        pass
     d = ProdottoResponse.model_validate(db_prodotto).model_dump()
     d["foto_url"] = _build_foto_url(db_prodotto, request)
     return d
@@ -348,6 +353,10 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
     db_prodotto = crud.update_prodotto(db, prodotto_id, prodotto)
     if not db_prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    try:
+        log_activity(db, azione="modifica_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=prodotto_id, dettagli=db_prodotto.nome)
+    except Exception:
+        pass
     d = ProdottoResponse.model_validate(db_prodotto).model_dump()
     d["foto_url"] = _build_foto_url(db_prodotto, request)
     return d
@@ -384,6 +393,7 @@ def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_use
     prodotto = crud.get_prodotto(db, prodotto_id)
     if not prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    prodotto_nome = prodotto.nome
     # Elimina la foto da Cloudinary se presente
     if prodotto.foto_path and prodotto.foto_path.startswith("https://res.cloudinary.com/"):
         try:
@@ -399,6 +409,10 @@ def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_use
             status_code=409,
             detail="Impossibile eliminare il prodotto: esistono movimenti o ordini collegati. Elimina prima i movimenti e le righe ordine associate."
         )
+    try:
+        log_activity(db, azione="elimina_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=prodotto_id, dettagli=prodotto_nome)
+    except Exception:
+        pass
 
 
 @router.post("/{prodotto_id}/foto", response_model=ProdottoResponse)

@@ -195,8 +195,12 @@ export const fornitureAPI = {
   delete: (id) => client.delete(`/api/forniture/${id}`),
 }
 
-export const cardtraderAPI = {
-  getStatus: () => client.get('/api/cardtrader/status'),
+export const activityLogAPI = {
+  getAll: (params) => client.get('/api/activity-log/', { params }),
+  getMine: (params) => client.get('/api/activity-log/me', { params }),
+}
+
+export const cardtraderAPI = {  getStatus: () => client.get('/api/cardtrader/status'),
   getListings: () => client.get('/api/cardtrader/listings'),
   importAll: () => client.post('/api/cardtrader/import'),
   sync: (prodottoId, data) => client.post(`/api/cardtrader/sync/${prodottoId}`, data),

@@ -12,6 +12,8 @@ from .routers import ordini
 from .routers import cardtrader
 from .routers import forniture
 from .routers import admin
+from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
+from .routers import activity_log as activity_log_router
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
 from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti table is created
@@ -69,6 +71,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIR, "fatture"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+app.include_router(activity_log_router.router, prefix="/api/activity-log", tags=["Activity Log"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(prodotti.router, prefix="/api/prodotti", tags=["Prodotti"])
 app.include_router(categorie.router, prefix="/api/categorie", tags=["Categorie"])
