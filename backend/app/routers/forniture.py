@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime, timezone
 
 from ..database import get_db
-from ..schemas.fornitura import FornituraCreate, FornituraUpdate, FornituraResponse
+from ..schemas.fornitura import FornituraCreate, FornituraUpdate, FornituraResponse, FornituraMobileConferma
 from ..crud import fornitura as crud
 from ..auth import get_current_active_user
 
@@ -67,6 +68,110 @@ def create_fornitura(
     current_user=Depends(get_current_active_user),
 ):
     return _fornitura_to_response(crud.create_fornitura(db, fornitura))
+
+
+@router.post("/mobile/conferma", response_model=FornituraResponse, status_code=201)
+def conferma_fornitura_mobile(
+    payload: FornituraMobileConferma,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Crea una fornitura direttamente in stato 'ricevuto', carica lo stock
+    e registra i movimenti di carico in un'unica transazione atomica.
+    """
+    from ..crud.fornitura import _genera_numero_fornitura
+    from ..models.fornitura import Fornitura, RigaFornitura, StatoFornitura
+    from ..models.prodotto import Prodotto
+    from ..models.movimento import Movimento, TipoMovimento
+    from sqlalchemy.exc import IntegrityError
+
+    if not payload.righe:
+        raise HTTPException(status_code=400, detail="La fornitura deve avere almeno una riga prodotto")
+
+    # Resolve fornitore_nome
+    fornitore_nome = payload.fornitore_nome
+    if payload.fornitore_id and not fornitore_nome:
+        from ..models.fornitore import Fornitore
+        f = db.query(Fornitore).filter(Fornitore.id == payload.fornitore_id).first()
+        if f:
+            fornitore_nome = f.nome
+
+    # Validate products and build line items
+    righe_data = []
+    totale = 0.0
+    for r in payload.righe:
+        prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
+        if not prodotto:
+            raise HTTPException(status_code=404, detail=f"Prodotto con id {r.prodotto_id} non trovato")
+        subtotale = r.quantita * r.prezzo_unitario
+        totale += subtotale
+        righe_data.append({
+            "prodotto": prodotto,
+            "prodotto_id": r.prodotto_id,
+            "quantita": r.quantita,
+            "prezzo_unitario": r.prezzo_unitario,
+            "subtotale": subtotale,
+        })
+
+    # Retry loop to handle rare numero_fornitura collisions
+    for tentativo in range(5):
+        numero_fornitura = _genera_numero_fornitura(db)
+        righe = [
+            RigaFornitura(
+                prodotto_id=rd["prodotto_id"],
+                tipo_voce="prodotto",
+                quantita=rd["quantita"],
+                prezzo_unitario=rd["prezzo_unitario"],
+                subtotale=rd["subtotale"],
+            )
+            for rd in righe_data
+        ]
+        now = datetime.now(timezone.utc)
+        fornitura = Fornitura(
+            numero_fornitura=numero_fornitura,
+            fornitore_id=payload.fornitore_id,
+            fornitore_nome=fornitore_nome,
+            note=payload.note,
+            stato=StatoFornitura.ricevuto,
+            stock_caricato=True,
+            data_ricezione=now,
+            totale=totale,
+            righe=righe,
+        )
+        db.add(fornitura)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            if tentativo == 4:
+                raise HTTPException(status_code=500, detail="Impossibile generare numero fornitura univoco dopo 5 tentativi")
+            continue
+
+        # Load stock and create movements inside the same transaction
+        for rd in righe_data:
+            prodotto = rd["prodotto"]
+            prodotto.quantita += rd["quantita"]
+            movimento = Movimento(
+                prodotto_id=rd["prodotto_id"],
+                tipo=TipoMovimento.carico,
+                quantita=rd["quantita"],
+                note=f"Carico automatico fornitura {numero_fornitura}",
+                fornitore_id=payload.fornitore_id,
+            )
+            db.add(movimento)
+
+        db.commit()
+        db.refresh(fornitura)
+        # Reload lines with product relationship for response
+        from sqlalchemy.orm import joinedload
+        fornitura = (
+            db.query(Fornitura)
+            .options(joinedload(Fornitura.righe).joinedload(RigaFornitura.prodotto))
+            .filter(Fornitura.id == fornitura.id)
+            .first()
+        )
+        return _fornitura_to_response(fornitura)
 
 
 @router.get("/{fornitura_id}", response_model=FornituraResponse)

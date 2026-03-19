@@ -193,6 +193,7 @@ export const fornitureAPI = {
   create: (data) => client.post('/api/forniture/', data),
   update: (id, data) => client.put(`/api/forniture/${id}`, data),
   delete: (id) => client.delete(`/api/forniture/${id}`),
+  confermaMobile: (data) => client.post('/api/forniture/mobile/conferma', data),
 }
 
 export const cardtraderAPI = {
