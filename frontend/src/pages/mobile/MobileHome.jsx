@@ -10,7 +10,7 @@ function MobileHome() {
     justifyContent: 'center',
     gap: '10px',
     width: '100%',
-    minHeight: '120px',
+    minHeight: '130px',
     padding: '24px 16px',
     backgroundColor: bg,
     color: '#ffffff',
@@ -22,6 +22,8 @@ function MobileHome() {
     fontWeight: '600',
     textAlign: 'center',
     boxSizing: 'border-box',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
   })
 
   return (
@@ -70,6 +72,10 @@ function MobileHome() {
           </span>
         </button>
       </div>
+
+      <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem', marginTop: '32px' }}>
+        App Magazzino · v1.0
+      </p>
     </div>
   )
 }

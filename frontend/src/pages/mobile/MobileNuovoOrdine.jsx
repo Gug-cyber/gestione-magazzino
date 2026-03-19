@@ -256,8 +256,8 @@ function MobileNuovoOrdine() {
         </div>
 
         {/* Nota stock */}
-        <div style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', borderRadius: '10px', padding: '12px 16px', fontSize: '0.85rem', marginBottom: '20px', border: '1px solid #a5d6a7' }}>
-          📦 Stock aggiornato automaticamente. Movimenti di scarico registrati.
+        <div style={{ backgroundColor: '#fff3e0', color: '#e65100', borderRadius: '10px', padding: '12px 16px', fontSize: '0.85rem', marginBottom: '20px', border: '1px solid #ffb74d' }}>
+          📋 L'ordine è in stato "bozza". Lo stock verrà scalato quando l'ordine sarà completato dal gestionale.
         </div>
 
         {/* Bottone nuovo ordine */}
@@ -407,6 +407,7 @@ function MobileNuovoOrdine() {
             cursor: lookupLoading ? 'not-allowed' : 'pointer',
             marginBottom: 16,
             minHeight: 52,
+            touchAction: 'manipulation',
           }}
         >
           📷 Scansiona Barcode/QR
@@ -474,7 +475,15 @@ function MobileNuovoOrdine() {
       </div>
 
       {/* 4. Lista righe ordine */}
-      {righe.length > 0 && (
+      {righe.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🛒</div>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>
+            Nessun prodotto ancora aggiunto.<br />
+            Scansiona un barcode per iniziare.
+          </p>
+        </div>
+      ) : (
         <div style={{ marginBottom: 20 }}>
           {righe.map(riga => (
             <div key={riga.prodotto.id} style={{
@@ -497,6 +506,7 @@ function MobileNuovoOrdine() {
                     padding: '0 4px',
                     minHeight: 44,
                     lineHeight: 1,
+                    touchAction: 'manipulation',
                   }}
                   aria-label="Rimuovi riga"
                 >
@@ -630,8 +640,13 @@ function MobileNuovoOrdine() {
               marginBottom: '16px',
               fontSize: '0.9rem',
               border: '1px solid #ef9a9a',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: '8px',
             }}>
-              ❌ {saveError}
+              <span>❌ {saveError}</span>
+              <button onClick={() => setSaveError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', fontSize: '1.1rem', padding: 0, lineHeight: 1, flexShrink: 0 }} aria-label="Chiudi messaggio di errore">×</button>
             </div>
           )}
 
@@ -650,6 +665,7 @@ function MobileNuovoOrdine() {
               fontWeight: '700',
               cursor: (righe.length === 0 || righe.some(r => r.stockAlert) || saving) ? 'not-allowed' : 'pointer',
               minHeight: '52px',
+              touchAction: 'manipulation',
             }}
           >
             {saving ? '⏳ Salvataggio in corso...' : '✅ Completa Ordine'}

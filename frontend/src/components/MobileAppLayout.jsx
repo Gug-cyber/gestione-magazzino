@@ -17,7 +17,10 @@ function MobileAppLayout({ children }) {
       <header style={{
         backgroundColor: '#1a237e',
         color: '#ffffff',
-        padding: '12px 16px',
+        paddingTop: 'max(12px, env(safe-area-inset-top))',
+        paddingBottom: '12px',
+        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+        paddingRight: 'max(16px, env(safe-area-inset-right))',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
@@ -59,10 +62,12 @@ function MobileAppLayout({ children }) {
       {/* Content */}
       <main style={{
         flex: 1,
-        maxWidth: '480px',
+        maxWidth: 'min(480px, 100%)',
         width: '100%',
         margin: '0 auto',
-        padding: '20px 16px',
+        paddingTop: '20px',
+        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+        paddingRight: 'max(16px, env(safe-area-inset-right))',
         paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
         boxSizing: 'border-box',
       }}>

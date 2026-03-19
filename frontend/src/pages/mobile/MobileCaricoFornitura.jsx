@@ -213,6 +213,7 @@ function MobileCaricoFornitura() {
             cursor: 'pointer',
             marginBottom: 12,
             minHeight: 52,
+            touchAction: 'manipulation',
           }}
         >
           📥 Nuova Fornitura
@@ -231,6 +232,7 @@ function MobileCaricoFornitura() {
             fontWeight: '600',
             cursor: 'pointer',
             minHeight: 52,
+            touchAction: 'manipulation',
           }}
         >
           ← Torna alla Home
@@ -279,14 +281,20 @@ function MobileCaricoFornitura() {
       )}
       {saveError && (
         <div style={{
-          backgroundColor: '#fdecea',
+          backgroundColor: '#ffebee',
           color: '#c62828',
-          borderRadius: 10,
+          borderRadius: '8px',
           padding: '12px 16px',
           marginBottom: 16,
           fontSize: '0.9rem',
+          border: '1px solid #ef9a9a',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: '8px',
         }}>
-          {saveError}
+          <span>❌ {saveError}</span>
+          <button onClick={() => setSaveError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', fontSize: '1.1rem', padding: 0, lineHeight: 1, flexShrink: 0 }} aria-label="Chiudi messaggio di errore">×</button>
         </div>
       )}
 
@@ -307,13 +315,22 @@ function MobileCaricoFornitura() {
           cursor: lookupLoading ? 'not-allowed' : 'pointer',
           marginBottom: 20,
           minHeight: 52,
+          touchAction: 'manipulation',
         }}
       >
         {lookupLoading ? '⏳ Ricerca in corso...' : '📷 Scansiona Prodotto'}
       </button>
 
-      {/* Product list */}
-      {righe.length > 0 && (
+      {/* Product list or empty state */}
+      {righe.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>📷</div>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>
+            Nessun prodotto ancora scansionato.<br />
+            Usa il pulsante "Scansiona" per iniziare.
+          </p>
+        </div>
+      ) : (
         <div style={{
           backgroundColor: WHITE,
           borderRadius: 14,
@@ -375,6 +392,7 @@ function MobileCaricoFornitura() {
                   padding: '4px 8px',
                   color: '#ef5350',
                   minHeight: 44,
+                  touchAction: 'manipulation',
                 }}
                 aria-label="Rimuovi"
               >
@@ -393,18 +411,19 @@ function MobileCaricoFornitura() {
           display: 'block',
           width: '100%',
           padding: '16px',
-          backgroundColor: righe.length === 0 || saving ? '#b0bec5' : '#2e7d32',
+          backgroundColor: (righe.length === 0 || saving) ? '#9e9e9e' : '#1565c0',
           color: WHITE,
           border: 'none',
           borderRadius: 12,
           fontSize: '1rem',
           fontWeight: '700',
-          cursor: righe.length === 0 || saving ? 'not-allowed' : 'pointer',
+          cursor: (righe.length === 0 || saving) ? 'not-allowed' : 'pointer',
           marginBottom: 12,
           minHeight: 52,
+          touchAction: 'manipulation',
         }}
       >
-        {saving ? '⏳ Salvataggio...' : '✅ Conferma Fornitura'}
+        {saving ? '⏳ Salvataggio in corso...' : `📥 Completa Carico (${righe.length} prodott${righe.length === 1 ? 'o' : 'i'})`}
       </button>
 
       {/* Back button */}
@@ -422,6 +441,7 @@ function MobileCaricoFornitura() {
           fontWeight: '600',
           cursor: 'pointer',
           minHeight: 52,
+          touchAction: 'manipulation',
         }}
       >
         ← Torna alla Home
