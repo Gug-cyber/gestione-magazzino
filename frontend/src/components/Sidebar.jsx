@@ -7,7 +7,6 @@ const BASE_SECTIONS = [
   {
     label: '📱 Mobile',
     links: [
-      { to: '/mobile', label: '📱 App Mobile' },
       { to: '/app', label: '📱 App Home' },
       { to: '/carico-fornitura', label: '📦 Carico Fornitura' },
     ],
