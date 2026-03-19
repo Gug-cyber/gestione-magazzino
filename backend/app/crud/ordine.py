@@ -97,12 +97,25 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     # ------------------------------------------------------------------ #
     # 1. Verifica prodotti esistenti (senza bloccare lo stock)            #
     # ------------------------------------------------------------------ #
+    prodotti_map: dict[int, Prodotto] = {}
     for r in ordine_data.righe:
         prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
         if not prodotto:
             raise HTTPException(
                 status_code=404,
                 detail=f"Prodotto con id {r.prodotto_id} non trovato",
+            )
+        prodotti_map[r.prodotto_id] = prodotto
+
+    # ------------------------------------------------------------------ #
+    # 1b. Verifica disponibilità stock al momento della creazione         #
+    # ------------------------------------------------------------------ #
+    for r in ordine_data.righe:
+        prodotto = prodotti_map[r.prodotto_id]
+        if prodotto.quantita < r.quantita:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Quantità insufficiente per '{prodotto.nome}': disponibili {prodotto.quantita}, richiesti {r.quantita}",
             )
 
     # ------------------------------------------------------------------ #
