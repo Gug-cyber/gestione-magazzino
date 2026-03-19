@@ -187,7 +187,17 @@ function App() {
           } />
           <Route path="/app" element={
             <ProtectedRoute>
-              <AppLayout><AppHome /></AppLayout>
+              <MobileAppLayout><AppHome /></MobileAppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/carico-fornitura" element={
+            <ProtectedRoute>
+              <MobileAppLayout><CaricoFornitura /></MobileAppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/nuovo-ordine" element={
+            <ProtectedRoute>
+              <MobileAppLayout><NuovoOrdine /></MobileAppLayout>
             </ProtectedRoute>
           } />
           <Route path="/carico-fornitura" element={

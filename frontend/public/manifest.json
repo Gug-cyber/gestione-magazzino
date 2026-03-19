@@ -2,7 +2,7 @@
   "name": "Gestione Magazzino",
   "short_name": "Magazzino",
   "description": "Portale di gestione del magazzino: prodotti, ordini, clienti, analisi finanziaria",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f0f2f5",

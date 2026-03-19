@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 function MobileAppLayout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const isHome = location.pathname === '/mobile'
+  const isHome = location.pathname === '/mobile' || location.pathname === '/app'
 
   return (
     <div style={{
@@ -28,7 +28,7 @@ function MobileAppLayout({ children }) {
       }}>
         {!isHome && (
           <button
-            onClick={() => navigate('/mobile')}
+            onClick={() => navigate(location.pathname.startsWith('/app/') ? '/app' : '/mobile')}
             style={{
               background: 'none',
               border: 'none',
