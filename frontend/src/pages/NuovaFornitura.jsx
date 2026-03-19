@@ -46,6 +46,12 @@ export default function NuovaFornitura() {
   const searchTimer = useRef(null)
   const searchRef = useRef(null)
 
+  // Inserimento manuale riga
+  const [nomeManuale, setNomeManuale] = useState('')
+  const [skuManuale, setSkuManuale] = useState('')
+  const [qtaManuale, setQtaManuale] = useState(1)
+  const [prezzoManuale, setPrezzoManuale] = useState(0)
+
   // Carica fornitori al mount
   useEffect(() => {
     fornitoriAPI.getAll()
@@ -145,6 +151,26 @@ export default function NuovaFornitura() {
     setSearchResults([])
     setShowSearchResults(false)
     showScanFeedback('success', `✅ ${prodotto.nome} aggiunto`)
+  }
+
+  // Aggiunge riga tramite inserimento manuale
+  const handleAddManuale = () => {
+    if (!nomeManuale.trim()) return
+    const qta = Math.max(1, parseInt(qtaManuale) || 1)
+    const prezzo = Math.max(0, parseFloat(prezzoManuale) || 0)
+    setRighe(prev => [...prev, {
+      prodotto_id: 'manual_' + Date.now(),
+      nome: nomeManuale.trim(),
+      sku: skuManuale.trim(),
+      quantita: qta,
+      prezzo_unitario: prezzo,
+      subtotale: qta * prezzo,
+    }])
+    showScanFeedback('success', `✅ ${nomeManuale.trim()} aggiunto`)
+    setNomeManuale('')
+    setSkuManuale('')
+    setQtaManuale(1)
+    setPrezzoManuale(0)
   }
 
   // Modifica quantità riga
@@ -402,6 +428,100 @@ export default function NuovaFornitura() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Card inserimento manuale */}
+          <div style={{
+            backgroundColor: COLORS.white, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            padding: '20px', marginTop: 16,
+          }}>
+            <h2 style={{ margin: '0 0 16px', fontSize: '1rem', color: COLORS.primary, fontWeight: 700 }}>
+              ✏️ Inserimento Manuale
+            </h2>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.85rem', color: COLORS.text }}>
+                Nome prodotto *
+              </label>
+              <input
+                type="text"
+                value={nomeManuale}
+                onChange={e => setNomeManuale(e.target.value)}
+                placeholder="es. Carta A4 80g"
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 7,
+                  border: `1px solid ${COLORS.border}`, fontSize: '0.95rem',
+                  boxSizing: 'border-box', outline: 'none',
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.85rem', color: COLORS.text }}>
+                SKU (opzionale)
+              </label>
+              <input
+                type="text"
+                value={skuManuale}
+                onChange={e => setSkuManuale(e.target.value)}
+                placeholder="es. SKU-001"
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 7,
+                  border: `1px solid ${COLORS.border}`, fontSize: '0.95rem',
+                  boxSizing: 'border-box', outline: 'none',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.85rem', color: COLORS.text }}>
+                  Quantità
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={qtaManuale}
+                  onChange={e => setQtaManuale(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 7,
+                    border: `1px solid ${COLORS.border}`, fontSize: '0.95rem',
+                    boxSizing: 'border-box', outline: 'none',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.85rem', color: COLORS.text }}>
+                  Prezzo unitario (€)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={prezzoManuale}
+                  onChange={e => setPrezzoManuale(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 7,
+                    border: `1px solid ${COLORS.border}`, fontSize: '0.95rem',
+                    boxSizing: 'border-box', outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleAddManuale}
+              disabled={!nomeManuale.trim()}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 8,
+                backgroundColor: nomeManuale.trim() ? COLORS.success : COLORS.border,
+                color: nomeManuale.trim() ? COLORS.white : COLORS.textSecondary,
+                border: 'none', cursor: nomeManuale.trim() ? 'pointer' : 'not-allowed',
+                fontWeight: 700, fontSize: '1rem',
+              }}
+            >
+              ➕ Aggiungi Riga
+            </button>
           </div>
         </div>
 
