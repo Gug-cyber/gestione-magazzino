@@ -60,7 +60,7 @@ function NavLinks({ onLinkClick }) {
     { label: '⚙️ Sistema', links: sistemaLinks },
   ]
 
-  const [openSections, setOpenSections] = useState(() => sections.map(() => true))
+  const [openSections, setOpenSections] = useState(() => sections.map(() => false))
 
   const toggleSection = (index) => {
     setOpenSections(prev => prev.map((open, i) => i === index ? !open : open))
