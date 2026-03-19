@@ -49,3 +49,8 @@ logs/
 .env.local
 .env.*.local
 backend/.env
+
+# Next.js mobile-app build artifacts
+mobile-app/.next/
+mobile-app/node_modules/
+mobile-app/out/
