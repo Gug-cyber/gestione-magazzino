@@ -40,6 +40,7 @@ const BASE_SECTIONS = [
     links: [
       { to: '/fornitori', label: '🏢 Fornitori' },
       { to: '/forniture', label: '🚚 Forniture' },
+      { to: '/forniture/nuova', label: '➕ Nuova Fornitura' },
     ],
   },
   {
