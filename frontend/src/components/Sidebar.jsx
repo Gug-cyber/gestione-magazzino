@@ -46,6 +46,7 @@ const BASE_SECTIONS = [
     label: '🏭 Magazzino',
     links: [
       { to: '/movimenti', label: '🔄 Movimenti' },
+      { to: '/scanner', label: '📷 Scanner Barcode' },
     ],
   },
 ]
