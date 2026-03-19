@@ -13,11 +13,14 @@ function MobileAppLayout({ children }) {
       backgroundColor: '#f0f2f5',
       fontFamily: 'var(--font-family, system-ui, sans-serif)',
     }}>
-      {/* Top bar */}
+      {/* Top bar — rispetta la safe area in alto (notch / Dynamic Island / barra di stato) */}
       <header style={{
         backgroundColor: '#1a237e',
         color: '#ffffff',
-        padding: '12px 16px',
+        paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+        paddingBottom: '12px',
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 16px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 16px))',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
@@ -41,6 +44,8 @@ function MobileAppLayout({ children }) {
               alignItems: 'center',
               gap: '4px',
               opacity: 0.9,
+              minHeight: '44px',
+              minWidth: '44px',
             }}
           >
             ← Indietro
@@ -62,8 +67,10 @@ function MobileAppLayout({ children }) {
         maxWidth: '480px',
         width: '100%',
         margin: '0 auto',
-        padding: '20px 16px',
-        paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+        paddingTop: '20px',
+        paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))',
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 16px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 16px))',
         boxSizing: 'border-box',
       }}>
         {children}
