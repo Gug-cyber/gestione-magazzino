@@ -12,6 +12,11 @@ const inputStyle = {
   minHeight: 48,
 }
 
+const focusHandlers = {
+  onFocus: e => { e.target.style.borderColor = '#1565c0' },
+  onBlur: e => { e.target.style.borderColor = '#e0e4ef' },
+}
+
 const labelStyle = {
   display: 'flex',
   flexDirection: 'column',
@@ -117,8 +122,10 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
           <div style={{
             backgroundColor: '#ffebee', color: '#c62828', borderRadius: 8,
             padding: '10px 14px', marginBottom: 16, fontSize: '0.9rem',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
           }}>
-            ❌ {error}
+            <span>❌ {error}</span>
+            <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', fontSize: '1.1rem', padding: 0 }} aria-label="Chiudi messaggio di errore">×</button>
           </div>
         )}
 
@@ -130,6 +137,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
               placeholder="Es. Prodotto XYZ"
               value={form.nome}
               onChange={e => set('nome', e.target.value)}
+              {...focusHandlers}
               required
               autoFocus
             />
@@ -142,6 +150,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
               placeholder="Codice scansionato"
               value={form.barcode}
               onChange={e => set('barcode', e.target.value)}
+              {...focusHandlers}
             />
           </label>
 
@@ -152,6 +161,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
               placeholder="Opzionale"
               value={form.sku}
               onChange={e => set('sku', e.target.value)}
+              {...focusHandlers}
             />
           </label>
 
@@ -161,6 +171,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
               style={{ ...inputStyle, backgroundColor: 'white' }}
               value={form.categoria_id}
               onChange={e => set('categoria_id', e.target.value)}
+              {...focusHandlers}
             >
               <option value="">— Seleziona categoria —</option>
               {categorie.map(c => (
@@ -180,6 +191,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
                 placeholder="0.00"
                 value={form.prezzo_acquisto}
                 onChange={e => set('prezzo_acquisto', e.target.value)}
+                {...focusHandlers}
               />
             </label>
             <label style={labelStyle}>
@@ -192,6 +204,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
                 placeholder="0.00"
                 value={form.prezzo_vendita}
                 onChange={e => set('prezzo_vendita', e.target.value)}
+                {...focusHandlers}
               />
             </label>
           </div>
@@ -208,6 +221,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
               step="1"
               value={form.quantita}
               onChange={e => set('quantita', e.target.value)}
+              {...focusHandlers}
             />
           </label>
 
