@@ -2,16 +2,6 @@ import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-const sectionLabelStyle = {
-  display: 'block',
-  padding: '16px 16px 4px',
-  fontSize: '0.68rem',
-  fontWeight: '700',
-  letterSpacing: '0.1em',
-  color: '#94a3b8',
-  textTransform: 'uppercase',
-  userSelect: 'none',
-}
 
 const BASE_SECTIONS = [
   {
@@ -70,40 +60,79 @@ function NavLinks({ onLinkClick }) {
     { label: '⚙️ Sistema', links: sistemaLinks },
   ]
 
+  const [openSections, setOpenSections] = useState(() => sections.map(() => true))
+
+  const toggleSection = (index) => {
+    setOpenSections(prev => prev.map((open, i) => i === index ? !open : open))
+  }
+
   return (
     <div>
-      {sections.map((section) => (
-        <div key={section.label}>
-          <span style={sectionLabelStyle}>{section.label}</span>
-          {section.links.map(({ to, label, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={onLinkClick}
-              onMouseEnter={() => setHoveredTo(to)}
-              onMouseLeave={() => setHoveredTo(null)}
-              style={({ isActive }) => ({
-                display: 'block',
-                padding: '9px 16px 9px 20px',
-                color: isActive ? '#ffffff' : 'rgba(255,255,255,0.72)',
-                textDecoration: 'none',
-                backgroundColor: isActive
-                  ? 'rgba(99,102,241,0.35)'
-                  : hoveredTo === to
-                    ? 'rgba(255,255,255,0.07)'
-                    : 'transparent',
-                borderLeft: isActive ? '3px solid #818cf8' : '3px solid transparent',
-                borderRadius: '0 8px 8px 0',
-                marginRight: '8px',
-                fontWeight: isActive ? '600' : '400',
-                fontSize: '0.875rem',
-                transition: 'all 0.15s ease',
-              })}
-            >
-              {label}
-            </NavLink>
-          ))}
+      {sections.map((section, idx) => (
+        <div key={section.label} style={{ marginBottom: 2 }}>
+          <button
+            onClick={() => toggleSection(idx)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              padding: '12px 16px 4px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.68rem',
+              fontWeight: '700',
+              letterSpacing: '0.1em',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              userSelect: 'none',
+            }}
+          >
+            <span>{section.label}</span>
+            <span style={{
+              fontSize: '0.8rem',
+              transition: 'transform 0.2s',
+              transform: openSections[idx] ? 'rotate(90deg)' : 'rotate(0deg)',
+              color: '#64748b',
+            }}>›</span>
+          </button>
+
+          <div style={{
+            overflow: 'hidden',
+            maxHeight: openSections[idx] ? '1000px' : '0px',
+            transition: 'max-height 0.25s ease',
+          }}>
+            {section.links.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={onLinkClick}
+                onMouseEnter={() => setHoveredTo(to)}
+                onMouseLeave={() => setHoveredTo(null)}
+                style={({ isActive }) => ({
+                  display: 'block',
+                  padding: '9px 16px 9px 20px',
+                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.72)',
+                  textDecoration: 'none',
+                  backgroundColor: isActive
+                    ? 'rgba(99,102,241,0.35)'
+                    : hoveredTo === to
+                      ? 'rgba(255,255,255,0.07)'
+                      : 'transparent',
+                  borderLeft: isActive ? '3px solid #818cf8' : '3px solid transparent',
+                  borderRadius: '0 8px 8px 0',
+                  marginRight: '8px',
+                  fontWeight: isActive ? '600' : '400',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.15s ease',
+                })}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
         </div>
       ))}
     </div>
