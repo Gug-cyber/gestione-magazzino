@@ -4,6 +4,19 @@ from datetime import datetime
 from ..models.fornitura import TipoVoceFornitura
 
 
+class RigaMobileConferma(BaseModel):
+    prodotto_id: int
+    quantita: int
+    prezzo_unitario: float = 0.0
+
+
+class FornituraMobileConferma(BaseModel):
+    righe: List[RigaMobileConferma]
+    fornitore_id: Optional[int] = None
+    fornitore_nome: Optional[str] = None
+    note: Optional[str] = None
+
+
 class RigaFornituraCreate(BaseModel):
     prodotto_id: Optional[int] = None
     tipo_voce: TipoVoceFornitura = TipoVoceFornitura.prodotto
