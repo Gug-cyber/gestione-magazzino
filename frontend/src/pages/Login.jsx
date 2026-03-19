@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { forgotUsername, forgotPassword, resetPassword } from '../api/client'
+import useLogoSettings from '../hooks/useLogoSettings'
 
 function Login() {
   const [username, setUsername] = useState('')
@@ -10,6 +11,7 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const { logoUrl, portalTitle } = useLogoSettings()
 
   // Modal state
   const [modal, setModal] = useState(null) // 'username' | 'password' | null
@@ -149,9 +151,12 @@ function Login() {
         maxWidth: '400px',
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '8px' }}>🏭</div>
+          {logoUrl
+            ? <img src={logoUrl} alt={`${portalTitle} logo`} style={{ height: '64px', width: 'auto', objectFit: 'contain', marginBottom: '12px', borderRadius: '6px' }} />
+            : <div style={{ fontSize: '3rem', marginBottom: '8px' }}>🏭</div>
+          }
           <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1a237e', margin: 0 }}>
-            Gestione Magazzino
+            {portalTitle}
           </h1>
           <p style={{ color: '#666', marginTop: '8px', fontSize: '0.95rem' }}>
             Accedi al portale di gestione
