@@ -200,11 +200,16 @@ export const activityLogAPI = {
   getMine: (params) => client.get('/api/activity-log/me', { params }),
 }
 
-export const cardtraderAPI = {  getStatus: () => client.get('/api/cardtrader/status'),
+export const cardtraderAPI = {
+  getStatus: () => client.get('/api/cardtrader/status'),
   getListings: () => client.get('/api/cardtrader/listings'),
   importAll: () => client.post('/api/cardtrader/import'),
   sync: (prodottoId, data) => client.post(`/api/cardtrader/sync/${prodottoId}`, data),
   getMarketPrices: (blueprintId, params) => client.get(`/api/cardtrader/market-prices/${blueprintId}`, { params }),
+}
+
+export const ebayAPI = {
+  getPrezzi: (nome, stato) => client.get('/api/ebay/prezzi', { params: { nome, stato } }),
 }
 
 /**
