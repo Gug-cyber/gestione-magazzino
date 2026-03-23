@@ -152,6 +152,39 @@ def _search_ebay(access_token: str, nome: str, stato: Optional[str], marketplace
     return resp.json()
 
 
+def _search_ebay_sold(access_token: str, nome: str, stato: Optional[str], marketplace: str) -> dict:
+    """Search eBay Completed/Sold Listings using the Browse API with soldItems filter.
+
+    Returns the JSON response from eBay, or an empty dict on any error.
+    """
+    _, browse_api_url = _get_ebay_urls()
+    filters = ["buyingOptions:{FIXED_PRICE}", "soldItems:true"]
+    conditions = CONDITION_MAP.get(stato) if stato else None
+    if conditions:
+        condition_filter = "|".join(conditions)
+        filters.append(f"conditions:{{{condition_filter}}}")
+
+    params = {
+        "q": nome,
+        "filter": ",".join(filters),
+        "limit": 5,
+        "sort": "newlyListed",
+    }
+
+    with httpx.Client(timeout=15) as http_client:
+        resp = http_client.get(
+            browse_api_url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "X-EBAY-C-MARKETPLACE-ID": marketplace,
+                "Content-Type": "application/json",
+            },
+            params=params,
+        )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def _build_ebay_search_url(nome: str, marketplace: str) -> str:
     """Return a direct browser search URL for the given marketplace."""
     if marketplace == "EBAY_IT":
@@ -165,10 +198,15 @@ def get_prezzi_ebay(
     stato: Optional[str] = Query(None, description="Stato di conservazione"),
     current_user=Depends(get_current_active_user),
 ):
-    """Restituisce il prezzo medio e il prezzo dell'annuncio più recente su eBay per un prodotto.
+    """Restituisce il prezzo medio, l'ultimo prezzo di annuncio attivo e l'ultimo prezzo
+    di vendita conclusa su eBay per un prodotto.
 
-    Nota: i prezzi provengono da annunci attivi (FIXED_PRICE), ordinati per data di
-    inserimento più recente. Non si tratta di prezzi di vendite concluse.
+    Esegue due chiamate all'API eBay Browse v1:
+    1. Annunci attivi (FIXED_PRICE, sort=newlyListed) → prezzo_medio e ultimo_prezzo.
+    2. Vendite concluse (soldItems:true, sort=newlyListed) → ultimo_prezzo_venduto.
+
+    La seconda chiamata non è bloccante: se fallisce per qualsiasi motivo,
+    ``ultimo_prezzo_venduto`` viene restituito come ``null``.
     """
     client_id, _ = _get_credentials()
     if not client_id:
@@ -205,11 +243,30 @@ def get_prezzi_ebay(
     url_ricerca = _build_ebay_search_url(nome, used_marketplace)
     items = data.get("itemSummaries", [])
 
+    # --- Sold items (best-effort, non-blocking) ---
+    ultimo_prezzo_venduto: Optional[float] = None
+    try:
+        try:
+            sold_data = _search_ebay_sold(access_token, nome, stato, used_marketplace)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code in (400, 403, 422):
+                sold_data = _search_ebay_sold(access_token, nome, stato, "EBAY_US" if used_marketplace == "EBAY_IT" else "EBAY_IT")
+            else:
+                raise
+        sold_items = sold_data.get("itemSummaries", [])
+        if sold_items:
+            sold_value = sold_items[0].get("price", {}).get("value")
+            if sold_value is not None:
+                ultimo_prezzo_venduto = round(float(sold_value), 2)
+    except Exception as exc:
+        logger.warning("Impossibile recuperare sold items eBay: %s", exc)
+
     if not items:
         return {
             "configurato": True,
             "prezzo_medio": None,
             "ultimo_prezzo": None,
+            "ultimo_prezzo_venduto": ultimo_prezzo_venduto,
             "numero_risultati": 0,
             "valuta": "EUR",
             "url_ricerca": url_ricerca,
@@ -231,6 +288,7 @@ def get_prezzi_ebay(
             "configurato": True,
             "prezzo_medio": None,
             "ultimo_prezzo": None,
+            "ultimo_prezzo_venduto": ultimo_prezzo_venduto,
             "numero_risultati": len(items),
             "valuta": "EUR",
             "url_ricerca": url_ricerca,
@@ -246,6 +304,7 @@ def get_prezzi_ebay(
         "configurato": True,
         "prezzo_medio": prezzo_medio,
         "ultimo_prezzo": ultimo_prezzo,
+        "ultimo_prezzo_venduto": ultimo_prezzo_venduto,
         "numero_risultati": len(items),
         "valuta": valuta,
         "url_ricerca": url_ricerca,
