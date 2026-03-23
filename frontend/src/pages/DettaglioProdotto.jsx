@@ -519,9 +519,6 @@ function DettaglioProdotto() {
                     <div style={{ fontSize: '0.85rem' }}>
                       Medio: <strong style={{ color: '#1565c0' }}>€{Number(ebayData.prezzo_medio).toFixed(2)}</strong>
                     </div>
-                    <div style={{ fontSize: '0.85rem' }}>
-                      Ultimo: <strong style={{ color: '#2e7d32' }}>€{Number(ebayData.ultimo_prezzo).toFixed(2)}</strong>
-                    </div>
                     {ebayData.ultimo_prezzo_venduto != null && (
                       <div style={{ fontSize: '0.85rem' }}>
                         Venduto: <strong style={{ color: '#e65100' }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</strong>
@@ -578,7 +575,7 @@ function DettaglioProdotto() {
         {movimenti.length === 0 ? (
           <p style={{ color: '#888', textAlign: 'center', padding: '24px 0' }}>Nessun movimento registrato</p>
         ) : (
-          <>
+          <>  
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
@@ -667,12 +664,7 @@ function DettaglioProdotto() {
                     alert('Il popup è stato bloccato dal browser. Consenti i popup per questa pagina e riprova.')
                     return
                   }
-                  win.document.write(`<html><head><title>QR - ${prodotto.nome}</title></head><body style="display:flex;align-items:center;justify-content:center;padding:32px;font-family:sans-serif"><div style="text-align:center"><img src="${canvas.toDataURL()}" style="width:200px;height:200px"><p style="margin-top:12px;font-size:14px;color:#555">${prodotto.nome}</p><p style="font-size:11px;color:#888;font-family:monospace">prodotto:${prodotto.id}</p></div></body></html>`)
-                  win.document.close()
-                  win.focus()
-                  setTimeout(() => win.print(), 500)
-                })
-              }}
+                  win.document.write(`<html><head><title>QR - ${prodotto.nome}</title></head><body style="display:flex;align-items:center;justify-content:center;padding:32px;font-family:sans-serif"><div style="text-align:center"><img src="${canvas.toDataURL()}" style="width:200px;height:200px"><p style="margin-top:12px;font-size:14px;color:#555">${prodotto.nome}</p><p style="font-size:11px;color:#888;font-family:monospace">prodotto:${prodotto.id}</p></div></body></html>`)\n                  win.document.close()\n                  win.focus()\n                  setTimeout(() => win.print(), 500)\n                })\n              }}
               style={btnStyle('#7c3aed')}
             >🖨️ Stampa QR</button>
           </div>
