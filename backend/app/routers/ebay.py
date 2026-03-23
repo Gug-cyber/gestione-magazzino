@@ -11,15 +11,34 @@ from ..auth import get_current_active_user
 
 router = APIRouter()
 
-EBAY_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
-EBAY_BROWSE_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 EBAY_SCOPE = "https://api.ebay.com/oauth/api_scope"
 
 # In-memory token cache to avoid requesting a new token on every call
 _token_cache: dict = {
     "access_token": None,
     "expires_at": 0.0,
+    "env": None,
 }
+
+
+def _get_ebay_urls() -> tuple[str, str]:
+    """Return (token_url, browse_api_url) for either SANDBOX or PRODUCTION environment."""
+    env = _get_ebay_env()
+    if env == "SANDBOX":
+        return (
+            "https://api.sandbox.ebay.com/identity/v1/oauth2/token",
+            "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search",
+        )
+    return (
+        "https://api.ebay.com/identity/v1/oauth2/token",
+        "https://api.ebay.com/buy/browse/v1/item_summary/search",
+    )
+
+
+def _get_ebay_env() -> str:
+    """Return the normalised EBAY_ENV value ('SANDBOX' or 'PRODUCTION')."""
+    return os.getenv("EBAY_ENV", "PRODUCTION").upper().strip()
+
 
 # Mapping stato_conservazione -> eBay condition display values (Browse API filter)
 CONDITION_MAP: dict = {
@@ -48,9 +67,16 @@ def _get_access_token() -> str:
             detail="API eBay non configurata. Aggiungi EBAY_CLIENT_ID e EBAY_CLIENT_SECRET.",
         )
 
+    token_url, _ = _get_ebay_urls()
+    current_env = _get_ebay_env()
+
     now = time.time()
-    # Return cached token if still valid (with 60-second safety margin)
-    if _token_cache["access_token"] and _token_cache["expires_at"] > now + 60:
+    # Return cached token if still valid (with 60-second safety margin) and env unchanged
+    if (
+        _token_cache["access_token"]
+        and _token_cache["expires_at"] > now + 60
+        and _token_cache["env"] == current_env
+    ):
         return _token_cache["access_token"]
 
     # Request a new token via client credentials flow
@@ -58,7 +84,7 @@ def _get_access_token() -> str:
     try:
         with httpx.Client(timeout=15) as http_client:
             resp = http_client.post(
-                EBAY_TOKEN_URL,
+                token_url,
                 headers={
                     "Authorization": f"Basic {credentials}",
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -86,12 +112,14 @@ def _get_access_token() -> str:
 
     _token_cache["access_token"] = token
     _token_cache["expires_at"] = now + expires_in
+    _token_cache["env"] = current_env
 
     return token
 
 
 def _search_ebay(access_token: str, nome: str, stato: Optional[str], marketplace: str) -> dict:
     """Perform a search on the eBay Browse API and return the JSON response."""
+    _, browse_api_url = _get_ebay_urls()
     filters = ["buyingOptions:{FIXED_PRICE}"]
     conditions = CONDITION_MAP.get(stato) if stato else None
     if conditions:
@@ -107,7 +135,7 @@ def _search_ebay(access_token: str, nome: str, stato: Optional[str], marketplace
 
     with httpx.Client(timeout=15) as http_client:
         resp = http_client.get(
-            EBAY_BROWSE_API_URL,
+            browse_api_url,
             headers={
                 "Authorization": f"Bearer {access_token}",
                 "X-EBAY-C-MARKETPLACE-ID": marketplace,
