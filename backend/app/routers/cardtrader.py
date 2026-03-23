@@ -150,27 +150,37 @@ def get_market_prices(
                     else:
                         sold_items = sold_data.get("data") or sold_data.get("products") or []
 
-                    for item in sold_items:
-                        properties = item.get("properties") or {}
-                        price = item.get("price") or {}
+                    for sold_item in sold_items:
+                        s_properties = sold_item.get("properties") or {}
+                        s_price = sold_item.get("price") or {}
 
-                        item_condizione = properties.get("condition")
-                        item_lingua = (
-                            properties.get("mtg_language") or properties.get("pokemon_language")
+                        s_condizione = s_properties.get("condition")
+                        s_lingua = (
+                            s_properties.get("mtg_language") or s_properties.get("pokemon_language")
                         )
 
-                        if condizione and item_condizione != condizione:
+                        if condizione and s_condizione != condizione:
                             continue
-                        if lingua and item_lingua != lingua:
+                        if lingua and s_lingua != lingua:
                             continue
 
-                        cents = price.get("cents")
+                        cents = s_price.get("cents")
                         if cents is not None:
                             # Take the first matching result (most recent sale per API ordering)
                             ultimo_prezzo_venduto = round(cents / 100, 2)
                             break
             except Exception:
                 pass
+
+            return {
+                "blueprint_id": blueprint_id,
+                "condizione": condizione or None,
+                "lingua": lingua or None,
+                "prezzo_minimo": prezzo_minimo,
+                "prezzo_medio": prezzo_medio,
+                "numero_offerte": len(prices),
+                "ultimo_prezzo_venduto": ultimo_prezzo_venduto,
+            }
 
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
@@ -179,16 +189,6 @@ def get_market_prices(
         )
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail=f"Errore di rete: {exc}")
-
-    return {
-        "blueprint_id": blueprint_id,
-        "condizione": condizione or None,
-        "lingua": lingua or None,
-        "prezzo_minimo": prezzo_minimo,
-        "prezzo_medio": prezzo_medio,
-        "numero_offerte": len(prices),
-        "ultimo_prezzo_venduto": ultimo_prezzo_venduto,
-    }
 
 
 @router.post("/import")
