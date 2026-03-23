@@ -1,13 +1,18 @@
 import base64
+import hashlib
+import logging
 import os
 import time
 from typing import Optional
 from urllib.parse import quote_plus
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
 from ..auth import get_current_active_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -246,3 +251,41 @@ def get_prezzi_ebay(
         "url_ricerca": url_ricerca,
         "stato_filtrato": stato,
     }
+
+
+@router.get("/account-deletion")
+def ebay_account_deletion_challenge(challenge_code: str = Query(...)):
+    """eBay marketplace account deletion — ownership verification endpoint.
+
+    eBay sends a GET request with a ``challenge_code`` query parameter to verify
+    that we own the endpoint.  We must respond with the SHA-256 hash of::
+
+        challenge_code + EBAY_VERIFICATION_TOKEN + EBAY_DELETION_ENDPOINT_URL
+
+    (concatenated directly, no separators).
+    """
+    verification_token = os.getenv("EBAY_VERIFICATION_TOKEN", "")
+    endpoint_url = os.getenv("EBAY_DELETION_ENDPOINT_URL", "")
+
+    hash_input = challenge_code + verification_token + endpoint_url
+    challenge_response = hashlib.sha256(hash_input.encode()).hexdigest()
+
+    return {"challengeResponse": challenge_response}
+
+
+@router.post("/account-deletion")
+async def ebay_account_deletion_notification(request: Request):
+    """eBay marketplace account deletion — notification receiver.
+
+    eBay sends a POST request when a user requests account deletion.
+    We log only non-sensitive metadata and always respond HTTP 200.
+    """
+    try:
+        payload: dict = await request.json()
+        # Log only non-PII metadata (notification type) to comply with GDPR
+        notification_type = payload.get("metadata", {}).get("topic", "unknown")
+        logger.info("eBay account deletion notification received (topic=%s)", notification_type)
+    except Exception:
+        logger.warning("eBay account deletion notification: could not parse request body")
+
+    return JSONResponse(status_code=200, content={"status": "ok"})
