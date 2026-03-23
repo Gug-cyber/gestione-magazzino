@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
 import QRCodeDisplay from '../components/QRCodeDisplay'
@@ -118,6 +118,9 @@ function DettaglioProdotto() {
   const [ebayLoading, setEbayLoading] = useState(false)
   const [ebayError, setEbayError] = useState(null)
 
+  const [cardtraderData, setCardtraderData] = useState(null)
+  const [cardtraderLoading, setCardtraderLoading] = useState(false)
+
   const loadScheda = () => {
     setLoading(true)
     setError(null)
@@ -133,6 +136,34 @@ function DettaglioProdotto() {
       .then(([c, u]) => { setCategorie(c.data); setUbicazioni(u.data) })
       .catch(() => {})
   }, [id])
+
+  const fetchEbayPrezzi = (prodotto) => {
+    setEbayData(null)
+    setEbayLoading(true)
+    setEbayError(null)
+    ebayAPI.getPrezzi(prodotto.nome, prodotto.stato_conservazione)
+      .then(res => setEbayData(res.data))
+      .catch(err => setEbayError(err.response?.data?.detail || 'Errore prezzi eBay'))
+      .finally(() => setEbayLoading(false))
+  }
+
+  useEffect(() => {
+    if (!scheda) return
+    const { prodotto } = scheda
+    fetchEbayPrezzi(prodotto)
+    if (prodotto.cardtrader_blueprint_id) {
+      setCardtraderLoading(true)
+      cardtraderAPI.getMarketPrices(prodotto.cardtrader_blueprint_id)
+        .then(res => setCardtraderData(res.data))
+        .catch(() => setCardtraderData(null))
+        .finally(() => setCardtraderLoading(false))
+    }
+  }, [scheda?.prodotto?.id])
+
+  const refreshEbay = () => {
+    if (!scheda) return
+    fetchEbayPrezzi(scheda.prodotto)
+  }
 
   const handleEditOpen = () => {
     const p = scheda.prodotto
@@ -471,74 +502,58 @@ function DettaglioProdotto() {
         </div>
       )}
 
-      {/* Sezione Prezzi eBay */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🛒 Prezzi eBay</h2>
-        <div style={{ marginBottom: 12 }}>
-          <button
-            onClick={async () => {
-              setEbayLoading(true)
-              setEbayError(null)
-              try {
-                const res = await ebayAPI.getPrezzi(prodotto.nome, prodotto.stato_conservazione)
-                setEbayData(res.data)
-              } catch (err) {
-                setEbayError(err.response?.data?.detail || 'Errore durante il recupero dei prezzi eBay')
-              } finally {
-                setEbayLoading(false)
-              }
-            }}
-            disabled={ebayLoading}
-            style={{ ...btnStyle('#e53935'), opacity: ebayLoading ? 0.6 : 1, cursor: ebayLoading ? 'not-allowed' : 'pointer' }}
-          >
-            {ebayLoading ? '⏳ Caricamento...' : '🔄 Aggiorna da eBay'}
+      {/* Prezzi piattaforme — riga compatta sotto le stat-cards */}
+      <div style={{ marginTop: 16, marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+
+        {/* Tab eBay */}
+        <div style={{ backgroundColor: '#e3f2fd', borderRadius: 8, padding: '12px 16px', borderLeft: '4px solid #1565c0' }}>
+          <div style={{ fontSize: '0.75rem', color: '#1565c0', fontWeight: 700, marginBottom: 4 }}>🛒 Prezzi eBay</div>
+          {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
+          {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
+          {ebayData && !ebayError && !ebayLoading && (
+            ebayData.configurato === false
+              ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Non configurato</div>
+              : ebayData.numero_risultati === 0
+                ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
+                : <div>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      Medio: <strong style={{ color: '#1565c0' }}>€{Number(ebayData.prezzo_medio).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      Ultimo: <strong style={{ color: '#2e7d32' }}>€{Number(ebayData.ultimo_prezzo).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#888' }}>{ebayData.numero_risultati} annunci</div>
+                    <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
+                      aria-label="Vedi su eBay (apre in una nuova scheda)"
+                      style={{ fontSize: '0.75rem', color: '#1565c0' }}>🔗 Vedi su eBay</a>
+                  </div>
+          )}
+          <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" style={{ marginTop: 6, fontSize: '0.75rem', color: '#1565c0', background: 'none', border: 'none', cursor: ebayLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: ebayLoading ? 0.6 : 1 }}>
+            🔄 Aggiorna
           </button>
         </div>
 
-        {ebayError && (
-          <div style={{ color: '#c62828', fontSize: '0.9rem', marginTop: 8 }}>{ebayError}</div>
-        )}
+        {/* Tab CardTrader */}
+        <div style={{ backgroundColor: '#f3e5f5', borderRadius: 8, padding: '12px 16px', borderLeft: '4px solid #7b1fa2' }}>
+          <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 700, marginBottom: 4 }}>🃏 Prezzi CardTrader</div>
+          {!prodotto.cardtrader_blueprint_id
+            ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Blueprint ID non configurato</div>
+            : cardtraderLoading
+              ? <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>
+              : cardtraderData
+                ? <div>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      Min: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_minimo).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
+                  </div>
+                : <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun dato disponibile</div>
+          }
+        </div>
 
-        {ebayData && (
-          ebayData.configurato === false ? (
-            <div style={{ color: '#888', fontSize: '0.9rem', fontStyle: 'italic' }}>
-              {ebayData.messaggio}
-            </div>
-          ) : ebayData.numero_risultati === 0 ? (
-            <div style={{ color: '#888', fontSize: '0.9rem', fontStyle: 'italic' }}>
-              Nessun risultato trovato su eBay per questo prodotto
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 8 }}>
-              <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0' }}>
-                <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Prezzo medio</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#1565c0' }}>
-                  {ebayData.prezzo_medio != null ? `${ebayData.valuta === 'EUR' ? '€' : ebayData.valuta}${Number(ebayData.prezzo_medio).toFixed(2)}` : '—'}
-                </div>
-              </div>
-              <div style={{ ...statCardStyle, borderLeft: '4px solid #2e7d32' }}>
-                <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Ultimo prezzo</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#2e7d32' }}>
-                  {ebayData.ultimo_prezzo != null ? `${ebayData.valuta === 'EUR' ? '€' : ebayData.valuta}${Number(ebayData.ultimo_prezzo).toFixed(2)}` : '—'}
-                </div>
-              </div>
-              <div style={{ ...statCardStyle, borderLeft: '4px solid #f57c00' }}>
-                <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Risultati trovati</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#f57c00' }}>{ebayData.numero_risultati} annunci</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <a
-                  href={ebayData.url_ricerca}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#1565c0', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none' }}
-                >
-                  🔗 Vedi su eBay
-                </a>
-              </div>
-            </div>
-          )
-        )}
       </div>
 
       {/* Chart */}
