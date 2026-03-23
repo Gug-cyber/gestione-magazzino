@@ -550,6 +550,11 @@ function DettaglioProdotto() {
                     <div style={{ fontSize: '0.85rem' }}>
                       Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
                     </div>
+                    {cardtraderData.ultimo_prezzo_venduto != null && (
+                      <div style={{ fontSize: '0.85rem' }}>
+                        Venduto: <strong style={{ color: '#e65100' }}>€{Number(cardtraderData.ultimo_prezzo_venduto).toFixed(2)}</strong>
+                      </div>
+                    )}
                     <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
                   </div>
                 : <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun dato disponibile</div>

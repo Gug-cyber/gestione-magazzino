@@ -85,15 +85,93 @@ def get_market_prices(
     current_user=Depends(get_current_active_user),
 ):
     token = _get_token()
+    headers = {"Authorization": f"Bearer {token}"}
 
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.get(
                 f"{CARDTRADER_API_BASE}/marketplace/products",
-                headers={"Authorization": f"Bearer {token}"},
+                headers=headers,
                 params={"blueprint_id": blueprint_id},
             )
-        resp.raise_for_status()
+            resp.raise_for_status()
+
+            data = resp.json()
+            if isinstance(data, list):
+                items = data
+            else:
+                items = data.get("data") or data.get("products") or []
+
+            prices = []
+            for item in items:
+                properties = item.get("properties") or {}
+                price = item.get("price") or {}
+
+                item_condizione = properties.get("condition")
+                item_lingua = (
+                    properties.get("mtg_language") or properties.get("pokemon_language")
+                )
+
+                if condizione and item_condizione != condizione:
+                    continue
+                if lingua and item_lingua != lingua:
+                    continue
+
+                cents = price.get("cents")
+                if cents is not None:
+                    prices.append(cents / 100)
+
+            if not prices:
+                return {
+                    "blueprint_id": blueprint_id,
+                    "condizione": condizione or None,
+                    "lingua": lingua or None,
+                    "prezzo_minimo": None,
+                    "prezzo_medio": None,
+                    "numero_offerte": 0,
+                    "ultimo_prezzo_venduto": None,
+                }
+
+            prezzo_minimo = round(min(prices), 2)
+            prezzo_medio = round(sum(prices) / len(prices), 2)
+
+            # Best-effort: retrieve the most recent sold price (first result in API order)
+            ultimo_prezzo_venduto = None
+            try:
+                sold_resp = client.get(
+                    f"{CARDTRADER_API_BASE}/marketplace/products",
+                    headers=headers,
+                    params={"blueprint_id": blueprint_id, "sold": "true"},
+                )
+                if sold_resp.status_code == 200:
+                    sold_data = sold_resp.json()
+                    if isinstance(sold_data, list):
+                        sold_items = sold_data
+                    else:
+                        sold_items = sold_data.get("data") or sold_data.get("products") or []
+
+                    for item in sold_items:
+                        properties = item.get("properties") or {}
+                        price = item.get("price") or {}
+
+                        item_condizione = properties.get("condition")
+                        item_lingua = (
+                            properties.get("mtg_language") or properties.get("pokemon_language")
+                        )
+
+                        if condizione and item_condizione != condizione:
+                            continue
+                        if lingua and item_lingua != lingua:
+                            continue
+
+                        cents = price.get("cents")
+                        if cents is not None:
+                            # Take the first matching result (most recent sale per API ordering)
+                            ultimo_prezzo_venduto = round(cents / 100, 2)
+                            break
+            except Exception:
+                pass
+
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=502,
@@ -102,44 +180,6 @@ def get_market_prices(
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail=f"Errore di rete: {exc}")
 
-    data = resp.json()
-    if isinstance(data, list):
-        items = data
-    else:
-        items = data.get("data") or data.get("products") or []
-
-    prices = []
-    for item in items:
-        properties = item.get("properties") or {}
-        price = item.get("price") or {}
-
-        item_condizione = properties.get("condition")
-        item_lingua = (
-            properties.get("mtg_language") or properties.get("pokemon_language")
-        )
-
-        if condizione and item_condizione != condizione:
-            continue
-        if lingua and item_lingua != lingua:
-            continue
-
-        cents = price.get("cents")
-        if cents is not None:
-            prices.append(cents / 100)
-
-    if not prices:
-        return {
-            "blueprint_id": blueprint_id,
-            "condizione": condizione or None,
-            "lingua": lingua or None,
-            "prezzo_minimo": None,
-            "prezzo_medio": None,
-            "numero_offerte": 0,
-        }
-
-    prezzo_minimo = round(min(prices), 2)
-    prezzo_medio = round(sum(prices) / len(prices), 2)
-
     return {
         "blueprint_id": blueprint_id,
         "condizione": condizione or None,
@@ -147,6 +187,7 @@ def get_market_prices(
         "prezzo_minimo": prezzo_minimo,
         "prezzo_medio": prezzo_medio,
         "numero_offerte": len(prices),
+        "ultimo_prezzo_venduto": ultimo_prezzo_venduto,
     }
 
 
