@@ -29,6 +29,10 @@ services:
         sync: false          # inserire manualmente nella dashboard Render
       - key: EBAY_ENV
         value: "PRODUCTION"  # cambiare in SANDBOX per i test
+      - key: EBAY_VERIFICATION_TOKEN
+        sync: false          # inserire manualmente nella dashboard Render
+      - key: EBAY_DELETION_ENDPOINT_URL
+        sync: false          # es. https://your-backend.onrender.com/ebay/account-deletion
     disk:
       name: uploads
       mountPath: /app/uploads
