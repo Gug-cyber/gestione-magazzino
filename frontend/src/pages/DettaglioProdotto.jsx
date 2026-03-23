@@ -522,6 +522,11 @@ function DettaglioProdotto() {
                     <div style={{ fontSize: '0.85rem' }}>
                       Ultimo: <strong style={{ color: '#2e7d32' }}>€{Number(ebayData.ultimo_prezzo).toFixed(2)}</strong>
                     </div>
+                    {ebayData.ultimo_prezzo_venduto != null && (
+                      <div style={{ fontSize: '0.85rem' }}>
+                        Venduto: <strong style={{ color: '#e65100' }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</strong>
+                      </div>
+                    )}
                     <div style={{ fontSize: '0.75rem', color: '#888' }}>{ebayData.numero_risultati} annunci</div>
                     <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
                       aria-label="Vedi su eBay (apre in una nuova scheda)"
