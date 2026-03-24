@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
-from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse
+from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineStatoUpdate
 from ..crud import ordine as crud
 from ..auth import get_current_active_user
 from ..crud.activity_log import log_activity
@@ -135,4 +135,25 @@ def update_tracking(
         o.tracking_number = tracking_number
     db.commit()
     db.refresh(o)
+    return _ordine_to_response(o)
+
+
+@router.patch("/{ordine_id}/stato", response_model=OrdineResponse)
+def update_stato(
+    ordine_id: int,
+    stato_update: OrdineStatoUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Aggiorna solo lo stato di un ordine."""
+    o = crud.get_ordine(db, ordine_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+    o.stato = stato_update.stato.value
+    db.commit()
+    db.refresh(o)
+    try:
+        log_activity(db, azione="aggiorna_stato_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=f"{o.numero_ordine} → {o.stato}")
+    except Exception:
+        pass
     return _ordine_to_response(o)

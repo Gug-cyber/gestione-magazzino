@@ -84,6 +84,39 @@ export default function Ordini() {
     fetchOrdini({ page: 1 })
   }
 
+  const handleQuickStateChange = (ordine) => {
+    const stateFlow = {
+      'bozza': 'confermato',
+      'confermato': 'spedito',
+      'spedito': 'completato',
+      'completato': null,
+      'annullato': null,
+    }
+
+    const nextState = stateFlow[ordine.stato]
+
+    if (!nextState) {
+      alert(`L'ordine è già nello stato finale: ${ordine.stato}`)
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Cambiare stato ordine ${ordine.numero_ordine} da "${ordine.stato}" a "${nextState}"?`
+    )
+
+    if (!confirmed) return
+
+    ordiniAPI.updateStato(ordine.id, nextState)
+      .then(() => {
+        setOrdini(prev => prev.map(o =>
+          o.id === ordine.id ? { ...o, stato: nextState } : o
+        ))
+      })
+      .catch(err => {
+        alert(err?.response?.data?.detail || 'Errore nel cambio stato')
+      })
+  }
+
   const handleScan = (value) => {
     setShowScanner(false)
     if (scannerRigaIndex !== null) {
@@ -272,10 +305,10 @@ export default function Ordini() {
                   <td className={styles.td}>{ordine.cliente_nome || '—'}</td>
                   <td className={styles.td}>
                     <button
-                      onClick={() => navigate(`/ordini/${ordine.id}`)}
+                      onClick={() => handleQuickStateChange(ordine)}
                       className={styles.statoBadgeBtn}
                       title="Clicca per cambiare stato"
-                      aria-label={`Vai all'ordine ${ordine.numero_ordine} per cambiare stato`}
+                      aria-label={`Cambia stato ordine ${ordine.numero_ordine} (attuale: ${ordine.stato})`}
                     >
                       <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
                     </button>

@@ -206,7 +206,7 @@
 .trackingRow {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   flex-wrap: nowrap;
 }
 
@@ -214,15 +214,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: none;
   border-radius: 4px;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   color: #666;
   padding: 0;
+  margin-left: 2px;
   vertical-align: middle;
   flex-shrink: 0;
   align-self: center;
@@ -264,9 +265,18 @@
   border: none;
   padding: 0;
   cursor: pointer;
+  transition: opacity 0.2s;
 }
 
+.statoBadgeBtn:hover {
+  opacity: 0.8;
+}
 
+.statoBadgeBtn:active {
+  transform: scale(0.98);
+}
+
+.totalCell {
   font-weight: 600;
 }
 
