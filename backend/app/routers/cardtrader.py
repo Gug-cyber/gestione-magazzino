@@ -555,3 +555,64 @@ def auto_fill_all_blueprints(
         "totale_processati": len(prodotti),
         "errori": errori,
     }
+
+
+@router.post("/auto-populate-blueprint-ids")
+def auto_populate_blueprint_ids(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Popola automaticamente i cardtrader_blueprint_id per tutti i prodotti
+    che non hanno ancora questo campo compilato.
+
+    Cerca su CardTrader usando il nome del prodotto e prende il primo risultato
+    con match esatto o il migliore match fuzzy.
+    """
+    token = _get_token()
+
+    prodotti_senza_blueprint = db.query(Prodotto).filter(
+        (Prodotto.cardtrader_blueprint_id.is_(None)) | (Prodotto.cardtrader_blueprint_id == 0)
+    ).all()
+
+    aggiornati = 0
+    non_trovati = []
+    errori = []
+
+    with httpx.Client(timeout=30) as client:
+        for prodotto in prodotti_senza_blueprint:
+            try:
+                resp = client.get(
+                    f"{CARDTRADER_API_BASE}/blueprints",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={"name": prodotto.nome, "limit": 1},
+                )
+                resp.raise_for_status()
+
+                data = resp.json()
+                blueprints = data if isinstance(data, list) else data.get("data") or data.get("blueprints") or []
+
+                if blueprints:
+                    blueprint_id = blueprints[0].get("id")
+                    if blueprint_id:
+                        prodotto.cardtrader_blueprint_id = blueprint_id
+                        aggiornati += 1
+                        logger.info(f"Auto-populated blueprint_id {blueprint_id} for product {prodotto.id} ({prodotto.nome})")
+                    else:
+                        non_trovati.append(prodotto.nome)
+                else:
+                    non_trovati.append(prodotto.nome)
+
+            except Exception as exc:
+                errori.append(f"{prodotto.nome}: {str(exc)}")
+                logger.error(f"Error auto-populating blueprint for product {prodotto.id}: {exc}")
+
+    if aggiornati > 0:
+        db.commit()
+
+    return {
+        "totale_prodotti_senza_blueprint": len(prodotti_senza_blueprint),
+        "aggiornati": aggiornati,
+        "non_trovati": non_trovati,
+        "errori": errori,
+    }

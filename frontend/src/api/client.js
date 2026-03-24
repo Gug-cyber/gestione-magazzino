@@ -209,6 +209,7 @@ export const cardtraderAPI = {
   searchBlueprint: (nome) => client.get('/api/cardtrader/search-blueprint', { params: { nome } }),
   autoFillBlueprint: (prodottoId) => client.post(`/api/cardtrader/auto-fill-blueprint/${prodottoId}`),
   autoFillAllBlueprints: (limite = 50) => client.post('/api/cardtrader/auto-fill-all-blueprints', null, { params: { limite } }),
+  autoPopulateBlueprintIds: () => client.post('/api/cardtrader/auto-populate-blueprint-ids'),
 }
 
 export const ebayAPI = {
