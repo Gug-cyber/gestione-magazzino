@@ -583,8 +583,10 @@ function DettaglioProdotto() {
           </div>
         </div>
 
-        {/* Right: stat cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, alignContent: 'start' }}>
+        {/* Right: stat cards + platform price tabs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, alignContent: 'start' }}>
+          {/* Riga 1: Stat cards */}
+
           {/* Quantità */}
           <div style={{ ...statCardStyle, borderLeft: `4px solid ${sottoScorta ? '#c62828' : '#2e7d32'}` }}>
             <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>📦</div>
@@ -618,6 +620,81 @@ function DettaglioProdotto() {
               {margine != null ? fmtPrice(margine) : '—'}
             </div>
           </div>
+
+          {/* Riga 2: colonna 1 vuota */}
+          <div aria-hidden="true" />
+
+          {/* Tab eBay — sotto Prezzo Vendita */}
+          <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0', backgroundColor: '#e3f2fd' }}>
+            <div style={{ fontSize: '0.75rem', color: '#1565c0', fontWeight: 700, marginBottom: 4 }}>🛒 Prezzi eBay</div>
+            {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
+            {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
+            {ebayData && !ebayError && !ebayLoading && (
+              ebayData.configurato === false
+                ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Non configurato</div>
+                : ebayData.numero_risultati === 0
+                  ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
+                  : <div>
+                      <div style={{ fontSize: '0.85rem' }}>
+                        Medio: <strong style={{ color: '#1565c0' }}>€{Number(ebayData.prezzo_medio).toFixed(2)}</strong>
+                      </div>
+                      {ebayData.ultimo_prezzo_venduto != null && (
+                        <div style={{ fontSize: '0.85rem' }}>
+                          Venduto: <strong style={{ color: '#e65100' }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</strong>
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>{ebayData.numero_risultati} annunci</div>
+                      <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
+                        aria-label="Vedi su eBay (apre in una nuova scheda)"
+                        style={{ fontSize: '0.75rem', color: '#1565c0' }}>🔗 Vedi su eBay</a>
+                    </div>
+            )}
+            <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" style={{ marginTop: 6, fontSize: '0.75rem', color: '#1565c0', background: 'none', border: 'none', cursor: ebayLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: ebayLoading ? 0.6 : 1 }}>
+              🔄 Aggiorna
+            </button>
+          </div>
+
+          {/* Tab CardTrader — sotto Prezzo Acquisto */}
+          <div style={{ ...statCardStyle, borderLeft: '4px solid #7b1fa2', backgroundColor: '#f3e5f5' }}>
+            <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 700, marginBottom: 4 }}>🃏 Prezzi CardTrader</div>
+            {!prodotto.cardtrader_blueprint_id
+              ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>
+                  Blueprint ID non configurato.{' '}
+                  <button onClick={handleEditOpen} style={{ background: 'none', border: 'none', color: '#7b1fa2', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}>Modifica prodotto</button>
+                </div>
+              : <>
+                  {cardtraderLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
+                  {cardtraderError && !cardtraderLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
+                  {cardtraderData && !cardtraderError && !cardtraderLoading && (
+                    cardtraderData.numero_offerte === 0
+                      ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
+                      : <div>
+                          <div style={{ fontSize: '0.85rem' }}>
+                            💰 Min: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_minimo).toFixed(2)}</strong>
+                          </div>
+                          <div style={{ fontSize: '0.85rem' }}>
+                            📊 Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
+                          {(CONDIZIONE_MAP[prodotto.stato_conservazione] || LINGUA_MAP[prodotto.lingua]) && (
+                            <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: 2 }}>
+                              {[
+                                CONDIZIONE_MAP[prodotto.stato_conservazione],
+                                LINGUA_MAP[prodotto.lingua],
+                              ].filter(Boolean).join(' / ')}
+                            </div>
+                          )}
+                        </div>
+                  )}
+                  <button onClick={refreshCardtrader} disabled={cardtraderLoading} aria-label="Aggiorna prezzi CardTrader" style={{ marginTop: 6, fontSize: '0.75rem', color: '#7b1fa2', background: 'none', border: 'none', cursor: cardtraderLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: cardtraderLoading ? 0.6 : 1 }}>
+                    🔄 Aggiorna
+                  </button>
+                </>
+            }
+          </div>
+
+          {/* Riga 2: colonna 4 vuota */}
+          <div aria-hidden="true" />
         </div>
       </div>
 
@@ -638,80 +715,6 @@ function DettaglioProdotto() {
           </span>
         </div>
       )}
-
-      {/* Prezzi piattaforme — riga compatta sotto le stat-cards */}
-      <div style={{ marginTop: 16, marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-
-        {/* Tab eBay */}
-        <div style={{ backgroundColor: '#e3f2fd', borderRadius: 8, padding: '12px 16px', borderLeft: '4px solid #1565c0' }}>
-          <div style={{ fontSize: '0.75rem', color: '#1565c0', fontWeight: 700, marginBottom: 4 }}>🛒 Prezzi eBay</div>
-          {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
-          {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
-          {ebayData && !ebayError && !ebayLoading && (
-            ebayData.configurato === false
-              ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Non configurato</div>
-              : ebayData.numero_risultati === 0
-                ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
-                : <div>
-                    <div style={{ fontSize: '0.85rem' }}>
-                      Medio: <strong style={{ color: '#1565c0' }}>€{Number(ebayData.prezzo_medio).toFixed(2)}</strong>
-                    </div>
-                    {ebayData.ultimo_prezzo_venduto != null && (
-                      <div style={{ fontSize: '0.85rem' }}>
-                        Venduto: <strong style={{ color: '#e65100' }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</strong>
-                      </div>
-                    )}
-                    <div style={{ fontSize: '0.75rem', color: '#888' }}>{ebayData.numero_risultati} annunci</div>
-                    <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
-                      aria-label="Vedi su eBay (apre in una nuova scheda)"
-                      style={{ fontSize: '0.75rem', color: '#1565c0' }}>🔗 Vedi su eBay</a>
-                  </div>
-          )}
-          <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" style={{ marginTop: 6, fontSize: '0.75rem', color: '#1565c0', background: 'none', border: 'none', cursor: ebayLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: ebayLoading ? 0.6 : 1 }}>
-            🔄 Aggiorna
-          </button>
-        </div>
-
-        {/* Tab CardTrader */}
-        <div style={{ backgroundColor: '#f3e5f5', borderRadius: 8, padding: '12px 16px', borderLeft: '4px solid #7b1fa2' }}>
-          <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 700, marginBottom: 4 }}>🃏 Prezzi CardTrader</div>
-          {!prodotto.cardtrader_blueprint_id
-            ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>
-                Blueprint ID non configurato.{' '}
-                <button onClick={handleEditOpen} style={{ background: 'none', border: 'none', color: '#7b1fa2', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}>Modifica prodotto</button>
-              </div>
-            : <>
-                {cardtraderLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
-                {cardtraderError && !cardtraderLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
-                {cardtraderData && !cardtraderError && !cardtraderLoading && (
-                  cardtraderData.numero_offerte === 0
-                    ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
-                    : <div>
-                        <div style={{ fontSize: '0.85rem' }}>
-                          💰 Min: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_minimo).toFixed(2)}</strong>
-                        </div>
-                        <div style={{ fontSize: '0.85rem' }}>
-                          📊 Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
-                        {(CONDIZIONE_MAP[prodotto.stato_conservazione] || LINGUA_MAP[prodotto.lingua]) && (
-                          <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: 2 }}>
-                            {[
-                              CONDIZIONE_MAP[prodotto.stato_conservazione],
-                              LINGUA_MAP[prodotto.lingua],
-                            ].filter(Boolean).join(' / ')}
-                          </div>
-                        )}
-                      </div>
-                )}
-                <button onClick={refreshCardtrader} disabled={cardtraderLoading} aria-label="Aggiorna prezzi CardTrader" style={{ marginTop: 6, fontSize: '0.75rem', color: '#7b1fa2', background: 'none', border: 'none', cursor: cardtraderLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: cardtraderLoading ? 0.6 : 1 }}>
-                  🔄 Aggiorna
-                </button>
-              </>
-          }
-        </div>
-
-      </div>
 
       {/* Chart */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
