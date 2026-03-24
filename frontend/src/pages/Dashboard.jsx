@@ -172,69 +172,6 @@ function Dashboard() {
         />
       </div>
 
-      {/* Ordini in Corso */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)',
-        marginBottom: '24px',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, color: '#1e1b4b', fontSize: '1rem', fontWeight: '600' }}>🚚 Ordini in Corso</h2>
-          <a href="/ordini" style={{ fontSize: '0.85rem', color: '#4f46e5', textDecoration: 'none', fontWeight: '500' }}>Vedi tutti →</a>
-        </div>
-        {stats.ordiniInCorso.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '8px', opacity: 0.5 }}>🚚</div>
-            <div style={{ fontWeight: '600', color: '#6b7280' }}>Nessun ordine in corso</div>
-          </div>
-        ) : isMobile ? (
-          <div>
-            {stats.ordiniInCorso.map(o => (
-              <div key={o.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '12px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, color: '#4f46e5' }}>{o.numero_ordine || `#${o.id}`}</span>
-                  <OrderStateBadge stato={o.stato} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.85rem', color: '#555' }}>
-                  <span>{o.cliente_nome || (o.cliente_id ? `Cliente #${o.cliente_id}` : '—')}</span>
-                  <span style={{ fontWeight: '600' }}>€{Number(o.totale || 0).toFixed(2)}</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '2px' }}>
-                  {o.data_ordine ? new Date(o.data_ordine).toLocaleString('it-IT') : '—'}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={thStyle}>N° Ordine</th>
-                  <th style={thStyle}>Cliente</th>
-                  <th style={thStyle}>Stato</th>
-                  <th style={thStyle}>Data</th>
-                  <th style={thStyle}>Totale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.ordiniInCorso.map((o, idx) => (
-                  <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                    <td style={tdStyle}><code style={{ color: '#4f46e5', fontWeight: '600' }}>{o.numero_ordine || `#${o.id}`}</code></td>
-                    <td style={tdStyle}>{o.cliente_nome || (o.cliente_id ? `Cliente #${o.cliente_id}` : '—')}</td>
-                    <td style={tdStyle}><OrderStateBadge stato={o.stato} /></td>
-                    <td style={{ ...tdStyle, color: '#6b7280', fontSize: '0.85rem' }}>{o.data_ordine ? new Date(o.data_ordine).toLocaleString('it-IT') : '—'}</td>
-                    <td style={{ ...tdStyle, fontWeight: '600' }}>{o.totale != null ? `€${parseFloat(o.totale).toFixed(2)}` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
