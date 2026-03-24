@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 import httpx
 
 from ..database import get_db
+from ..models.prodotto import Prodotto
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate
 from ..crud import prodotto as crud
 from ..auth import get_current_active_user
@@ -347,7 +348,7 @@ def search_blueprint(
 ):
     """
     Cerca blueprint su CardTrader per nome.
-    Usa l'endpoint /blueprints/export con il parametro name per trovare corrispondenze.
+    Usa l'endpoint /blueprints con il parametro name per trovare corrispondenze.
     Ritorna una lista di blueprint con id, nome, espansione e gioco.
     """
     token = _get_token()
@@ -359,24 +360,28 @@ def search_blueprint(
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.get(
-                f"{CARDTRADER_API_BASE}/blueprints/export",
+                f"{CARDTRADER_API_BASE}/blueprints",
                 headers={"Authorization": f"Bearer {token}"},
-                params={"name": nome},
+                params={"name": nome, "limit": 20},
             )
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
         try:
             error_body = exc.response.text
             logger.error(
-                f"CardTrader API error for query '{nome_safe}': {exc.response.status_code} - {error_body}"
+                f"CardTrader API error for query '{nome_safe}': {status_code} - {error_body}"
             )
         except Exception:
             logger.error(
-                f"CardTrader API error for query '{nome_safe}': {exc.response.status_code}"
+                f"CardTrader API error for query '{nome_safe}': {status_code}"
             )
+        if status_code == 404:
+            logger.warning(f"Blueprint not found (404) for '{nome_safe}', returning empty array")
+            return []
         raise HTTPException(
             status_code=502,
-            detail=f"Errore CardTrader API: {exc.response.status_code}",
+            detail=f"Errore CardTrader API: {status_code}",
         )
     except httpx.RequestError as exc:
         logger.error(f"Network error searching CardTrader for '{nome_safe}': {exc}")
@@ -392,6 +397,10 @@ def search_blueprint(
     else:
         items = data.get("data") or data.get("blueprints") or []
 
+    if not items:
+        logger.warning(f"No blueprints found for '{nome_safe}'")
+        return []
+
     # Filter by name (case-insensitive contains) and return top 20
     nome_lower = nome.lower()
     results = []
@@ -402,7 +411,7 @@ def search_blueprint(
             results.append({
                 "id": item.get("id"),
                 "nome": item_name,
-                "espansione": expansion.get("name") or expansion.get("code") or "",
+                "espansione": expansion.get("name") or expansion.get("code") or item.get("expansion_name", ""),
                 "gioco": item.get("game_name") or item.get("category_name") or "",
             })
         if len(results) >= 20:
@@ -410,3 +419,139 @@ def search_blueprint(
 
     logger.info(f"CardTrader search successful for '{nome_safe}': {len(results)} results")
     return results
+
+
+@router.post("/auto-fill-blueprint/{prodotto_id}")
+def auto_fill_blueprint_id(
+    prodotto_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Cerca automaticamente il blueprint ID per un prodotto basandosi sul nome
+    e lo salva nel database se non è già presente.
+    """
+    token = _get_token()
+
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+
+    if db_prodotto.cardtrader_blueprint_id:
+        return {
+            "success": True,
+            "blueprint_id": db_prodotto.cardtrader_blueprint_id,
+            "message": "Blueprint ID già presente",
+        }
+
+    nome = db_prodotto.nome
+    nome_safe = nome.replace("\n", " ").replace("\r", " ")[:200]
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{CARDTRADER_API_BASE}/blueprints",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"name": nome, "limit": 1},
+            )
+        resp.raise_for_status()
+
+        data = resp.json()
+        blueprints = data if isinstance(data, list) else data.get("data") or data.get("blueprints") or []
+
+        if not blueprints:
+            return {
+                "success": False,
+                "message": f"Nessun blueprint trovato per '{nome_safe}'",
+            }
+
+        best_match = blueprints[0]
+        blueprint_id = best_match.get("id")
+
+        if blueprint_id:
+            db_prodotto.cardtrader_blueprint_id = blueprint_id
+            db.commit()
+            db.refresh(db_prodotto)
+            expansion = best_match.get("expansion") or {}
+            return {
+                "success": True,
+                "blueprint_id": blueprint_id,
+                "nome_trovato": best_match.get("name"),
+                "espansione": expansion.get("name") or expansion.get("code") or best_match.get("expansion_name", ""),
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Blueprint trovato ma senza ID valido",
+            }
+
+    except Exception as exc:
+        logger.error(f"Error auto-filling blueprint for prodotto {prodotto_id}: {exc}")
+        return {
+            "success": False,
+            "message": "Errore durante la ricerca del blueprint",
+        }
+
+
+@router.post("/auto-fill-all-blueprints")
+def auto_fill_all_blueprints(
+    limite: int = Query(default=50, le=200),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Cerca e aggiorna automaticamente i blueprint ID per tutti i prodotti
+    che non ne hanno uno. Richiede privilegi di amministratore.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Solo gli admin possono eseguire questa operazione")
+
+    token = _get_token()
+
+    prodotti = db.query(Prodotto).filter(
+        Prodotto.cardtrader_blueprint_id.is_(None)
+    ).limit(limite).all()
+
+    if not prodotti:
+        return {
+            "success": True,
+            "aggiornati": 0,
+            "message": "Nessun prodotto da aggiornare",
+        }
+
+    aggiornati = 0
+    errori = []
+
+    for prodotto in prodotti:
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.get(
+                    f"{CARDTRADER_API_BASE}/blueprints",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={"name": prodotto.nome, "limit": 1},
+                )
+            resp.raise_for_status()
+
+            data = resp.json()
+            blueprints = data if isinstance(data, list) else data.get("data") or data.get("blueprints") or []
+
+            if blueprints:
+                blueprint_id = blueprints[0].get("id")
+                if blueprint_id:
+                    prodotto.cardtrader_blueprint_id = blueprint_id
+                    aggiornati += 1
+
+        except Exception as exc:
+            logger.error(f"Error auto-filling blueprint for prodotto '{prodotto.nome}': {exc}")
+            errori.append(f"{prodotto.nome}: errore durante la ricerca")
+            continue
+
+    if aggiornati > 0:
+        db.commit()
+
+    return {
+        "success": True,
+        "aggiornati": aggiornati,
+        "totale_processati": len(prodotti),
+        "errori": errori,
+    }

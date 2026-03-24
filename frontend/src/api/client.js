@@ -207,6 +207,8 @@ export const cardtraderAPI = {
   sync: (prodottoId, data) => client.post(`/api/cardtrader/sync/${prodottoId}`, data),
   getMarketPrices: (blueprintId, params) => client.get(`/api/cardtrader/market-prices/${blueprintId}`, { params }),
   searchBlueprint: (nome) => client.get('/api/cardtrader/search-blueprint', { params: { nome } }),
+  autoFillBlueprint: (prodottoId) => client.post(`/api/cardtrader/auto-fill-blueprint/${prodottoId}`),
+  autoFillAllBlueprints: (limite = 50) => client.post('/api/cardtrader/auto-fill-all-blueprints', null, { params: { limite } }),
 }
 
 export const ebayAPI = {
