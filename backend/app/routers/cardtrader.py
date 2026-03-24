@@ -347,78 +347,49 @@ def search_blueprint(
     current_user=Depends(get_current_active_user),
 ):
     """
-    Cerca blueprint su CardTrader per nome.
-    Usa l'endpoint /blueprints con il parametro name per trovare corrispondenze.
-    Ritorna una lista di blueprint con id, nome, espansione e gioco.
+    Cerca blueprint su CardTrader usando l'API marketplace products.
+    Restituisce una lista di blueprint matchati.
     """
     token = _get_token()
-
-    # Sanitize for logging to prevent log injection
     nome_safe = nome.replace("\n", " ").replace("\r", " ")[:200]
     logger.info(f"Searching CardTrader blueprints for: {nome_safe}")
 
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.get(
-                f"{CARDTRADER_API_BASE}/blueprints",
+                f"{CARDTRADER_API_BASE}/marketplace/products",
                 headers={"Authorization": f"Bearer {token}"},
-                params={"name": nome, "limit": 20},
+                params={"q": nome, "limit": 20},
             )
         resp.raise_for_status()
+
+        products = resp.json()
+        blueprints_seen = {}
+
+        for product in products:
+            blueprint = product.get("blueprint")
+            if blueprint:
+                bp_id = blueprint.get("id")
+                if bp_id and bp_id not in blueprints_seen:
+                    expansion = blueprint.get("expansion")
+                    game = blueprint.get("game")
+                    blueprints_seen[bp_id] = {
+                        "id": bp_id,
+                        "nome": blueprint.get("name"),
+                        "espansione": expansion.get("name") if isinstance(expansion, dict) else None,
+                        "gioco": game.get("name") if isinstance(game, dict) else None,
+                        "numero": blueprint.get("number"),
+                    }
+
+        logger.info(f"CardTrader search successful for '{nome_safe}': {len(blueprints_seen)} blueprints")
+        return list(blueprints_seen.values())
+
     except httpx.HTTPStatusError as exc:
-        status_code = exc.response.status_code
-        try:
-            error_body = exc.response.text
-            logger.error(
-                f"CardTrader API error for query '{nome_safe}': {status_code} - {error_body}"
-            )
-        except Exception:
-            logger.error(
-                f"CardTrader API error for query '{nome_safe}': {status_code}"
-            )
-        if status_code == 404:
-            logger.warning(f"Blueprint not found (404) for '{nome_safe}', returning empty array")
-            return []
-        raise HTTPException(
-            status_code=502,
-            detail=f"Errore CardTrader API: {status_code}",
-        )
+        logger.error(f"CardTrader API error: {exc.response.status_code} - {exc.response.text}")
+        raise HTTPException(status_code=502, detail=f"Errore CardTrader API: {exc.response.status_code}")
     except httpx.RequestError as exc:
-        logger.error(f"Network error searching CardTrader for '{nome_safe}': {exc}")
+        logger.error(f"Network error: {exc}")
         raise HTTPException(status_code=502, detail="Errore di rete con CardTrader")
-    except Exception as exc:
-        logger.error(f"Unexpected error searching CardTrader for '{nome_safe}': {exc}")
-        raise HTTPException(status_code=500, detail="Errore interno del server")
-
-    data = resp.json()
-    # The API may return a list or a dict with a data key
-    if isinstance(data, list):
-        items = data
-    else:
-        items = data.get("data") or data.get("blueprints") or []
-
-    if not items:
-        logger.warning(f"No blueprints found for '{nome_safe}'")
-        return []
-
-    # Filter by name (case-insensitive contains) and return top 20
-    nome_lower = nome.lower()
-    results = []
-    for item in items:
-        item_name = item.get("name") or ""
-        if nome_lower in item_name.lower():
-            expansion = item.get("expansion") or {}
-            results.append({
-                "id": item.get("id"),
-                "nome": item_name,
-                "espansione": expansion.get("name") or expansion.get("code") or item.get("expansion_name", ""),
-                "gioco": item.get("game_name") or item.get("category_name") or "",
-            })
-        if len(results) >= 20:
-            break
-
-    logger.info(f"CardTrader search successful for '{nome_safe}': {len(results)} results")
-    return results
 
 
 @router.post("/auto-fill-blueprint/{prodotto_id}")
@@ -559,80 +530,92 @@ def auto_fill_all_blueprints(
 
 @router.post("/auto-populate-blueprint-ids")
 def auto_populate_blueprint_ids(
-    min_confidence: float = Query(default=60.0, description="Score minimo per accettare il match (0-100)"),
+    min_confidence: float = Query(default=60.0, description="Score minimo (0-100)"),
+    max_requests: int = Query(default=50, description="Max richieste (rate limiting)"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """
-    Popola automaticamente i cardtrader_blueprint_id usando matching intelligente.
-
-    Il sistema:
-    1. Parsa il nome del prodotto per estrarre nome carta, set, numero
-    2. Cerca su CardTrader usando il nome pulito
-    3. Calcola uno score di matching per ogni risultato
-    4. Accetta solo match con score >= min_confidence
-    """
+    """Popola automaticamente i cardtrader_blueprint_id usando matching intelligente."""
     from ..card_parser import parse_card_title, calculate_match_score
+    import time
 
     token = _get_token()
 
     prodotti_senza_blueprint = db.query(Prodotto).filter(
-        (Prodotto.cardtrader_blueprint_id.is_(None)) | (Prodotto.cardtrader_blueprint_id == 0)
-    ).all()
+        (Prodotto.cardtrader_blueprint_id.is_(None)) |
+        (Prodotto.cardtrader_blueprint_id == 0)
+    ).limit(max_requests).all()
 
     aggiornati = 0
     non_trovati = []
     low_confidence = []
     errori = []
 
-    logger.info(f"Starting auto-populate for {len(prodotti_senza_blueprint)} products (min_confidence={min_confidence}%)")
+    logger.info(f"Auto-populate: {len(prodotti_senza_blueprint)} products, min_confidence={min_confidence}%")
 
-    for prodotto in prodotti_senza_blueprint:
+    for idx, prodotto in enumerate(prodotti_senza_blueprint):
         try:
-            # 1. Parse il nome del prodotto
-            parsed = parse_card_title(prodotto.nome)
-            logger.debug(f"Parsed '{prodotto.nome}' -> {parsed}")
+            if idx > 0 and idx % 10 == 0:
+                time.sleep(1)
 
-            # 2. Cerca su CardTrader usando il nome pulito
+            parsed = parse_card_title(prodotto.nome)
+            logger.debug(f"[{idx+1}/{len(prodotti_senza_blueprint)}] '{prodotto.nome}' -> {parsed}")
+
             with httpx.Client(timeout=30) as client:
                 resp = client.get(
-                    f"{CARDTRADER_API_BASE}/blueprints/export",
+                    f"{CARDTRADER_API_BASE}/marketplace/products",
                     headers={"Authorization": f"Bearer {token}"},
-                    params={"name": parsed.nome},
+                    params={"q": parsed.nome, "limit": 10},
                 )
             resp.raise_for_status()
 
-            data = resp.json()
-            blueprints = data if isinstance(data, list) else data.get("data") or data.get("blueprints") or []
+            products = resp.json()
 
-            if not blueprints:
+            if not products:
                 non_trovati.append({
                     "nome_originale": prodotto.nome,
                     "nome_parsed": parsed.nome,
-                    "motivo": "Nessun risultato da CardTrader",
+                    "motivo": "Nessun risultato",
                 })
                 continue
 
-            # 3. Calcola score per ogni blueprint e prendi il migliore
+            blueprints_seen = {}
+            for product in products:
+                blueprint = product.get("blueprint")
+                if blueprint:
+                    bp_id = blueprint.get("id")
+                    if bp_id and bp_id not in blueprints_seen:
+                        expansion = blueprint.get("expansion")
+                        blueprints_seen[bp_id] = {
+                            "id": bp_id,
+                            "name": blueprint.get("name"),
+                            "expansion_name": expansion.get("name") if isinstance(expansion, dict) else None,
+                            "number": blueprint.get("number"),
+                        }
+
+            if not blueprints_seen:
+                non_trovati.append({
+                    "nome_originale": prodotto.nome,
+                    "nome_parsed": parsed.nome,
+                    "motivo": "Nessun blueprint",
+                })
+                continue
+
             best_match = None
             best_score = 0.0
 
-            for bp in blueprints[:10]:
-                score = calculate_match_score(parsed, bp)
+            for bp_id, bp_data in blueprints_seen.items():
+                score = calculate_match_score(parsed, bp_data)
                 if score > best_score:
                     best_score = score
-                    best_match = bp
+                    best_match = bp_data
 
-            # 4. Accetta solo se score >= soglia
-            if best_score >= min_confidence and best_match is not None:
+            if best_score >= min_confidence:
                 blueprint_id = best_match.get("id")
                 prodotto.cardtrader_blueprint_id = blueprint_id
                 db.commit()
                 aggiornati += 1
-                logger.info(
-                    f"✓ Matched '{prodotto.nome}' -> Blueprint #{blueprint_id} "
-                    f"'{best_match.get('name')}' (score: {best_score:.1f}%)"
-                )
+                logger.info(f"✓ [{idx+1}] '{prodotto.nome}' -> #{blueprint_id} (score: {best_score:.1f}%)")
             else:
                 low_confidence.append({
                     "nome_originale": prodotto.nome,
@@ -641,18 +624,18 @@ def auto_populate_blueprint_ids(
                     "best_match_id": best_match.get("id") if best_match else None,
                     "score": round(best_score, 1),
                 })
-                logger.warning(
-                    f"⚠ Low confidence for '{prodotto.nome}': best match "
-                    f"'{best_match.get('name') if best_match else 'N/A'}' "
-                    f"scored {best_score:.1f}% (threshold: {min_confidence}%)"
-                )
+                logger.warning(f"⚠ [{idx+1}] Low: '{prodotto.nome}' -> '{best_match.get('name') if best_match else 'N/A'}' ({best_score:.1f}%)")
 
         except httpx.HTTPStatusError as exc:
-            errori.append(f"{prodotto.nome}: HTTP {exc.response.status_code}")
-            logger.error(f"HTTP error for product {prodotto.id}: {exc}")
+            error_msg = f"HTTP {exc.response.status_code}"
+            errori.append(f"{prodotto.nome}: {error_msg}")
+            logger.error(f"HTTP error for '{prodotto.nome}': {exc}")
+            if exc.response.status_code == 429:
+                logger.error("Rate limit exceeded, stopping")
+                break
         except Exception as exc:
             errori.append(f"{prodotto.nome}: {str(exc)}")
-            logger.error(f"Error auto-populating blueprint for product {prodotto.id}: {exc}")
+            logger.error(f"Error for '{prodotto.nome}': {exc}")
 
     return {
         "totale_prodotti_senza_blueprint": len(prodotti_senza_blueprint),
@@ -661,4 +644,5 @@ def auto_populate_blueprint_ids(
         "low_confidence": low_confidence,
         "errori": errori,
         "min_confidence_used": min_confidence,
+        "max_requests_used": max_requests,
     }

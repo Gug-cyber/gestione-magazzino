@@ -209,9 +209,9 @@ export const cardtraderAPI = {
   searchBlueprint: (nome) => client.get('/api/cardtrader/search-blueprint', { params: { nome } }),
   autoFillBlueprint: (prodottoId) => client.post(`/api/cardtrader/auto-fill-blueprint/${prodottoId}`),
   autoFillAllBlueprints: (limite = 50) => client.post('/api/cardtrader/auto-fill-all-blueprints', null, { params: { limite } }),
-  autoPopulateBlueprintIds: (minConfidence = 60) =>
+  autoPopulateBlueprintIds: (minConfidence = 60, maxRequests = 50) =>
     client.post('/api/cardtrader/auto-populate-blueprint-ids', null, {
-      params: { min_confidence: minConfidence },
+      params: { min_confidence: minConfidence, max_requests: maxRequests },
     }),
 }
 
