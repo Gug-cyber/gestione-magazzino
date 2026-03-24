@@ -72,6 +72,7 @@ export default function CardTrader() {
   const [autoPopulateResult, setAutoPopulateResult] = useState(null)
   const [autoPopulateError, setAutoPopulateError] = useState('')
   const [minConfidence, setMinConfidence] = useState(60)
+  const [maxRequests, setMaxRequests] = useState(50)
 
   useEffect(() => {
     cardtraderAPI.getStatus()
@@ -167,7 +168,7 @@ export default function CardTrader() {
     setAutoPopulateResult(null)
     setAutoPopulateLoading(true)
     try {
-      const res = await cardtraderAPI.autoPopulateBlueprintIds(minConfidence)
+      const res = await cardtraderAPI.autoPopulateBlueprintIds(minConfidence, maxRequests)
       setAutoPopulateResult(res.data)
     } catch (err) {
       setAutoPopulateError(err.response?.data?.detail || 'Errore durante il popolamento automatico')
@@ -210,6 +211,19 @@ export default function CardTrader() {
                   style={{ width: '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
                 />
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '4px', fontWeight: 600 }}>
+                  Max richieste
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={maxRequests}
+                  onChange={(e) => setMaxRequests(parseInt(e.target.value) || 50)}
+                  style={{ width: '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+                />
+              </div>
               <button
                 style={autoPopulateLoading ? { ...btnPrimary, opacity: 0.6, cursor: 'not-allowed' } : btnPrimary}
                 onClick={handleAutoPopulate}
@@ -221,6 +235,7 @@ export default function CardTrader() {
             <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0' }}>
               Il sistema cerca corrispondenze intelligenti usando nome, set e numero carta.
               Solo match con score ≥ {minConfidence}% verranno accettati.
+              Limite massimo: {maxRequests} prodotti per esecuzione.
             </p>
             {autoPopulateError && (
               <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
