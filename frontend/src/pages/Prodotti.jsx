@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { prodottiAPI, getFotoUrl } from '../api/client'
+import { prodottiAPI, categorieAPI, getFotoUrl } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -55,10 +55,21 @@ function Prodotti() {
   const [filterBarcode, setFilterBarcode] = useState('all')
   const [filterDisponibilita, setFilterDisponibilita] = useState('all')
   const [filterPrezzo, setFilterPrezzo] = useState('all')
+  const [filterCategoria, setFilterCategoria] = useState('all')
+  const [categorie, setCategorie] = useState([])
 
   useEffect(() => {
     localStorage.setItem('prodottiVisibleColumns', JSON.stringify(visibleColumns))
   }, [visibleColumns])
+
+  useEffect(() => {
+    categorieAPI.getAll()
+      .then(res => setCategorie(res.data || []))
+      .catch(err => {
+        console.error('Failed to load categories:', err)
+        setCategorie([])
+      })
+  }, [])
 
   useEffect(() => {
     if (!showColumnFilter) return
@@ -123,17 +134,22 @@ function Prodotti() {
       filtered = filtered.filter(p => p.prezzo_vendita && parseFloat(p.prezzo_vendita) > 100)
     }
 
+    if (filterCategoria !== 'all') {
+      filtered = filtered.filter(p => p.categoria_id === parseInt(filterCategoria))
+    }
+
     return filtered
-  }, [filterBarcode, filterDisponibilita, filterPrezzo])
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria])
 
   const prodottiFiltrati = useMemo(() => applyFilters(prodotti), [prodotti, applyFilters])
 
-  const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all'
+  const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all'
 
   const resetFilters = () => {
     setFilterBarcode('all')
     setFilterDisponibilita('all')
     setFilterPrezzo('all')
+    setFilterCategoria('all')
   }
 
 
@@ -338,6 +354,19 @@ function Prodotti() {
             <option value="gt10">Prezzo &gt; €10</option>
             <option value="gt50">Prezzo &gt; €50</option>
             <option value="gt100">Prezzo &gt; €100</option>
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Categoria:</label>
+          <select
+            value={filterCategoria}
+            onChange={e => setFilterCategoria(e.target.value)}
+            className={styles.filterSelect}
+          >
+            <option value="all">Tutte</option>
+            {categorie.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.nome}</option>
+            ))}
           </select>
         </div>
         {isFilterActive && (
@@ -547,7 +576,7 @@ function Prodotti() {
         </div>
       )}
 
-      {totalPages > 1 && (
+      {totalPages > 1 && !isFilterActive && (
         <div className={styles.pagination}>
           <button
             className={styles.pageBtn}
