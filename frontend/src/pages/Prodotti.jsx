@@ -52,6 +52,10 @@ function Prodotti() {
   const [showColumnFilter, setShowColumnFilter] = useState(false)
   const columnFilterRef = useRef(null)
 
+  const [filterBarcode, setFilterBarcode] = useState('all')
+  const [filterDisponibilita, setFilterDisponibilita] = useState('all')
+  const [filterPrezzo, setFilterPrezzo] = useState('all')
+
   useEffect(() => {
     localStorage.setItem('prodottiVisibleColumns', JSON.stringify(visibleColumns))
   }, [visibleColumns])
@@ -89,6 +93,49 @@ function Prodotti() {
     { key: 'lingua', label: 'Lingua' },
     { key: 'etichetta', label: 'Etichetta' },
   ]
+
+  const applyFilters = useCallback((productsList) => {
+    let filtered = [...productsList]
+
+    if (filterBarcode === 'with') {
+      filtered = filtered.filter(p => p.barcode && p.barcode.trim() !== '')
+    } else if (filterBarcode === 'without') {
+      filtered = filtered.filter(p => !p.barcode || p.barcode.trim() === '')
+    }
+
+    if (filterDisponibilita === 'available') {
+      filtered = filtered.filter(p => p.quantita > 0)
+    } else if (filterDisponibilita === 'outofstock') {
+      filtered = filtered.filter(p => p.quantita === 0)
+    } else if (filterDisponibilita === 'lowstock') {
+      filtered = filtered.filter(p => p.quantita_minima != null && p.quantita < p.quantita_minima)
+    }
+
+    if (filterPrezzo === 'with') {
+      filtered = filtered.filter(p => p.prezzo_vendita != null && p.prezzo_vendita > 0)
+    } else if (filterPrezzo === 'without') {
+      filtered = filtered.filter(p => !p.prezzo_vendita || p.prezzo_vendita <= 0)
+    } else if (filterPrezzo === 'gt10') {
+      filtered = filtered.filter(p => p.prezzo_vendita && parseFloat(p.prezzo_vendita) > 10)
+    } else if (filterPrezzo === 'gt50') {
+      filtered = filtered.filter(p => p.prezzo_vendita && parseFloat(p.prezzo_vendita) > 50)
+    } else if (filterPrezzo === 'gt100') {
+      filtered = filtered.filter(p => p.prezzo_vendita && parseFloat(p.prezzo_vendita) > 100)
+    }
+
+    return filtered
+  }, [filterBarcode, filterDisponibilita, filterPrezzo])
+
+  const prodottiFiltrati = useMemo(() => applyFilters(prodotti), [prodotti, applyFilters])
+
+  const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all'
+
+  const resetFilters = () => {
+    setFilterBarcode('all')
+    setFilterDisponibilita('all')
+    setFilterPrezzo('all')
+  }
+
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -128,7 +175,7 @@ function Prodotti() {
     })
   }
 
-  const selectAll = () => setSelectedIds(new Set(prodotti.map(p => p.id)))
+  const selectAll = () => setSelectedIds(new Set(prodottiFiltrati.map(p => p.id)))
   const deselectAll = () => setSelectedIds(new Set())
 
   const openPrintSelected = () => {
@@ -251,6 +298,60 @@ function Prodotti() {
         </div>
       </div>
 
+      {/* Filtri */}
+      <div className={styles.filtersRow}>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Barcode:</label>
+          <select
+            value={filterBarcode}
+            onChange={e => setFilterBarcode(e.target.value)}
+            className={styles.filterSelect}
+          >
+            <option value="all">Tutti</option>
+            <option value="with">Con barcode</option>
+            <option value="without">Senza barcode</option>
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Disponibilità:</label>
+          <select
+            value={filterDisponibilita}
+            onChange={e => setFilterDisponibilita(e.target.value)}
+            className={styles.filterSelect}
+          >
+            <option value="all">Tutti</option>
+            <option value="available">Disponibili</option>
+            <option value="outofstock">Esauriti</option>
+            <option value="lowstock">Sotto scorta</option>
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Prezzo:</label>
+          <select
+            value={filterPrezzo}
+            onChange={e => setFilterPrezzo(e.target.value)}
+            className={styles.filterSelect}
+          >
+            <option value="all">Tutti</option>
+            <option value="with">Con prezzo vendita</option>
+            <option value="without">Senza prezzo vendita</option>
+            <option value="gt10">Prezzo &gt; €10</option>
+            <option value="gt50">Prezzo &gt; €50</option>
+            <option value="gt100">Prezzo &gt; €100</option>
+          </select>
+        </div>
+        {isFilterActive && (
+          <button onClick={resetFilters} className={styles.resetFiltersBtn}>
+            ✕ Reset filtri
+          </button>
+        )}
+        {isFilterActive && (
+          <span className={styles.filterCount}>
+            Mostrando {prodottiFiltrati.length} di {prodotti.length} prodotti
+          </span>
+        )}
+      </div>
+
       {selectedIds.size > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.9rem', color: '#555' }}>{selectedIds.size} selezionati</span>
@@ -263,11 +364,11 @@ function Prodotti() {
 
       {isMobile ? (
         <div className={styles.cardList}>
-          {prodotti.length === 0 ? (
+          {prodottiFiltrati.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
-              {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
+              {isFilterActive ? 'Nessun prodotto corrisponde ai filtri selezionati' : search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
             </div>
-          ) : prodotti.map((p) => (
+          ) : prodottiFiltrati.map((p) => (
             <div
               key={p.id}
               className={`${styles.card} ${p.quantita < p.quantita_minima ? styles.cardLowStock : ''}`}
@@ -339,8 +440,15 @@ function Prodotti() {
                 <th className={styles.th}>
                   <input
                     type="checkbox"
-                    onChange={e => e.target.checked ? selectAll() : deselectAll()}
-                    checked={prodotti.length > 0 && selectedIds.size === prodotti.length}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        selectAll()
+                      } else {
+                        const filteredIds = new Set(prodottiFiltrati.map(p => p.id))
+                        setSelectedIds(prev => new Set([...prev].filter(id => !filteredIds.has(id))))
+                      }
+                    }}
+                    checked={prodottiFiltrati.length > 0 && prodottiFiltrati.every(p => selectedIds.has(p.id))}
                     title="Seleziona/deseleziona tutti"
                     style={{ cursor: 'pointer' }}
                   />
@@ -360,13 +468,13 @@ function Prodotti() {
               </tr>
             </thead>
             <tbody>
-              {prodotti.length === 0 ? (
+              {prodottiFiltrati.length === 0 ? (
                 <tr className={styles.trEmpty}>
                   <td colSpan={visibleColCount}>
-                    {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
+                    {isFilterActive ? 'Nessun prodotto corrisponde ai filtri selezionati' : search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
                   </td>
                 </tr>
-              ) : prodotti.map((p) => (
+              ) : prodottiFiltrati.map((p) => (
                 <tr
                   key={p.id}
                   className={p.quantita < p.quantita_minima ? styles.trLowStock : styles.trNormal}
