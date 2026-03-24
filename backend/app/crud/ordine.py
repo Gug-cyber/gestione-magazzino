@@ -168,6 +168,10 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     """
     Aggiorna un ordine con le seguenti garanzie (unico db.commit):
 
+    Transizione → confermato:
+      - Se stock non ancora scalato: lock pessimistico, verifica disponibilità,
+        decrementa stock, registra movimenti, setta stock_scalato=True.
+
     Transizione → completato:
       - Imposta data_completamento.
       - Se stock non ancora scalato: lock pessimistico, verifica disponibilità,
@@ -192,6 +196,42 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
         setattr(ordine, field, value)
 
     nuovo_stato = update.stato
+
+    # ------------------------------------------------------------------ #
+    # Transizione → CONFERMATO                                            #
+    # ------------------------------------------------------------------ #
+    # Scala stock quando ordine confermato
+    if nuovo_stato == StatoOrdine.confermato and stato_precedente != StatoOrdine.confermato:
+        if not ordine.stock_scalato:
+            for riga in ordine.righe:
+                prodotto = (
+                    db.execute(
+                        select(Prodotto)
+                        .where(Prodotto.id == riga.prodotto_id)
+                        .with_for_update()
+                    )
+                    .scalars()
+                    .first()
+                )
+                if not prodotto:
+                    db.rollback()
+                    raise HTTPException(404, "Prodotto non trovato")
+                if prodotto.quantita < riga.quantita:
+                    db.rollback()
+                    raise HTTPException(
+                        400,
+                        f"Stock insufficiente per {prodotto.nome}: "
+                        f"disponibili {prodotto.quantita}, richiesti {riga.quantita}",
+                    )
+                prodotto.quantita -= riga.quantita
+                db.add(Movimento(
+                    prodotto_id=riga.prodotto_id,
+                    tipo=TipoMovimento.scarico,
+                    quantita=riga.quantita,
+                    ordine_id=ordine.id,
+                    note=f"Scarico ordine {ordine.numero_ordine}",
+                ))
+            ordine.stock_scalato = True
 
     # ------------------------------------------------------------------ #
     # Transizione → COMPLETATO                                            #
