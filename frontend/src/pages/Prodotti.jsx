@@ -305,6 +305,14 @@ function Prodotti() {
               <span className={styles.searchCount}>{total} risultati</span>
             )}
           </div>
+          <button
+            onClick={() => setShowScanner(true)}
+            className={styles.addBtn}
+            style={{ backgroundColor: '#2196f3' }}
+            title="Scansiona QR code o barcode con webcam"
+          >
+            📷 Scanner
+          </button>
           <button onClick={() => navigate('/prodotti/nuovo')} className={styles.addBtn}>
             + Aggiungi Prodotto
           </button>
