@@ -285,6 +285,26 @@ function DettaglioProdotto() {
 
   const { prodotto, movimenti, storico_quantita, prodotti_correlati, stats } = scheda
 
+  const handleStampaQR = () => {
+    const canvas = document.createElement('canvas')
+    QRCode.toCanvas(canvas, `prodotto:${prodotto.id}`, { width: 256, margin: 2 }, (err) => {
+      if (err) {
+        alert('Errore nella generazione del QR code.')
+        return
+      }
+      const win = window.open('', '_blank')
+      if (!win) {
+        alert('Il popup è stato bloccato dal browser. Consenti i popup per questa pagina e riprova.')
+        return
+      }
+      const html = `<html><head><title>QR - ${prodotto.nome}</title></head><body style="display:flex;align-items:center;justify-content:center;padding:32px;font-family:sans-serif"><div style="text-align:center"><img src="${canvas.toDataURL()}" style="width:200px;height:200px"><p style="margin-top:12px;font-size:14px;color:#555">${prodotto.nome}</p><p style="font-size:11px;color:#888;font-family:monospace">prodotto:${prodotto.id}</p></div></body></html>`
+      win.document.write(html)
+      win.document.close()
+      win.focus()
+      setTimeout(() => win.print(), 500)
+    })
+  }
+
   const sottoScorta = prodotto.quantita < prodotto.quantita_minima
 
   // Pagination for movements
@@ -706,24 +726,7 @@ function DettaglioProdotto() {
               style={btnStyle('#1565c0')}
             >🖨️ Stampa Etichetta</button>
             <button
-              onClick={() => {
-                const canvas = document.createElement('canvas')
-                QRCode.toCanvas(canvas, `prodotto:${prodotto.id}`, { width: 256, margin: 2 }, (err) => {
-                  if (err) {
-                    alert('Errore nella generazione del QR code.')
-                    return
-                  }
-                  const win = window.open('', '_blank')
-                  if (!win) {
-                    alert('Il popup è stato bloccato dal browser. Consenti i popup per questa pagina e riprova.')
-                    return
-                  }
-                  win.document.write(`<html><head><title>QR - ${prodotto.nome}</title></head><body style="display:flex;align-items:center;justify-content:center;padding:32px;font-family:sans-serif"><div style="text-align:center"><img src="${canvas.toDataURL()}" style="width:200px;height:200px"><p style="margin-top:12px;font-size:14px;color:#555">${prodotto.nome}</p><p style="font-size:11px;color:#888;font-family:monospace">prodotto:${prodotto.id}</p></div></body></html>`)
-                  win.document.close()
-                  win.focus()
-                  setTimeout(() => win.print(), 500)
-                })
-              }}
+              onClick={handleStampaQR}
               style={btnStyle('#7c3aed')}
             >🖨️ Stampa QR</button>
           </div>
