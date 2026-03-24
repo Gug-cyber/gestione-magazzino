@@ -206,7 +206,7 @@
 .trackingRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: nowrap;
 }
 
@@ -259,7 +259,14 @@
   font-size: 0.8rem;
 }
 
-.totalCell {
+.statoBadgeBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+
   font-weight: 600;
 }
 

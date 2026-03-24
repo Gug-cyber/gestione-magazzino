@@ -271,7 +271,14 @@ export default function Ordini() {
                   <td className={`${styles.td} ${styles.ordineNum}`}>{ordine.numero_ordine}</td>
                   <td className={styles.td}>{ordine.cliente_nome || '—'}</td>
                   <td className={styles.td}>
-                    <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
+                    <button
+                      onClick={() => navigate(`/ordini/${ordine.id}`)}
+                      className={styles.statoBadgeBtn}
+                      title="Clicca per cambiare stato"
+                      aria-label={`Vai all'ordine ${ordine.numero_ordine} per cambiare stato`}
+                    >
+                      <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
+                    </button>
                   </td>
                   <td className={styles.td}>
                     {ordine.tracking_number ? (
