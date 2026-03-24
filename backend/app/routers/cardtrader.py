@@ -335,3 +335,57 @@ def sync_prodotto(
         raise HTTPException(status_code=502, detail=f"Errore di rete: {exc}")
 
     return {"ok": True, "cardtrader_id": body.cardtrader_id, "quantita": body.quantita}
+
+
+@router.get("/search-blueprint")
+def search_blueprint(
+    nome: str = Query(..., description="Nome della carta da cercare"),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Cerca blueprint su CardTrader per nome.
+    Usa l'endpoint /blueprints/export con il parametro name per trovare corrispondenze.
+    Ritorna una lista di blueprint con id, nome, espansione e gioco.
+    """
+    token = _get_token()
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{CARDTRADER_API_BASE}/blueprints/export",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"name": nome},
+            )
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Errore CardTrader API: {exc.response.status_code}",
+        )
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Errore di rete: {exc}")
+
+    data = resp.json()
+    # The API may return a list or a dict with a data key
+    if isinstance(data, list):
+        items = data
+    else:
+        items = data.get("data") or data.get("blueprints") or []
+
+    # Filter by name (case-insensitive contains) and return top 20
+    nome_lower = nome.lower()
+    results = []
+    for item in items:
+        item_name = item.get("name") or ""
+        if nome_lower in item_name.lower():
+            expansion = item.get("expansion") or {}
+            results.append({
+                "id": item.get("id"),
+                "nome": item_name,
+                "espansione": expansion.get("name") or expansion.get("code") or "",
+                "gioco": item.get("game_name") or item.get("category_name") or "",
+            })
+        if len(results) >= 20:
+            break
+
+    return results

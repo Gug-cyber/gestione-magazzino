@@ -135,6 +135,11 @@ function DettaglioProdotto() {
   const [cardtraderLoading, setCardtraderLoading] = useState(false)
   const [cardtraderError, setCardtraderError] = useState(null)
 
+  const [blueprintResults, setBlueprintResults] = useState([])
+  const [blueprintSearching, setBlueprintSearching] = useState(false)
+  const [blueprintError, setBlueprintError] = useState('')
+  const [showBlueprintDropdown, setShowBlueprintDropdown] = useState(false)
+
   const loadScheda = () => {
     setLoading(true)
     setError(null)
@@ -193,6 +198,24 @@ function DettaglioProdotto() {
   const refreshCardtrader = () => {
     if (!scheda) return
     fetchCardtraderPrezzi(scheda.prodotto)
+  }
+
+  const handleSearchBlueprint = async () => {
+    const query = form.nome || scheda?.prodotto?.nome
+    if (!query) return
+    setBlueprintSearching(true)
+    setBlueprintError('')
+    setBlueprintResults([])
+    setShowBlueprintDropdown(false)
+    try {
+      const res = await cardtraderAPI.searchBlueprint(query)
+      setBlueprintResults(res.data || [])
+      setShowBlueprintDropdown(true)
+    } catch (err) {
+      setBlueprintError(err.response?.data?.detail || 'Errore nella ricerca')
+    } finally {
+      setBlueprintSearching(false)
+    }
   }
 
   const handleEditOpen = () => {
@@ -351,7 +374,6 @@ function DettaglioProdotto() {
               { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
               { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },
               { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
-              { key: 'cardtrader_blueprint_id', label: '🃏 CardTrader Blueprint ID', type: 'number' },
             ].map(({ key, label, type = 'text', required, step }) => (
               <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
@@ -412,6 +434,61 @@ function DettaglioProdotto() {
               </select>
             </label>
           </div>
+
+          {/* CardTrader Blueprint ID con ricerca */}
+          <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>🃏 CardTrader Blueprint ID</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="number"
+                  value={form.cardtrader_blueprint_id ?? ''}
+                  onChange={(e) => setForm({ ...form, cardtrader_blueprint_id: e.target.value })}
+                  style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: 160 }}
+                  placeholder="es. 123456"
+                />
+                <button
+                  type="button"
+                  onClick={handleSearchBlueprint}
+                  disabled={blueprintSearching}
+                  style={{ backgroundColor: '#7b1fa2', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', cursor: blueprintSearching ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.85rem', opacity: blueprintSearching ? 0.6 : 1 }}
+                >
+                  {blueprintSearching ? '⏳ Ricerca...' : '🔍 Cerca su CardTrader'}
+                </button>
+              </div>
+              {blueprintError && <div style={{ color: 'red', fontSize: '0.8rem', marginTop: 4 }}>{blueprintError}</div>}
+              {showBlueprintDropdown && blueprintResults.length > 0 && (
+                <div style={{ border: '1px solid #ddd', borderRadius: 6, backgroundColor: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: 220, overflowY: 'auto', marginTop: 4, zIndex: 10, position: 'relative' }}>
+                  {blueprintResults.map((bp) => (
+                    <div
+                      key={bp.id}
+                      onClick={() => {
+                        setForm({ ...form, cardtrader_blueprint_id: String(bp.id) })
+                        setShowBlueprintDropdown(false)
+                        setBlueprintResults([])
+                      }}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', fontSize: '0.88rem' }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f3e5f5'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      <div style={{ fontWeight: 600, color: '#7b1fa2' }}>{bp.nome}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#888' }}>{bp.espansione && `📦 ${bp.espansione}`} {bp.gioco && `· 🎮 ${bp.gioco}`} · ID: {bp.id}</div>
+                    </div>
+                  ))}
+                  <div
+                    onClick={() => { setShowBlueprintDropdown(false); setBlueprintResults([]) }}
+                    style={{ padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', color: '#888', textAlign: 'center', borderTop: '1px solid #eee' }}
+                  >
+                    ✕ Chiudi
+                  </div>
+                </div>
+              )}
+              {showBlueprintDropdown && blueprintResults.length === 0 && !blueprintSearching && (
+                <div style={{ fontSize: '0.8rem', color: '#888', marginTop: 4 }}>Nessun blueprint trovato per &quot;{form.nome}&quot;</div>
+              )}
+            </label>
+          </div>
+
           <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
             <button type="submit" style={{ backgroundColor: PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}>💾 Salva</button>
             <button type="button" onClick={() => setShowEditForm(false)} style={{ backgroundColor: '#f5f5f5', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer' }}>✕ Annulla</button>
