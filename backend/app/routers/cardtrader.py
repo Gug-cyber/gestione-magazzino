@@ -1,3 +1,4 @@
+import logging
 import os
 from decimal import Decimal
 from typing import Optional
@@ -10,6 +11,8 @@ from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate
 from ..crud import prodotto as crud
 from ..auth import get_current_active_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -349,6 +352,10 @@ def search_blueprint(
     """
     token = _get_token()
 
+    # Sanitize for logging to prevent log injection
+    nome_safe = nome.replace("\n", " ").replace("\r", " ")[:200]
+    logger.info(f"Searching CardTrader blueprints for: {nome_safe}")
+
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.get(
@@ -358,12 +365,25 @@ def search_blueprint(
             )
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
+        try:
+            error_body = exc.response.text
+            logger.error(
+                f"CardTrader API error for query '{nome_safe}': {exc.response.status_code} - {error_body}"
+            )
+        except Exception:
+            logger.error(
+                f"CardTrader API error for query '{nome_safe}': {exc.response.status_code}"
+            )
         raise HTTPException(
             status_code=502,
             detail=f"Errore CardTrader API: {exc.response.status_code}",
         )
     except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail=f"Errore di rete: {exc}")
+        logger.error(f"Network error searching CardTrader for '{nome_safe}': {exc}")
+        raise HTTPException(status_code=502, detail="Errore di rete con CardTrader")
+    except Exception as exc:
+        logger.error(f"Unexpected error searching CardTrader for '{nome_safe}': {exc}")
+        raise HTTPException(status_code=500, detail="Errore interno del server")
 
     data = resp.json()
     # The API may return a list or a dict with a data key
@@ -388,4 +408,5 @@ def search_blueprint(
         if len(results) >= 20:
             break
 
+    logger.info(f"CardTrader search successful for '{nome_safe}': {len(results)} results")
     return results
