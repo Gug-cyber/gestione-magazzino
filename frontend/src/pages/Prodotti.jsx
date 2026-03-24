@@ -15,6 +15,7 @@ function Prodotti() {
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [prodotti, setProdotti] = useState([])
+  const [allProdotti, setAllProdotti] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
@@ -141,15 +142,16 @@ function Prodotti() {
     return filtered
   }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria])
 
-  const prodottiFiltrati = useMemo(() => applyFilters(prodotti), [prodotti, applyFilters])
-
   const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all'
+
+  const prodottiFiltrati = useMemo(() => applyFilters(isFilterActive ? allProdotti : prodotti), [allProdotti, prodotti, applyFilters, isFilterActive])
 
   const resetFilters = () => {
     setFilterBarcode('all')
     setFilterDisponibilita('all')
     setFilterPrezzo('all')
     setFilterCategoria('all')
+    setPage(1)
   }
 
 
@@ -157,9 +159,19 @@ function Prodotti() {
 
   const fetchProdotti = useCallback(async (currentSearch, currentPage) => {
     try {
-      const skip = (currentPage - 1) * PAGE_SIZE
-      const resp = await prodottiAPI.getAll({ skip, limit: PAGE_SIZE, search: currentSearch || undefined })
-      setProdotti(resp.data)
+      let resp
+      if (isFilterActive) {
+        // Filtri attivi: carica TUTTI i prodotti per applicare i filtri lato client
+        resp = await prodottiAPI.getAll({ limit: 10000, search: currentSearch || undefined })
+        setAllProdotti(resp.data)
+        setProdotti([])
+      } else {
+        // Nessun filtro: paginazione normale
+        const skip = (currentPage - 1) * PAGE_SIZE
+        resp = await prodottiAPI.getAll({ skip, limit: PAGE_SIZE, search: currentSearch || undefined })
+        setProdotti(resp.data)
+        setAllProdotti([])
+      }
       const totalCount = parseInt(resp.headers['x-total-count'] ?? '0', 10)
       setTotal(isNaN(totalCount) ? resp.data.length : totalCount)
       // If this fetch was triggered by a barcode scan and returned no results, alert the user
@@ -171,7 +183,7 @@ function Prodotti() {
       pendingScanAlertRef.current = null
       setError('Errore nel caricamento dei dati')
     }
-  }, [])
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, isFilterActive])
 
   useEffect(() => {
     fetchProdotti(search, page)
@@ -195,9 +207,28 @@ function Prodotti() {
   const deselectAll = () => setSelectedIds(new Set())
 
   const openPrintSelected = () => {
-    const selected = prodotti.filter(p => selectedIds.has(p.id))
-    setPrintProdotti(selected)
-    setShowPrintModal(true)
+    // Cerca nei prodotti attualmente caricati (tutti se filtri attivi, pagina corrente altrimenti)
+    const sourceList = isFilterActive ? allProdotti : prodotti
+    let selected = sourceList.filter(p => selectedIds.has(p.id))
+
+    if (selected.length < selectedIds.size) {
+      // Alcuni prodotti selezionati non sono nella lista corrente (selezionati su pagine diverse):
+      // li recuperiamo dall'API
+      prodottiAPI.getAll({ limit: 10000, search: search || undefined })
+        .then(resp => {
+          const allProducts = resp.data || []
+          const selectedProducts = allProducts.filter(p => selectedIds.has(p.id))
+          setPrintProdotti(selectedProducts)
+          setShowPrintModal(true)
+        })
+        .catch(() => {
+          setPrintProdotti(selected)
+          setShowPrintModal(true)
+        })
+    } else {
+      setPrintProdotti(selected)
+      setShowPrintModal(true)
+    }
   }
 
   const openPrintLabel = (prodotto) => {
@@ -376,7 +407,7 @@ function Prodotti() {
         )}
         {isFilterActive && (
           <span className={styles.filterCount}>
-            Mostrando {prodottiFiltrati.length} di {prodotti.length} prodotti
+            Mostrando {prodottiFiltrati.length} prodotti (filtrati)
           </span>
         )}
       </div>
