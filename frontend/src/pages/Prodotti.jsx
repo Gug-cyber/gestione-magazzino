@@ -149,11 +149,6 @@ function Prodotti() {
             {search && (
               <span className={styles.searchCount}>{total} risultati</span>
             )}
-            <button
-              onClick={() => setShowScanner(true)}
-              className={styles.scanBtn}
-              title="Cerca con codice a barre"
-            >📷</button>
           </div>
           <button onClick={() => navigate('/prodotti/nuovo')} className={styles.addBtn}>
             + Aggiungi Prodotto
@@ -166,20 +161,6 @@ function Prodotti() {
               title={`Stampa etichette dei ${selectedIds.size} prodotti selezionati`}
             >🖨️ Stampa selezionati ({selectedIds.size})</button>
           ) : null}
-          <button
-            onClick={openPrintAll}
-            disabled={isPrintLoading}
-            className={styles.addBtn}
-            style={{ backgroundColor: isPrintLoading ? '#90a4ae' : '#1565c0' }}
-            title="Stampa etichette di tutti i prodotti"
-          >{isPrintLoading ? '⏳ Caricamento...' : '🖨️ Stampa tutti'}</button>
-          <button
-            onClick={handleBulkGenerate}
-            disabled={isBulkGenerating}
-            className={styles.addBtn}
-            style={{ backgroundColor: '#388e3c' }}
-            title="Genera barcode per i prodotti che non ce l'hanno ancora"
-          >{isBulkGenerating ? '⏳ Generazione...' : '⚡ Genera barcode'}</button>
         </div>
       </div>
 
