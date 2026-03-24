@@ -142,6 +142,11 @@ COLUMN_MIGRATIONS = [
         "column": "barcode_generated_at",
         "definition": "TIMESTAMP WITH TIME ZONE",
     },
+    {
+        "table": "prodotti",
+        "column": "cardtrader_blueprint_id",
+        "definition": "INTEGER",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)
