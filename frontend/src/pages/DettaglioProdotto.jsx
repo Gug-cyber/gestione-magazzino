@@ -7,6 +7,7 @@ import QRCodeDisplay from '../components/QRCodeDisplay'
 import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 import QRCode from 'qrcode'
+import styles from './DettaglioProdotto.module.css'
 
 const CONDIZIONE_MAP = {
   'Near Mint': 'NM', 'Mint': 'NM', 'Quasi Perfetto': 'NM',
@@ -496,14 +497,9 @@ function DettaglioProdotto() {
         </form>
       )}
 
-      {/* Main info grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: 24,
-        marginBottom: 24,
-      }}>
-        {/* Left: product details */}
+      {/* Main info grid — 2 columns: product info (left) + stats (right) */}
+      <div className={styles.mainGrid} style={{ marginBottom: 24 }}>
+        {/* Left: product image + details */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -512,12 +508,12 @@ function DettaglioProdotto() {
                     <img
                       src={getFotoUrl(prodotto.foto_url)}
                       alt={prodotto.nome}
-                      style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                      style={{ width: 140, height: 140, borderRadius: 8, objectFit: 'cover', display: 'block' }}
                       onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'inline' }}
                     />
-                    <span style={{ fontSize: '3.5rem', lineHeight: 1, display: 'none' }}>📦</span>
+                    <span style={{ fontSize: '4.5rem', lineHeight: 1, display: 'none' }}>📦</span>
                   </>
-                : <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>📦</span>
+                : <span style={{ fontSize: '4.5rem', lineHeight: 1 }}>📦</span>
               }
               <button
                 onClick={() => setUploadingFoto(true)}
@@ -583,50 +579,86 @@ function DettaglioProdotto() {
           </div>
         </div>
 
-        {/* Right: stat cards + platform price tabs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, alignContent: 'start' }}>
-          {/* Riga 1: Stat cards */}
-
-          {/* Quantità */}
-          <div style={{ ...statCardStyle, borderLeft: `4px solid ${sottoScorta ? '#c62828' : '#2e7d32'}` }}>
-            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>📦</div>
-            <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Quantità</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: sottoScorta ? '#c62828' : '#2e7d32' }}>
-              {prodotto.quantita}
-              {sottoScorta && <span style={{ fontSize: '1rem', marginLeft: 4 }}>⚠️</span>}
+        {/* Right: 2x2 stat cards + margine badge */}
+        <div style={cardStyle}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            {/* Quantità */}
+            <div style={{ ...statCardStyle, borderLeft: `4px solid ${sottoScorta ? '#c62828' : '#2e7d32'}` }}>
+              <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>📦</div>
+              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Quantità</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: sottoScorta ? '#c62828' : '#2e7d32' }}>
+                {prodotto.quantita}
+                {sottoScorta && <span style={{ fontSize: '0.9rem', marginLeft: 4 }}>⚠️</span>}
+              </div>
+              {sottoScorta && <div style={{ fontSize: '0.72rem', color: '#c62828', marginTop: 2 }}>Sotto scorta (min: {prodotto.quantita_minima})</div>}
             </div>
-            {sottoScorta && <div style={{ fontSize: '0.75rem', color: '#c62828', marginTop: 2 }}>Sotto scorta (min: {prodotto.quantita_minima})</div>}
-          </div>
 
-          {/* Prezzo Vendita */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0' }}>
-            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>💰</div>
-            <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Prezzo Vendita</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1565c0' }}>{fmtPrice(prodotto.prezzo_vendita)}</div>
-          </div>
+            {/* Prezzo Vendita */}
+            <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0' }}>
+              <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>💰</div>
+              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzo Vendita</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1565c0' }}>{fmtPrice(prodotto.prezzo_vendita)}</div>
+            </div>
 
-          {/* Prezzo Acquisto */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #7b1fa2' }}>
-            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>🛒</div>
-            <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Prezzo Acquisto</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#7b1fa2' }}>{fmtPrice(prodotto.prezzo_acquisto)}</div>
-          </div>
+            {/* Prezzo Acquisto */}
+            <div style={{ ...statCardStyle, borderLeft: '4px solid #7b1fa2' }}>
+              <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>🛒</div>
+              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzo Acquisto</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#7b1fa2' }}>{fmtPrice(prodotto.prezzo_acquisto)}</div>
+            </div>
 
-          {/* Margine */}
-          <div style={{ ...statCardStyle, borderLeft: `4px solid ${margineColor}` }}>
-            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>📈</div>
-            <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>Margine Lordo</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: margineColor }}>
-              {margine != null ? fmtPrice(margine) : '—'}
+            {/* Margine Lordo */}
+            <div style={{ ...statCardStyle, borderLeft: `4px solid ${margineColor}` }}>
+              <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>📈</div>
+              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Margine Lordo</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: margineColor }}>
+                {margine != null ? fmtPrice(margine) : '—'}
+              </div>
             </div>
           </div>
 
-          {/* Riga 2: colonna 1 vuota */}
-          <div aria-hidden="true" />
+          {/* Margine percentuale badge */}
+          {stats.margine_percentuale != null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ color: '#555', fontSize: '0.9rem' }}>Margine %:</span>
+              <span style={{
+                backgroundColor: stats.margine_percentuale >= 0 ? '#e8f5e9' : '#ffebee',
+                color: stats.margine_percentuale >= 0 ? '#2e7d32' : '#c62828',
+                padding: '4px 14px', borderRadius: '20px',
+                fontWeight: 700, fontSize: '0.95rem',
+              }}>
+                {stats.margine_percentuale >= 0 ? '+' : ''}{stats.margine_percentuale}%
+              </span>
+              <span style={{ color: '#888', fontSize: '0.85rem' }}>
+                (Carico tot: {stats.totale_carico} | Scarico tot: {stats.totale_scarico})
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
 
-          {/* Tab eBay — sotto Prezzo Vendita */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0', backgroundColor: '#e3f2fd' }}>
-            <div style={{ fontSize: '0.75rem', color: '#1565c0', fontWeight: 700, marginBottom: 4 }}>🛒 Prezzi eBay</div>
+      {/* Confronto Prezzi di Mercato */}
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <h2 style={{
+          color: PRIMARY_COLOR,
+          marginTop: 0,
+          marginBottom: 16,
+          fontSize: '1.1rem',
+          borderBottom: '2px solid #e8eaf6',
+          paddingBottom: 12,
+        }}>💰 Confronto Prezzi di Mercato</h2>
+
+        <div className={styles.marketGrid}>
+          {/* eBay */}
+          <div style={{
+            backgroundColor: '#f8f9fa',
+            borderRadius: 8,
+            padding: 16,
+            borderLeft: '4px solid #1565c0',
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#1565c0', fontWeight: 700 }}>
+              🛒 Prezzi eBay
+            </h3>
             {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
             {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
             {ebayData && !ebayError && !ebayLoading && (
@@ -635,18 +667,18 @@ function DettaglioProdotto() {
                 : ebayData.numero_risultati === 0
                   ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
                   : <div>
-                      <div style={{ fontSize: '0.85rem' }}>
+                      <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
                         Medio: <strong style={{ color: '#1565c0' }}>€{Number(ebayData.prezzo_medio).toFixed(2)}</strong>
                       </div>
                       {ebayData.ultimo_prezzo_venduto != null && (
-                        <div style={{ fontSize: '0.85rem' }}>
+                        <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
                           Venduto: <strong style={{ color: '#e65100' }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</strong>
                         </div>
                       )}
-                      <div style={{ fontSize: '0.75rem', color: '#888' }}>{ebayData.numero_risultati} annunci</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 6 }}>{ebayData.numero_risultati} annunci</div>
                       <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
                         aria-label="Vedi su eBay (apre in una nuova scheda)"
-                        style={{ fontSize: '0.75rem', color: '#1565c0' }}>🔗 Vedi su eBay</a>
+                        style={{ fontSize: '0.75rem', color: '#1565c0', display: 'inline-block', marginBottom: 4 }}>🔗 Vedi su eBay</a>
                     </div>
             )}
             <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" style={{ marginTop: 6, fontSize: '0.75rem', color: '#1565c0', background: 'none', border: 'none', cursor: ebayLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: ebayLoading ? 0.6 : 1 }}>
@@ -654,9 +686,16 @@ function DettaglioProdotto() {
             </button>
           </div>
 
-          {/* Tab CardTrader — sotto Prezzo Acquisto */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #7b1fa2', backgroundColor: '#f3e5f5' }}>
-            <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 700, marginBottom: 4 }}>🃏 Prezzi CardTrader</div>
+          {/* CardTrader */}
+          <div style={{
+            backgroundColor: '#faf8fc',
+            borderRadius: 8,
+            padding: 16,
+            borderLeft: '4px solid #7b1fa2',
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#7b1fa2', fontWeight: 700 }}>
+              🃏 Prezzi CardTrader
+            </h3>
             {!prodotto.cardtrader_blueprint_id
               ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>
                   Blueprint ID non configurato.{' '}
@@ -669,13 +708,13 @@ function DettaglioProdotto() {
                     cardtraderData.numero_offerte === 0
                       ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
                       : <div>
-                          <div style={{ fontSize: '0.85rem' }}>
+                          <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
                             💰 Min: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_minimo).toFixed(2)}</strong>
                           </div>
-                          <div style={{ fontSize: '0.85rem' }}>
+                          <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
                             📊 Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
+                          <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>{cardtraderData.numero_offerte} offerte</div>
                           {(CONDIZIONE_MAP[prodotto.stato_conservazione] || LINGUA_MAP[prodotto.lingua]) && (
                             <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: 2 }}>
                               {[
@@ -692,29 +731,8 @@ function DettaglioProdotto() {
                 </>
             }
           </div>
-
-          {/* Riga 2: colonna 4 vuota */}
-          <div aria-hidden="true" />
         </div>
       </div>
-
-      {/* Margine percentuale badge */}
-      {stats.margine_percentuale != null && (
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: '#555', fontSize: '0.9rem' }}>Margine percentuale:</span>
-          <span style={{
-            backgroundColor: stats.margine_percentuale >= 0 ? '#e8f5e9' : '#ffebee',
-            color: stats.margine_percentuale >= 0 ? '#2e7d32' : '#c62828',
-            padding: '4px 14px', borderRadius: '20px',
-            fontWeight: 700, fontSize: '0.95rem',
-          }}>
-            {stats.margine_percentuale >= 0 ? '+' : ''}{stats.margine_percentuale}%
-          </span>
-          <span style={{ color: '#888', fontSize: '0.85rem' }}>
-            (Carico tot: {stats.totale_carico} | Scarico tot: {stats.totale_scarico})
-          </span>
-        </div>
-      )}
 
       {/* Chart */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
@@ -870,7 +888,7 @@ const cardStyle = {
 
 const statCardStyle = {
   backgroundColor: 'white', borderRadius: '8px',
-  padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
 }
 
 const infoRowStyle = {

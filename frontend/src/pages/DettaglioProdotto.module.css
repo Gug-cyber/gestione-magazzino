@@ -1,0 +1,22 @@
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 400px) 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.marketGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .marketGrid {
+    grid-template-columns: 1fr;
+  }
+}
