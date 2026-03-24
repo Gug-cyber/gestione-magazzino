@@ -297,6 +297,69 @@
   cursor: default;
 }
 
+/* Filters row */
+.filtersRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+  white-space: nowrap;
+}
+
+.filterSelect {
+  height: 34px;
+  padding: 0 8px;
+  border: 1.5px solid #e0e4ef;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: #333;
+  background: white;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.filterSelect:focus {
+  border-color: #1a237e;
+  box-shadow: 0 0 0 3px rgba(26,35,126,0.10);
+}
+
+.resetFiltersBtn {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  background: white;
+  color: #555;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.resetFiltersBtn:hover {
+  background: #f5f7ff;
+  border-color: #1a237e;
+  color: #1a237e;
+}
+
+.filterCount {
+  font-size: 0.82rem;
+  color: #666;
+  white-space: nowrap;
+}
+
 /* Column filter dropdown */
 .columnDropdown {
   position: absolute;
