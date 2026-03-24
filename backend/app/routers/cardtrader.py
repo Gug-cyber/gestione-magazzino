@@ -559,16 +559,21 @@ def auto_fill_all_blueprints(
 
 @router.post("/auto-populate-blueprint-ids")
 def auto_populate_blueprint_ids(
+    min_confidence: float = Query(default=60.0, description="Score minimo per accettare il match (0-100)"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """
-    Popola automaticamente i cardtrader_blueprint_id per tutti i prodotti
-    che non hanno ancora questo campo compilato.
+    Popola automaticamente i cardtrader_blueprint_id usando matching intelligente.
 
-    Cerca su CardTrader usando il nome del prodotto e prende il primo risultato
-    con match esatto o il migliore match fuzzy.
+    Il sistema:
+    1. Parsa il nome del prodotto per estrarre nome carta, set, numero
+    2. Cerca su CardTrader usando il nome pulito
+    3. Calcola uno score di matching per ogni risultato
+    4. Accetta solo match con score >= min_confidence
     """
+    from ..card_parser import parse_card_title, calculate_match_score
+
     token = _get_token()
 
     prodotti_senza_blueprint = db.query(Prodotto).filter(
@@ -577,42 +582,83 @@ def auto_populate_blueprint_ids(
 
     aggiornati = 0
     non_trovati = []
+    low_confidence = []
     errori = []
 
-    with httpx.Client(timeout=30) as client:
-        for prodotto in prodotti_senza_blueprint:
-            try:
+    logger.info(f"Starting auto-populate for {len(prodotti_senza_blueprint)} products (min_confidence={min_confidence}%)")
+
+    for prodotto in prodotti_senza_blueprint:
+        try:
+            # 1. Parse il nome del prodotto
+            parsed = parse_card_title(prodotto.nome)
+            logger.debug(f"Parsed '{prodotto.nome}' -> {parsed}")
+
+            # 2. Cerca su CardTrader usando il nome pulito
+            with httpx.Client(timeout=30) as client:
                 resp = client.get(
-                    f"{CARDTRADER_API_BASE}/blueprints",
+                    f"{CARDTRADER_API_BASE}/blueprints/export",
                     headers={"Authorization": f"Bearer {token}"},
-                    params={"name": prodotto.nome, "limit": 1},
+                    params={"name": parsed.nome},
                 )
-                resp.raise_for_status()
+            resp.raise_for_status()
 
-                data = resp.json()
-                blueprints = data if isinstance(data, list) else data.get("data") or data.get("blueprints") or []
+            data = resp.json()
+            blueprints = data if isinstance(data, list) else data.get("data") or data.get("blueprints") or []
 
-                if blueprints:
-                    blueprint_id = blueprints[0].get("id")
-                    if blueprint_id:
-                        prodotto.cardtrader_blueprint_id = blueprint_id
-                        aggiornati += 1
-                        logger.info(f"Auto-populated blueprint_id {blueprint_id} for product {prodotto.id} ({prodotto.nome})")
-                    else:
-                        non_trovati.append(prodotto.nome)
-                else:
-                    non_trovati.append(prodotto.nome)
+            if not blueprints:
+                non_trovati.append({
+                    "nome_originale": prodotto.nome,
+                    "nome_parsed": parsed.nome,
+                    "motivo": "Nessun risultato da CardTrader",
+                })
+                continue
 
-            except Exception as exc:
-                errori.append(f"{prodotto.nome}: {str(exc)}")
-                logger.error(f"Error auto-populating blueprint for product {prodotto.id}: {exc}")
+            # 3. Calcola score per ogni blueprint e prendi il migliore
+            best_match = None
+            best_score = 0.0
 
-    if aggiornati > 0:
-        db.commit()
+            for bp in blueprints[:10]:
+                score = calculate_match_score(parsed, bp)
+                if score > best_score:
+                    best_score = score
+                    best_match = bp
+
+            # 4. Accetta solo se score >= soglia
+            if best_score >= min_confidence and best_match is not None:
+                blueprint_id = best_match.get("id")
+                prodotto.cardtrader_blueprint_id = blueprint_id
+                db.commit()
+                aggiornati += 1
+                logger.info(
+                    f"✓ Matched '{prodotto.nome}' -> Blueprint #{blueprint_id} "
+                    f"'{best_match.get('name')}' (score: {best_score:.1f}%)"
+                )
+            else:
+                low_confidence.append({
+                    "nome_originale": prodotto.nome,
+                    "nome_parsed": parsed.nome,
+                    "best_match": best_match.get("name") if best_match else None,
+                    "best_match_id": best_match.get("id") if best_match else None,
+                    "score": round(best_score, 1),
+                })
+                logger.warning(
+                    f"⚠ Low confidence for '{prodotto.nome}': best match "
+                    f"'{best_match.get('name') if best_match else 'N/A'}' "
+                    f"scored {best_score:.1f}% (threshold: {min_confidence}%)"
+                )
+
+        except httpx.HTTPStatusError as exc:
+            errori.append(f"{prodotto.nome}: HTTP {exc.response.status_code}")
+            logger.error(f"HTTP error for product {prodotto.id}: {exc}")
+        except Exception as exc:
+            errori.append(f"{prodotto.nome}: {str(exc)}")
+            logger.error(f"Error auto-populating blueprint for product {prodotto.id}: {exc}")
 
     return {
         "totale_prodotti_senza_blueprint": len(prodotti_senza_blueprint),
         "aggiornati": aggiornati,
         "non_trovati": non_trovati,
+        "low_confidence": low_confidence,
         "errori": errori,
+        "min_confidence_used": min_confidence,
     }
