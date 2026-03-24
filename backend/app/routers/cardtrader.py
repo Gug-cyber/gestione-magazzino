@@ -191,6 +191,7 @@ def import_listings(db: Session = Depends(get_db), current_user=Depends(get_curr
                 update_data = ProdottoUpdate(
                     quantita=quantita,
                     prezzo_vendita=prezzo_vendita,
+                    cardtrader_blueprint_id=blueprint_id,
                 )
                 crud.update_prodotto(db, existing.id, update_data)
                 aggiornati += 1
@@ -202,6 +203,7 @@ def import_listings(db: Session = Depends(get_db), current_user=Depends(get_curr
                     prezzo_vendita=prezzo_vendita,
                     stato_conservazione=stato_conservazione,
                     lingua=lingua,
+                    cardtrader_blueprint_id=blueprint_id,
                 )
                 crud.create_prodotto(db, new_prodotto)
                 importati += 1
