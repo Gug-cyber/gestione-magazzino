@@ -18,6 +18,7 @@ class ProdottoBase(BaseModel):
     lingua: Optional[str] = None
     foto_path: Optional[str] = None
     barcode: Optional[str] = None
+    cardtrader_blueprint_id: Optional[int] = None
 
 
 class ProdottoCreate(ProdottoBase):
@@ -37,6 +38,7 @@ class ProdottoUpdate(BaseModel):
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
     barcode: Optional[str] = None
+    cardtrader_blueprint_id: Optional[int] = None
 
 
 class ProdottoResponse(ProdottoBase):
