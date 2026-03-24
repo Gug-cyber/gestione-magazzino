@@ -71,6 +71,7 @@ export default function CardTrader() {
   const [autoPopulateLoading, setAutoPopulateLoading] = useState(false)
   const [autoPopulateResult, setAutoPopulateResult] = useState(null)
   const [autoPopulateError, setAutoPopulateError] = useState('')
+  const [minConfidence, setMinConfidence] = useState(60)
 
   useEffect(() => {
     cardtraderAPI.getStatus()
@@ -166,7 +167,7 @@ export default function CardTrader() {
     setAutoPopulateResult(null)
     setAutoPopulateLoading(true)
     try {
-      const res = await cardtraderAPI.autoPopulateBlueprintIds()
+      const res = await cardtraderAPI.autoPopulateBlueprintIds(minConfidence)
       setAutoPopulateResult(res.data)
     } catch (err) {
       setAutoPopulateError(err.response?.data?.detail || 'Errore durante il popolamento automatico')
@@ -195,15 +196,31 @@ export default function CardTrader() {
         )}
         {tokenConfigured && (
           <div style={{ marginTop: '12px' }}>
-            <button
-              style={autoPopulateLoading ? { ...btnPrimary, opacity: 0.6, cursor: 'not-allowed' } : btnPrimary}
-              onClick={handleAutoPopulate}
-              disabled={autoPopulateLoading}
-            >
-              {autoPopulateLoading ? '⏳ Popolamento in corso...' : '🔍 Popola Blueprint ID automaticamente'}
-            </button>
-            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px' }}>
-              Cerca e assegna automaticamente i Blueprint ID CardTrader per tutti i prodotti che non ce l&apos;hanno.
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '12px', flexWrap: 'wrap' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '4px', fontWeight: 600 }}>
+                  Confidenza minima (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={minConfidence}
+                  onChange={(e) => setMinConfidence(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                  style={{ width: '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+                />
+              </div>
+              <button
+                style={autoPopulateLoading ? { ...btnPrimary, opacity: 0.6, cursor: 'not-allowed' } : btnPrimary}
+                onClick={handleAutoPopulate}
+                disabled={autoPopulateLoading}
+              >
+                {autoPopulateLoading ? '⏳ Popolamento in corso...' : '🔍 Popola Blueprint ID automaticamente'}
+              </button>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0' }}>
+              Il sistema cerca corrispondenze intelligenti usando nome, set e numero carta.
+              Solo match con score ≥ {minConfidence}% verranno accettati.
             </p>
             {autoPopulateError && (
               <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
@@ -214,11 +231,28 @@ export default function CardTrader() {
               <div style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '6px', marginTop: '12px' }}>
                 <strong>Popolamento completato:</strong>{' '}
                 {autoPopulateResult.aggiornati} prodotti aggiornati su {autoPopulateResult.totale_prodotti_senza_blueprint}
+                {autoPopulateResult.low_confidence?.length > 0 && (
+                  <div style={{ marginTop: '8px', color: '#f57c00' }}>
+                    <strong>⚠️ Bassa confidenza ({autoPopulateResult.low_confidence.length}):</strong>
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: '0.85rem' }}>
+                      {autoPopulateResult.low_confidence.slice(0, 5).map((item, i) => (
+                        <li key={i}>
+                          {item.nome_originale} → {item.best_match || 'N/D'} (score: {item.score}%)
+                        </li>
+                      ))}
+                      {autoPopulateResult.low_confidence.length > 5 && (
+                        <li>... e altri {autoPopulateResult.low_confidence.length - 5}</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
                 {autoPopulateResult.non_trovati?.length > 0 && (
                   <div style={{ marginTop: '8px', color: '#f57c00' }}>
                     <strong>Non trovati ({autoPopulateResult.non_trovati.length}):</strong>
                     <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: '0.85rem' }}>
-                      {autoPopulateResult.non_trovati.slice(0, 10).map((nome, i) => <li key={i}>{nome}</li>)}
+                      {autoPopulateResult.non_trovati.slice(0, 10).map((item, i) => (
+                        <li key={i}>{typeof item === 'string' ? item : item.nome_originale}</li>
+                      ))}
                       {autoPopulateResult.non_trovati.length > 10 && <li>... e altri {autoPopulateResult.non_trovati.length - 10}</li>}
                     </ul>
                   </div>
