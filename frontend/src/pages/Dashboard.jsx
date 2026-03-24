@@ -60,6 +60,34 @@ function OrderStateBadge({ stato }) {
   )
 }
 
+const STATO_CONSERVAZIONE_COLORS = {
+  'M':  { bg: '#f0fdf4', text: '#15803d', border: '#86efac' },
+  'NM': { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+  'EX': { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
+  'GD': { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+  'LP': { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+  'PL': { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' },
+  'PR': { bg: '#fef2f2', text: '#991b1b', border: '#f87171' },
+}
+
+function StatoBadge({ stato }) {
+  if (!stato) return <span style={{ color: '#9ca3af' }}>—</span>
+  const c = STATO_CONSERVAZIONE_COLORS[stato] || { bg: '#f5f5f5', text: '#555', border: '#e5e7eb' }
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '2px 8px',
+      borderRadius: '999px',
+      backgroundColor: c.bg,
+      color: c.text,
+      border: `1px solid ${c.border}`,
+      fontWeight: '600',
+      fontSize: '0.75rem',
+      whiteSpace: 'nowrap',
+    }}>{stato}</span>
+  )
+}
+
 function Dashboard() {
   const isMobile = useIsMobile()
   const [stats, setStats] = useState({
@@ -67,6 +95,7 @@ function Dashboard() {
     prodottiSottoScorta: 0,
     totaleOrdini: 0,
     ordiniRecenti: [],
+    prodottiSottoScortaList: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -84,6 +113,7 @@ function Dashboard() {
           prodottiSottoScorta: sottoScortaRes.data.length,
           totaleOrdini: tuttiOrdiniRes.data.length,
           ordiniRecenti: ordiniRes.data,
+          prodottiSottoScortaList: sottoScortaRes.data,
         })
       } catch (err) {
         console.error('Errore nel caricamento dashboard:', err)
@@ -193,6 +223,71 @@ function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Prodotti Sotto Scorta */}
+      {stats.prodottiSottoScorta > 0 && (
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)',
+          marginTop: '24px',
+        }}>
+          <h2 style={{ margin: '0 0 16px', color: '#1e1b4b', fontSize: '1rem', fontWeight: '600' }}>
+            ⚠️ Prodotti Sotto Scorta Minima
+          </h2>
+          {isMobile ? (
+            <div>
+              {stats.prodottiSottoScortaList.map(p => (
+                <div key={p.id} style={{
+                  borderRadius: '8px',
+                  marginBottom: '8px',
+                  padding: '12px',
+                  backgroundColor: '#fef2f2',
+                }}>
+                  <div style={{ fontWeight: 600, color: '#1e1b4b', marginBottom: '4px' }}>
+                    {p.nome}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#555' }}>
+                    <span>Quantità: <strong style={{ color: '#dc2626' }}>{p.quantita}</strong> / Min: {p.quantita_minima}</span>
+                    {p.stato_conservazione && <StatoBadge stato={p.stato_conservazione} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="table-wrapper">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <th style={thStyle}>Nome Prodotto</th>
+                    <th style={thStyle}>SKU</th>
+                    <th style={thStyle}>Quantità</th>
+                    <th style={thStyle}>Min</th>
+                    <th style={thStyle}>Stato</th>
+                    <th style={thStyle}>Lingua</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.prodottiSottoScortaList.map((p, idx) => (
+                    <tr key={p.id} style={{
+                      borderBottom: '1px solid #f3f4f6',
+                      backgroundColor: idx % 2 === 0 ? '#fef2f2' : '#fee2e2',
+                    }}>
+                      <td style={tdStyle}>{p.nome}</td>
+                      <td style={tdStyle}><code style={{ fontSize: '0.8rem' }}>{p.sku}</code></td>
+                      <td style={{ ...tdStyle, fontWeight: '700', color: '#dc2626' }}>{p.quantita}</td>
+                      <td style={tdStyle}>{p.quantita_minima}</td>
+                      <td style={tdStyle}><StatoBadge stato={p.stato_conservazione} /></td>
+                      <td style={tdStyle}>{p.lingua || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
