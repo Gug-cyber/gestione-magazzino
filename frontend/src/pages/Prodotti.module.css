@@ -296,3 +296,43 @@
   background-color: #b0bec5;
   cursor: default;
 }
+
+/* Column filter dropdown */
+.columnDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: white;
+  border: 1.5px solid #e0e4ef;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(26,35,126,0.12);
+  padding: 8px 0;
+  min-width: 180px;
+  z-index: 100;
+}
+
+.columnDropdownTitle {
+  padding: 6px 14px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 4px;
+}
+
+.columnDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #333;
+  transition: background 0.12s;
+}
+
+.columnDropdownItem:hover {
+  background: #f5f7ff;
+}

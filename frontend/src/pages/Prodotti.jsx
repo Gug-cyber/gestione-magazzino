@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, getFotoUrl } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
@@ -28,6 +28,67 @@ function Prodotti() {
   const [isPrintLoading, setIsPrintLoading] = useState(false)
   // Holds the SKU value of the last barcode scan so we can alert when no match is found
   const pendingScanAlertRef = useRef(null)
+
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('prodottiVisibleColumns')
+      if (saved) return JSON.parse(saved)
+    } catch {
+      // ignore parse errors
+    }
+    return {
+      foto: true,
+      quantita: true,
+      qMin: true,
+      prezzoAcquisto: true,
+      prezzoVendita: true,
+      barcode: true,
+      conservazione: true,
+      lingua: true,
+      etichetta: true,
+    }
+  })
+
+  const [showColumnFilter, setShowColumnFilter] = useState(false)
+  const columnFilterRef = useRef(null)
+
+  useEffect(() => {
+    localStorage.setItem('prodottiVisibleColumns', JSON.stringify(visibleColumns))
+  }, [visibleColumns])
+
+  useEffect(() => {
+    if (!showColumnFilter) return
+    const handleClickOutside = (e) => {
+      if (columnFilterRef.current && !columnFilterRef.current.contains(e.target)) {
+        setShowColumnFilter(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showColumnFilter])
+
+  const toggleColumn = (col) => {
+    setVisibleColumns(prev => ({ ...prev, [col]: !prev[col] }))
+  }
+
+  // Fixed columns + 1 checkbox col + visible configurable cols
+  const visibleColCount = useMemo(() => {
+    // Always visible: checkbox(1), ID(1), Nome(1), Azioni(1) = 4
+    const configurable = Object.values(visibleColumns).filter(Boolean).length
+    return 4 + configurable
+  }, [visibleColumns])
+
+  const COLUMN_LABELS = [
+    { key: 'foto', label: 'Foto' },
+    { key: 'quantita', label: 'Quantità' },
+    { key: 'qMin', label: 'Q.Min' },
+    { key: 'prezzoAcquisto', label: 'P.Acquisto' },
+    { key: 'prezzoVendita', label: 'P.Vendita' },
+    { key: 'barcode', label: 'Barcode' },
+    { key: 'conservazione', label: 'Conservazione' },
+    { key: 'lingua', label: 'Lingua' },
+    { key: 'etichetta', label: 'Etichetta' },
+  ]
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -153,6 +214,32 @@ function Prodotti() {
           <button onClick={() => navigate('/prodotti/nuovo')} className={styles.addBtn}>
             + Aggiungi Prodotto
           </button>
+          {!isMobile && (
+            <div ref={columnFilterRef} style={{ position: 'relative' }}>
+              <button
+                className={styles.addBtn}
+                style={{ backgroundColor: '#374151' }}
+                onClick={() => setShowColumnFilter(v => !v)}
+                title="Mostra/nascondi colonne"
+              >⚙️ Colonne</button>
+              {showColumnFilter && (
+                <div className={styles.columnDropdown}>
+                  <div className={styles.columnDropdownTitle}>Colonne visibili</div>
+                  {COLUMN_LABELS.map(({ key, label }) => (
+                    <label key={key} className={styles.columnDropdownItem}>
+                      <input
+                        type="checkbox"
+                        checked={!!visibleColumns[key]}
+                        onChange={() => toggleColumn(key)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {selectedIds.size > 0 ? (
             <button
               onClick={openPrintSelected}
@@ -258,15 +345,24 @@ function Prodotti() {
                     style={{ cursor: 'pointer' }}
                   />
                 </th>
-                {['ID', 'Foto', 'Nome', 'Quantità', 'Q.Min', 'P.Acquisto', 'P.Vendita', 'Barcode', 'Conservazione', 'Lingua', 'Azioni', 'Etichetta'].map(h => (
-                  <th key={h} className={styles.th}>{h}</th>
-                ))}
+                <th className={styles.th}>ID</th>
+                {visibleColumns.foto && <th className={styles.th}>Foto</th>}
+                <th className={styles.th}>Nome</th>
+                {visibleColumns.quantita && <th className={styles.th}>Quantità</th>}
+                {visibleColumns.qMin && <th className={styles.th}>Q.Min</th>}
+                {visibleColumns.prezzoAcquisto && <th className={styles.th}>P.Acquisto</th>}
+                {visibleColumns.prezzoVendita && <th className={styles.th}>P.Vendita</th>}
+                {visibleColumns.barcode && <th className={styles.th}>Barcode</th>}
+                {visibleColumns.conservazione && <th className={styles.th}>Conservazione</th>}
+                {visibleColumns.lingua && <th className={styles.th}>Lingua</th>}
+                <th className={styles.th}>Azioni</th>
+                {visibleColumns.etichetta && <th className={styles.th}>Etichetta</th>}
               </tr>
             </thead>
             <tbody>
               {prodotti.length === 0 ? (
                 <tr className={styles.trEmpty}>
-                  <td colSpan={13}>
+                  <td colSpan={visibleColCount}>
                     {search ? `Nessun prodotto corrisponde a "${search}"` : 'Nessun prodotto trovato'}
                   </td>
                 </tr>
@@ -286,32 +382,40 @@ function Prodotti() {
                     />
                   </td>
                   <td className={styles.td}>{p.id}</td>
-                  <td className={styles.td}>
-                    {p.foto_url
-                      ? <img
-                          src={getFotoUrl(p.foto_url)}
-                          alt={p.nome}
-                          className={styles.productImg}
-                          onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'inline' }}
-                        />
-                      : null
-                    }
-                    <span style={{ fontSize: '1.4rem', display: p.foto_url ? 'none' : 'inline' }}>📷</span>
-                  </td>
+                  {visibleColumns.foto && (
+                    <td className={styles.td}>
+                      {p.foto_url
+                        ? <img
+                            src={getFotoUrl(p.foto_url)}
+                            alt={p.nome}
+                            className={styles.productImg}
+                            onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'inline' }}
+                          />
+                        : null
+                      }
+                      <span style={{ fontSize: '1.4rem', display: p.foto_url ? 'none' : 'inline' }}>📷</span>
+                    </td>
+                  )}
                   <td className={styles.td}>{p.nome}</td>
-                  <td className={`${styles.td} ${p.quantita < p.quantita_minima ? styles.qtyLow : styles.qtyOk}`}>
-                    {p.quantita}
-                  </td>
-                  <td className={styles.td}>{p.quantita_minima}</td>
-                  <td className={styles.td}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>
-                  <td className={styles.td}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>
-                  <td className={styles.td} title={p.barcode || ''}>
-                    {p.barcode ? '✅' : '⬜'}
-                  </td>
-                  <td className={styles.td}>
-                    <StatoBadge value={p.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />
-                  </td>
-                  <td className={styles.td}>{p.lingua || '—'}</td>
+                  {visibleColumns.quantita && (
+                    <td className={`${styles.td} ${p.quantita < p.quantita_minima ? styles.qtyLow : styles.qtyOk}`}>
+                      {p.quantita}
+                    </td>
+                  )}
+                  {visibleColumns.qMin && <td className={styles.td}>{p.quantita_minima}</td>}
+                  {visibleColumns.prezzoAcquisto && <td className={styles.td}>{p.prezzo_acquisto ? `€${p.prezzo_acquisto}` : '-'}</td>}
+                  {visibleColumns.prezzoVendita && <td className={styles.td}>{p.prezzo_vendita ? `€${p.prezzo_vendita}` : '-'}</td>}
+                  {visibleColumns.barcode && (
+                    <td className={styles.td} title={p.barcode || ''}>
+                      {p.barcode ? '✅' : '⬜'}
+                    </td>
+                  )}
+                  {visibleColumns.conservazione && (
+                    <td className={styles.td}>
+                      <StatoBadge value={p.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />
+                    </td>
+                  )}
+                  {visibleColumns.lingua && <td className={styles.td}>{p.lingua || '—'}</td>}
                   <td className={styles.td}>
                     <button
                       onClick={() => navigate(`/prodotti/${p.id}`)}
@@ -319,13 +423,15 @@ function Prodotti() {
                       title="Scheda dettaglio"
                     >🔍</button>
                   </td>
-                  <td className={styles.td}>
-                    <button
-                      onClick={() => openPrintLabel(p)}
-                      className={styles.actionBtn}
-                      title="Stampa etichetta"
-                    >🖨️</button>
-                  </td>
+                  {visibleColumns.etichetta && (
+                    <td className={styles.td}>
+                      <button
+                        onClick={() => openPrintLabel(p)}
+                        className={styles.actionBtn}
+                        title="Stampa etichetta"
+                      >🖨️</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
