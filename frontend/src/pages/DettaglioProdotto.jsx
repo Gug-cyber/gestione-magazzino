@@ -8,6 +8,19 @@ import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 import QRCode from 'qrcode'
 
+const CONDIZIONE_MAP = {
+  'Near Mint': 'NM', 'Mint': 'NM', 'Quasi Perfetto': 'NM',
+  'Ottimo': 'EX', 'Excellent': 'EX',
+  'Good': 'GD', 'Buono': 'GD',
+  'Light Played': 'LP', 'Giocato': 'LP',
+  'Poor': 'PO', 'Rovinato': 'PO',
+}
+const LINGUA_MAP = {
+  'Inglese': 'en', 'Italiano': 'it', 'Tedesco': 'de',
+  'Francese': 'fr', 'Spagnolo': 'es', 'Portoghese': 'pt',
+  'Giapponese': 'ja', 'Cinese': 'zh-hans', 'Coreano': 'ko', 'Russo': 'ru',
+}
+
 function QuantitaChart({ storico }) {
   if (!storico || storico.length === 0) {
     return <p style={{ color: '#888', textAlign: 'center', padding: '32px 0' }}>Nessun movimento registrato</p>
@@ -120,6 +133,7 @@ function DettaglioProdotto() {
 
   const [cardtraderData, setCardtraderData] = useState(null)
   const [cardtraderLoading, setCardtraderLoading] = useState(false)
+  const [cardtraderError, setCardtraderError] = useState(null)
 
   const loadScheda = () => {
     setLoading(true)
@@ -147,22 +161,38 @@ function DettaglioProdotto() {
       .finally(() => setEbayLoading(false))
   }
 
+  const fetchCardtraderPrezzi = (prodotto) => {
+    setCardtraderData(null)
+    setCardtraderLoading(true)
+    setCardtraderError(null)
+    const ctParams = {}
+    const ctCondizione = CONDIZIONE_MAP[prodotto.stato_conservazione]
+    const ctLingua = LINGUA_MAP[prodotto.lingua]
+    if (ctCondizione) ctParams.condizione = ctCondizione
+    if (ctLingua) ctParams.lingua = ctLingua
+    cardtraderAPI.getMarketPrices(prodotto.cardtrader_blueprint_id, ctParams)
+      .then(res => setCardtraderData(res.data))
+      .catch(err => setCardtraderError(err.response?.data?.detail || 'Errore prezzi CardTrader'))
+      .finally(() => setCardtraderLoading(false))
+  }
+
   useEffect(() => {
     if (!scheda) return
     const { prodotto } = scheda
     fetchEbayPrezzi(prodotto)
     if (prodotto.cardtrader_blueprint_id) {
-      setCardtraderLoading(true)
-      cardtraderAPI.getMarketPrices(prodotto.cardtrader_blueprint_id)
-        .then(res => setCardtraderData(res.data))
-        .catch(() => setCardtraderData(null))
-        .finally(() => setCardtraderLoading(false))
+      fetchCardtraderPrezzi(prodotto)
     }
   }, [scheda?.prodotto?.id])
 
   const refreshEbay = () => {
     if (!scheda) return
     fetchEbayPrezzi(scheda.prodotto)
+  }
+
+  const refreshCardtrader = () => {
+    if (!scheda) return
+    fetchCardtraderPrezzi(scheda.prodotto)
   }
 
   const handleEditOpen = () => {
@@ -179,6 +209,7 @@ function DettaglioProdotto() {
       ubicazione_id: p.ubicazione_id || '',
       stato_conservazione: p.stato_conservazione || '',
       lingua: p.lingua || '',
+      cardtrader_blueprint_id: p.cardtrader_blueprint_id || '',
     })
     setFormError('')
     setShowEditForm(true)
@@ -197,6 +228,7 @@ function DettaglioProdotto() {
       ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
       stato_conservazione: form.stato_conservazione || null,
       lingua: form.lingua || null,
+      cardtrader_blueprint_id: form.cardtrader_blueprint_id ? parseInt(form.cardtrader_blueprint_id) : null,
     }
     try {
       await prodottiAPI.update(id, payload)
@@ -295,6 +327,7 @@ function DettaglioProdotto() {
               { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
               { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },
               { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
+              { key: 'cardtrader_blueprint_id', label: '🃏 CardTrader Blueprint ID', type: 'number' },
             ].map(({ key, label, type = 'text', required, step }) => (
               <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
@@ -415,6 +448,9 @@ function DettaglioProdotto() {
               <div style={{ fontSize: '1.1rem', fontWeight: 700, color: PRIMARY_COLOR, marginBottom: 4 }}>{prodotto.nome}</div>
               {prodotto.descrizione && <div style={{ color: '#555', fontSize: '0.9rem', marginBottom: 8 }}>{prodotto.descrizione}</div>}
               <div style={{ fontSize: '0.85rem', color: '#888' }}>SKU: <code style={{ backgroundColor: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{prodotto.sku}</code></div>
+              {prodotto.cardtrader_blueprint_id && (
+                <div style={{ fontSize: '0.85rem', color: '#888', marginTop: 2 }}>🃏 Blueprint ID: <code style={{ backgroundColor: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{prodotto.cardtrader_blueprint_id}</code></div>
+              )}
               {fotoError && <div style={{ color: 'red', fontSize: '0.8rem', marginTop: 4 }}>{fotoError}</div>}
             </div>
           </div>
@@ -539,20 +575,38 @@ function DettaglioProdotto() {
         <div style={{ backgroundColor: '#f3e5f5', borderRadius: 8, padding: '12px 16px', borderLeft: '4px solid #7b1fa2' }}>
           <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 700, marginBottom: 4 }}>🃏 Prezzi CardTrader</div>
           {!prodotto.cardtrader_blueprint_id
-            ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Blueprint ID non configurato</div>
-            : cardtraderLoading
-              ? <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>
-              : cardtraderData
-                ? <div>
-                    <div style={{ fontSize: '0.85rem' }}>
-                      Min: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_minimo).toFixed(2)}</strong>
-                    </div>
-                    <div style={{ fontSize: '0.85rem' }}>
-                      Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
-                  </div>
-                : <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun dato disponibile</div>
+            ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>
+                Blueprint ID non configurato.{' '}
+                <button onClick={handleEditOpen} style={{ background: 'none', border: 'none', color: '#7b1fa2', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}>Modifica prodotto</button>
+              </div>
+            : <>
+                {cardtraderLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
+                {cardtraderError && !cardtraderLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
+                {cardtraderData && !cardtraderError && !cardtraderLoading && (
+                  cardtraderData.numero_offerte === 0
+                    ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
+                    : <div>
+                        <div style={{ fontSize: '0.85rem' }}>
+                          💰 Min: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_minimo).toFixed(2)}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.85rem' }}>
+                          📊 Medio: <strong style={{ color: '#7b1fa2' }}>€{Number(cardtraderData.prezzo_medio).toFixed(2)}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#888' }}>{cardtraderData.numero_offerte} offerte</div>
+                        {(CONDIZIONE_MAP[prodotto.stato_conservazione] || LINGUA_MAP[prodotto.lingua]) && (
+                          <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: 2 }}>
+                            {[
+                              CONDIZIONE_MAP[prodotto.stato_conservazione],
+                              LINGUA_MAP[prodotto.lingua],
+                            ].filter(Boolean).join(' / ')}
+                          </div>
+                        )}
+                      </div>
+                )}
+                <button onClick={refreshCardtrader} disabled={cardtraderLoading} aria-label="Aggiorna prezzi CardTrader" style={{ marginTop: 6, fontSize: '0.75rem', color: '#7b1fa2', background: 'none', border: 'none', cursor: cardtraderLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: cardtraderLoading ? 0.6 : 1 }}>
+                  🔄 Aggiorna
+                </button>
+              </>
           }
         </div>
 
