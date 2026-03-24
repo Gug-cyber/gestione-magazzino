@@ -185,6 +185,7 @@ export const ordiniAPI = {
     client.patch(`/api/ordini/${id}/tracking`, null, {
       params: { corriere, tracking_number },
     }),
+  updateStato: (id, stato) => client.patch(`/api/ordini/${id}/stato`, { stato }),
 }
 
 export const fornitureAPI = {
