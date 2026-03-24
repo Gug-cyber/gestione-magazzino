@@ -67,6 +67,11 @@ export default function CardTrader() {
   const [mpResult, setMpResult] = useState(null)
   const [mpError, setMpError] = useState('')
 
+  // Auto-populate blueprint IDs
+  const [autoPopulateLoading, setAutoPopulateLoading] = useState(false)
+  const [autoPopulateResult, setAutoPopulateResult] = useState(null)
+  const [autoPopulateError, setAutoPopulateError] = useState('')
+
   useEffect(() => {
     cardtraderAPI.getStatus()
       .then(res => setTokenConfigured(res.data.configured))
@@ -156,6 +161,20 @@ export default function CardTrader() {
     }
   }
 
+  async function handleAutoPopulate() {
+    setAutoPopulateError('')
+    setAutoPopulateResult(null)
+    setAutoPopulateLoading(true)
+    try {
+      const res = await cardtraderAPI.autoPopulateBlueprintIds()
+      setAutoPopulateResult(res.data)
+    } catch (err) {
+      setAutoPopulateError(err.response?.data?.detail || 'Errore durante il popolamento automatico')
+    } finally {
+      setAutoPopulateLoading(false)
+    }
+  }
+
   if (statusLoading) {
     return <div style={{ padding: '32px', textAlign: 'center' }}>Caricamento...</div>
   }
@@ -173,6 +192,48 @@ export default function CardTrader() {
           <p style={{ color: '#c62828', fontWeight: 600 }}>
             ❌ Token CardTrader non configurato. Impostare la variabile d'ambiente <code>CARDTRADER_TOKEN</code>.
           </p>
+        )}
+        {tokenConfigured && (
+          <div style={{ marginTop: '12px' }}>
+            <button
+              style={autoPopulateLoading ? { ...btnPrimary, opacity: 0.6, cursor: 'not-allowed' } : btnPrimary}
+              onClick={handleAutoPopulate}
+              disabled={autoPopulateLoading}
+            >
+              {autoPopulateLoading ? '⏳ Popolamento in corso...' : '🔍 Popola Blueprint ID automaticamente'}
+            </button>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px' }}>
+              Cerca e assegna automaticamente i Blueprint ID CardTrader per tutti i prodotti che non ce l&apos;hanno.
+            </p>
+            {autoPopulateError && (
+              <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
+                {autoPopulateError}
+              </div>
+            )}
+            {autoPopulateResult && (
+              <div style={{ backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: '6px', marginTop: '12px' }}>
+                <strong>Popolamento completato:</strong>{' '}
+                {autoPopulateResult.aggiornati} prodotti aggiornati su {autoPopulateResult.totale_prodotti_senza_blueprint}
+                {autoPopulateResult.non_trovati?.length > 0 && (
+                  <div style={{ marginTop: '8px', color: '#f57c00' }}>
+                    <strong>Non trovati ({autoPopulateResult.non_trovati.length}):</strong>
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: '0.85rem' }}>
+                      {autoPopulateResult.non_trovati.slice(0, 10).map((nome, i) => <li key={i}>{nome}</li>)}
+                      {autoPopulateResult.non_trovati.length > 10 && <li>... e altri {autoPopulateResult.non_trovati.length - 10}</li>}
+                    </ul>
+                  </div>
+                )}
+                {autoPopulateResult.errori?.length > 0 && (
+                  <div style={{ marginTop: '8px', color: '#c62828' }}>
+                    <strong>Errori ({autoPopulateResult.errori.length}):</strong>
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: '0.85rem' }}>
+                      {autoPopulateResult.errori.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
