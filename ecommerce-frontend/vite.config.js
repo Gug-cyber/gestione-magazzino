@@ -1,15 +1,21 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3001,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_STRAPI_URL || 'http://localhost:1337',
-        changeOrigin: true,
+    port: 5173,
+    host: true, // expose to network for Docker/container dev environments
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        },
       },
     },
   },
-});
+})
