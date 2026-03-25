@@ -1,4 +1,6 @@
 import logging
+import os
+import random
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -17,6 +19,9 @@ from ..models.prodotto import Prodotto
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Configurazione ScraperAPI
+SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
 
 # Mapping condizioni
 CONDIZIONE_MAP = {
@@ -47,20 +52,29 @@ LINGUA_MAP = {
     "Cinese": 10,
 }
 
-# User-Agent realistico
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+# Header migliorati per richieste dirette
+IMPROVED_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
+    "Referer": "https://www.google.com/",
 }
 
 CACHE_DAYS = 7
-_RATE_LIMIT_SECONDS = 10
-_last_request_time: float = 0.0
+
+
+def _rate_limit_sleep() -> None:
+    """Sleep a random interval to avoid hammering CardMarket with direct requests."""
+    time.sleep(random.uniform(10, 20))
 
 
 class CardMarketPriceResponse(BaseModel):
@@ -71,89 +85,143 @@ class CardMarketPriceResponse(BaseModel):
     data_aggiornamento: datetime
 
 
-def _enforce_rate_limit() -> None:
-    """Ensure at least _RATE_LIMIT_SECONDS have elapsed since the last request."""
-    global _last_request_time
-    elapsed = time.monotonic() - _last_request_time
-    if elapsed < _RATE_LIMIT_SECONDS:
-        time.sleep(_RATE_LIMIT_SECONDS - elapsed)
-    _last_request_time = time.monotonic()
-
-
-def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[int]) -> dict:
-    """
-    Scrape prezzi da CardMarket per una carta specifica.
-    Ritorna: dict con prezzo_minimo, prezzo_medio, url
-    """
-    _enforce_rate_limit()  # Rate limiting: max 1 richiesta ogni 10 secondi
-
-    # Costruisci URL di ricerca
-    query = nome.replace(" ", "+")
-    url = f"https://www.cardmarket.com/it/Magic/Products/Search?searchString={query}"
+def _scrape_direct(url: str) -> BeautifulSoup:
+    """Scraping diretto con header migliorati e rate limiting variabile."""
+    _rate_limit_sleep()
 
     try:
-        with httpx.Client(timeout=30, headers=HEADERS, follow_redirects=True) as client:
+        with httpx.Client(timeout=30, headers=IMPROVED_HEADERS, follow_redirects=True) as client:
             response = client.get(url)
+            logger.info(f"Direct response: {response.status_code}")
+
+            if response.status_code == 403:
+                logger.error("403 Forbidden - CardMarket blocca le richieste")
+                raise HTTPException(
+                    status_code=403,
+                    detail="CardMarket blocca le richieste. Configura SCRAPER_API_KEY per risolvere.",
+                )
+
             response.raise_for_status()
-
-        soup = BeautifulSoup(response.content, "html.parser")
-
-        # Trova il primo risultato (carta più rilevante)
-        first_result = soup.select_one("div.table-body a[href*='/Products/Singles']")
-        if not first_result:
-            return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": url}
-
-        # Estrai URL della carta
-        product_url = "https://www.cardmarket.com" + first_result["href"]
-
-        # Scrape pagina prodotto per prezzi
-        with httpx.Client(timeout=30, headers=HEADERS, follow_redirects=True) as client:
-            product_response = client.get(product_url)
-            product_response.raise_for_status()
-
-        product_soup = BeautifulSoup(product_response.content, "html.parser")
-
-        # Estrai prezzi
-        prezzo_minimo_elem = product_soup.select_one("span.price-from")
-        prezzo_medio_elem = product_soup.select_one("span.price-avg")
-
-        prezzo_minimo = None
-        prezzo_medio = None
-
-        if prezzo_minimo_elem:
-            text = prezzo_minimo_elem.get_text(strip=True).replace("€", "").replace(",", ".")
-            try:
-                prezzo_minimo = float(text)
-            except ValueError:
-                pass
-
-        if prezzo_medio_elem:
-            text = prezzo_medio_elem.get_text(strip=True).replace("€", "").replace(",", ".")
-            try:
-                prezzo_medio = float(text)
-            except ValueError:
-                pass
-
-        return {
-            "prezzo_minimo": prezzo_minimo,
-            "prezzo_medio": prezzo_medio,
-            "url_cardmarket": product_url,
-        }
+            return BeautifulSoup(response.content, "html.parser")
 
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timeout durante la richiesta a CardMarket")
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 429:
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit CardMarket raggiunto. Riprova tra qualche minuto.",
-            )
+            raise HTTPException(status_code=429, detail="Rate limit raggiunto. Riprova tra qualche minuto.")
         raise HTTPException(status_code=502, detail=f"Errore CardMarket: {e.response.status_code}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Errore scraping CardMarket: {e}")
-        raise HTTPException(status_code=500, detail="Errore durante il recupero dei prezzi CardMarket")
+
+
+def _parse_cardmarket_page(soup: BeautifulSoup, search_url: str) -> dict:
+    """Parsing della pagina CardMarket con selettori multipli."""
+
+    # Trova primo risultato di ricerca
+    first_result = soup.select_one("div.table-body a[href*='/Products/Singles']")
+    if not first_result:
+        logger.warning("Nessun risultato trovato nella ricerca")
+        return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": search_url}
+
+    product_url = "https://www.cardmarket.com" + first_result.get("href", "")
+    logger.info(f"Pagina prodotto trovata: {product_url}")
+
+    # Scrape pagina prodotto
+    if SCRAPER_API_KEY:
+        try:
+            from scraperapi_sdk import ScraperAPIClient  # type: ignore[import]
+
+            client = ScraperAPIClient(SCRAPER_API_KEY)
+            product_html = client.get(product_url, render_js=False, premium=True)
+            product_soup = BeautifulSoup(product_html, "html.parser")
+        except Exception as e:
+            logger.error(f"Errore scraping pagina prodotto via ScraperAPI: {e}")
+            return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": product_url}
+    else:
+        try:
+            with httpx.Client(timeout=30, headers=IMPROVED_HEADERS, follow_redirects=True) as client:
+                product_response = client.get(product_url)
+                product_response.raise_for_status()
+                product_soup = BeautifulSoup(product_response.content, "html.parser")
+        except Exception as e:
+            logger.error(f"Errore scraping pagina prodotto: {e}")
+            return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": product_url}
+
+    # Selettori multipli con fallback
+    selectors_map = [
+        ("span.price-from", "span.price-avg"),
+        ("span.font-weight-bold.color-primary", "span.font-weight-bold.text-muted"),
+        (".price-container .price-from", ".price-container .price-avg"),
+        ("dd.col-6.col-xl-7", None),
+    ]
+
+    prezzo_minimo = None
+    prezzo_medio = None
+
+    for min_sel, avg_sel in selectors_map:
+        if not prezzo_minimo:
+            elem = product_soup.select_one(min_sel)
+            if elem:
+                text = elem.get_text(strip=True).replace("€", "").replace(",", ".")
+                try:
+                    prezzo_minimo = float(text.split()[0])
+                    logger.info(f"Prezzo minimo trovato: €{prezzo_minimo}")
+                except (ValueError, IndexError):
+                    pass
+
+        if not prezzo_medio and avg_sel:
+            elem = product_soup.select_one(avg_sel)
+            if elem:
+                text = elem.get_text(strip=True).replace("€", "").replace(",", ".")
+                try:
+                    prezzo_medio = float(text.split()[0])
+                    logger.info(f"Prezzo medio trovato: €{prezzo_medio}")
+                except (ValueError, IndexError):
+                    pass
+
+        if prezzo_minimo and prezzo_medio:
+            break
+
+    if not prezzo_minimo and not prezzo_medio:
+        logger.error("Nessun prezzo trovato nella pagina")
+
+    return {
+        "prezzo_minimo": prezzo_minimo,
+        "prezzo_medio": prezzo_medio,
+        "url_cardmarket": product_url,
+    }
+
+
+def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[int]) -> dict:
+    """
+    Scrape prezzi da CardMarket usando ScraperAPI (se configurato) o richieste dirette.
+    """
+    query = nome.replace(" ", "+")
+    url = f"https://www.cardmarket.com/it/Magic/Products/Search?searchString={query}"
+
+    logger.info(f"Scraping CardMarket per: {nome}")
+
+    # Strategia A: ScraperAPI (se configurato)
+    if SCRAPER_API_KEY:
+        try:
+            from scraperapi_sdk import ScraperAPIClient  # type: ignore[import]
+
+            logger.info("Usando ScraperAPI (bypass 403)")
+            client = ScraperAPIClient(SCRAPER_API_KEY)
+            response_text = client.get(url, render_js=False, premium=True)
+            soup = BeautifulSoup(response_text, "html.parser")
+
+        except ImportError:
+            logger.warning("scraperapi-sdk non installato, fallback a richieste dirette")
+            soup = _scrape_direct(url)
+        except Exception as e:
+            logger.error(f"Errore ScraperAPI: {e}")
+            raise HTTPException(status_code=502, detail=f"Errore ScraperAPI: {str(e)}")
+
+    # Strategia B: Richieste dirette (fallback)
+    else:
+        logger.warning("SCRAPER_API_KEY non configurata, uso richiesta diretta (possibile 403)")
+        soup = _scrape_direct(url)
+
+    return _parse_cardmarket_page(soup, url)
 
 
 @router.post("/scrape-prezzi/{prodotto_id}", response_model=CardMarketPriceResponse)
@@ -248,12 +316,16 @@ def get_prezzi_cached(
 
 @router.post("/update-all-prices")
 def update_all_prices(
+    limit: int = 50,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """
     Aggiorna i prezzi CardMarket per tutti i prodotti con dati vecchi (>7 giorni).
     Solo per admin.
+
+    - **limit**: numero massimo di prodotti da aggiornare per chiamata (default 50);
+      usato per controllare il consumo di crediti ScraperAPI in batch.
     """
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Solo admin")
@@ -262,7 +334,7 @@ def update_all_prices(
 
     old_prices = db.query(CardMarketPrice).filter(
         CardMarketPrice.data_aggiornamento < cutoff_date
-    ).all()
+    ).limit(limit).all()
 
     aggiornati = 0
     errori = []
