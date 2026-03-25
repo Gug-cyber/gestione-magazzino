@@ -205,28 +205,39 @@
 
 .trackingRow {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.trackingRow > div {
+  display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap;
+}
+
+.trackingButtonContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .editTrackingBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  min-width: 26px;
+  min-height: 26px;
+  width: 26px;
+  height: 26px;
   border: none;
   border-radius: 4px;
   background: transparent;
   cursor: pointer;
   font-size: 14px;
   color: #666;
-  padding: 0;
-  margin-left: 2px;
-  vertical-align: middle;
+  padding: 2px 6px;
   flex-shrink: 0;
-  align-self: center;
   transition: background 0.15s, color 0.15s;
   line-height: 1;
 }
@@ -247,12 +258,16 @@
   color: #1565c0;
   font-family: monospace;
   word-break: break-all;
+  display: inline-flex;
+  align-items: center;
 }
 
 .trackingNum {
   font-size: 0.8rem;
   color: #333;
   font-family: monospace;
+  display: inline-flex;
+  align-items: center;
 }
 
 .trackingEmpty {
