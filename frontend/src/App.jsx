@@ -227,7 +227,7 @@ function App() {
               <MobileAppLayout><MobileNuovoOrdine /></MobileAppLayout>
             </ProtectedRoute>
           } />
-          <Route path="/tracking/:trackingNumber" element={
+          <Route path="/tracking/:corriere/:trackingNumber" element={
             <ProtectedRoute>
               <AppLayout><TrackingDetail /></AppLayout>
             </ProtectedRoute>

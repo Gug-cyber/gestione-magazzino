@@ -1,4 +1,4 @@
-"""Task schedulato per aggiornamento automatico tracking spedizioni."""
+"""Task schedulato per aggiornamento automatico tracking spedizioni multi-corriere."""
 import logging
 import os
 import time
@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 def run_tracking_updates() -> None:
-    """Esegue aggiornamento tracking di tutte le spedizioni attive."""
-    logger.info("Avvio aggiornamento tracking schedulato")
+    """Esegue aggiornamento tracking di tutte le spedizioni attive (tutti i corrieri)."""
+    logger.info("Avvio aggiornamento tracking multi-corriere schedulato")
     db = SessionLocal()
     try:
         _update_all_active_tracking(db)
-        logger.info("Aggiornamento tracking completato")
+        logger.info("Aggiornamento tracking multi-corriere completato")
     except Exception as e:
         logger.error("Errore aggiornamento tracking: %s", e)
     finally:
@@ -33,7 +33,7 @@ def start_scheduler() -> None:
     # Esegui immediatamente all'avvio
     run_tracking_updates()
 
-    logger.info("Scheduler tracking avviato - aggiornamenti ogni %d ore", interval_hours)
+    logger.info("Scheduler tracking multi-corriere avviato - aggiornamenti ogni %d ore", interval_hours)
 
     SCHEDULER_CHECK_INTERVAL_SECONDS = 60
     while True:
