@@ -362,32 +362,34 @@ export default function Forniture() {
                     {fornitura.tracking_number ? (
                       <div className={`${styles.tracking} ${styles.trackingRow}`}>
                         <span className={styles.trackingCorriere}>{fornitura.corriere || '—'}</span>
-                        {(() => {
-                          const corriere = CORRIERI.find(c => c.value === fornitura.corriere)
-                          const url = corriere ? corriere.url(fornitura.tracking_number) : null
-                          return url ? (
-                            <a href={url} target="_blank" rel="noopener noreferrer" className={styles.trackingLink}>
-                              {fornitura.tracking_number} 🔗
-                            </a>
-                          ) : (
-                            <span className={styles.trackingNum}>{fornitura.tracking_number}</span>
-                          )
-                        })()}
-                        {fornitura.corriere === 'Poste Italiane' && fornitura.tracking_number && (
+                        <div className={styles.trackingButtonContainer}>
+                          {(() => {
+                            const corriere = CORRIERI.find(c => c.value === fornitura.corriere)
+                            const url = corriere ? corriere.url(fornitura.tracking_number) : null
+                            return url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" className={styles.trackingLink}>
+                                {fornitura.tracking_number} 🔗
+                              </a>
+                            ) : (
+                              <span className={styles.trackingNum}>{fornitura.tracking_number}</span>
+                            )
+                          })()}
+                          {fornitura.corriere === 'Poste Italiane' && fornitura.tracking_number && (
+                            <button
+                              onClick={() => navigate(`/tracking/${encodeURIComponent(fornitura.tracking_number)}`)}
+                              title="Storico tracking"
+                              className={styles.editTrackingBtn}
+                            >📦</button>
+                          )}
                           <button
-                            onClick={() => navigate(`/tracking/${encodeURIComponent(fornitura.tracking_number)}`)}
-                            title="Storico tracking"
+                            onClick={() => {
+                              setTrackingFornituraModal(fornitura)
+                              setTrackingFornituraForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' })
+                            }}
+                            title="Modifica tracking"
                             className={styles.editTrackingBtn}
-                          >📦</button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setTrackingFornituraModal(fornitura)
-                            setTrackingFornituraForm({ corriere: fornitura.corriere || '', tracking_number: fornitura.tracking_number || '' })
-                          }}
-                          title="Modifica tracking"
-                          className={styles.editTrackingBtn}
-                        >✏️</button>
+                          >✏️</button>
+                        </div>
                       </div>
                     ) : (
                       <div className={`${styles.tracking} ${styles.trackingRow}`}>

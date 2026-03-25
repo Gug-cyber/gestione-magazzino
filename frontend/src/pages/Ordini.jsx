@@ -317,32 +317,34 @@ export default function Ordini() {
                     {ordine.tracking_number ? (
                       <div className={`${styles.tracking} ${styles.trackingRow}`}>
                         <span className={styles.trackingCorriere}>{ordine.corriere || '—'}</span>
-                        {(() => {
-                          const corriere = CORRIERI.find(c => c.value === ordine.corriere)
-                          const url = corriere ? corriere.url(ordine.tracking_number) : null
-                          return url ? (
-                            <a href={url} target="_blank" rel="noopener noreferrer" className={styles.trackingLink}>
-                              {ordine.tracking_number} 🔗
-                            </a>
-                          ) : (
-                            <span className={styles.trackingNum}>{ordine.tracking_number}</span>
-                          )
-                        })()}
-                        {ordine.corriere === 'Poste Italiane' && ordine.tracking_number && (
+                        <div className={styles.trackingButtonContainer}>
+                          {(() => {
+                            const corriere = CORRIERI.find(c => c.value === ordine.corriere)
+                            const url = corriere ? corriere.url(ordine.tracking_number) : null
+                            return url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" className={styles.trackingLink}>
+                                {ordine.tracking_number} 🔗
+                              </a>
+                            ) : (
+                              <span className={styles.trackingNum}>{ordine.tracking_number}</span>
+                            )
+                          })()}
+                          {ordine.corriere === 'Poste Italiane' && ordine.tracking_number && (
+                            <button
+                              onClick={() => navigate(`/tracking/${encodeURIComponent(ordine.tracking_number)}`)}
+                              title="Storico tracking"
+                              className={styles.editTrackingBtn}
+                            >📦</button>
+                          )}
                           <button
-                            onClick={() => navigate(`/tracking/${encodeURIComponent(ordine.tracking_number)}`)}
-                            title="Storico tracking"
+                            onClick={() => {
+                              setTrackingModal(ordine)
+                              setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
+                            }}
+                            title="Modifica tracking"
                             className={styles.editTrackingBtn}
-                          >📦</button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setTrackingModal(ordine)
-                            setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
-                          }}
-                          title="Modifica tracking"
-                          className={styles.editTrackingBtn}
-                        >✏️</button>
+                          >✏️</button>
+                        </div>
                       </div>
                     ) : (
                       <div className={`${styles.tracking} ${styles.trackingRow}`}>

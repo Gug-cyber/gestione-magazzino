@@ -153,6 +153,26 @@ def _update_single_tracking(tracking_number: str, db: Session) -> None:
             .first()
         )
 
+        # Auto-chiusura ordine se il pacco è stato consegnato
+        if tracking_info.get("delivered") and ordine:
+            if ordine.stato != "completato":
+                ordine.stato = "completato"
+                db.add(ordine)
+                logger.info(
+                    "Ordine %s chiuso automaticamente - pacco consegnato",
+                    ordine.numero_ordine,
+                )
+
+        # Auto-chiusura fornitura se il pacco è stato consegnato
+        if tracking_info.get("delivered") and fornitura:
+            if fornitura.stato != "ricevuta":
+                fornitura.stato = "ricevuta"
+                db.add(fornitura)
+                logger.info(
+                    "Fornitura %s chiusa automaticamente - pacco consegnato",
+                    fornitura.id,
+                )
+
         update = TrackingUpdate(
             ordine_id=ordine.id if ordine else None,
             fornitura_id=fornitura.id if fornitura else None,
