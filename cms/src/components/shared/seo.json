@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_shared_seos",
+  "info": {
+    "displayName": "Seo",
+    "icon": "search"
+  },
+  "attributes": {
+    "metaTitle": { "type": "string", "required": true },
+    "metaDescription": { "type": "text", "required": true },
+    "keywords": { "type": "text" },
+    "metaImage": { "type": "media", "multiple": false, "allowedTypes": ["images"] }
+  }
+}

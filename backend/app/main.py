@@ -14,6 +14,7 @@ from .routers import forniture
 from .routers import admin
 from .routers import ebay
 from .routers import cardmarket_scraper
+from .routers import cms_sync
 from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
 from .models import cardmarket_price as _cardmarket_price_model  # noqa: F401 – ensures cardmarket_prices table is created
 from .routers import activity_log as activity_log_router
@@ -92,6 +93,7 @@ app.include_router(forniture.router, prefix="/api/forniture", tags=["Forniture"]
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(ebay.router, prefix="/api/ebay", tags=["eBay"])
 app.include_router(cardmarket_scraper.router, prefix="/api/cardmarket-scraper", tags=["CardMarket Scraper"])
+app.include_router(cms_sync.router, prefix="/api/cms", tags=["CMS Sync"])
 
 
 @app.on_event("startup")
