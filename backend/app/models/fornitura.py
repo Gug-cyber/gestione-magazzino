@@ -40,6 +40,7 @@ class Fornitura(Base):
 
     fornitore = relationship("Fornitore", backref="forniture")
     righe = relationship("RigaFornitura", back_populates="fornitura", cascade="all, delete-orphan")
+    tracking_updates = relationship("TrackingUpdate", back_populates="fornitura")
 
 
 class RigaFornitura(Base):

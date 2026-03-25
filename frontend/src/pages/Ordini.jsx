@@ -328,6 +328,13 @@ export default function Ordini() {
                             <span className={styles.trackingNum}>{ordine.tracking_number}</span>
                           )
                         })()}
+                        {ordine.corriere === 'Poste Italiane' && ordine.tracking_number && (
+                          <button
+                            onClick={() => navigate(`/tracking/${encodeURIComponent(ordine.tracking_number)}`)}
+                            title="Storico tracking"
+                            className={styles.editTrackingBtn}
+                          >📦</button>
+                        )}
                         <button
                           onClick={() => {
                             setTrackingModal(ordine)

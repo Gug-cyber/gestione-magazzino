@@ -227,6 +227,8 @@ export const cardmarketScraperAPI = {
     client.get(`/api/cardmarket-scraper/prezzi-cached/${prodotto_id}`),
 }
 
+export { trackingAPI } from './tracking'
+
 /**
  * Restituisce l'URL completo per mostrare la foto di un prodotto.
  * - Se foto_url è già un URL assoluto (Cloudinary), lo restituisce direttamente.

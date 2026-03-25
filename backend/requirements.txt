@@ -20,4 +20,5 @@ python-barcode==0.15.1
 beautifulsoup4==4.12.3
 lxml==5.1.0
 scraperapi-sdk==0.2.2
+schedule==1.2.2
 # Force reinstall cache - 2026-03-25

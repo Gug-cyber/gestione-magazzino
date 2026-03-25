@@ -373,6 +373,13 @@ export default function Forniture() {
                             <span className={styles.trackingNum}>{fornitura.tracking_number}</span>
                           )
                         })()}
+                        {fornitura.corriere === 'Poste Italiane' && fornitura.tracking_number && (
+                          <button
+                            onClick={() => navigate(`/tracking/${encodeURIComponent(fornitura.tracking_number)}`)}
+                            title="Storico tracking"
+                            className={styles.editTrackingBtn}
+                          >📦</button>
+                        )}
                         <button
                           onClick={() => {
                             setTrackingFornituraModal(fornitura)
