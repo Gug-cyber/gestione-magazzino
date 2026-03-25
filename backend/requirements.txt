@@ -17,3 +17,5 @@ resend==2.23.0
 cloudinary==1.40.0
 python-dateutil==2.9.0
 python-barcode==0.15.1
+beautifulsoup4==4.12.3
+lxml==5.1.0
