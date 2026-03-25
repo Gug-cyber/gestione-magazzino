@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
+/* TEMPORANEAMENTE DISABILITATO - CardMarket e CardTrader API issues */
+// import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
 import QRCodeDisplay from '../components/QRCodeDisplay'
@@ -132,13 +134,15 @@ function DettaglioProdotto() {
   const [ebayLoading, setEbayLoading] = useState(false)
   const [ebayError, setEbayError] = useState(null)
 
-  const [cardtraderData, setCardtraderData] = useState(null)
-  const [cardtraderLoading, setCardtraderLoading] = useState(false)
-  const [cardtraderError, setCardtraderError] = useState(null)
+  /* TEMPORANEAMENTE DISABILITATO - CardTrader API issues */
+  // const [cardtraderData, setCardtraderData] = useState(null)
+  // const [cardtraderLoading, setCardtraderLoading] = useState(false)
+  // const [cardtraderError, setCardtraderError] = useState(null)
 
-  const [cardmarketData, setCardmarketData] = useState(null)
-  const [cardmarketLoading, setCardmarketLoading] = useState(false)
-  const [cardmarketError, setCardmarketError] = useState(null)
+  /* TEMPORANEAMENTE DISABILITATO - CardMarket API issues */
+  // const [cardmarketData, setCardmarketData] = useState(null)
+  // const [cardmarketLoading, setCardmarketLoading] = useState(false)
+  // const [cardmarketError, setCardmarketError] = useState(null)
 
   const loadScheda = () => {
     setLoading(true)
@@ -166,6 +170,7 @@ function DettaglioProdotto() {
       .finally(() => setEbayLoading(false))
   }
 
+  /* TEMPORANEAMENTE DISABILITATO - CardTrader API issues
   const fetchCardtraderPrezzi = (prodotto) => {
     setCardtraderData(null)
     setCardtraderLoading(true)
@@ -180,7 +185,9 @@ function DettaglioProdotto() {
       .catch(err => setCardtraderError(err.response?.data?.detail || 'Errore prezzi CardTrader'))
       .finally(() => setCardtraderLoading(false))
   }
+  */
 
+  /* TEMPORANEAMENTE DISABILITATO - CardMarket API issues
   const fetchCardmarketPrezzi = (prodotto) => {
     setCardmarketData(null)
     setCardmarketLoading(true)
@@ -204,15 +211,18 @@ function DettaglioProdotto() {
       .catch(err => setCardmarketError(err.response?.data?.detail || 'Errore prezzi CardMarket'))
       .finally(() => setCardmarketLoading(false))
   }
+  */
 
   useEffect(() => {
     if (!scheda) return
     const { prodotto } = scheda
     fetchEbayPrezzi(prodotto)
-    fetchCardmarketPrezzi(prodotto)
-    if (prodotto.cardtrader_blueprint_id) {
-      fetchCardtraderPrezzi(prodotto)
-    }
+    // TEMPORANEAMENTE DISABILITATO - CardMarket API issues
+    // fetchCardmarketPrezzi(prodotto)
+    // TEMPORANEAMENTE DISABILITATO - CardTrader API issues
+    // if (prodotto.cardtrader_blueprint_id) {
+    //   fetchCardtraderPrezzi(prodotto)
+    // }
   }, [scheda?.prodotto?.id])
 
   const refreshEbay = () => {
@@ -220,10 +230,12 @@ function DettaglioProdotto() {
     fetchEbayPrezzi(scheda.prodotto)
   }
 
+  /* TEMPORANEAMENTE DISABILITATO - CardTrader API issues
   const refreshCardtrader = () => {
     if (!scheda) return
     fetchCardtraderPrezzi(scheda.prodotto)
   }
+  */
 
   const handleEditOpen = () => {
     const p = scheda.prodotto
@@ -655,8 +667,8 @@ function DettaglioProdotto() {
             </button>
           </div>
 
-          {/* CardTrader */}
-          <div style={{
+          {/* TEMPORANEAMENTE DISABILITATO - CardTrader API issues */}
+          {/* <div style={{
             backgroundColor: '#faf8fc',
             borderRadius: 8,
             padding: 16,
@@ -699,10 +711,10 @@ function DettaglioProdotto() {
                   </button>
                 </>
             }
-          </div>
+          </div> */}
 
-          {/* CardMarket */}
-          <div style={{
+          {/* TEMPORANEAMENTE DISABILITATO - CardMarket API issues */}
+          {/* <div style={{
             backgroundColor: '#fff8f0',
             borderRadius: 8,
             padding: 16,
@@ -747,7 +759,7 @@ function DettaglioProdotto() {
               style={{ marginTop: 6, fontSize: '0.75rem', color: '#ff9800', background: 'none', border: 'none', cursor: cardmarketLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: cardmarketLoading ? 0.6 : 1 }}>
               🔄 Aggiorna
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
 
