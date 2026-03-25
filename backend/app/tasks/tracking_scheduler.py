@@ -35,9 +35,10 @@ def start_scheduler() -> None:
 
     logger.info("Scheduler tracking avviato - aggiornamenti ogni %d ore", interval_hours)
 
+    SCHEDULER_CHECK_INTERVAL_SECONDS = 60
     while True:
         schedule.run_pending()
-        time.sleep(60)
+        time.sleep(SCHEDULER_CHECK_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":

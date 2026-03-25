@@ -4,6 +4,8 @@ import { trackingAPI } from '../api/tracking'
 import { getTrackingUrl } from '../constants/corrieri'
 import styles from './TrackingDetail.module.css'
 
+const REFRESH_DELAY_MS = 3000
+
 export default function TrackingDetail() {
   const { trackingNumber } = useParams()
   const navigate = useNavigate()
@@ -33,7 +35,7 @@ export default function TrackingDetail() {
     setRefreshing(true)
     try {
       await trackingAPI.refresh(trackingNumber)
-      setTimeout(loadHistory, 3000)
+      setTimeout(loadHistory, REFRESH_DELAY_MS)
     } catch {
       setError('Errore aggiornamento tracking')
     } finally {

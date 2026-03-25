@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..database import get_db, SessionLocal
 from ..auth import get_current_active_user
 from ..services.poste_tracking import PosteTrackingService
 from ..models.tracking_update import TrackingUpdate
@@ -26,7 +26,7 @@ def refresh_tracking(
     current_user=Depends(get_current_active_user),
 ):
     """Forza aggiornamento tracking per un numero specifico."""
-    background_tasks.add_task(_update_single_tracking, tracking_number, db)
+    background_tasks.add_task(_update_single_tracking_task, tracking_number)
     return {"message": "Aggiornamento tracking avviato"}
 
 
@@ -37,7 +37,7 @@ def refresh_all_tracking(
     current_user=Depends(get_current_active_user),
 ):
     """Aggiorna tutti i tracking attivi (non consegnati) di Poste Italiane."""
-    background_tasks.add_task(_update_all_active_tracking, db)
+    background_tasks.add_task(_update_all_active_tracking_task)
     return {"message": "Aggiornamento tracking in background avviato"}
 
 
@@ -105,8 +105,26 @@ def get_latest_tracking(
     }
 
 
+def _update_single_tracking_task(tracking_number: str) -> None:
+    """Background task wrapper: creates its own DB session for safety."""
+    db = SessionLocal()
+    try:
+        _update_single_tracking(tracking_number, db)
+    finally:
+        db.close()
+
+
+def _update_all_active_tracking_task() -> None:
+    """Background task wrapper: creates its own DB session for safety."""
+    db = SessionLocal()
+    try:
+        _update_all_active_tracking(db)
+    finally:
+        db.close()
+
+
 def _update_single_tracking(tracking_number: str, db: Session) -> None:
-    """Background task per aggiornare un singolo tracking."""
+    """Update tracking for a single shipment number."""
     try:
         service = PosteTrackingService()
         tracking_info = service.get_tracking_info(tracking_number)
@@ -135,21 +153,17 @@ def _update_single_tracking(tracking_number: str, db: Session) -> None:
             .first()
         )
 
-        # Converti date se necessario
-        status_date = tracking_info.get("status_date")
-        delivery_date = tracking_info.get("delivery_date")
-
         update = TrackingUpdate(
             ordine_id=ordine.id if ordine else None,
             fornitura_id=fornitura.id if fornitura else None,
             tracking_number=tracking_number,
             corriere="Poste Italiane",
             status=tracking_info.get("status"),
-            status_date=status_date,
+            status_date=tracking_info.get("status_date"),
             location=tracking_info.get("location"),
             events=json.dumps(tracking_info.get("events", [])),
             delivered=tracking_info.get("delivered", False),
-            delivery_date=delivery_date,
+            delivery_date=tracking_info.get("delivery_date"),
         )
         db.add(update)
         db.commit()
@@ -160,7 +174,7 @@ def _update_single_tracking(tracking_number: str, db: Session) -> None:
 
 
 def _update_all_active_tracking(db: Session) -> None:
-    """Background task per aggiornare tutti i tracking Poste Italiane attivi."""
+    """Update all active Poste Italiane tracking numbers."""
     try:
         ordini_attivi = (
             db.query(Ordine)
@@ -201,3 +215,4 @@ def _update_all_active_tracking(db: Session) -> None:
 
     except Exception as e:
         logger.error("Errore aggiornamento batch tracking: %s", e)
+

@@ -42,16 +42,16 @@ class PosteTrackingService:
         tracking_number = tracking_number.strip()
 
         try:
-            url = f"https://www.poste.it/cerca/index.html#/risultati-spedizioni/{tracking_number}"
             # Prova con l'API JSON di Poste Italiane
             api_url = f"https://www.poste.it/online/dovequando/index.do?numSped={tracking_number}"
             response = self.session.get(api_url, timeout=15)
 
             if response.status_code != 200:
                 logger.warning("HTTP %s per tracking %s", response.status_code, tracking_number)
-                return self._build_empty_tracking(tracking_number, url)
+                return self._build_empty_tracking(tracking_number)
 
-            tracking_data = self._parse_tracking_response(response.text, url)
+            tracking_url = f"https://www.poste.it/cerca/index.html#/risultati-spedizioni/{tracking_number}"
+            tracking_data = self._parse_tracking_response(response.text, tracking_url)
             return tracking_data
 
         except requests.Timeout:
@@ -123,12 +123,15 @@ class PosteTrackingService:
             status_lower = tracking_info['status'].lower()
             if any(kw in status_lower for kw in delivered_keywords):
                 tracking_info['delivered'] = True
-                tracking_info['delivery_date'] = datetime.utcnow().isoformat()
+                # Usa status_date come delivery_date se disponibile
+                if tracking_info.get('status_date'):
+                    tracking_info['delivery_date'] = tracking_info['status_date']
 
         return tracking_info
 
-    def _build_empty_tracking(self, tracking_number: str, tracking_url: str) -> Dict:
+    def _build_empty_tracking(self, tracking_number: str) -> Dict:
         """Restituisce una struttura vuota con solo il link di tracking."""
+        tracking_url = f"https://www.poste.it/cerca/index.html#/risultati-spedizioni/{tracking_number}"
         return {
             'status': None,
             'status_date': None,
