@@ -1,14 +1,14 @@
-"""Router per tracking automatico spedizioni."""
+"""Router per tracking automatico spedizioni multi-corriere."""
 import json
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db, SessionLocal
 from ..auth import get_current_active_user
-from ..services.poste_tracking import PosteTrackingService
+from ..services.tracking_service import UnifiedTrackingService, TrackingServiceFactory
 from ..models.tracking_update import TrackingUpdate
 from ..models.ordine import Ordine
 from ..models.fornitura import Fornitura
@@ -22,12 +22,13 @@ router = APIRouter()
 def refresh_tracking(
     tracking_number: str,
     background_tasks: BackgroundTasks,
+    corriere: str = Query(..., description="Nome del corriere (es: 'Poste Italiane', 'DHL')"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """Forza aggiornamento tracking per un numero specifico."""
-    background_tasks.add_task(_update_single_tracking_task, tracking_number)
-    return {"message": "Aggiornamento tracking avviato"}
+    """Forza aggiornamento tracking per un numero specifico e corriere."""
+    background_tasks.add_task(_update_single_tracking_task, corriere, tracking_number)
+    return {"message": f"Aggiornamento tracking {corriere} avviato"}
 
 
 @router.post("/refresh-all")
@@ -36,30 +37,35 @@ def refresh_all_tracking(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """Aggiorna tutti i tracking attivi (non consegnati) di Poste Italiane."""
+    """Aggiorna tutti i tracking attivi (tutti i corrieri supportati)."""
     background_tasks.add_task(_update_all_active_tracking_task)
-    return {"message": "Aggiornamento tracking in background avviato"}
+    return {"message": "Aggiornamento tracking multi-corriere avviato"}
 
 
 @router.get("/history/{tracking_number}")
 def get_tracking_history(
     tracking_number: str,
+    corriere: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """Recupera lo storico aggiornamenti per un numero di tracking."""
-    updates = (
+    query = (
         db.query(TrackingUpdate)
         .filter(TrackingUpdate.tracking_number == tracking_number)
-        .order_by(TrackingUpdate.created_at.desc())
-        .all()
     )
+    if corriere:
+        query = query.filter(TrackingUpdate.corriere == corriere)
+
+    updates = query.order_by(TrackingUpdate.created_at.desc()).all()
 
     return {
         "tracking_number": tracking_number,
+        "corriere": corriere,
         "updates": [
             {
                 "id": u.id,
+                "corriere": u.corriere,
                 "status": u.status,
                 "status_date": u.status_date,
                 "location": u.location,
@@ -77,16 +83,19 @@ def get_tracking_history(
 @router.get("/latest/{tracking_number}")
 def get_latest_tracking(
     tracking_number: str,
+    corriere: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """Recupera l'ultimo aggiornamento per un numero di tracking."""
-    update = (
+    query = (
         db.query(TrackingUpdate)
         .filter(TrackingUpdate.tracking_number == tracking_number)
-        .order_by(TrackingUpdate.created_at.desc())
-        .first()
     )
+    if corriere:
+        query = query.filter(TrackingUpdate.corriere == corriere)
+
+    update = query.order_by(TrackingUpdate.created_at.desc()).first()
     if not update:
         raise HTTPException(status_code=404, detail="Nessun aggiornamento trovato per questo tracking")
 
@@ -105,11 +114,11 @@ def get_latest_tracking(
     }
 
 
-def _update_single_tracking_task(tracking_number: str) -> None:
+def _update_single_tracking_task(corriere: str, tracking_number: str) -> None:
     """Background task wrapper: creates its own DB session for safety."""
     db = SessionLocal()
     try:
-        _update_single_tracking(tracking_number, db)
+        _update_single_tracking(corriere, tracking_number, db)
     finally:
         db.close()
 
@@ -123,32 +132,32 @@ def _update_all_active_tracking_task() -> None:
         db.close()
 
 
-def _update_single_tracking(tracking_number: str, db: Session) -> None:
-    """Update tracking for a single shipment number."""
+def _update_single_tracking(corriere: str, tracking_number: str, db: Session) -> None:
+    """Update tracking for a single shipment (any supported courier)."""
     try:
-        service = PosteTrackingService()
-        tracking_info = service.get_tracking_info(tracking_number)
+        service = UnifiedTrackingService()
+        tracking_info = service.get_tracking_info(corriere, tracking_number)
 
         if not tracking_info:
-            logger.warning("Nessuna info tracking per %s", tracking_number)
+            logger.warning("Nessuna info tracking per %s - %s", corriere, tracking_number)
             return
 
-        # Cerca ordine collegato
+        # Cerca ordine collegato (per qualsiasi corriere)
         ordine = (
             db.query(Ordine)
             .filter(
                 Ordine.tracking_number == tracking_number,
-                Ordine.corriere == "Poste Italiane",
+                Ordine.corriere == corriere,
             )
             .first()
         )
 
-        # Cerca fornitura collegata
+        # Cerca fornitura collegata (per qualsiasi corriere)
         fornitura = (
             db.query(Fornitura)
             .filter(
                 Fornitura.tracking_number == tracking_number,
-                Fornitura.corriere == "Poste Italiane",
+                Fornitura.corriere == corriere,
             )
             .first()
         )
@@ -159,25 +168,27 @@ def _update_single_tracking(tracking_number: str, db: Session) -> None:
                 ordine.stato = "completato"
                 db.add(ordine)
                 logger.info(
-                    "Ordine %s chiuso automaticamente - pacco consegnato",
+                    "Ordine %s chiuso automaticamente - %s consegnato",
                     ordine.numero_ordine,
+                    corriere,
                 )
 
         # Auto-chiusura fornitura se il pacco è stato consegnato
         if tracking_info.get("delivered") and fornitura:
-            if fornitura.stato != "ricevuta":
-                fornitura.stato = "ricevuta"
+            if fornitura.stato != "ricevuto":
+                fornitura.stato = "ricevuto"
                 db.add(fornitura)
                 logger.info(
-                    "Fornitura %s chiusa automaticamente - pacco consegnato",
+                    "Fornitura %s chiusa automaticamente - %s consegnato",
                     fornitura.id,
+                    corriere,
                 )
 
         update = TrackingUpdate(
             ordine_id=ordine.id if ordine else None,
             fornitura_id=fornitura.id if fornitura else None,
             tracking_number=tracking_number,
-            corriere="Poste Italiane",
+            corriere=corriere,
             status=tracking_info.get("status"),
             status_date=tracking_info.get("status_date"),
             location=tracking_info.get("location"),
@@ -187,19 +198,21 @@ def _update_single_tracking(tracking_number: str, db: Session) -> None:
         )
         db.add(update)
         db.commit()
-        logger.info("Tracking aggiornato per %s", tracking_number)
+        logger.info("Tracking aggiornato per %s - %s", corriere, tracking_number)
     except Exception as e:
-        logger.error("Errore aggiornamento tracking %s: %s", tracking_number, e)
+        logger.error("Errore aggiornamento tracking %s - %s: %s", corriere, tracking_number, e)
         db.rollback()
 
 
 def _update_all_active_tracking(db: Session) -> None:
-    """Update all active Poste Italiane tracking numbers."""
+    """Update all active tracking numbers for all supported couriers."""
     try:
+        supported_couriers = list(TrackingServiceFactory.PROVIDERS.keys())
+
         ordini_attivi = (
             db.query(Ordine)
             .filter(
-                Ordine.corriere == "Poste Italiane",
+                Ordine.corriere.in_(supported_couriers),
                 Ordine.tracking_number.isnot(None),
                 Ordine.stato != "completato",
                 Ordine.stato != "annullato",
@@ -210,7 +223,7 @@ def _update_all_active_tracking(db: Session) -> None:
         forniture_attive = (
             db.query(Fornitura)
             .filter(
-                Fornitura.corriere == "Poste Italiane",
+                Fornitura.corriere.in_(supported_couriers),
                 Fornitura.tracking_number.isnot(None),
                 Fornitura.stato != "ricevuto",
                 Fornitura.stato != "annullato",
@@ -218,20 +231,21 @@ def _update_all_active_tracking(db: Session) -> None:
             .all()
         )
 
-        tracking_numbers = list(
+        # Raccogli coppie uniche (corriere, tracking_number)
+        shipments = list(
             set(
-                [o.tracking_number for o in ordini_attivi if o.tracking_number]
-                + [f.tracking_number for f in forniture_attive if f.tracking_number]
+                [(o.corriere, o.tracking_number) for o in ordini_attivi if o.tracking_number]
+                + [(f.corriere, f.tracking_number) for f in forniture_attive if f.tracking_number]
             )
         )
 
-        if not tracking_numbers:
+        if not shipments:
             logger.info("Nessun tracking attivo da aggiornare")
             return
 
-        logger.info("Aggiornamento di %d tracking attivi", len(tracking_numbers))
-        for tracking_number in tracking_numbers:
-            _update_single_tracking(tracking_number, db)
+        logger.info("Aggiornamento di %d tracking attivi (multi-corriere)", len(shipments))
+        for corriere, tracking_number in shipments:
+            _update_single_tracking(corriere, tracking_number, db)
 
     except Exception as e:
         logger.error("Errore aggiornamento batch tracking: %s", e)

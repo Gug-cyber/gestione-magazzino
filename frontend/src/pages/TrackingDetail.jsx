@@ -7,7 +7,7 @@ import styles from './TrackingDetail.module.css'
 const REFRESH_DELAY_MS = 3000
 
 export default function TrackingDetail() {
-  const { trackingNumber } = useParams()
+  const { trackingNumber, corriere } = useParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [history, setHistory] = useState([])
@@ -16,13 +16,13 @@ export default function TrackingDetail() {
 
   useEffect(() => {
     loadHistory()
-  }, [trackingNumber])
+  }, [trackingNumber, corriere])
 
   const loadHistory = async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await trackingAPI.getHistory(trackingNumber)
+      const res = await trackingAPI.getHistory(trackingNumber, corriere)
       setHistory(res.data.updates)
     } catch {
       setError('Errore caricamento storico tracking')
@@ -34,7 +34,7 @@ export default function TrackingDetail() {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      await trackingAPI.refresh(trackingNumber)
+      await trackingAPI.refresh(trackingNumber, corriere)
       setTimeout(loadHistory, REFRESH_DELAY_MS)
     } catch {
       setError('Errore aggiornamento tracking')
@@ -47,7 +47,7 @@ export default function TrackingDetail() {
   if (error) return <div className={styles.error}>{error}</div>
 
   const latestUpdate = history[0]
-  const posteUrl = getTrackingUrl('Poste Italiane', trackingNumber)
+  const trackingUrl = getTrackingUrl(corriere, trackingNumber)
 
   return (
     <div className={styles.container}>
@@ -55,9 +55,9 @@ export default function TrackingDetail() {
         <button onClick={() => navigate(-1)} className={styles.backBtn}>← Indietro</button>
         <h1>📦 Tracking: {trackingNumber}</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {posteUrl && (
-            <a href={posteUrl} target="_blank" rel="noopener noreferrer" className={styles.backBtn}>
-              🔗 Vedi su Poste Italiane
+          {trackingUrl && (
+            <a href={trackingUrl} target="_blank" rel="noopener noreferrer" className={styles.backBtn}>
+              🔗 Vedi su {corriere}
             </a>
           )}
           <button onClick={handleRefresh} disabled={refreshing} className={styles.refreshBtn}>
