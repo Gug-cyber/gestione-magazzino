@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
 import QRCodeDisplay from '../components/QRCodeDisplay'
@@ -136,6 +136,10 @@ function DettaglioProdotto() {
   const [cardtraderLoading, setCardtraderLoading] = useState(false)
   const [cardtraderError, setCardtraderError] = useState(null)
 
+  const [cardmarketData, setCardmarketData] = useState(null)
+  const [cardmarketLoading, setCardmarketLoading] = useState(false)
+  const [cardmarketError, setCardmarketError] = useState(null)
+
   const loadScheda = () => {
     setLoading(true)
     setError(null)
@@ -177,10 +181,35 @@ function DettaglioProdotto() {
       .finally(() => setCardtraderLoading(false))
   }
 
+  const fetchCardmarketPrezzi = (prodotto) => {
+    setCardmarketData(null)
+    setCardmarketLoading(true)
+    setCardmarketError(null)
+    cardmarketScraperAPI.getPrezziCached(prodotto.id)
+      .then(res => {
+        if (res.data) {
+          setCardmarketData(res.data)
+        }
+      })
+      .catch((err) => { console.debug('CardMarket cache not available:', err?.response?.status) })
+      .finally(() => setCardmarketLoading(false))
+  }
+
+  const refreshCardmarket = () => {
+    if (!scheda) return
+    setCardmarketLoading(true)
+    setCardmarketError(null)
+    cardmarketScraperAPI.scrapePrezzi(scheda.prodotto.id, true)
+      .then(res => setCardmarketData(res.data))
+      .catch(err => setCardmarketError(err.response?.data?.detail || 'Errore prezzi CardMarket'))
+      .finally(() => setCardmarketLoading(false))
+  }
+
   useEffect(() => {
     if (!scheda) return
     const { prodotto } = scheda
     fetchEbayPrezzi(prodotto)
+    fetchCardmarketPrezzi(prodotto)
     if (prodotto.cardtrader_blueprint_id) {
       fetchCardtraderPrezzi(prodotto)
     }
@@ -670,6 +699,54 @@ function DettaglioProdotto() {
                   </button>
                 </>
             }
+          </div>
+
+          {/* CardMarket */}
+          <div style={{
+            backgroundColor: '#fff8f0',
+            borderRadius: 8,
+            padding: 16,
+            borderLeft: '4px solid #ff9800',
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#ff9800', fontWeight: 700 }}>
+              🃏 Prezzi CardMarket
+            </h3>
+            {cardmarketLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
+            {cardmarketError && !cardmarketLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ {cardmarketError}</div>}
+            {cardmarketData && !cardmarketError && !cardmarketLoading && (
+              <div>
+                {cardmarketData.prezzo_minimo != null && (
+                  <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
+                    💰 Min: <strong style={{ color: '#ff9800' }}>€{Number(cardmarketData.prezzo_minimo).toFixed(2)}</strong>
+                  </div>
+                )}
+                {cardmarketData.prezzo_medio != null && (
+                  <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
+                    📊 Medio: <strong style={{ color: '#ff9800' }}>€{Number(cardmarketData.prezzo_medio).toFixed(2)}</strong>
+                  </div>
+                )}
+                {cardmarketData.data_aggiornamento && (
+                  <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: 4 }}>
+                    Agg. {new Date(cardmarketData.data_aggiornamento).toLocaleDateString('it-IT')}
+                  </div>
+                )}
+                {cardmarketData.url_cardmarket && (
+                  <a href={cardmarketData.url_cardmarket} target="_blank" rel="noopener noreferrer"
+                    aria-label="Vedi su CardMarket (apre in una nuova scheda)"
+                    style={{ fontSize: '0.75rem', color: '#ff9800', display: 'inline-block', marginTop: 4 }}>
+                    🔗 Vedi su CardMarket
+                  </a>
+                )}
+              </div>
+            )}
+            {!cardmarketData && !cardmarketLoading && !cardmarketError && (
+              <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun dato disponibile</div>
+            )}
+            <button onClick={refreshCardmarket} disabled={cardmarketLoading}
+              aria-label="Aggiorna prezzi CardMarket"
+              style={{ marginTop: 6, fontSize: '0.75rem', color: '#ff9800', background: 'none', border: 'none', cursor: cardmarketLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: cardmarketLoading ? 0.6 : 1 }}>
+              🔄 Aggiorna
+            </button>
           </div>
         </div>
       </div>

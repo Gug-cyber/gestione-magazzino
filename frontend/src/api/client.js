@@ -220,6 +220,13 @@ export const ebayAPI = {
   getPrezzi: (nome, stato) => client.get('/api/ebay/prezzi', { params: { nome, stato } }),
 }
 
+export const cardmarketScraperAPI = {
+  scrapePrezzi: (prodotto_id, force = false) =>
+    client.post(`/api/cardmarket-scraper/scrape-prezzi/${prodotto_id}`, null, { params: { force } }),
+  getPrezziCached: (prodotto_id) =>
+    client.get(`/api/cardmarket-scraper/prezzi-cached/${prodotto_id}`),
+}
+
 /**
  * Restituisce l'URL completo per mostrare la foto di un prodotto.
  * - Se foto_url è già un URL assoluto (Cloudinary), lo restituisce direttamente.
