@@ -1,3 +1,5 @@
+import logging
+from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -10,6 +12,7 @@ from ..schemas.dati_azienda import DatiAziendaCreate, DatiAziendaUpdate, DatiAzi
 from ..schemas.utente import UtenteResponse
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class UpdateRoleRequest(BaseModel):
@@ -123,3 +126,40 @@ def delete_user(
         raise HTTPException(status_code=404, detail="Utente non trovato")
     db.delete(utente)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Migration Database
+# ---------------------------------------------------------------------------
+
+@router.post("/run-migrations")
+def run_migrations(
+    _current_user=Depends(get_current_admin),
+):
+    """
+    Endpoint admin per eseguire migration Alembic manualmente dopo il deploy.
+    Utile quando le migration non vengono eseguite automaticamente durante il build.
+    """
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        backend_dir = Path(__file__).parent.parent.parent
+        alembic_ini = backend_dir / "alembic.ini"
+
+        if not alembic_ini.exists():
+            raise HTTPException(status_code=500, detail="alembic.ini non trovato")
+
+        alembic_cfg = Config(str(alembic_ini))
+        alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+
+        command.upgrade(alembic_cfg, "head")
+
+        logger.info("✅ Migration eseguite con successo dall'endpoint admin")
+        return {"status": "success", "message": "Migration completate"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Errore migration: {e}")
+        raise HTTPException(status_code=500, detail=f"Errore migration: {str(e)}")
