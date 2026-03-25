@@ -1,1 +1,44 @@
-buildCommand: "rm -rf node_modules && yarn install && yarn build"
+services:
+  - type: web
+    name: gestione-magazzino-cms
+    runtime: node
+    rootDir: cms
+    buildCommand: rm -rf node_modules && yarn install && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: DATABASE_CLIENT
+        value: postgres
+      - key: DATABASE_HOST
+        sync: false
+      - key: DATABASE_PORT
+        value: 5432
+      - key: DATABASE_NAME
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: DATABASE_SSL
+        value: true
+      - key: APP_KEYS
+        generateValue: true
+      - key: API_TOKEN_SALT
+        generateValue: true
+      - key: ADMIN_JWT_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TRANSFER_TOKEN_SALT
+        generateValue: true
+      - key: PUBLIC_URL
+        sync: false
+      - key: MAGAZZINO_BACKEND_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
