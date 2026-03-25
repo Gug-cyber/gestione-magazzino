@@ -12,3 +12,4 @@ from .spesa_gestione import SpesaGestione
 from .dato_storico import DatoStorico
 from .fornitura import Fornitura, RigaFornitura
 from .dati_azienda import DatiAzienda
+from .tracking_update import TrackingUpdate

@@ -36,6 +36,7 @@ import MobileAppLayout from './components/MobileAppLayout.jsx'
 import MobileHome from './pages/mobile/MobileHome.jsx'
 import MobileCaricoFornitura from './pages/mobile/MobileCaricoFornitura.jsx'
 import MobileNuovoOrdine from './pages/mobile/MobileNuovoOrdine.jsx'
+import TrackingDetail from './pages/TrackingDetail.jsx'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -224,6 +225,11 @@ function App() {
           <Route path="/mobile/nuovo-ordine" element={
             <ProtectedRoute>
               <MobileAppLayout><MobileNuovoOrdine /></MobileAppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/tracking/:trackingNumber" element={
+            <ProtectedRoute>
+              <AppLayout><TrackingDetail /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>

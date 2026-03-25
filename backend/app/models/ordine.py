@@ -35,6 +35,7 @@ class Ordine(Base):
 
     cliente = relationship("Cliente", backref="ordini")
     righe = relationship("RigaOrdine", back_populates="ordine", cascade="all, delete-orphan")
+    tracking_updates = relationship("TrackingUpdate", back_populates="ordine")
 
 
 class RigaOrdine(Base):
