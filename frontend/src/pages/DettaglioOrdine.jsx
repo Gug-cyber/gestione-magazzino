@@ -47,7 +47,7 @@ export default function DettaglioOrdine() {
 
   const handleChangeStato = async (nuovoStato) => {
     try {
-      await ordiniAPI.update(ordine.id, { stato: nuovoStato })
+      await ordiniAPI.updateStato(ordine.id, nuovoStato)
       const res = await ordiniAPI.getById(ordine.id)
       setOrdine(res.data)
       if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
