@@ -1,0 +1,13 @@
+module.exports = ({ env }) => ({
+  'users-permissions': {
+    enabled: true,
+    config: {
+      jwt: {
+        expiresIn: '7d',
+      },
+    },
+  },
+  i18n: {
+    enabled: true,
+  },
+});
