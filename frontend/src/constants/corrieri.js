@@ -1,5 +1,5 @@
 export const CORRIERI = [
-  { value: 'BRT',              label: 'BRT',              url: (n) => `https://www.brt.it/it/spedizioni/traccia-spedizione.html?barcode=${n}` },
+  { value: 'BRT',              label: 'BRT',              url: (n) => `https://www.brt.it/privati/spedizioni/tracking#${n}` },
   { value: 'DHL',              label: 'DHL',              url: (n) => `https://www.dhl.com/it-it/home/tracking.html?tracking-id=${n}` },
   { value: 'SDA',              label: 'SDA',              url: (n) => `https://www.sda.it/it/it/tools/traccia-la-tua-spedizione.html#${n}` },
   { value: 'GLS',              label: 'GLS',              url: (n) => `https://gls-group.eu/IT/it/ricerca-spedizioni.html?match=${n}` },

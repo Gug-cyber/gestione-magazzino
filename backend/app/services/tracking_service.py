@@ -126,13 +126,13 @@ class PosteItalianeProvider(BaseTrackingProvider):
 class BRTProvider(BaseTrackingProvider):
     """Provider per BRT."""
 
-    BASE_URL = "https://www.brt.it/it/spedizioni/traccia-spedizione.html"
+    BASE_URL = "https://www.brt.it/privati/spedizioni/tracking"
 
     def get_tracking_info(self, tracking_number: str) -> Optional[Dict]:
         if not tracking_number or not tracking_number.strip():
             return None
         try:
-            params = {'barcode': tracking_number.strip()}
+            params = {'trackingNumber': tracking_number.strip()}
             response = self.session.get(self.BASE_URL, params=params, timeout=self.REQUEST_TIMEOUT)
             if response.status_code != 200:
                 logger.warning("HTTP %s per tracking BRT %s", response.status_code, tracking_number)
