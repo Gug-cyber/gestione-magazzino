@@ -228,6 +228,63 @@ def test_annullato_ripristina_stock(client, auth_headers):
     assert resp_prodotto.json()["quantita"] == 10  # ripristinato
 
 
+def test_patch_stato_bozza_a_confermato_scala_stock(client, auth_headers):
+    """Verifica che PATCH /{ordine_id}/stato da 'bozza' a 'confermato' decrementi le quantità in magazzino."""
+    prodotto = _crea_prodotto(client, auth_headers, sku="TEST-009", quantita=10)
+    prodotto_id = prodotto["id"]
+
+    resp = _crea_ordine(client, auth_headers, prodotto_id, quantita=4)
+    assert resp.status_code == 201
+    ordine = resp.json()
+    ordine_id = ordine["id"]
+    assert ordine["stato"] == "bozza"
+
+    # La quantità non deve essere cambiata dopo la sola creazione
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 10
+
+    # Passa a confermato tramite PATCH /stato
+    resp_update = client.patch(
+        f"/api/ordini/{ordine_id}/stato",
+        json={"stato": "confermato"},
+        headers=auth_headers,
+    )
+    assert resp_update.status_code == 200
+    assert resp_update.json()["stato"] == "confermato"
+
+    # La quantità deve essere diminuita di 4
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 6  # 10 - 4
+
+
+def test_patch_stato_annullato_ripristina_stock(client, auth_headers):
+    """Verifica che PATCH /{ordine_id}/stato ad 'annullato' ripristini le quantità in magazzino."""
+    prodotto = _crea_prodotto(client, auth_headers, sku="TEST-010", quantita=10)
+    prodotto_id = prodotto["id"]
+
+    resp = _crea_ordine(client, auth_headers, prodotto_id, quantita=3)
+    assert resp.status_code == 201
+    ordine_id = resp.json()["id"]
+
+    # Conferma l'ordine via PATCH → stock decrementato a 7
+    client.patch(
+        f"/api/ordini/{ordine_id}/stato",
+        json={"stato": "confermato"},
+        headers=auth_headers,
+    )
+
+    # Annulla l'ordine via PATCH → stock deve tornare a 10
+    resp_annulla = client.patch(
+        f"/api/ordini/{ordine_id}/stato",
+        json={"stato": "annullato"},
+        headers=auth_headers,
+    )
+    assert resp_annulla.status_code == 200
+
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 10  # ripristinato
+
+
 def test_delete_ordine_bozza(client, auth_headers):
     """Verifica che un ordine in stato 'bozza' possa essere eliminato."""
     prodotto = _crea_prodotto(client, auth_headers, sku="TEST-004", quantita=10)

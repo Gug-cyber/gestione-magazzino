@@ -145,15 +145,26 @@ def update_stato(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """Aggiorna solo lo stato di un ordine."""
+    """Aggiorna lo stato di un ordine gestendo correttamente lo stock di magazzino."""
     o = crud.get_ordine(db, ordine_id)
     if not o:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
-    o.stato = stato_update.stato.value
-    db.commit()
-    db.refresh(o)
+
+    ordine_update = OrdineUpdate(stato=stato_update.stato)
+    o = crud.update_ordine(db, ordine_id, ordine_update)
+    if not o:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
     try:
-        log_activity(db, azione="aggiorna_stato_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=f"{o.numero_ordine} → {o.stato}")
+        log_activity(
+            db,
+            azione="aggiorna_stato_ordine",
+            utente_id=current_user.id,
+            username=current_user.username,
+            entita="ordine",
+            entita_id=ordine_id,
+            dettagli=f"{o.numero_ordine} → {o.stato}",
+        )
     except Exception:
         pass
     return _ordine_to_response(o)
