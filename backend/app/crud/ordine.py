@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -10,6 +11,8 @@ from ..models.prodotto import Prodotto
 from ..models.movimento import Movimento, TipoMovimento
 from ..schemas.ordine import OrdineCreate, OrdineUpdate
 from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, genera_nota_credito
+
+logger = logging.getLogger(__name__)
 
 
 def _genera_numero_ordine(db: Session) -> str:
@@ -81,7 +84,7 @@ def get_ordine(db: Session, ordine_id: int) -> Optional[Ordine]:
 def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     """
     Crea un nuovo ordine in stato bozza senza scalare lo stock.
-    Lo stock verrà scalato solo quando l'ordine passa a 'completato'.
+    Lo stock verrà scalato quando l'ordine passa a 'confermato'.
     """
     if not ordine_data.righe:
         raise HTTPException(status_code=400, detail="L'ordine deve avere almeno una riga prodotto")
@@ -148,7 +151,7 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
             tracking_number=ordine_data.tracking_number,
             totale=totale,
             righe=righe,
-            stock_scalato=False,  # lo stock viene scalato solo al completamento
+            stock_scalato=False,  # lo stock viene scalato alla conferma dell'ordine
         )
         db.add(ordine)
         try:
@@ -202,6 +205,12 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     # Scala stock quando ordine confermato
     if nuovo_stato == StatoOrdine.confermato and stato_precedente != StatoOrdine.confermato:
+        logger.info(
+            "Transizione a CONFERMATO per ordine %s (id=%s): stock_scalato=%s",
+            ordine.numero_ordine,
+            ordine_id,
+            ordine.stock_scalato,
+        )
         if not ordine.stock_scalato:
             for riga in ordine.righe:
                 prodotto = (
@@ -216,6 +225,13 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                 if not prodotto:
                     db.rollback()
                     raise HTTPException(404, "Prodotto non trovato")
+                logger.debug(
+                    "Prodotto '%s' (id=%s): disponibile=%s, richiesto=%s",
+                    prodotto.nome,
+                    prodotto.id,
+                    prodotto.quantita,
+                    riga.quantita,
+                )
                 if prodotto.quantita < riga.quantita:
                     db.rollback()
                     raise HTTPException(
@@ -232,6 +248,11 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                     note=f"Scarico ordine {ordine.numero_ordine}",
                 ))
             ordine.stock_scalato = True
+            logger.info(
+                "Stock scalato per ordine %s: stock_scalato=%s",
+                ordine.numero_ordine,
+                ordine.stock_scalato,
+            )
 
     # ------------------------------------------------------------------ #
     # Transizione → COMPLETATO                                            #
