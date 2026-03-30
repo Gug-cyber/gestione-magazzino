@@ -177,9 +177,8 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
 
     Transizione → completato:
       - Imposta data_completamento.
-      - Se stock non ancora scalato: lock pessimistico, verifica disponibilità,
-        decrementa stock, registra movimenti, setta stock_scalato=True.
       - Genera fattura automatica (anti-duplicazione via get_fattura_by_ordine).
+      - NON scala lo stock (già scalato alla conferma).
 
     Transizione → annullato (se stock già scalato):
       - Ripristina lo stock per ogni riga con lock FOR UPDATE.
@@ -259,45 +258,6 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     if nuovo_stato == StatoOrdine.completato and stato_precedente != StatoOrdine.completato:
         ordine.data_completamento = datetime.now(timezone.utc)
-
-        # Scala stock solo se non ancora scalato (flag anti-doppio)
-        if not ordine.stock_scalato:
-            for riga in ordine.righe:
-                prodotto = (
-                    db.execute(
-                        select(Prodotto)
-                        .where(Prodotto.id == riga.prodotto_id)
-                        .with_for_update()
-                    )
-                    .scalars()
-                    .first()
-                )
-                if prodotto:
-                    if prodotto.quantita < riga.quantita:
-                        db.rollback()
-                        raise HTTPException(
-                            status_code=400,
-                            detail=(
-                                f"Quantità insufficiente per '{prodotto.nome}': "
-                                f"disponibili {prodotto.quantita}, richiesti {riga.quantita}"
-                            ),
-                        )
-                    prodotto.quantita -= riga.quantita
-                    movimento = Movimento(
-                        prodotto_id=riga.prodotto_id,
-                        tipo=TipoMovimento.scarico,
-                        quantita=riga.quantita,
-                        ordine_id=ordine.id,
-                        note=f"Scarico automatico ordine {ordine.numero_ordine}",
-                    )
-                    db.add(movimento)
-                else:
-                    db.rollback()
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"Prodotto con id {riga.prodotto_id} non trovato",
-                    )
-            ordine.stock_scalato = True
 
         # Genera fattura automatica se non già presente (anti-duplicazione)
         if not get_fattura_by_ordine(db, ordine.id):

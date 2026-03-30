@@ -42,17 +42,29 @@ def _crea_ordine(client, auth_headers, prodotto_id, quantita=2, prezzo=10.00):
 
 
 def test_create_ordine_scarica_quantita(client, auth_headers):
-    """Verifica che dopo la creazione di un ordine e il completamento
-    le quantità del prodotto si riducano."""
+    """Verifica che bozza→confermato decrementi lo stock e confermato→completato non lo modifichi."""
     prodotto = _crea_prodotto(client, auth_headers, quantita=10)
     prodotto_id = prodotto["id"]
 
-    # Crea l'ordine
+    # Crea l'ordine (bozza)
     resp = _crea_ordine(client, auth_headers, prodotto_id, quantita=3)
     assert resp.status_code == 201
     ordine_id = resp.json()["id"]
 
-    # Porta l'ordine a completato (scarica il magazzino)
+    # Porta a confermato → scala lo stock
+    resp_conf = client.put(
+        f"/api/ordini/{ordine_id}",
+        json={"stato": "confermato"},
+        headers=auth_headers,
+    )
+    assert resp_conf.status_code == 200
+
+    # Verifica che la quantità sia diminuita dopo la conferma
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.status_code == 200
+    assert resp_prodotto.json()["quantita"] == 7  # 10 - 3
+
+    # Porta a completato → stock invariato
     resp_update = client.put(
         f"/api/ordini/{ordine_id}",
         json={"stato": "completato"},
@@ -60,10 +72,10 @@ def test_create_ordine_scarica_quantita(client, auth_headers):
     )
     assert resp_update.status_code == 200
 
-    # Verifica che la quantità sia diminuita
+    # Verifica che la quantità non sia cambiata ulteriormente
     resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
     assert resp_prodotto.status_code == 200
-    assert resp_prodotto.json()["quantita"] == 7  # 10 - 3
+    assert resp_prodotto.json()["quantita"] == 7  # invariata
 
 
 def test_create_ordine_quantita_insufficiente(client, auth_headers):
@@ -95,6 +107,57 @@ def test_update_ordine_stato_completato_genera_fattura(client, auth_headers):
     assert resp_update.status_code == 200
 
     # Verifica che esista una fattura per questo ordine
+    resp_fatture = client.get(
+        f"/api/fatture/?ordine_id={ordine_id}",
+        headers=auth_headers,
+    )
+    assert resp_fatture.status_code == 200
+    fatture = resp_fatture.json()
+    assert len(fatture) >= 1
+    assert any(f.get("auto_generata") for f in fatture)
+
+
+def test_spedito_a_completato_non_scala_stock(client, auth_headers):
+    """Verifica che la transizione spedito→completato non modifichi lo stock."""
+    prodotto = _crea_prodotto(client, auth_headers, sku="TEST-011", quantita=10)
+    prodotto_id = prodotto["id"]
+
+    # Crea ordine (bozza, qty=10)
+    resp = _crea_ordine(client, auth_headers, prodotto_id, quantita=3)
+    assert resp.status_code == 201
+    ordine_id = resp.json()["id"]
+
+    # bozza → confermato (qty=7, stock scalato)
+    resp_conf = client.put(
+        f"/api/ordini/{ordine_id}",
+        json={"stato": "confermato"},
+        headers=auth_headers,
+    )
+    assert resp_conf.status_code == 200
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 7
+
+    # confermato → spedito (qty=7, invariata)
+    resp_sped = client.put(
+        f"/api/ordini/{ordine_id}",
+        json={"stato": "spedito"},
+        headers=auth_headers,
+    )
+    assert resp_sped.status_code == 200
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 7
+
+    # spedito → completato (qty=7, invariata)
+    resp_comp = client.put(
+        f"/api/ordini/{ordine_id}",
+        json={"stato": "completato"},
+        headers=auth_headers,
+    )
+    assert resp_comp.status_code == 200
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 7  # stock NON scalato di nuovo
+
+    # Verifica che esista la fattura
     resp_fatture = client.get(
         f"/api/fatture/?ordine_id={ordine_id}",
         headers=auth_headers,
