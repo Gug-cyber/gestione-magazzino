@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
-from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineStatoUpdate
+from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineStatoUpdate, TrackingUpdateBody
 from ..crud import ordine as crud
 from ..auth import get_current_active_user
 from ..crud.activity_log import log_activity
@@ -120,8 +120,7 @@ def delete_ordine(
 @router.patch("/{ordine_id}/tracking", response_model=OrdineResponse)
 def update_tracking(
     ordine_id: int,
-    corriere: Optional[str] = None,
-    tracking_number: Optional[str] = None,
+    tracking_data: TrackingUpdateBody,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -129,12 +128,16 @@ def update_tracking(
     o = crud.get_ordine(db, ordine_id)
     if not o:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
-    if corriere is not None:
-        o.corriere = corriere
-    if tracking_number is not None:
-        o.tracking_number = tracking_number
+    if tracking_data.corriere is not None:
+        o.corriere = tracking_data.corriere
+    if tracking_data.tracking_number is not None:
+        o.tracking_number = tracking_data.tracking_number
     db.commit()
     db.refresh(o)
+    try:
+        log_activity(db, azione="aggiorna_tracking_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=o.numero_ordine)
+    except Exception:
+        pass
     return _ordine_to_response(o)
 
 

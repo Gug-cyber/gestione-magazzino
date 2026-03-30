@@ -67,60 +67,69 @@ class BaseTrackingProvider(ABC):
 class PosteItalianeProvider(BaseTrackingProvider):
     """Provider per Poste Italiane."""
 
-    TRACKING_API_URL = "https://www.poste.it/online/dovequando/index.do"
+    TRACKING_API_URL = "https://api.poste.it/proxy/v1/tracking"
+    TRACKING_API_KEY = "pmzaVxBFkx4NKZNQF1AMO8QBV4rFpqnI8zbfBqzv"
 
     def get_tracking_info(self, tracking_number: str) -> Optional[Dict]:
         if not tracking_number or not tracking_number.strip():
             return None
         tracking_number = tracking_number.strip()
         try:
-            url = f"{self.TRACKING_API_URL}?numSped={tracking_number}"
-            response = self.session.get(url, timeout=self.REQUEST_TIMEOUT)
-            if response.status_code != 200:
-                logger.warning("HTTP %s per tracking Poste %s", response.status_code, tracking_number)
-                return self._build_empty_tracking(tracking_number)
-            return self._parse_poste(response.text, tracking_number)
+            url = f"{self.TRACKING_API_URL}?codiceProdotto={tracking_number}"
+            headers = {"x-api-key": self.TRACKING_API_KEY}
+            response = self.session.get(url, headers=headers, timeout=self.REQUEST_TIMEOUT)
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    return self._parse_poste(data, tracking_number)
+                except Exception as e:
+                    logger.warning("Errore parsing JSON Poste Italiane per %s: %s", tracking_number, e)
+            logger.warning("HTTP %s per tracking Poste %s", response.status_code, tracking_number)
+            return self._build_empty_tracking(tracking_number)
         except requests.Timeout:
             logger.error("Timeout Poste Italiane per %s", tracking_number)
-            return None
+            return self._build_empty_tracking(tracking_number)
         except requests.RequestException as e:
             logger.error("Errore Poste Italiane %s: %s", tracking_number, e)
-            return None
+            return self._build_empty_tracking(tracking_number)
 
-    def _parse_poste(self, html: str, tracking_number: str) -> Dict:
-        soup = BeautifulSoup(html, 'html.parser')
-        status = None
-        for selector in ['.tracking-status', '.spedizione-stato', '.stato-spedizione',
-                         '[class*="status"]', '[class*="stato"]']:
-            elem = soup.select_one(selector)
-            if elem and elem.text.strip():
-                status = elem.text.strip()
-                break
+    def _parse_poste(self, data: Dict, tracking_number: str) -> Dict:
+        shipments = data.get("shipments", [])
+        if not shipments:
+            return self._build_empty_tracking(tracking_number)
 
-        events = []
-        for selector in ['.tracking-event', '.evento-spedizione', '[class*="event"]', 'tr.tracking-row']:
-            raw_events = soup.select(selector)
-            if raw_events:
-                events = [
-                    {
-                        'date': e.get('data-date', ''),
-                        'status': e.text.strip(),
-                        'location': e.get('data-location', ''),
-                        'description': '',
-                    }
-                    for e in raw_events if e.text.strip()
-                ]
-                break
+        shipment = shipments[0]
+        status_code = shipment.get("statusCode")
+        status_description = shipment.get("statusDescription")
+        status = status_description or status_code
 
-        delivered = self._is_delivered(status)
+        delivered = status_code == "CONSEGNATO" if status_code else self._is_delivered(status)
+
+        raw_events = shipment.get("events", [])
+        events = [
+            {
+                "date": e.get("dateTime", ""),
+                "status": e.get("description", ""),
+                "location": e.get("location", ""),
+                "description": e.get("description", ""),
+            }
+            for e in raw_events
+        ]
+
+        delivery_date = None
+        if delivered and events:
+            delivery_date = events[0].get("date")
+
         return self._standard_response(
             status=status,
             delivered=delivered,
             events=events,
+            delivery_date=delivery_date,
         )
 
     def _build_empty_tracking(self, tracking_number: str) -> Dict:
-        return self._standard_response(status=None, delivered=False)
+        tracking_url = f"https://www.poste.it/cerca/index.html#/risultati-spedizioni/{tracking_number}"
+        return self._standard_response(status=None, delivered=False, tracking_url=tracking_url)
 
 
 class BRTProvider(BaseTrackingProvider):

@@ -50,6 +50,11 @@ class OrdineStatoUpdate(BaseModel):
     stato: StatoOrdineSchema
 
 
+class TrackingUpdateBody(BaseModel):
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
+
+
 class OrdineResponse(BaseModel):
     id: int
     numero_ordine: str
