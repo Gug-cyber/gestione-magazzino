@@ -1,9 +1,8 @@
 """
 Servizio per il tracking automatico delle spedizioni Poste Italiane.
-Utilizza web scraping per recuperare lo stato delle spedizioni.
+Utilizza l'API JSON pubblica di Poste Italiane per recuperare lo stato delle spedizioni.
 """
 import requests
-from bs4 import BeautifulSoup
 from typing import Optional, Dict, List
 from datetime import datetime
 import logging
@@ -15,20 +14,21 @@ logger = logging.getLogger(__name__)
 class PosteTrackingService:
     """Servizio per tracking spedizioni Poste Italiane."""
 
-    TRACKING_API_URL = "https://www.poste.it/online/dovequando/index.do"
+    TRACKING_API_URL = "https://api.poste.it/proxy/v1/tracking"
+    TRACKING_API_KEY = "pmzaVxBFkx4NKZNQF1AMO8QBV4rFpqnI8zbfBqzv"
     REQUEST_DELAY = 2  # secondi tra richieste consecutive
 
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept': 'application/json',
             'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
         })
 
     def get_tracking_info(self, tracking_number: str) -> Optional[Dict]:
         """
-        Recupera le informazioni di tracking da Poste Italiane.
+        Recupera le informazioni di tracking da Poste Italiane tramite API JSON.
 
         Args:
             tracking_number: Il numero di tracking della spedizione
@@ -42,92 +42,79 @@ class PosteTrackingService:
         tracking_number = tracking_number.strip()
 
         try:
-            # Prova con l'API JSON di Poste Italiane
-            api_url = f"https://www.poste.it/online/dovequando/index.do?numSped={tracking_number}"
-            response = self.session.get(api_url, timeout=15)
+            url = f"{self.TRACKING_API_URL}?codiceProdotto={tracking_number}"
+            headers = {"x-api-key": self.TRACKING_API_KEY}
+            response = self.session.get(url, headers=headers, timeout=15)
 
-            if response.status_code != 200:
-                logger.warning("HTTP %s per tracking %s", response.status_code, tracking_number)
-                return self._build_empty_tracking(tracking_number)
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    return self._parse_tracking_response(data, tracking_number)
+                except Exception as e:
+                    logger.warning("Errore parsing JSON Poste Italiane per %s: %s", tracking_number, e)
 
-            tracking_url = f"https://www.poste.it/cerca/index.html#/risultati-spedizioni/{tracking_number}"
-            tracking_data = self._parse_tracking_response(response.text, tracking_url)
-            return tracking_data
+            logger.warning("HTTP %s per tracking %s", response.status_code, tracking_number)
+            return self._build_empty_tracking(tracking_number)
 
         except requests.Timeout:
             logger.error("Timeout connessione Poste Italiane per %s", tracking_number)
-            return None
+            return self._build_empty_tracking(tracking_number)
         except requests.RequestException as e:
             logger.error("Errore connessione Poste Italiane: %s", e)
-            return None
+            return self._build_empty_tracking(tracking_number)
 
-    def _parse_tracking_response(self, html: str, tracking_url: str) -> Dict:
+    def _parse_tracking_response(self, data: Dict, tracking_number: str) -> Dict:
         """
-        Parsifica la risposta HTML/JSON di tracking.
+        Parsifica la risposta JSON di tracking.
 
         Returns:
             Dict con status, status_date, location, events, delivered, delivery_date
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        tracking_url = f"https://www.poste.it/cerca/index.html#/risultati-spedizioni/{tracking_number}"
 
-        tracking_info = {
-            'status': None,
-            'status_date': None,
-            'location': None,
-            'events': [],
-            'delivered': False,
-            'delivery_date': None,
+        shipments = data.get("shipments", [])
+        if not shipments:
+            return self._build_empty_tracking(tracking_number)
+
+        shipment = shipments[0]
+        status_code = shipment.get("statusCode")
+        status_description = shipment.get("statusDescription")
+        status = status_description or status_code
+
+        delivered = status_code == "CONSEGNATO" if status_code else self._is_delivered(status)
+
+        raw_events = shipment.get("events", [])
+        events = [
+            {
+                "date": e.get("dateTime", ""),
+                "status": e.get("description", ""),
+                "location": e.get("location", ""),
+                "description": e.get("description", ""),
+            }
+            for e in raw_events
+        ]
+
+        delivery_date = None
+        if delivered and events:
+            delivery_date = events[0].get("date")
+
+        return {
+            'status': status,
+            'status_date': events[0].get("date") if events else None,
+            'location': events[0].get("location") if events else None,
+            'events': events,
+            'delivered': delivered,
+            'delivery_date': delivery_date,
             'tracking_url': tracking_url,
             'last_update': datetime.utcnow().isoformat(),
         }
 
-        # Cerca gli elementi di stato nella pagina
-        # La struttura HTML di Poste Italiane può variare; tentiamo diversi selettori
-        status_selectors = [
-            '.tracking-status',
-            '.spedizione-stato',
-            '.stato-spedizione',
-            '[class*="status"]',
-            '[class*="stato"]',
-        ]
-        for selector in status_selectors:
-            elem = soup.select_one(selector)
-            if elem and elem.text.strip():
-                tracking_info['status'] = elem.text.strip()
-                break
-
-        # Cerca gli eventi di tracking
-        event_selectors = [
-            '.tracking-event',
-            '.evento-spedizione',
-            '[class*="event"]',
-            'tr.tracking-row',
-        ]
-        for selector in event_selectors:
-            events = soup.select(selector)
-            if events:
-                tracking_info['events'] = [
-                    {
-                        'date': e.get('data-date', ''),
-                        'status': e.text.strip(),
-                        'location': e.get('data-location', ''),
-                        'description': '',
-                    }
-                    for e in events if e.text.strip()
-                ]
-                break
-
-        # Verifica se consegnato
-        delivered_keywords = ['consegnato', 'delivered', 'recapitato']
-        if tracking_info['status']:
-            status_lower = tracking_info['status'].lower()
-            if any(kw in status_lower for kw in delivered_keywords):
-                tracking_info['delivered'] = True
-                # Usa status_date come delivery_date se disponibile
-                if tracking_info.get('status_date'):
-                    tracking_info['delivery_date'] = tracking_info['status_date']
-
-        return tracking_info
+    def _is_delivered(self, status: Optional[str]) -> bool:
+        """Controlla se lo stato indica una consegna avvenuta."""
+        if not status:
+            return False
+        delivered_keywords = ['consegnato', 'delivered', 'recapitato', 'consegnata']
+        return any(kw in status.lower() for kw in delivered_keywords)
 
     def _build_empty_tracking(self, tracking_number: str) -> Dict:
         """Restituisce una struttura vuota con solo il link di tracking."""
