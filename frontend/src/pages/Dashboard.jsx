@@ -2,87 +2,211 @@ import { useState, useEffect } from 'react'
 import { prodottiAPI, ordiniAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 
-function StatCard({ title, value, color, emoji, isMobile, trend }) {
+// Icons
+const Icons = {
+  Package: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
+  AlertTriangle: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
+  ShoppingCart: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </svg>
+  ),
+  TrendingUp: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23,6 13.5,15.5 8.5,10.5 1,18" />
+      <polyline points="17,6 23,6 23,12" />
+    </svg>
+  ),
+  TrendingDown: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23,18 13.5,8.5 8.5,13.5 1,6" />
+      <polyline points="17,18 23,18 23,12" />
+    </svg>
+  ),
+  Clipboard: () => (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    </svg>
+  ),
+}
+
+function StatCard({ title, value, color, icon: Icon, isMobile, trend }) {
+  const colorMap = {
+    indigo: {
+      bg: 'rgba(99, 102, 241, 0.1)',
+      border: 'rgba(99, 102, 241, 0.2)',
+      text: '#818cf8',
+      glow: 'rgba(99, 102, 241, 0.15)',
+    },
+    red: {
+      bg: 'rgba(239, 68, 68, 0.1)',
+      border: 'rgba(239, 68, 68, 0.2)',
+      text: '#f87171',
+      glow: 'rgba(239, 68, 68, 0.15)',
+    },
+    amber: {
+      bg: 'rgba(245, 158, 11, 0.1)',
+      border: 'rgba(245, 158, 11, 0.2)',
+      text: '#fbbf24',
+      glow: 'rgba(245, 158, 11, 0.15)',
+    },
+  }
+
+  const colors = colorMap[color] || colorMap.indigo
+
   return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: isMobile ? '16px' : '20px 24px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)',
-      borderLeft: `5px solid ${color}`,
-      minWidth: isMobile ? '0' : '180px',
-      flex: 1,
-      transition: 'box-shadow 0.2s',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <div style={{ fontSize: isMobile ? '1.4rem' : '1.75rem' }}>{emoji}</div>
+    <div 
+      className="animate-fade-in"
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderRadius: '12px',
+        padding: isMobile ? '16px' : '24px',
+        border: '1px solid var(--color-border)',
+        minWidth: isMobile ? '0' : '200px',
+        flex: 1,
+        transition: 'all 200ms ease',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = colors.border
+        e.currentTarget.style.boxShadow = `0 0 24px ${colors.glow}`
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-border)'
+        e.currentTarget.style.boxShadow = 'none'
+      }}
+    >
+      {/* Top accent line */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '2px',
+        background: `linear-gradient(90deg, ${colors.text}, transparent)`,
+      }} />
+
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'flex-start', 
+        justifyContent: 'space-between', 
+        marginBottom: '16px' 
+      }}>
+        <div style={{ 
+          padding: '10px',
+          borderRadius: '10px',
+          backgroundColor: colors.bg,
+          color: colors.text,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Icon />
+        </div>
         {trend !== undefined && (
           <span style={{
-            fontSize: '0.72rem',
+            fontSize: '12px',
             fontWeight: '600',
-            padding: '2px 8px',
+            padding: '4px 10px',
             borderRadius: '999px',
-            backgroundColor: trend >= 0 ? '#dcfce7' : '#fee2e2',
-            color: trend >= 0 ? '#16a34a' : '#dc2626',
+            backgroundColor: trend >= 0 ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+            color: trend >= 0 ? '#4ade80' : '#f87171',
+            border: `1px solid ${trend >= 0 ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
           }}>
-            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}
+            {trend >= 0 ? <Icons.TrendingUp /> : <Icons.TrendingDown />}
+            {Math.abs(trend)}
           </span>
         )}
       </div>
-      <div style={{ fontSize: isMobile ? '1.8rem' : '2.2rem', fontWeight: '700', color, lineHeight: 1 }}>{value}</div>
-      <div style={{ color: '#6b7280', marginTop: '6px', fontSize: isMobile ? '0.8rem' : '0.875rem', fontWeight: '500' }}>{title}</div>
+      <div style={{ 
+        fontSize: isMobile ? '2rem' : '2.5rem', 
+        fontWeight: '700', 
+        color: 'var(--color-text)', 
+        lineHeight: 1,
+        letterSpacing: '-0.02em',
+      }}>
+        {value}
+      </div>
+      <div style={{ 
+        color: 'var(--color-text-secondary)', 
+        marginTop: '8px', 
+        fontSize: isMobile ? '13px' : '14px', 
+        fontWeight: '500' 
+      }}>
+        {title}
+      </div>
     </div>
   )
 }
 
 const ORDER_STATE_COLORS = {
-  'in attesa': { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-  'confermato': { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
-  'spedito':   { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
-  'completato': { bg: '#f0fdf4', text: '#15803d', border: '#86efac' },
-  'annullato': { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+  'in attesa': { bg: 'var(--color-warning-bg)', text: '#fbbf24', border: 'var(--color-warning-border)' },
+  'confermato': { bg: 'var(--color-info-bg)', text: '#60a5fa', border: 'var(--color-info-border)' },
+  'spedito':   { bg: 'rgba(34, 197, 94, 0.08)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)' },
+  'completato': { bg: 'var(--color-success-bg)', text: '#22c55e', border: 'var(--color-success-border)' },
+  'annullato': { bg: 'var(--color-danger-bg)', text: '#f87171', border: 'var(--color-danger-border)' },
 }
 
 function OrderStateBadge({ stato }) {
-  const c = ORDER_STATE_COLORS[stato] || { bg: '#f5f5f5', text: '#555', border: '#e5e7eb' }
+  const c = ORDER_STATE_COLORS[stato] || { bg: 'var(--color-surface-hover)', text: 'var(--color-text-muted)', border: 'var(--color-border)' }
   return (
     <span style={{
       display: 'inline-block',
-      padding: '2px 10px',
+      padding: '4px 12px',
       borderRadius: '999px',
       backgroundColor: c.bg,
       color: c.text,
       border: `1px solid ${c.border}`,
       fontWeight: '600',
-      fontSize: '0.8rem',
+      fontSize: '12px',
       whiteSpace: 'nowrap',
+      textTransform: 'capitalize',
     }}>{stato}</span>
   )
 }
 
 const STATO_CONSERVAZIONE_COLORS = {
-  'M':  { bg: '#f0fdf4', text: '#15803d', border: '#86efac' },
-  'NM': { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
-  'EX': { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
-  'GD': { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-  'LP': { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
-  'PL': { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' },
-  'PR': { bg: '#fef2f2', text: '#991b1b', border: '#f87171' },
+  'M':  { bg: 'var(--color-success-bg)', text: '#4ade80', border: 'var(--color-success-border)' },
+  'NM': { bg: 'rgba(16, 185, 129, 0.1)', text: '#34d399', border: 'rgba(16, 185, 129, 0.2)' },
+  'EX': { bg: 'var(--color-info-bg)', text: '#60a5fa', border: 'var(--color-info-border)' },
+  'GD': { bg: 'var(--color-warning-bg)', text: '#fbbf24', border: 'var(--color-warning-border)' },
+  'LP': { bg: 'rgba(251, 146, 60, 0.1)', text: '#fb923c', border: 'rgba(251, 146, 60, 0.2)' },
+  'PL': { bg: 'var(--color-danger-bg)', text: '#f87171', border: 'var(--color-danger-border)' },
+  'PR': { bg: 'rgba(220, 38, 38, 0.15)', text: '#ef4444', border: 'rgba(220, 38, 38, 0.25)' },
 }
 
 function StatoBadge({ stato }) {
-  if (!stato) return <span style={{ color: '#9ca3af' }}>—</span>
-  const c = STATO_CONSERVAZIONE_COLORS[stato] || { bg: '#f5f5f5', text: '#555', border: '#e5e7eb' }
+  if (!stato) return <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+  const c = STATO_CONSERVAZIONE_COLORS[stato] || { bg: 'var(--color-surface-hover)', text: 'var(--color-text-muted)', border: 'var(--color-border)' }
   return (
     <span style={{
       display: 'inline-block',
-      padding: '2px 8px',
+      padding: '3px 10px',
       borderRadius: '999px',
       backgroundColor: c.bg,
       color: c.text,
       border: `1px solid ${c.border}`,
       fontWeight: '600',
-      fontSize: '0.75rem',
+      fontSize: '11px',
       whiteSpace: 'nowrap',
     }}>{stato}</span>
   )
@@ -131,144 +255,295 @@ function Dashboard() {
   }, [])
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px', color: '#6b7280' }}>
-      <span style={{ fontSize: '1.5rem', marginRight: '8px' }}>⏳</span> Caricamento...
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '80px 24px', 
+      color: 'var(--color-text-secondary)',
+      gap: '16px',
+    }}>
+      <div className="spinner" style={{ width: '32px', height: '32px' }} />
+      <span style={{ fontSize: '14px' }}>Caricamento dashboard...</span>
     </div>
   )
 
   return (
-    <div>
+    <div className="animate-fade-in">
       {/* Page Header */}
-      <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: '#1e1b4b', lineHeight: 1.2 }}>
-          📊 Panoramica
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ 
+          margin: 0, 
+          fontSize: isMobile ? '1.5rem' : '1.75rem', 
+          fontWeight: '700', 
+          color: 'var(--color-text)', 
+          lineHeight: 1.2,
+          letterSpacing: '-0.02em',
+        }}>
+          Panoramica
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-          Situazione aggiornata del magazzino — collectibles, TCG e articoli specializzati
+        <p style={{ 
+          margin: '8px 0 0', 
+          fontSize: '14px', 
+          color: 'var(--color-text-secondary)' 
+        }}>
+          Situazione aggiornata del magazzino - collectibles, TCG e articoli specializzati
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
+      {/* Stats Grid */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+        gap: '16px', 
+        marginBottom: '32px',
+      }}>
         <StatCard
           title="Totale Prodotti"
           value={stats.totaleProdotti}
-          color="#4f46e5"
-          emoji="📦"
+          color="indigo"
+          icon={Icons.Package}
           isMobile={isMobile}
         />
         <StatCard
           title="Sotto Scorta Minima"
           value={stats.prodottiSottoScorta}
-          color="#dc2626"
-          emoji="⚠️"
+          color="red"
+          icon={Icons.AlertTriangle}
           isMobile={isMobile}
         />
         <StatCard
           title="Ordini Totali"
           value={stats.totaleOrdini}
-          color="#d97706"
-          emoji="🛒"
+          color="amber"
+          icon={Icons.ShoppingCart}
           isMobile={isMobile}
         />
       </div>
 
+      {/* Recent Orders Card */}
       <div style={{
-        backgroundColor: 'white',
+        backgroundColor: 'var(--color-surface)',
         borderRadius: '12px',
-        padding: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)',
+        border: '1px solid var(--color-border)',
+        overflow: 'hidden',
       }}>
-        <h2 style={{ margin: '0 0 16px', color: '#1e1b4b', fontSize: '1rem', fontWeight: '600' }}>🛒 Ordini Recenti</h2>
+        <div style={{ 
+          padding: '20px 24px', 
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <h2 style={{ 
+            margin: 0, 
+            color: 'var(--color-text)', 
+            fontSize: '16px', 
+            fontWeight: '600' 
+          }}>
+            Ordini Recenti
+          </h2>
+          <span style={{
+            fontSize: '12px',
+            color: 'var(--color-text-muted)',
+            padding: '4px 10px',
+            backgroundColor: 'var(--color-surface-hover)',
+            borderRadius: '6px',
+          }}>
+            Ultimi 5
+          </span>
+        </div>
+        
         {stats.ordiniRecenti.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '8px', opacity: 0.5 }}>📋</div>
-            <div style={{ fontWeight: '600', color: '#6b7280' }}>Nessun ordine registrato</div>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '48px 24px', 
+            color: 'var(--color-text-muted)' 
+          }}>
+            <div style={{ opacity: 0.3, marginBottom: '12px' }}>
+              <Icons.Clipboard />
+            </div>
+            <div style={{ fontWeight: '500', color: 'var(--color-text-secondary)' }}>
+              Nessun ordine registrato
+            </div>
           </div>
         ) : isMobile ? (
-          <div>
-            {stats.ordiniRecenti.map(o => (
-              <div key={o.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '12px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, color: '#4f46e5' }}>{o.numero_ordine || `#${o.id}`}</span>
+          <div style={{ padding: '8px' }}>
+            {stats.ordiniRecenti.map((o, idx) => (
+              <div 
+                key={o.id} 
+                style={{ 
+                  padding: '16px',
+                  borderRadius: '8px',
+                  backgroundColor: idx % 2 === 0 ? 'transparent' : 'var(--color-bg-elevated)',
+                  marginBottom: '4px',
+                }}
+              >
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                }}>
+                  <code style={{ 
+                    fontWeight: '600', 
+                    color: 'var(--color-primary-light)',
+                    fontSize: '13px',
+                  }}>
+                    {o.numero_ordine || `#${o.id}`}
+                  </code>
                   <OrderStateBadge stato={o.stato} />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.85rem', color: '#555' }}>
-                  <span>{o.cliente_nome || (o.cliente_id ? `Cliente #${o.cliente_id}` : '—')}</span>
-                  <span style={{ fontWeight: '600' }}>€{Number(o.totale || 0).toFixed(2)}</span>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  fontSize: '14px', 
+                  color: 'var(--color-text-secondary)',
+                }}>
+                  <span>{o.cliente_nome || (o.cliente_id ? `Cliente #${o.cliente_id}` : '-')}</span>
+                  <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>
+                    {'\u20AC'}{Number(o.totale || 0).toFixed(2)}
+                  </span>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '2px' }}>
-                  {o.data_ordine ? new Date(o.data_ordine).toLocaleString('it-IT') : '—'}
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: 'var(--color-text-muted)', 
+                  marginTop: '6px' 
+                }}>
+                  {o.data_ordine ? new Date(o.data_ordine).toLocaleString('it-IT') : '-'}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="table-wrapper">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={thStyle}>ID</th>
-                <th style={thStyle}>Cliente</th>
-                <th style={thStyle}>Stato</th>
-                <th style={thStyle}>Totale</th>
-                <th style={thStyle}>Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.ordiniRecenti.map((o, idx) => (
-                <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                  <td style={tdStyle}><code style={{ color: '#4f46e5', fontWeight: '600' }}>#{o.id}</code></td>
-                  <td style={tdStyle}>{o.cliente_nome || (o.cliente_id ? `Cliente #${o.cliente_id}` : '—')}</td>
-                  <td style={tdStyle}><OrderStateBadge stato={o.stato} /></td>
-                  <td style={{ ...tdStyle, fontWeight: '600' }}>{o.totale != null ? `€${parseFloat(o.totale).toFixed(2)}` : '-'}</td>
-                  <td style={{ ...tdStyle, color: '#6b7280', fontSize: '0.85rem' }}>{o.data_ordine ? new Date(o.data_ordine).toLocaleString('it-IT') : '-'}</td>
+          <div className="table-wrapper" style={{ border: 'none' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>ID</th>
+                  <th style={thStyle}>Cliente</th>
+                  <th style={thStyle}>Stato</th>
+                  <th style={thStyle}>Totale</th>
+                  <th style={thStyle}>Data</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stats.ordiniRecenti.map((o, idx) => (
+                  <tr 
+                    key={o.id} 
+                    style={{ 
+                      backgroundColor: idx % 2 === 0 ? 'var(--color-bg-elevated)' : 'var(--color-surface)',
+                      transition: 'background-color 150ms ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? 'var(--color-bg-elevated)' : 'var(--color-surface)'}
+                  >
+                    <td style={tdStyle}>
+                      <code style={{ color: 'var(--color-primary-light)', fontWeight: '600' }}>
+                        #{o.id}
+                      </code>
+                    </td>
+                    <td style={tdStyle}>{o.cliente_nome || (o.cliente_id ? `Cliente #${o.cliente_id}` : '-')}</td>
+                    <td style={tdStyle}><OrderStateBadge stato={o.stato} /></td>
+                    <td style={{ ...tdStyle, fontWeight: '600' }}>
+                      {o.totale != null ? `\u20AC${parseFloat(o.totale).toFixed(2)}` : '-'}
+                    </td>
+                    <td style={{ ...tdStyle, color: 'var(--color-text-muted)', fontSize: '13px' }}>
+                      {o.data_ordine ? new Date(o.data_ordine).toLocaleString('it-IT') : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Prodotti Sotto Scorta */}
+      {/* Products Below Minimum Stock */}
       {stats.prodottiSottoScorta > 0 && (
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--color-surface)',
           borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)',
+          border: '1px solid var(--color-danger-border)',
+          overflow: 'hidden',
           marginTop: '24px',
         }}>
-          <h2 style={{ margin: '0 0 16px', color: '#1e1b4b', fontSize: '1rem', fontWeight: '600' }}>
-            ⚠️ Prodotti Sotto Scorta Minima
-          </h2>
+          <div style={{ 
+            padding: '20px 24px', 
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backgroundColor: 'var(--color-danger-bg)',
+          }}>
+            <div style={{ color: '#f87171' }}>
+              <Icons.AlertTriangle />
+            </div>
+            <h2 style={{ 
+              margin: 0, 
+              color: 'var(--color-text)', 
+              fontSize: '16px', 
+              fontWeight: '600' 
+            }}>
+              Prodotti Sotto Scorta Minima
+            </h2>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: '600',
+              padding: '4px 10px',
+              backgroundColor: 'var(--color-danger)',
+              color: 'white',
+              borderRadius: '6px',
+              marginLeft: 'auto',
+            }}>
+              {stats.prodottiSottoScorta}
+            </span>
+          </div>
+          
           {isMobile ? (
-            <div>
-              {stats.prodottiSottoScortaList.map(p => (
-                <div key={p.id} style={{
-                  borderRadius: '8px',
-                  marginBottom: '8px',
-                  padding: '12px',
-                  backgroundColor: '#fef2f2',
-                }}>
-                  <div style={{ fontWeight: 600, color: '#1e1b4b', marginBottom: '4px' }}>
+            <div style={{ padding: '8px' }}>
+              {stats.prodottiSottoScortaList.map((p, idx) => (
+                <div 
+                  key={p.id} 
+                  style={{
+                    borderRadius: '8px',
+                    padding: '16px',
+                    backgroundColor: idx % 2 === 0 ? 'var(--color-danger-bg)' : 'transparent',
+                    marginBottom: '4px',
+                  }}
+                >
+                  <div style={{ 
+                    fontWeight: '600', 
+                    color: 'var(--color-text)', 
+                    marginBottom: '8px',
+                    fontSize: '14px',
+                  }}>
                     {p.nome}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#555' }}>
-                    <span>Quantità: <strong style={{ color: '#dc2626' }}>{p.quantita}</strong> / Min: {p.quantita_minima}</span>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    fontSize: '13px', 
+                    color: 'var(--color-text-secondary)',
+                  }}>
+                    <span>
+                      Quantita: <strong style={{ color: '#f87171' }}>{p.quantita}</strong> / Min: {p.quantita_minima}
+                    </span>
                     {p.stato_conservazione && <StatoBadge stato={p.stato_conservazione} />}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="table-wrapper">
+            <div className="table-wrapper" style={{ border: 'none' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <tr>
                     <th style={thStyle}>Nome Prodotto</th>
                     <th style={thStyle}>SKU</th>
-                    <th style={thStyle}>Quantità</th>
+                    <th style={thStyle}>Quantita</th>
                     <th style={thStyle}>Min</th>
                     <th style={thStyle}>Stato</th>
                     <th style={thStyle}>Lingua</th>
@@ -276,16 +551,23 @@ function Dashboard() {
                 </thead>
                 <tbody>
                   {stats.prodottiSottoScortaList.map((p, idx) => (
-                    <tr key={p.id} style={{
-                      borderBottom: '1px solid #f3f4f6',
-                      backgroundColor: idx % 2 === 0 ? '#fef2f2' : '#fee2e2',
-                    }}>
+                    <tr 
+                      key={p.id} 
+                      style={{
+                        backgroundColor: idx % 2 === 0 ? 'rgba(239, 68, 68, 0.05)' : 'var(--color-surface)',
+                        transition: 'background-color 150ms ease',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-danger-bg)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? 'rgba(239, 68, 68, 0.05)' : 'var(--color-surface)'}
+                    >
                       <td style={tdStyle}>{p.nome}</td>
-                      <td style={tdStyle}><code style={{ fontSize: '0.8rem' }}>{p.sku}</code></td>
-                      <td style={{ ...tdStyle, fontWeight: '700', color: '#dc2626' }}>{p.quantita}</td>
+                      <td style={tdStyle}>
+                        <code style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{p.sku}</code>
+                      </td>
+                      <td style={{ ...tdStyle, fontWeight: '700', color: '#f87171' }}>{p.quantita}</td>
                       <td style={tdStyle}>{p.quantita_minima}</td>
                       <td style={tdStyle}><StatoBadge stato={p.stato_conservazione} /></td>
-                      <td style={tdStyle}>{p.lingua || '—'}</td>
+                      <td style={tdStyle}>{p.lingua || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -300,18 +582,21 @@ function Dashboard() {
 
 const thStyle = {
   textAlign: 'left',
-  padding: '10px 12px',
-  color: '#374151',
+  padding: '14px 16px',
+  color: 'var(--color-text-muted)',
   fontWeight: '600',
-  fontSize: '0.8rem',
+  fontSize: '11px',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
+  backgroundColor: 'var(--color-surface)',
+  borderBottom: '1px solid var(--color-border)',
 }
 
 const tdStyle = {
-  padding: '10px 12px',
-  color: '#374151',
-  fontSize: '0.875rem',
+  padding: '14px 16px',
+  color: 'var(--color-text)',
+  fontSize: '14px',
+  borderBottom: '1px solid var(--color-border-subtle)',
 }
 
 export default Dashboard
