@@ -19,7 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, current: true },
@@ -112,11 +112,7 @@ const DashboardLayout = ({ children }) => {
                 <div>
                   <img
                     className="inline-block h-9 w-9 rounded-full"
-                    src={`https://ui-avatars.com/api/?name=${user?.full_name || user?.username}&background=3b82f6&color=fff`}
-                    alt=""
-                  />
-                </div>
-                {sidebarOpen && (
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || user?.username || '')}&background=3b82f6&color=fff`}
                   <div className="ml-3">
                     <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
                       {user?.full_name || user?.username}
@@ -190,7 +186,7 @@ const DashboardLayout = ({ children }) => {
                   >
                     <img
                       className="h-8 w-8 rounded-full"
-                      src={`https://ui-avatars.com/api/?name=${user?.full_name || user?.username}&background=3b82f6&color=fff`}
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || user?.username || '')}&background=3b82f6&color=fff`}
                       alt=""
                     />
                   </button>
