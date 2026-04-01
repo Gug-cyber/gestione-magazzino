@@ -125,56 +125,59 @@ function Fornitori() {
       )}
 
       {isMobile ? (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {fornitori.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-text">Nessun fornitore trovato</div>
             </div>
           ) : fornitori.map((f) => (
             <div key={f.id} className="mobile-card">
-              <div className="mobile-card-header">
-                <div className="mobile-card-title">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginRight: '0.5rem', display: 'inline' }}>
+              {/* Header row with title and action buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ flexShrink: 0 }}>
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
                   </svg>
-                  {f.nome}
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {f.nome}
+                  </span>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(f)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <button onClick={() => handleEdit(f)} className="btn-icon-blue" title="Modifica">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                   </button>
-                  <button onClick={() => handleDelete(f.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <button onClick={() => handleDelete(f.id)} className="btn-icon-red" title="Elimina">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                     </svg>
                   </button>
                 </div>
               </div>
-              {f.email && (
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Email</span>
-                  <span className="mobile-card-value">{f.email}</span>
-                </div>
-              )}
-              {f.telefono && (
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Telefono</span>
-                  <span className="mobile-card-value">{f.telefono}</span>
-                </div>
-              )}
-              {f.partita_iva && (
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">P.IVA</span>
-                  <span className="mobile-card-value">{f.partita_iva}</span>
-                </div>
-              )}
+              {/* Info pills */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {f.partita_iva && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '4px 10px', color: 'var(--text-secondary)' }}>
+                    P.IVA: <strong style={{ color: 'var(--text-primary)' }}>{f.partita_iva}</strong>
+                  </span>
+                )}
+                {f.email && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '4px 10px', color: 'var(--text-secondary)' }}>
+                    {f.email}
+                  </span>
+                )}
+                {f.telefono && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '4px 10px', color: 'var(--text-secondary)' }}>
+                    {f.telefono}
+                  </span>
+                )}
+              </div>
               {f.note && (
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{f.note}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>{f.note}</div>
               )}
             </div>
           ))}
@@ -213,14 +216,14 @@ function Fornitori() {
                     {f.note || '-'}
                   </td>
                   <td style={{ width: '100px' }}>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEdit(f)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                    <div className="action-buttons">
+                      <button onClick={() => handleEdit(f)} className="btn-icon-blue" title="Modifica">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(f.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                      <button onClick={() => handleDelete(f.id)} className="btn-icon-red" title="Elimina">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>

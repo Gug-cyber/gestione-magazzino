@@ -333,7 +333,56 @@ export default function Forniture() {
 
       {error && <div className={styles.errorMsg}>{error}</div>}
 
-      {/* Table */}
+      {/* Mobile Cards */}
+      <div className={styles.mobileCards}>
+        {loading ? (
+          <div className={styles.emptyMsg}>Caricamento...</div>
+        ) : forniture.length === 0 ? (
+          <div className={styles.emptyMsg}>Nessuna fornitura trovata</div>
+        ) : forniture.map(fornitura => (
+          <div key={fornitura.id} className={styles.mobileCard}>
+            <div className={styles.mobileCardHeader}>
+              <div className={styles.mobileCardTitle}>
+                <span className={styles.mobileCardNumber}>{fornitura.numero_fornitura}</span>
+                <span className={styles.mobileCardFornitore}>{fornitura.fornitore_nome || 'Fornitore non specificato'}</span>
+              </div>
+              <div className={styles.mobileCardBadge}>
+                <StatoBadge value={fornitura.stato} colors={STATO_FORNITURA_COLORS} capitalize />
+              </div>
+            </div>
+            <div className={styles.mobileCardRow}>
+              <span className={styles.mobileCardLabel}>Prodotti</span>
+              <span className={styles.mobileCardValue}>{fornitura.righe?.length || 0}</span>
+            </div>
+            <div className={styles.mobileCardRow}>
+              <span className={styles.mobileCardLabel}>Totale</span>
+              <span className={styles.mobileCardValueSuccess}>{formatCurrency(fornitura.totale)}</span>
+            </div>
+            <div className={styles.mobileCardRow}>
+              <span className={styles.mobileCardLabel}>Data</span>
+              <span className={styles.mobileCardValue}>{formatDate(fornitura.data_fornitura)}</span>
+            </div>
+            {fornitura.tracking_number && (
+              <div className={styles.mobileCardRow}>
+                <span className={styles.mobileCardLabel}>Tracking</span>
+                <span className={styles.mobileCardValue} style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                  {fornitura.corriere}: {fornitura.tracking_number}
+                </span>
+              </div>
+            )}
+            <div className={styles.mobileCardActions}>
+              <button 
+                onClick={() => navigate(`/forniture/${fornitura.id}`)} 
+                className={styles.mobileDetailBtn}
+              >
+                Vedi Dettaglio
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table - Desktop Only */}
       <div className={styles.tableWrapper}>
         {loading ? (
           <div className={styles.emptyMsg}>Caricamento...</div>
