@@ -146,8 +146,16 @@
   border-bottom: none;
 }
 
-.table tr:hover td {
+.table tr:nth-child(odd) td {
+  background: var(--bg-secondary);
+}
+
+.table tr:nth-child(even) td {
   background: var(--bg-tertiary);
+}
+
+.table tr:hover td {
+  background: var(--bg-hover) !important;
 }
 
 /* Mobile Cards (for responsive tables) */
@@ -711,8 +719,16 @@
   border-bottom: none;
 }
 
+.data-table tr:nth-child(odd) td {
+  background: var(--bg-secondary);
+}
+
+.data-table tr:nth-child(even) td {
+  background: var(--bg-tertiary);
+}
+
 .data-table tr:hover td {
-  background: var(--bg-hover);
+  background: var(--bg-hover) !important;
 }
 
 .text-bold {
