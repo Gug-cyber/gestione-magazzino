@@ -266,26 +266,32 @@ export default function Ordini() {
 
       {/* Filters */}
       <div className={styles.filterRow}>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder="Cerca per N° ordine o cliente..."
-          className={styles.filterInput}
-        />
-        <button
-          type="button"
-          onClick={() => { setScannerRigaIndex(null); setShowScanner(true) }}
-          title="Scansiona QR / barcode per cercare"
-          className={styles.searchBtn}
-          style={{ padding: '0 12px' }}
-        >📷</button>
+        {/* Search + Scanner row */}
+        <div className={styles.filterInputWrapper}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            placeholder="Cerca per N° ordine o cliente..."
+            className={styles.filterInput}
+          />
+          <button
+            type="button"
+            onClick={() => { setScannerRigaIndex(null); setShowScanner(true) }}
+            title="Scansiona QR / barcode per cercare"
+            className={styles.scannerBtn}
+          >📷</button>
+        </div>
+        {/* Filter select */}
         <select value={filtroStato} onChange={e => setFiltroStato(e.target.value)} className={styles.filterSelect}>
           <option value="">Tutti gli stati</option>
           {STATI.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
-        <button onClick={handleSearch} className={styles.searchBtn}>Cerca</button>
-        <button onClick={handleReset} className={styles.resetBtn}>Reset</button>
+        {/* Action buttons row */}
+        <div className={styles.filterActions}>
+          <button onClick={handleSearch} className={styles.searchBtn}>Cerca</button>
+          <button onClick={handleReset} className={styles.resetBtn}>Reset</button>
+        </div>
       </div>
 
       {error && <div className={styles.errorMsg}>{error}</div>}
