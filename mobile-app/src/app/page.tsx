@@ -11,13 +11,14 @@ export default function HomePage() {
         flexDirection: 'column',
         gap: 24,
         minHeight: '100vh',
+        background: '#09090b',
       }}
     >
       <header style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1a237e' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#a5b4fc' }}>
           📦 Gestione Magazzino
         </h1>
-        <p style={{ marginTop: 8, color: '#555', fontSize: '0.95rem' }}>
+        <p style={{ marginTop: 8, color: '#a1a1aa', fontSize: '0.95rem' }}>
           Mini-app mobile per operazioni di magazzino
         </p>
       </header>
@@ -32,14 +33,14 @@ export default function HomePage() {
         <Link href="/scanner-demo" style={{ textDecoration: 'none' }}>
           <div
             style={{
-              background: '#1a237e',
+              background: '#6366f1',
               color: '#fff',
               borderRadius: 14,
               padding: '20px 24px',
               display: 'flex',
               alignItems: 'center',
               gap: 16,
-              boxShadow: '0 4px 12px rgba(26,35,126,0.25)',
+              boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
               transition: 'opacity 0.15s',
             }}
           >
@@ -57,23 +58,24 @@ export default function HomePage() {
 
         <div
           style={{
-            background: '#fff',
+            background: '#1f1f26',
             borderRadius: 14,
             padding: '20px 24px',
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.1)',
             opacity: 0.6,
             cursor: 'not-allowed',
           }}
         >
           <span style={{ fontSize: '2rem' }}>📥</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#1a237e' }}>
+            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#a5b4fc' }}>
               Carico Fornitura
             </div>
-            <div style={{ fontSize: '0.85rem', color: '#777', marginTop: 4 }}>
+            <div style={{ fontSize: '0.85rem', color: '#71717a', marginTop: 4 }}>
               Prossimamente
             </div>
           </div>
@@ -81,23 +83,24 @@ export default function HomePage() {
 
         <div
           style={{
-            background: '#fff',
+            background: '#1f1f26',
             borderRadius: 14,
             padding: '20px 24px',
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.1)',
             opacity: 0.6,
             cursor: 'not-allowed',
           }}
         >
           <span style={{ fontSize: '2rem' }}>🛒</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#1a237e' }}>
+            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#a5b4fc' }}>
               Nuovo Ordine
             </div>
-            <div style={{ fontSize: '0.85rem', color: '#777', marginTop: 4 }}>
+            <div style={{ fontSize: '0.85rem', color: '#71717a', marginTop: 4 }}>
               Prossimamente
             </div>
           </div>
