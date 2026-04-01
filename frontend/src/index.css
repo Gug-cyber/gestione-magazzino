@@ -15,16 +15,16 @@
 
   /* ── Surface Colors (Dark Mode) ──────────────────────────────────────── */
   --color-bg:             #09090b;   /* Deep dark background - zinc-950 */
-  --color-bg-elevated:    #18181b;   /* Slightly elevated surfaces - zinc-900 */
-  --color-surface:        #1f1f23;   /* Card backgrounds */
-  --color-surface-hover:  #27272a;   /* Hover state for cards - zinc-800 */
+  --color-bg-elevated:    #0f0f14;   /* Slightly elevated surfaces - very dark */
+  --color-surface:        #1a1a23;   /* Card backgrounds - darker table rows */
+  --color-surface-hover:  #252a35;   /* Hover state for cards - noticeably brighter */
   --color-surface-active: #3f3f46;   /* Active/pressed state - zinc-700 */
 
   /* ── Border Colors ───────────────────────────────────────────────────── */
-  --color-border:         rgba(255, 255, 255, 0.1);
+  --color-border:         rgba(255, 255, 255, 0.15);
   --color-border-subtle:  rgba(255, 255, 255, 0.06);
   --color-border-focus:   #6366f1;
-  --color-border-hover:   rgba(255, 255, 255, 0.18);
+  --color-border-hover:   rgba(255, 255, 255, 0.25);
 
   /* ── Text Colors ─────────────────────────────────────────────────────── */
   --color-text:           #f1f5f9;   /* Primary text - slate-100 */
@@ -450,7 +450,7 @@ code {
   opacity: 1;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════��═════════════════
    BADGES
    ══════════════════════════════════════════════════════════════════════════ */
 
