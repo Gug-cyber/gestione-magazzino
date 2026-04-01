@@ -149,7 +149,7 @@ def get_analisi_annuale(
     )
     spese_anni = {int(row.anno) for row in spese_anni_query if row.anno is not None}
 
-    anni = sorted(set(anni) | spese_anni)
+    anni = sorted(set(anni) | spese_anni, reverse=True)
 
     if not anni:
         return []
