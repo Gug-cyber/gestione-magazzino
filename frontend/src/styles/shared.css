@@ -47,10 +47,12 @@
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 
 .card:hover {
   border-color: var(--border-secondary);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
 }
 
 .card-header {
@@ -110,6 +112,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
 }
 
 .table {
@@ -119,23 +122,24 @@
 
 .table th {
   text-align: left;
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.25rem;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-primary);
+  border-bottom: 2px solid var(--border-primary);
   white-space: nowrap;
 }
 
 .table td {
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.25rem;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--border-primary);
   vertical-align: middle;
+  background: var(--bg-secondary);
 }
 
 .table tr:last-child td {
@@ -143,7 +147,7 @@
 }
 
 .table tr:hover td {
-  background: var(--bg-hover);
+  background: var(--bg-tertiary);
 }
 
 /* Mobile Cards (for responsive tables) */
