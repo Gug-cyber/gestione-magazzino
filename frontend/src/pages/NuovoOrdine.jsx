@@ -5,6 +5,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { CORRIERI } from '../constants/corrieri'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { normalizeSkuForCode39 } from '../utils/formatters'
+import '../styles/shared.css'
 
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: '' }
 
@@ -147,34 +148,48 @@ export default function NuovoOrdine() {
   }
 
   return (
-    <div>
+    <div className="page-container">
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1a237e', marginBottom: '8px' }}>🛒 Nuovo Ordine</h1>
-        <button
-          onClick={() => navigate('/ordini')}
-          style={{ background: 'none', border: 'none', color: '#1a237e', cursor: 'pointer', fontSize: '0.9rem', padding: 0, textDecoration: 'underline' }}
-        >
-          ← Torna agli Ordini
-        </button>
+      <div className="page-header">
+        <div className="page-title-section">
+          <button onClick={() => navigate('/ordini')} className="btn-back">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Ordini
+          </button>
+          <div className="page-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+          </div>
+          <div>
+            <h1 className="page-title">Nuovo Ordine</h1>
+            <p className="page-subtitle">Crea un nuovo ordine cliente</p>
+          </div>
+        </div>
       </div>
 
-      {loading && <p style={{ color: '#666' }}>Caricamento dati...</p>}
+      {loading && <div className="loading-state">Caricamento dati...</div>}
 
-      {error && (
-        <div style={{ color: '#c62828', backgroundColor: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '6px', padding: '12px 16px', marginBottom: '16px' }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="error-banner">{error}</div>}
 
       {!loading && (
         <form onSubmit={handleSubmit}>
           {/* Cliente */}
-          <div style={cardStyle}>
-            <h2 style={sectionTitleStyle}>👤 Cliente</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Seleziona cliente</span>
+          <div className="card section-card">
+            <h2 className="section-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Cliente
+            </h2>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Seleziona cliente</label>
                 <select
                   value={clienteId}
                   onChange={e => {
@@ -186,65 +201,55 @@ export default function NuovoOrdine() {
                       setClienteNome('')
                     }
                   }}
-                  style={inputStyle}
+                  className="form-input"
                 >
                   <option value="">-- Nessun cliente selezionato --</option>
                   {clienti.map(c => (
                     <option key={c.id} value={c.id}>{c.nome}</option>
                   ))}
                 </select>
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Nome cliente (testo libero)</span>
+              <div className="form-group">
+                <label className="form-label">Nome cliente (testo libero)</label>
                 <input
                   type="text"
                   value={clienteNome}
                   onChange={e => setClienteNome(e.target.value)}
                   placeholder="Es. Mario Rossi"
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
             </div>
           </div>
 
           {/* Prodotti */}
-          <div style={cardStyle}>
-            <h2 style={sectionTitleStyle}>📦 Prodotti</h2>
+          <div className="card section-card">
+            <h2 className="section-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              Prodotti
+            </h2>
 
-            {scanError && (
-              <div style={{ color: '#c62828', backgroundColor: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 6, padding: '8px 12px', marginBottom: 12, fontSize: '0.9rem' }}>
-                {scanError}
-              </div>
-            )}
+            {scanError && <div className="error-banner">{scanError}</div>}
 
             {righe.map((riga, i) => {
               const prodottoSel = prodotti.find(p => String(p.id) === String(riga.prodotto_id))
               const subtotale = (parseFloat(riga.quantita) || 0) * (parseFloat(riga.prezzo_unitario) || 0)
 
               return (
-                <div
-                  key={i}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr auto auto',
-                    gap: '12px',
-                    alignItems: 'end',
-                    padding: '12px',
-                    backgroundColor: '#f9f9f9',
-                    borderRadius: '6px',
-                    marginBottom: '12px',
-                    border: '1px solid #e0e0e0',
-                  }}
-                >
-                  <label style={labelStyle}>
-                    <span style={labelTextStyle}>Prodotto *</span>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                <div key={i} className="product-row">
+                  <div className="form-group product-select-group">
+                    <label className="form-label">Prodotto *</label>
+                    <div className="input-with-button">
                       <select
                         required
                         value={riga.prodotto_id}
                         onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)}
-                        style={{ ...inputStyle, flex: 1 }}
+                        className="form-input"
                       >
                         <option value="">-- Seleziona prodotto --</option>
                         {prodotti.map(p => (
@@ -256,36 +261,31 @@ export default function NuovoOrdine() {
                       <button
                         type="button"
                         onClick={() => { setScannerRigaIndex(i); setShowScanner(true) }}
-                        title="Scansiona QR / barcode per selezionare prodotto"
-                        style={{
-                          padding: '0 10px',
-                          height: '36px',
-                          backgroundColor: '#e3f2fd',
-                          border: '1px solid #90caf9',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '1rem',
-                          flexShrink: 0,
-                          color: '#1565c0',
-                        }}
-                      >📷</button>
+                        title="Scansiona QR / barcode"
+                        className="btn-icon btn-icon-blue"
+                      >
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                          <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                      </button>
                     </div>
-                  </label>
+                  </div>
 
-                  <label style={labelStyle}>
-                    <span style={labelTextStyle}>Quantità *</span>
+                  <div className="form-group product-qty-group">
+                    <label className="form-label">Quantita *</label>
                     <input
                       type="number"
                       min="1"
                       required
                       value={riga.quantita}
                       onChange={e => handleRigaChange(i, 'quantita', e.target.value)}
-                      style={inputStyle}
+                      className="form-input"
                     />
-                  </label>
+                  </div>
 
-                  <label style={labelStyle}>
-                    <span style={labelTextStyle}>Prezzo unit. (€) *</span>
+                  <div className="form-group product-price-group">
+                    <label className="form-label">Prezzo unit. *</label>
                     <input
                       type="number"
                       min="0"
@@ -294,115 +294,115 @@ export default function NuovoOrdine() {
                       value={riga.prezzo_unitario}
                       onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)}
                       placeholder={prodottoSel ? String(prodottoSel.prezzo_vendita ?? '') : '0.00'}
-                      style={inputStyle}
+                      className="form-input"
                     />
-                  </label>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#555' }}>Subtotale</span>
-                    <span style={{ fontWeight: 'bold', color: '#1a237e', padding: '8px 0' }}>
-                      €{subtotale.toFixed(2)}
-                    </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
+                  <div className="form-group product-subtotal-group">
+                    <label className="form-label">Subtotale</label>
+                    <span className="subtotal-value">{'\u20AC'}{subtotale.toFixed(2)}</span>
+                  </div>
+
+                  <div className="form-group product-remove-group">
                     <button
                       type="button"
                       onClick={() => removeRiga(i)}
                       disabled={righe.length === 1}
-                      style={{
-                        backgroundColor: righe.length === 1 ? '#ccc' : '#c62828',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '8px 10px',
-                        cursor: righe.length === 1 ? 'not-allowed' : 'pointer',
-                        fontSize: '1rem',
-                      }}
+                      className={`btn-icon ${righe.length === 1 ? 'btn-icon-disabled' : 'btn-icon-red'}`}
                       title="Rimuovi riga"
                     >
-                      🗑️
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
                     </button>
                   </div>
                 </div>
               )
             })}
 
-            <button
-              type="button"
-              onClick={addRiga}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#1565c0', color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', marginTop: '4px' }}
-            >
-              + Aggiungi prodotto
+            <button type="button" onClick={addRiga} className="btn-secondary add-product-btn">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Aggiungi prodotto
             </button>
 
             {/* Totale */}
-            <div style={{ textAlign: 'right', marginTop: '16px', padding: '12px', backgroundColor: '#e8eaf6', borderRadius: '6px' }}>
-              <span style={{ fontSize: '1rem', color: '#555' }}>Totale ordine: </span>
-              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#1a237e' }}>€{totale.toFixed(2)}</span>
+            <div className="order-total">
+              <span className="order-total-label">Totale ordine:</span>
+              <span className="order-total-value">{'\u20AC'}{totale.toFixed(2)}</span>
             </div>
           </div>
 
           {/* Spedizione */}
-          <div style={cardStyle}>
-            <h2 style={sectionTitleStyle}>🚚 Spedizione (opzionale)</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Corriere</span>
+          <div className="card section-card">
+            <h2 className="section-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <rect x="1" y="3" width="15" height="13"/>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
+              </svg>
+              Spedizione (opzionale)
+            </h2>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Corriere</label>
                 <select
                   value={corriere}
                   onChange={e => setCorriere(e.target.value)}
-                  style={inputStyle}
+                  className="form-input"
                 >
                   <option value="">— Nessun corriere —</option>
                   {CORRIERI.map(c => (
                     <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
-              </label>
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Tracking spedizione</span>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tracking spedizione</label>
                 <input
                   type="text"
                   value={trackingNumber}
                   onChange={e => setTrackingNumber(e.target.value)}
                   placeholder="Numero tracking..."
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
             </div>
           </div>
 
           {/* Note */}
-          <div style={cardStyle}>
-            <h2 style={sectionTitleStyle}>📝 Note</h2>
-            <label style={labelStyle}>
-              <span style={labelTextStyle}>Note (opzionale)</span>
+          <div className="card section-card">
+            <h2 className="section-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              Note
+            </h2>
+            <div className="form-group">
+              <label className="form-label">Note (opzionale)</label>
               <textarea
                 value={note}
                 onChange={e => setNote(e.target.value)}
                 rows={3}
                 placeholder="Note aggiuntive sull'ordine..."
-                style={{ ...inputStyle, resize: 'vertical' }}
+                className="form-input form-textarea"
               />
-            </label>
+            </div>
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: isMobile ? 'stretch' : 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
-            <button
-              type="button"
-              onClick={() => navigate('/ordini')}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#757575', color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
-            >
+          <div className="form-actions">
+            <button type="button" onClick={() => navigate('/ordini')} className="btn-secondary">
               Annulla
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: submitting ? '#a5d6a7' : '#2e7d32', color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '14px' }}
-            >
-              {submitting ? 'Creazione in corso...' : '✅ Crea Ordine'}
+            <button type="submit" disabled={submitting} className="btn-success">
+              {submitting ? 'Creazione in corso...' : 'Crea Ordine'}
             </button>
           </div>
         </form>
@@ -416,42 +416,4 @@ export default function NuovoOrdine() {
       )}
     </div>
   )
-}
-
-const cardStyle = {
-  backgroundColor: 'white',
-  borderRadius: '8px',
-  padding: '24px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  marginBottom: '20px',
-}
-
-const sectionTitleStyle = {
-  color: '#1a237e',
-  marginTop: 0,
-  marginBottom: '16px',
-  fontSize: '1.05rem',
-}
-
-const inputStyle = {
-  height: '36px',
-  padding: '0 12px',
-  border: '1.5px solid #e0e4ef',
-  borderRadius: '6px',
-  fontSize: '14px',
-  width: '100%',
-  boxSizing: 'border-box',
-  outline: 'none',
-  transition: 'border-color 0.18s, box-shadow 0.18s',
-}
-
-const labelStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '4px',
-}
-
-const labelTextStyle = {
-  fontSize: '0.85rem',
-  color: '#555',
 }

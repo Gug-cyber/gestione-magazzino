@@ -2,16 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clientiAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
-
-const primaryColor = '#1a237e'
-const statCardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  flex: 1,
-  minWidth: '140px',
-}
+import '../styles/shared.css'
 
 function formatCurrency(amount) {
   return Number(amount).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
@@ -110,7 +101,6 @@ export default function Clienti() {
     const { name, value } = e.target
     setForm((prev) => {
       const updated = { ...prev, [name]: value }
-      // Clear cognome when switching to azienda (companies don't have a surname)
       if (name === 'tipo' && value === 'azienda') {
         updated.cognome = ''
       }
@@ -121,11 +111,11 @@ export default function Clienti() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.nome.trim()) {
-      setFormError('Il nome è obbligatorio')
+      setFormError('Il nome e obbligatorio')
       return
     }
     if (form.tipo === 'azienda' && !form.partita_iva.trim()) {
-      setFormError('La partita IVA è obbligatoria per le aziende')
+      setFormError('La partita IVA e obbligatoria per le aziende')
       return
     }
     setSubmitting(true)
@@ -155,130 +145,158 @@ export default function Clienti() {
     }
   }
 
-  // Stats
   const totaleClienti = clienti.length
   const numAziende = clienti.filter((c) => c.tipo === 'azienda').length
   const numPrivati = clienti.filter((c) => c.tipo === 'privato').length
   const fatturatoTotale = clienti.reduce((sum, c) => sum + (c.totale_ordini || 0), 0)
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ color: primaryColor, margin: 0, fontSize: '1.8rem' }}>👥 Clienti</h1>
-        <button
-          onClick={openNewModal}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            backgroundColor: primaryColor,
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            height: '36px',
-            padding: '0 20px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '14px',
-          }}
-        >
-          ➕ Nuovo Cliente
+    <div className="page-container">
+      <div className="page-header">
+        <div className="page-title-section">
+          <div className="page-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div>
+            <h1 className="page-title">Clienti</h1>
+            <p className="page-subtitle">Gestione anagrafica clienti</p>
+          </div>
+        </div>
+        <button onClick={openNewModal} className="btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Nuovo Cliente
         </button>
       </div>
 
       {/* Stats cards */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        {[
-          { label: '👥 Totale Clienti', value: totaleClienti, color: '#e3f2fd', textColor: '#1565c0' },
-          { label: '🏢 Aziende', value: numAziende, color: '#ede7f6', textColor: '#6a1b9a' },
-          { label: '👤 Privati', value: numPrivati, color: '#e8f5e9', textColor: '#2e7d32' },
-          { label: '💰 Totale Ordini', value: formatCurrency(fatturatoTotale), color: '#fff8e1', textColor: '#e65100' },
-        ].map(({ label, value, color, textColor }) => (
-          <div key={label} style={{ ...statCardStyle, backgroundColor: color }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>{label}</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: textColor }}>{value}</div>
+      <div className="stats-grid">
+        <div className="stat-card stat-card-blue">
+          <div className="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
           </div>
-        ))}
+          <div className="stat-content">
+            <span className="stat-label">Totale Clienti</span>
+            <span className="stat-value">{totaleClienti}</span>
+          </div>
+        </div>
+        <div className="stat-card stat-card-purple">
+          <div className="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M3 21h18"/>
+              <path d="M5 21V7l8-4v18"/>
+              <path d="M19 21V11l-6-4"/>
+              <path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/>
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-label">Aziende</span>
+            <span className="stat-value">{numAziende}</span>
+          </div>
+        </div>
+        <div className="stat-card stat-card-green">
+          <div className="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-label">Privati</span>
+            <span className="stat-value">{numPrivati}</span>
+          </div>
+        </div>
+        <div className="stat-card stat-card-amber">
+          <div className="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-label">Totale Ordini</span>
+            <span className="stat-value">{formatCurrency(fatturatoTotale)}</span>
+          </div>
+        </div>
       </div>
 
       {/* Search bar */}
-      <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '6px' }}>Cerca per nome, email, P.IVA</label>
+      <div className="card filter-card">
+        <div className="filter-row">
+          <div className="filter-input-wrapper">
+            <svg className="filter-input-icon" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Cerca cliente..."
-              style={{ width: '100%', height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+              placeholder="Cerca per nome, email, P.IVA..."
+              className="filter-input"
             />
           </div>
-          <button
-            onClick={handleSearch}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', height: '36px', padding: '0 20px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
-          >
-            🔍 Cerca
+          <button onClick={handleSearch} className="btn-primary">
+            Cerca
           </button>
-          <button
-            onClick={handleReset}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#fff', color: '#555', border: '1.5px solid #e0e4ef', borderRadius: '6px', height: '36px', padding: '0 20px', cursor: 'pointer', fontSize: '14px' }}
-          >
-            ✕ Reset
+          <button onClick={handleReset} className="btn-secondary">
+            Reset
           </button>
         </div>
       </div>
 
       {/* Table / Card list */}
-      <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        {error && (
-          <div style={{ padding: '16px 20px', backgroundColor: '#ffebee', color: '#c62828' }}>{error}</div>
-        )}
+      <div className="card">
+        {error && <div className="error-banner">{error}</div>}
         {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>Caricamento...</div>
+          <div className="loading-state">Caricamento...</div>
         ) : clienti.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#999' }}>
+          <div className="empty-state">
             Nessun cliente trovato.{' '}
-            <button onClick={openNewModal} style={{ background: 'none', border: 'none', color: primaryColor, cursor: 'pointer', fontWeight: 'bold' }}>
+            <button onClick={openNewModal} className="link-button">
               Aggiungine uno!
             </button>
           </div>
         ) : isMobile ? (
-          <div style={{ padding: '8px' }}>
+          <div className="mobile-cards">
             {clienti.map((c) => {
               const nomeCompleto = c.cognome ? `${c.nome} ${c.cognome}` : c.nome
               return (
-                <div key={c.id} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 700, color: primaryColor, fontSize: '1rem' }}>
-                      {c.tipo === 'azienda' ? '🏢' : '👤'} {nomeCompleto}
-                    </div>
-                    <span style={{
-                      backgroundColor: c.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
-                      color: c.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
-                      borderRadius: '12px',
-                      padding: '2px 10px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                      marginLeft: '8px',
-                    }}>
+                <div key={c.id} className="mobile-card">
+                  <div className="mobile-card-header">
+                    <span className="mobile-card-title">{nomeCompleto}</span>
+                    <span className={`badge ${c.tipo === 'azienda' ? 'badge-purple' : 'badge-blue'}`}>
                       {c.tipo === 'azienda' ? 'Azienda' : 'Privato'}
                     </span>
                   </div>
-                  {c.email && <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '2px' }}>✉️ {c.email}</div>}
-                  {c.telefono && <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '2px' }}>📞 {c.telefono}</div>}
-                  {c.citta && <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>📍 {c.citta}{c.provincia ? ` (${c.provincia})` : ''}</div>}
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                    <button onClick={() => openEditModal(c)} style={btnSmall('#1565c0')}>✏️</button>
-                    <button onClick={() => handleDelete(c.id)} style={btnSmall('#c62828')}>🗑️</button>
-                    <button
-                      onClick={() => navigate(`/clienti/${c.id}`)}
-                      style={{ ...btnSmall('#455a64'), marginLeft: 'auto' }}
-                    >
-                      Dettagli →
+                  {c.email && <div className="mobile-card-detail">{c.email}</div>}
+                  {c.telefono && <div className="mobile-card-detail">{c.telefono}</div>}
+                  {c.citta && <div className="mobile-card-detail">{c.citta}{c.provincia ? ` (${c.provincia})` : ''}</div>}
+                  <div className="mobile-card-actions">
+                    <button onClick={() => openEditModal(c)} className="btn-icon btn-icon-blue" title="Modifica">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                    <button onClick={() => handleDelete(c.id)} className="btn-icon btn-icon-red" title="Elimina">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                    <button onClick={() => navigate(`/clienti/${c.id}`)} className="btn-secondary-sm">
+                      Dettagli
                     </button>
                   </div>
                 </div>
@@ -286,46 +304,55 @@ export default function Clienti() {
             })}
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
-                <tr style={{ backgroundColor: primaryColor, color: '#fff' }}>
-                  {['ID', 'Nome', 'Cognome', 'Tipo', 'Email', 'Telefono', 'Città', 'P.IVA', 'Azioni'].map((h) => (
-                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#fff' }}>{h}</th>
-                  ))}
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Cognome</th>
+                  <th>Tipo</th>
+                  <th>Email</th>
+                  <th>Telefono</th>
+                  <th>Citta</th>
+                  <th>P.IVA</th>
+                  <th>Azioni</th>
                 </tr>
               </thead>
               <tbody>
                 {clienti.map((c) => (
-                  <tr key={c.id} style={{ borderTop: '1px solid #f0f0f0', transition: 'background 0.15s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafafa'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
-                  >
-                    <td style={{ padding: '12px 16px', color: '#999', fontSize: '0.85rem' }}>{c.id}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#333' }}>{c.nome}</td>
-                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.cognome || '—'}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        backgroundColor: c.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
-                        color: c.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
-                        borderRadius: '12px',
-                        padding: '4px 12px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {c.tipo === 'azienda' ? '🏢 Azienda' : '👤 Privato'}
+                  <tr key={c.id}>
+                    <td className="text-muted">{c.id}</td>
+                    <td className="text-bold">{c.nome}</td>
+                    <td>{c.cognome || '—'}</td>
+                    <td>
+                      <span className={`badge ${c.tipo === 'azienda' ? 'badge-purple' : 'badge-blue'}`}>
+                        {c.tipo === 'azienda' ? 'Azienda' : 'Privato'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.email || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.telefono || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.citta || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#555', fontSize: '0.9rem' }}>{c.partita_iva || '—'}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button onClick={() => openEditModal(c)} title="Modifica" style={btnSmall('#1565c0')}>✏️</button>
-                        <button onClick={() => handleDelete(c.id)} title="Elimina" style={btnSmall('#c62828')}>🗑️</button>
-                        <button onClick={() => navigate(`/clienti/${c.id}`)} title="Dettagli" style={btnSmall('#455a64')}>🔍</button>
+                    <td>{c.email || '—'}</td>
+                    <td>{c.telefono || '—'}</td>
+                    <td>{c.citta || '—'}</td>
+                    <td>{c.partita_iva || '—'}</td>
+                    <td>
+                      <div className="action-buttons">
+                        <button onClick={() => openEditModal(c)} className="btn-icon btn-icon-blue" title="Modifica">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button onClick={() => handleDelete(c.id)} className="btn-icon btn-icon-red" title="Elimina">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          </svg>
+                        </button>
+                        <button onClick={() => navigate(`/clienti/${c.id}`)} className="btn-icon btn-icon-gray" title="Dettagli">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -338,111 +365,95 @@ export default function Clienti() {
 
       {/* Create / Edit Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '8px' : '0' }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: isMobile ? '20px 16px' : '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: primaryColor, margin: 0 }}>
-                {editingId ? '✏️ Modifica Cliente' : '➕ Nuovo Cliente'}
+        <div className="modal-overlay">
+          <div className="modal-content modal-lg">
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {editingId ? 'Modifica Cliente' : 'Nuovo Cliente'}
               </h2>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#999' }}>✕</button>
+              <button onClick={closeModal} className="modal-close">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </button>
             </div>
 
-            {formError && (
-              <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px 16px', borderRadius: '6px', marginBottom: '16px', fontSize: '0.9rem' }}>
-                {formError}
-              </div>
-            )}
+            {formError && <div className="error-banner">{formError}</div>}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
-                {/* Tipo */}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Tipo *</label>
-                  <select name="tipo" value={form.tipo} onChange={handleFormChange} style={inputStyle}>
-                    <option value="privato">👤 Privato</option>
-                    <option value="azienda">🏢 Azienda</option>
+              <div className="form-grid">
+                <div className="form-group form-full">
+                  <label className="form-label">Tipo *</label>
+                  <select name="tipo" value={form.tipo} onChange={handleFormChange} className="form-input">
+                    <option value="privato">Privato</option>
+                    <option value="azienda">Azienda</option>
                   </select>
                 </div>
 
-                {/* Nome */}
-                <div>
-                  <label style={labelStyle}>{form.tipo === 'azienda' ? 'Ragione Sociale *' : 'Nome *'}</label>
-                  <input name="nome" value={form.nome} onChange={handleFormChange} required style={inputStyle} placeholder={form.tipo === 'azienda' ? 'Ragione sociale' : 'Nome'} />
+                <div className="form-group">
+                  <label className="form-label">{form.tipo === 'azienda' ? 'Ragione Sociale *' : 'Nome *'}</label>
+                  <input name="nome" value={form.nome} onChange={handleFormChange} required className="form-input" placeholder={form.tipo === 'azienda' ? 'Ragione sociale' : 'Nome'} />
                 </div>
 
-                {/* Cognome (solo privati) */}
                 {form.tipo === 'privato' && (
-                  <div>
-                    <label style={labelStyle}>Cognome</label>
-                    <input name="cognome" value={form.cognome} onChange={handleFormChange} style={inputStyle} placeholder="Cognome" />
+                  <div className="form-group">
+                    <label className="form-label">Cognome</label>
+                    <input name="cognome" value={form.cognome} onChange={handleFormChange} className="form-input" placeholder="Cognome" />
                   </div>
                 )}
 
-                {/* Email */}
-                <div>
-                  <label style={labelStyle}>Email</label>
-                  <input name="email" type="email" value={form.email} onChange={handleFormChange} style={inputStyle} placeholder="email@esempio.it" />
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input name="email" type="email" value={form.email} onChange={handleFormChange} className="form-input" placeholder="email@esempio.it" />
                 </div>
 
-                {/* Telefono */}
-                <div>
-                  <label style={labelStyle}>Telefono</label>
-                  <input name="telefono" value={form.telefono} onChange={handleFormChange} style={inputStyle} placeholder="+39 000 0000000" />
+                <div className="form-group">
+                  <label className="form-label">Telefono</label>
+                  <input name="telefono" value={form.telefono} onChange={handleFormChange} className="form-input" placeholder="+39 000 0000000" />
                 </div>
 
-                {/* Indirizzo */}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Indirizzo</label>
-                  <input name="indirizzo" value={form.indirizzo} onChange={handleFormChange} style={inputStyle} placeholder="Via Roma, 1" />
+                <div className="form-group form-full">
+                  <label className="form-label">Indirizzo</label>
+                  <input name="indirizzo" value={form.indirizzo} onChange={handleFormChange} className="form-input" placeholder="Via Roma, 1" />
                 </div>
 
-                {/* Città */}
-                <div>
-                  <label style={labelStyle}>Città</label>
-                  <input name="citta" value={form.citta} onChange={handleFormChange} style={inputStyle} placeholder="Milano" />
+                <div className="form-group">
+                  <label className="form-label">Citta</label>
+                  <input name="citta" value={form.citta} onChange={handleFormChange} className="form-input" placeholder="Milano" />
                 </div>
 
-                {/* CAP */}
-                <div>
-                  <label style={labelStyle}>CAP</label>
-                  <input name="cap" value={form.cap} onChange={handleFormChange} style={inputStyle} placeholder="20100" maxLength={5} />
+                <div className="form-group">
+                  <label className="form-label">CAP</label>
+                  <input name="cap" value={form.cap} onChange={handleFormChange} className="form-input" placeholder="20100" maxLength={5} />
                 </div>
 
-                {/* Provincia */}
-                <div>
-                  <label style={labelStyle}>Provincia</label>
-                  <input name="provincia" value={form.provincia} onChange={handleFormChange} style={inputStyle} placeholder="MI" maxLength={2} />
+                <div className="form-group">
+                  <label className="form-label">Provincia</label>
+                  <input name="provincia" value={form.provincia} onChange={handleFormChange} className="form-input" placeholder="MI" maxLength={2} />
                 </div>
 
-                {/* Partita IVA */}
-                <div>
-                  <label style={labelStyle}>Partita IVA{form.tipo === 'azienda' ? ' *' : ''}</label>
-                  <input name="partita_iva" value={form.partita_iva} onChange={handleFormChange} style={inputStyle} placeholder="IT12345678901" />
+                <div className="form-group">
+                  <label className="form-label">Partita IVA{form.tipo === 'azienda' ? ' *' : ''}</label>
+                  <input name="partita_iva" value={form.partita_iva} onChange={handleFormChange} className="form-input" placeholder="IT12345678901" />
                 </div>
 
-                {/* Codice Fiscale */}
-                <div>
-                  <label style={labelStyle}>Codice Fiscale</label>
-                  <input name="codice_fiscale" value={form.codice_fiscale} onChange={handleFormChange} style={inputStyle} placeholder="RSSMRA80A01H501U" />
+                <div className="form-group">
+                  <label className="form-label">Codice Fiscale</label>
+                  <input name="codice_fiscale" value={form.codice_fiscale} onChange={handleFormChange} className="form-input" placeholder="RSSMRA80A01H501U" />
                 </div>
 
-                {/* Note */}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Note</label>
-                  <textarea name="note" value={form.note} onChange={handleFormChange} style={{ ...inputStyle, height: '80px', resize: 'vertical' }} placeholder="Note aggiuntive..." />
+                <div className="form-group form-full">
+                  <label className="form-label">Note</label>
+                  <textarea name="note" value={form.note} onChange={handleFormChange} className="form-input form-textarea" placeholder="Note aggiuntive..." />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                <button type="button" onClick={closeModal} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', color: '#555', border: '1.5px solid #e0e4ef', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: 'pointer', fontSize: '14px' }}>
+              <div className="modal-actions">
+                <button type="button" onClick={closeModal} className="btn-secondary">
                   Annulla
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: editingId ? '#2e7d32' : primaryColor, color: '#fff', border: 'none', borderRadius: '6px', height: '36px', padding: '0 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '14px', opacity: submitting ? 0.7 : 1 }}
-                >
-                  {submitting ? 'Salvataggio...' : editingId ? 'Salva Modifiche' : 'Crea Cliente'}
+                <button type="submit" disabled={submitting} className={editingId ? 'btn-success' : 'btn-primary'}>
+                  {submitting ? 'Salvataggio...' : (editingId ? 'Salva Modifiche' : 'Crea Cliente')}
                 </button>
               </div>
             </form>
@@ -451,39 +462,4 @@ export default function Clienti() {
       )}
     </div>
   )
-}
-
-const btnSmall = (bg) => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '4px',
-  backgroundColor: bg,
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  height: '28px',
-  padding: '0 10px',
-  cursor: 'pointer',
-  fontSize: '13px',
-})
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '0.85rem',
-  color: '#555',
-  marginBottom: '6px',
-  fontWeight: 500,
-}
-
-const inputStyle = {
-  width: '100%',
-  height: '36px',
-  padding: '0 12px',
-  border: '1.5px solid #e0e4ef',
-  borderRadius: '6px',
-  fontSize: '14px',
-  boxSizing: 'border-box',
-  outline: 'none',
-  transition: 'border-color 0.18s, box-shadow 0.18s',
 }

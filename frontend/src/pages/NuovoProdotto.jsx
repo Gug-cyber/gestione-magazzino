@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import JsBarcode from 'jsbarcode'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { generateSKU } from '../utils/skuGenerator'
+import '../styles/shared.css'
 
 function BarcodeCanvas({ value, canvasRef: extRef }) {
   const localRef = useRef(null)
@@ -13,17 +14,12 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
 
   useEffect(() => {
     if (!canvasRef.current || !value) return
-
-    // Convert to uppercase and remove characters not supported by CODE39
-    // CODE39 charset: 0-9, A-Z, - . $ / + % (space)
     const sanitized = value.toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '')
-
     if (!sanitized) {
       const ctx = canvasRef.current.getContext('2d')
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
       return
     }
-
     try {
       JsBarcode(canvasRef.current, sanitized, {
         format: 'CODE39',
@@ -40,13 +36,13 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
       const ctx = canvasRef.current.getContext('2d')
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
       ctx.font = '14px Arial'
-      ctx.fillStyle = '#c62828'
+      ctx.fillStyle = '#ef4444'
       ctx.textAlign = 'center'
       ctx.fillText('Errore generazione barcode', canvasRef.current.width / 2, 50)
     }
   }, [value])
 
-  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+  return <canvas ref={canvasRef} style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto', borderRadius: '8px' }} />
 }
 
 const emptyForm = {
@@ -111,7 +107,7 @@ function NuovoProdotto() {
         try {
           await prodottiAPI.uploadFoto(newProdotto.id, fotoFile)
         } catch {
-          // upload foto fallisce silenziosamente, il prodotto è già creato
+          // upload foto fallisce silenziosamente
         }
       }
       navigate('/prodotti')
@@ -125,7 +121,7 @@ function NuovoProdotto() {
     if (!file) return
     if (!file.type.startsWith('image/')) return
     if (file.size > 10 * 1024 * 1024) {
-      setError('La foto non può superare i 10 MB')
+      setError('La foto non puo superare i 10 MB')
       return
     }
     setFotoFile(file)
@@ -162,7 +158,7 @@ function NuovoProdotto() {
 <html><head><title>Etichetta</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { size: 50mm 25mm; margin: 0; } /* Standard adhesive label size (approx. 2" x 1") */
+  @page { size: 50mm 25mm; margin: 0; }
   body { width: 50mm; height: 25mm; overflow: hidden; background: white; font-family: monospace; display: flex; align-items: center; justify-content: center; }
   .label { width: 48mm; height: 23mm; border: 0.3mm solid #888; border-radius: 1.5mm; padding: 0.5mm 1mm; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .label img { width: 46mm; height: auto; display: block; margin: 0 auto; max-height: 18mm; }
@@ -196,134 +192,152 @@ function NuovoProdotto() {
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="page-container" style={{ maxWidth: '1100px' }}>
       {/* Header */}
-      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => navigate('/prodotti')}
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'none', border: '1.5px solid #e0e4ef', color: '#1a237e', cursor: 'pointer', fontSize: '14px', height: '36px', padding: '0 14px', borderRadius: '6px', fontWeight: 600 }}
-        >
-          ← Prodotti
-        </button>
-        <h1 style={{ color: '#1a237e', margin: 0 }}>➕ Aggiungi Prodotto</h1>
+      <div className="page-header">
+        <div className="page-title-section">
+          <button onClick={() => navigate('/prodotti')} className="btn-back">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Prodotti
+          </button>
+          <div className="page-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </div>
+          <div>
+            <h1 className="page-title">Aggiungi Prodotto</h1>
+            <p className="page-subtitle">Inserisci un nuovo prodotto nel catalogo</p>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div style={{ color: '#c62828', background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '8px', padding: '10px 16px', marginBottom: '16px' }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="error-banner">{error}</div>}
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 360px', gap: '20px', alignItems: 'start' }}>
-
+      <div className="two-column-layout">
         {/* LEFT: Form */}
-        <div style={cardStyle}>
-          <h2 style={{ color: '#1a237e', marginTop: 0, marginBottom: '18px', fontSize: '1.1rem' }}>📝 Inserimento Manuale</h2>
+        <div className="card section-card">
+          <h2 className="section-title">
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Inserimento Manuale
+          </h2>
 
           <form onSubmit={handleSubmit}>
-            {/* Grid 2 cols */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-              <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
-                <span style={labelTextStyle}>Nome *</span>
+            <div className="form-grid">
+              <div className="form-group form-full">
+                <label className="form-label">Nome *</label>
                 <input
                   type="text"
                   required
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
 
-              <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
-                <span style={labelTextStyle}>Descrizione</span>
+              <div className="form-group form-full">
+                <label className="form-label">Descrizione</label>
                 <input
                   type="text"
                   value={form.descrizione}
                   onChange={(e) => setForm({ ...form, descrizione: e.target.value })}
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Quantità</span>
+              <div className="form-group">
+                <label className="form-label">Quantita</label>
                 <input
                   type="number"
                   value={form.quantita}
                   onChange={(e) => setForm({ ...form, quantita: e.target.value })}
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Quantità Minima</span>
+              <div className="form-group">
+                <label className="form-label">Quantita Minima</label>
                 <input
                   type="number"
                   value={form.quantita_minima}
                   onChange={(e) => setForm({ ...form, quantita_minima: e.target.value })}
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Prezzo Acquisto (€)</span>
+              <div className="form-group">
+                <label className="form-label">Prezzo Acquisto</label>
                 <input
                   type="number"
                   step="0.01"
                   value={form.prezzo_acquisto}
                   onChange={(e) => setForm({ ...form, prezzo_acquisto: e.target.value })}
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Prezzo Vendita (€)</span>
+              <div className="form-group">
+                <label className="form-label">Prezzo Vendita</label>
                 <input
                   type="number"
                   step="0.01"
                   value={form.prezzo_vendita}
                   onChange={(e) => setForm({ ...form, prezzo_vendita: e.target.value })}
-                  style={inputStyle}
+                  className="form-input"
                 />
-              </label>
-            </div>
-
-            {/* SKU row */}
-            <div>
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>SKU *</span>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <input
-                    type="text"
-                    required
-                    value={form.sku}
-                    onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: normalizeSkuForCode39(e.target.value) }) }}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSkuManuale(false)}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', padding: '0 10px', backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}
-                    title="Rigenera SKU automaticamente"
-                  >🔄</button>
-                  <button
-                    type="button"
-                    onClick={() => setShowScanner(true)}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', padding: '0 10px', backgroundColor: '#1a237e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}
-                    title="Scansiona codice a barre"
-                  >📷</button>
-                </div>
-              </label>
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '-8px', marginBottom: '14px' }}>
-                ℹ️ Lo SKU verrà convertito automaticamente in MAIUSCOLO. Caratteri validi: 0-9, A-Z, - . $ / + % (spazio)
               </div>
             </div>
 
+            {/* SKU row */}
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label className="form-label">SKU *</label>
+              <div className="input-with-button">
+                <input
+                  type="text"
+                  required
+                  value={form.sku}
+                  onChange={(e) => { setSkuManuale(true); setForm({ ...form, sku: normalizeSkuForCode39(e.target.value) }) }}
+                  className="form-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSkuManuale(false)}
+                  className="btn-icon btn-icon-gray"
+                  title="Rigenera SKU automaticamente"
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="btn-icon btn-icon-blue"
+                  title="Scansiona codice a barre"
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </button>
+              </div>
+              <p className="form-hint">Lo SKU verra convertito automaticamente in MAIUSCOLO. Caratteri validi: 0-9, A-Z, - . $ / + % (spazio)</p>
+            </div>
+
             {/* Grid 2 cols: selects */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Stato di Conservazione</span>
-                <select value={form.stato_conservazione} onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })} style={inputStyle}>
+            <div className="form-grid" style={{ marginTop: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Stato di Conservazione</label>
+                <select value={form.stato_conservazione} onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })} className="form-input">
                   <option value="">-- Nessuno --</option>
                   <option value="Mint">Mint</option>
                   <option value="Near Mint">Near Mint</option>
@@ -333,11 +347,11 @@ function NuovoProdotto() {
                   <option value="Played">Played</option>
                   <option value="Poor">Poor</option>
                 </select>
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Lingua</span>
-                <select value={form.lingua} onChange={(e) => setForm({ ...form, lingua: e.target.value })} style={inputStyle}>
+              <div className="form-group">
+                <label className="form-label">Lingua</label>
+                <select value={form.lingua} onChange={(e) => setForm({ ...form, lingua: e.target.value })} className="form-input">
                   <option value="">-- Nessuna --</option>
                   <option value="Italiano">Italiano</option>
                   <option value="Inglese">Inglese</option>
@@ -345,44 +359,41 @@ function NuovoProdotto() {
                   <option value="Cinese">Cinese</option>
                   <option value="Coreano">Coreano</option>
                 </select>
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Categoria</span>
-                <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })} style={inputStyle}>
+              <div className="form-group">
+                <label className="form-label">Categoria</label>
+                <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })} className="form-input">
                   <option value="">-- Nessuna --</option>
                   {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                <span style={labelTextStyle}>Ubicazione</span>
-                <select value={form.ubicazione_id} onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })} style={inputStyle}>
+              <div className="form-group">
+                <label className="form-label">Ubicazione</label>
+                <select value={form.ubicazione_id} onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })} className="form-input">
                   <option value="">-- Nessuna --</option>
                   {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                 </select>
-              </label>
+              </div>
             </div>
 
             {/* Foto upload */}
-            <div style={{ marginBottom: '20px' }}>
-              <span style={{ ...labelTextStyle, display: 'block', marginBottom: '8px' }}>Foto prodotto</span>
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label className="form-label">Foto prodotto</label>
               <div
                 onClick={() => fotoInputRef.current && fotoInputRef.current.click()}
-                style={{
-                  width: '140px', height: '140px', border: '2px dashed #c5cae9', borderRadius: '10px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', backgroundColor: '#f8f9ff', overflow: 'hidden', position: 'relative',
-                }}
+                className="foto-upload-zone"
               >
                 {fotoPreview ? (
-                  <img src={fotoPreview} alt="anteprima" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={fotoPreview} alt="anteprima" className="foto-preview" />
                 ) : (
                   <>
-                    <span style={{ fontSize: '2.5rem' }}>📷</span>
-                    <span style={{ fontSize: '0.75rem', color: '#888', marginTop: '6px', textAlign: 'center', padding: '0 8px' }}>
-                      Clicca per aggiungere foto
-                    </span>
+                    <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ opacity: 0.5 }}>
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <span className="foto-upload-text">Clicca per aggiungere foto</span>
                   </>
                 )}
               </div>
@@ -390,85 +401,98 @@ function NuovoProdotto() {
                 <button
                   type="button"
                   onClick={() => { setFotoFile(null); setFotoPreview(null) }}
-                  style={{ marginTop: '6px', background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', fontSize: '0.82rem' }}
+                  className="btn-remove-foto"
                 >
-                  ✕ Rimuovi foto
+                  Rimuovi foto
                 </button>
               )}
               <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
             </div>
 
-            <button type="submit" style={submitBtnStyle}>✓ Crea Prodotto</button>
+            <button type="submit" className="btn-success btn-full">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Crea Prodotto
+            </button>
           </form>
         </div>
 
         {/* RIGHT: Barcode + CSV */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
+        <div className="sidebar-cards">
           {/* Barcode card */}
           {form.sku && (
-            <div style={cardStyle}>
-              <h3 style={{ color: '#1a237e', marginTop: 0, marginBottom: '14px', fontSize: '1rem' }}>🔖 Codice a Barre</h3>
-              <BarcodeCanvas value={form.sku} canvasRef={barcodeCanvasRef} />
-              <button
-                type="button"
-                onClick={handlePrintBarcode}
-                style={{
-                  marginTop: '12px', width: '100%',
-                  backgroundColor: '#37474f', color: 'white', border: 'none',
-                  borderRadius: '8px', padding: '8px 14px', cursor: 'pointer',
-                  fontSize: '0.88rem', fontWeight: 'bold',
-                }}
-              >
-                🖨️ Stampa etichetta
+            <div className="card section-card">
+              <h3 className="section-title-sm">
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M6 2v20M18 2v20M3 6h4M17 6h4M3 18h4M17 18h4M3 12h18"/>
+                </svg>
+                Codice a Barre
+              </h3>
+              <div className="barcode-container">
+                <BarcodeCanvas value={form.sku} canvasRef={barcodeCanvasRef} />
+              </div>
+              <button type="button" onClick={handlePrintBarcode} className="btn-secondary btn-full">
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Stampa etichetta
               </button>
             </div>
           )}
 
           {/* CSV card */}
-          <div style={cardStyle}>
-            <h3 style={{ color: '#6a1b9a', marginTop: 0, marginBottom: '10px', fontSize: '1rem' }}>📂 Importa da CSV</h3>
-            <p style={{ color: '#666', marginTop: 0, marginBottom: '12px', fontSize: '0.88rem' }}>
-              Carica un file CSV per aggiungere più prodotti contemporaneamente
-            </p>
+          <div className="card section-card csv-card">
+            <h3 className="section-title-sm csv-title">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Importa da CSV
+            </h3>
+            <p className="csv-description">Carica un file CSV per aggiungere piu prodotti contemporaneamente</p>
 
-            <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#f3e5f5', borderRadius: '6px', fontSize: '0.82rem', color: '#555' }}>
+            <div className="csv-columns-info">
               <strong>Colonne attese:</strong><br />
-              <code style={{ fontSize: '0.78rem', wordBreak: 'break-all' }}>nome, sku, quantita, quantita_minima, prezzo_acquisto, prezzo_vendita, descrizione, stato_conservazione, lingua</code>
+              <code>nome, sku, quantita, quantita_minima, prezzo_acquisto, prezzo_vendita, descrizione, stato_conservazione, lingua</code>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="csv-actions">
               <button
+                type="button"
                 onClick={() => csvInputRef.current && csvInputRef.current.click()}
-                style={{ backgroundColor: '#6a1b9a', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.92rem' }}
+                className="btn-purple btn-full"
               >
-                📂 Carica file CSV
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Carica file CSV
               </button>
               <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
 
-              <button
-                onClick={handleDownloadSample}
-                style={{ background: 'none', border: 'none', color: '#6a1b9a', cursor: 'pointer', fontSize: '0.88rem', textDecoration: 'underline', padding: 0, textAlign: 'left' }}
-              >
+              <button type="button" onClick={handleDownloadSample} className="link-button">
                 Scarica CSV di esempio
               </button>
             </div>
 
             {importMsg && (
-              <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '8px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7' }}>
-                <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
-                  ✅ Importati {importMsg.importati} prodotti.{importMsg.saltati > 0 ? ` ${importMsg.saltati} saltati.` : ''}
+              <div className="import-result">
+                <span className="import-success">
+                  Importati {importMsg.importati} prodotti.{importMsg.saltati > 0 ? ` ${importMsg.saltati} saltati.` : ''}
                 </span>
                 {importMsg.errori && importMsg.errori.length > 0 && (
-                  <ul style={{ marginTop: '8px', marginBottom: 0, color: '#c62828', fontSize: '0.9rem' }}>
+                  <ul className="import-errors">
                     {importMsg.errori.map((e, i) => <li key={i}>{e}</li>)}
                   </ul>
                 )}
                 {importMsg.importati > 0 && (
-                  <button
-                    onClick={() => navigate('/prodotti')}
-                    style={{ backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px', display: 'block', width: '100%' }}
-                  >
+                  <button onClick={() => navigate('/prodotti')} className="btn-success btn-full">
                     Vai ai Prodotti
                   </button>
                 )}
@@ -486,43 +510,6 @@ function NuovoProdotto() {
       )}
     </div>
   )
-}
-
-const cardStyle = {
-  backgroundColor: 'white',
-  borderRadius: '12px',
-  padding: '24px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(26,35,126,0.06)',
-  border: '1px solid #e8eaf6',
-}
-const inputStyle = {
-  height: '36px',
-  padding: '0 12px',
-  border: '1.5px solid #e0e4ef',
-  borderRadius: '6px',
-  fontSize: '14px',
-  width: '100%',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.18s, box-shadow 0.18s',
-}
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: '5px' }
-const labelTextStyle = { fontSize: '0.85rem', color: '#444', fontWeight: 600 }
-const submitBtnStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '6px',
-  backgroundColor: '#2e7d32',
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  height: '40px',
-  padding: '0 20px',
-  cursor: 'pointer',
-  fontWeight: '600',
-  fontSize: '15px',
-  width: '100%',
 }
 
 export default NuovoProdotto
