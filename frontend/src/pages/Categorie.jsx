@@ -103,29 +103,32 @@ function Categorie() {
       )}
 
       {isMobile ? (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {categorie.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-text">Nessuna categoria trovata</div>
             </div>
           ) : categorie.map((c) => (
             <div key={c.id} className="mobile-card">
-              <div className="mobile-card-header">
-                <div className="mobile-card-title">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginRight: '0.5rem', display: 'inline' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ flexShrink: 0 }}>
                     <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
                     <line x1="7" y1="7" x2="7.01" y2="7"/>
                   </svg>
-                  {c.nome}
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {c.nome}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>#{c.id}</span>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(c)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <button onClick={() => handleEdit(c)} className="btn-icon-blue" title="Modifica">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                  <button onClick={() => handleDelete(c.id)} className="btn-icon-red" title="Elimina">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -160,14 +163,14 @@ function Categorie() {
                   <td style={{ color: 'var(--text-muted)', width: '80px' }}>{c.id}</td>
                   <td style={{ fontWeight: 500 }}>{c.nome}</td>
                   <td style={{ width: '120px' }}>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEdit(c)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                    <div className="action-buttons">
+                      <button onClick={() => handleEdit(c)} className="btn-icon-blue" title="Modifica">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(c.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                      <button onClick={() => handleDelete(c.id)} className="btn-icon-red" title="Elimina">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>

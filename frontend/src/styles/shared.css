@@ -858,6 +858,40 @@
   padding: 0.5rem;
 }
 
+.mobile-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.mobile-card:hover {
+  border-color: var(--border-secondary);
+}
+
+.mobile-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.mobile-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mobile-card-detail {
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -1332,12 +1366,264 @@
   font-size: 0.875rem;
 }
 
-@media (max-width: 600px) {
-  .form-grid {
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE - TABLET (max-width: 900px)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .two-column-layout {
     grid-template-columns: 1fr;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE - MOBILE (max-width: 768px)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* Page layout */
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .page-header > *:last-child {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .page-title {
+    font-size: 1.375rem;
+  }
+
+  /* Tables: hide on mobile, show card list instead */
+  .table-container {
+    display: none;
+  }
+
+  .mobile-table-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Cards */
+  .card {
+    padding: 1rem;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  /* Stats grid: 2 columns on mobile */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+    min-width: unset;
+  }
+
+  .stat-value {
+    font-size: 1.375rem;
+  }
+
+  /* Forms */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button,
+  .form-actions a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Filter row */
+  .filter-row {
+    flex-direction: column;
+  }
+
+  .filter-input-wrapper {
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Buttons in page header: full width on mobile */
+  .btn-primary,
+  .btn-secondary,
+  .btn-success {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Product row in order forms */
+  .product-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modals */
+  .modal-inner,
+  .modal-lg {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    margin: 4px auto !important;
+    border-radius: 12px !important;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  /* Prevent iOS font size zoom on inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  input[type="tel"],
+  textarea,
+  select,
+  .form-input,
+  .filter-input,
+  .gm-input,
+  .gm-select,
+  .gm-textarea {
+    font-size: 16px !important;
+  }
+
+  /* Touch targets: minimum 44px height */
+  button,
+  .btn-primary,
+  .btn-secondary,
+  .btn-success,
+  .btn-back,
+  .btn-purple,
+  .gm-btn,
+  a.btn-primary,
+  a.btn-secondary {
+    min-height: 44px;
+  }
+
+  .btn-icon-blue,
+  .btn-icon-red,
+  .btn-icon-gray {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  /* Section cards */
+  .section-card {
+    padding: 1rem;
+  }
+
+  /* Nav header row */
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE - SMALL MOBILE (max-width: 480px)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .page-title {
+    font-size: 1.25rem;
+  }
+
+  .card {
+    padding: 0.875rem;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE TABLE CARDS — used instead of <table> on mobile
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Hidden by default on desktop */
+.mobile-table-cards {
+  display: none;
+}
+
+.mobile-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mobile-card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.mobile-card-value {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.mobile-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mobile-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-primary);
 }
