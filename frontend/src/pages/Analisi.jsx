@@ -1,78 +1,14 @@
 import { useState, useEffect } from 'react'
-import { speseGestioneAPI, analisiAPI, datiStoriciAPI } from '../api/client'
+import { speseGestioneAPI, analisiAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
-
-// ─── Stili comuni ────────────────────────────────────────────────────────────
-
-const cardStyle = {
-  backgroundColor: 'white',
-  borderRadius: '8px',
-  padding: '24px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  marginBottom: '24px',
-}
-
-const inputStyle = {
-  padding: '8px 12px',
-  borderRadius: '6px',
-  border: '1px solid #ccc',
-  fontSize: '0.95rem',
-  width: '100%',
-  boxSizing: 'border-box',
-}
-
-const btnPrimaryStyle = {
-  backgroundColor: '#1a237e',
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  padding: '8px 16px',
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: '0.9rem',
-}
-
-const btnDangerStyle = {
-  backgroundColor: '#d32f2f',
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  padding: '6px 12px',
-  cursor: 'pointer',
-  fontSize: '0.85rem',
-}
-
-const btnSecondaryStyle = {
-  backgroundColor: '#546e7a',
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  padding: '6px 12px',
-  cursor: 'pointer',
-  fontSize: '0.85rem',
-}
-
-const thStyle = {
-  textAlign: 'left',
-  padding: '10px 12px',
-  color: '#555',
-  fontWeight: '600',
-  borderBottom: '2px solid #eee',
-}
-
-const tdStyle = {
-  padding: '10px 12px',
-  color: '#333',
-  borderBottom: '1px solid #eee',
-}
-
-// ─── Tab 1: Grafici ──────────────────────────────────────────────────────────
+import '../styles/shared.css'
 
 const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
 
+// Bar Chart Component
 function BarChart({ data, labelKey, title }) {
   if (!data || data.length === 0) {
-    return <p style={{ color: '#888' }}>Nessun dato disponibile.</p>
+    return <p className="text-muted">Nessun dato disponibile.</p>
   }
 
   const maxVal = Math.max(
@@ -81,27 +17,36 @@ function BarChart({ data, labelKey, title }) {
   )
 
   const series = [
-    { key: 'costi', label: 'Costi merci (forniture ricevute)', color: '#e53935' },
-    { key: 'ricavi', label: 'Ricavi (ordini completati)', color: '#43a047' },
-    { key: 'spese', label: 'Spese gestione', color: '#fb8c00' },
-    { key: 'packaging', label: 'Packaging & Logistica', color: '#7b1fa2' },
+    { key: 'costi', label: 'Costi merci', color: 'var(--danger)' },
+    { key: 'ricavi', label: 'Ricavi', color: 'var(--success)' },
+    { key: 'spese', label: 'Spese gestione', color: 'var(--warning)' },
+    { key: 'packaging', label: 'Packaging', color: '#8b5cf6' },
   ]
 
   return (
     <div>
-      <h3 style={{ marginBottom: '12px', color: '#333' }}>{title}</h3>
+      <h3 className="section-title-sm" style={{ marginBottom: '16px' }}>{title}</h3>
       {/* Legenda */}
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {series.map((s) => (
-          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '14px', height: '14px', backgroundColor: s.color, borderRadius: '3px' }} />
-            <span style={{ fontSize: '0.85rem', color: '#555' }}>{s.label}</span>
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '12px', height: '12px', backgroundColor: s.color, borderRadius: '3px' }} />
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{s.label}</span>
           </div>
         ))}
       </div>
       {/* Grafico */}
       <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', minWidth: `${data.length * 72}px`, height: '220px', paddingBottom: '24px', position: 'relative' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'flex-end', 
+          gap: '8px', 
+          minWidth: `${data.length * 72}px`, 
+          height: '220px', 
+          paddingBottom: '28px', 
+          position: 'relative',
+          borderBottom: '1px solid var(--border-primary)'
+        }}>
           {data.map((d, i) => (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', width: '100%', justifyContent: 'center', height: '180px' }}>
@@ -113,18 +58,19 @@ function BarChart({ data, labelKey, title }) {
                       key={s.key}
                       title={`${s.label}: €${val.toFixed(2)}`}
                       style={{
-                        width: '12px',
+                        width: '14px',
                         height: `${heightPct}%`,
                         minHeight: val > 0 ? '2px' : '0',
                         backgroundColor: s.color,
-                        borderRadius: '2px 2px 0 0',
-                        transition: 'height 0.3s',
+                        borderRadius: '3px 3px 0 0',
+                        transition: 'height 0.3s ease',
+                        cursor: 'pointer',
                       }}
                     />
                   )
                 })}
               </div>
-              <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                 {typeof d[labelKey] === 'number' && labelKey === 'mese'
                   ? MESI[d[labelKey] - 1]
                   : d[labelKey]}
@@ -137,6 +83,7 @@ function BarChart({ data, labelKey, title }) {
   )
 }
 
+// Tab Grafici
 function TabGrafici() {
   const [vista, setVista] = useState('mensile')
   const [anno, setAnno] = useState(new Date().getFullYear())
@@ -163,7 +110,7 @@ function TabGrafici() {
         setDatiAnnuali(annualeRes.data)
         setTopProdotti(topProdottiRes.data)
         setMarginalita(marginalitaRes.data)
-      } catch (err) {
+      } catch {
         setErrore('Errore nel caricamento dei dati di analisi.')
       } finally {
         setLoading(false)
@@ -189,12 +136,17 @@ function TabGrafici() {
             <button
               key={v}
               onClick={() => setVista(v)}
-              style={{
-                ...btnPrimaryStyle,
-                backgroundColor: vista === v ? '#1a237e' : '#90a4ae',
-              }}
+              className={vista === v ? 'btn-primary' : 'btn-secondary'}
+              style={{ gap: '6px' }}
             >
-              {v === 'mensile' ? '📅 Mensile' : '📆 Annuale'}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {v === 'mensile' ? (
+                  <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                ) : (
+                  <path d="M4 4h16v16H4zM4 10h16M10 4v16" />
+                )}
+              </svg>
+              {v === 'mensile' ? 'Mensile' : 'Annuale'}
             </button>
           ))}
         </div>
@@ -202,7 +154,8 @@ function TabGrafici() {
           <select
             value={anno}
             onChange={(e) => setAnno(Number(e.target.value))}
-            style={{ ...inputStyle, width: 'auto' }}
+            className="form-input"
+            style={{ width: 'auto' }}
           >
             {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
               <option key={y} value={y}>{y}</option>
@@ -211,12 +164,12 @@ function TabGrafici() {
         )}
       </div>
 
-      {loading && <p>Caricamento...</p>}
-      {errore && <p style={{ color: '#d32f2f' }}>{errore}</p>}
+      {loading && <p className="text-muted">Caricamento...</p>}
+      {errore && <div className="error-banner">{errore}</div>}
 
       {!loading && (
         <>
-          <div style={cardStyle}>
+          <div className="card mb-6">
             <BarChart
               data={datiCorrente}
               labelKey={vista === 'mensile' ? 'mese' : 'anno'}
@@ -224,33 +177,34 @@ function TabGrafici() {
             />
           </div>
 
-          {/* Riepilogo testuale */}
-          <div style={{ ...cardStyle, display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+          {/* Riepilogo */}
+          <div className="stats-grid" style={{ marginBottom: '24px' }}>
             {[
-              { label: 'Costi merci (forniture ricevute)', value: totCosti, color: '#e53935' },
-              { label: 'Ricavi (ordini completati)', value: totRicavi, color: '#43a047' },
-              { label: 'Spese di gestione', value: totSpese, color: '#fb8c00' },
-              { label: '📦 Packaging & Logistica', value: totPackaging, color: '#7b1fa2' },
-              { label: '📊 Totale Spese', value: totaleSpese, color: '#455a64' },
-              { label: 'Margine', value: margine, color: margine >= 0 ? '#1a237e' : '#d32f2f' },
+              { label: 'Costi merci', value: totCosti, color: 'var(--danger)', borderColor: 'var(--danger)' },
+              { label: 'Ricavi', value: totRicavi, color: 'var(--success)', borderColor: 'var(--success)' },
+              { label: 'Spese gestione', value: totSpese, color: 'var(--warning)', borderColor: 'var(--warning)' },
+              { label: 'Packaging', value: totPackaging, color: '#8b5cf6', borderColor: '#8b5cf6' },
+              { label: 'Totale Spese', value: totaleSpese, color: 'var(--text-secondary)', borderColor: 'var(--border-secondary)' },
+              { label: 'Margine', value: margine, color: margine >= 0 ? 'var(--success)' : 'var(--danger)', borderColor: margine >= 0 ? 'var(--success)' : 'var(--danger)' },
             ].map((item) => (
-              <div key={item.label} style={{ flex: 1, minWidth: '140px', textAlign: 'center', padding: '12px', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
-                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>{item.label}</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: item.color }}>
+              <div key={item.label} className="card" style={{ borderLeft: `3px solid ${item.borderColor}`, textAlign: 'center', padding: '16px' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '6px' }}>{item.label}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: item.color }}>
                   €{item.value.toFixed(2)}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Selettore mese per i report dettagliati */}
+          {/* Selettore mese per report dettagliati */}
           {vista === 'mensile' && (
             <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label style={{ fontWeight: 'bold', color: '#333' }}>Report dettagliati per mese:</label>
+              <label style={{ fontWeight: '600', color: 'var(--text-primary)' }}>Report dettagliati per mese:</label>
               <select
                 value={meseSelezionato}
                 onChange={(e) => setMeseSelezionato(Number(e.target.value))}
-                style={{ ...inputStyle, width: 'auto' }}
+                className="form-input"
+                style={{ width: 'auto' }}
               >
                 {MESI.map((m, i) => (
                   <option key={i} value={i + 1}>{m}</option>
@@ -261,12 +215,15 @@ function TabGrafici() {
 
           {/* Report Top 5 Prodotti */}
           {vista === 'mensile' && (
-            <div style={cardStyle}>
-              <h3 style={{ marginBottom: '16px', color: '#1a237e' }}>
-                📊 Top 5 Prodotti più Venduti - {MESI[meseSelezionato - 1]} {anno}
+            <div className="card mb-6">
+              <h3 className="section-title" style={{ color: 'var(--primary)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 20V10M12 20V4M6 20v-6" />
+                </svg>
+                Top 5 Prodotti - {MESI[meseSelezionato - 1]} {anno}
               </h3>
               {topProdotti.length === 0 ? (
-                <p style={{ color: '#888' }}>Nessun prodotto venduto in questo mese.</p>
+                <p className="text-muted">Nessun prodotto venduto in questo mese.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {topProdotti.map((p, i) => {
@@ -274,23 +231,23 @@ function TabGrafici() {
                     const widthPct = (p.quantita_venduta / maxQta) * 100
                     return (
                       <div key={p.prodotto_id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ minWidth: '30px', fontWeight: 'bold', color: '#666' }}>#{i + 1}</div>
+                        <div style={{ minWidth: '30px', fontWeight: 'bold', color: 'var(--text-muted)' }}>#{i + 1}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '4px' }}>
-                            {p.nome} <span style={{ color: '#888', fontSize: '0.8rem' }}>({p.sku})</span>
+                          <div style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-primary)' }}>
+                            {p.nome} <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>({p.sku})</span>
                           </div>
                           <div style={{
-                            height: '24px',
-                            backgroundColor: '#43a047',
-                            borderRadius: '4px',
+                            height: '28px',
+                            background: 'linear-gradient(90deg, var(--success), #34d399)',
+                            borderRadius: '6px',
                             width: `${widthPct}%`,
                             display: 'flex',
                             alignItems: 'center',
-                            paddingLeft: '8px',
+                            paddingLeft: '12px',
                             color: 'white',
-                            fontSize: '0.85rem',
+                            fontSize: '0.875rem',
                             fontWeight: 'bold',
-                            minWidth: '60px',
+                            minWidth: '70px',
                             boxSizing: 'border-box',
                           }}>
                             {p.quantita_venduta} pz
@@ -304,56 +261,67 @@ function TabGrafici() {
             </div>
           )}
 
-          {/* Report Marginalità */}
+          {/* Report Marginalita */}
           {vista === 'mensile' && marginalita && (
-            <div style={cardStyle}>
-              <h3 style={{ marginBottom: '16px', color: '#1a237e' }}>
-                💰 Marginalità vs Mese Precedente
+            <div className="card">
+              <h3 className="section-title" style={{ color: 'var(--primary)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+                </svg>
+                Marginalita vs Mese Precedente
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 {/* Mese Corrente */}
-                <div style={{ padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px' }}>
+                <div style={{ padding: '20px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
                     {MESI[marginalita.mese_corrente.mese - 1]} {marginalita.mese_corrente.anno}
                   </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2e7d32' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--success)' }}>
                     €{marginalita.mese_corrente.marginalita.toFixed(2)}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px' }}>Marginalità</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Marginalita</div>
                 </div>
 
                 {/* Variazione */}
-                <div style={{ padding: '16px', backgroundColor: marginalita.variazione_assoluta >= 0 ? '#e8f5e9' : '#ffebee', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px' }}>Variazione</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: marginalita.variazione_assoluta >= 0 ? '#2e7d32' : '#c62828' }}>
+                <div style={{ 
+                  padding: '20px', 
+                  background: marginalita.variazione_assoluta >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                  border: `1px solid ${marginalita.variazione_assoluta >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                  borderRadius: 'var(--radius-lg)', 
+                  textAlign: 'center' 
+                }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Variazione</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: marginalita.variazione_assoluta >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                     {marginalita.variazione_assoluta >= 0 ? '↑' : '↓'}{' '}
                     {marginalita.variazione_percentuale !== null ? `${marginalita.variazione_percentuale.toFixed(1)}%` : 'N/A'}
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: '#555', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     €{Math.abs(marginalita.variazione_assoluta).toFixed(2)}
                   </div>
                 </div>
 
                 {/* Mese Precedente */}
-                <div style={{ padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px' }}>
+                <div style={{ padding: '20px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
                     {MESI[marginalita.mese_precedente.mese - 1]} {marginalita.mese_precedente.anno}
                   </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#666' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
                     €{marginalita.mese_precedente.marginalita.toFixed(2)}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px' }}>Marginalità</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Marginalita</div>
                 </div>
               </div>
 
               {/* Dettaglio breakdown */}
-              <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
-                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>Dettaglio {MESI[meseSelezionato - 1]} {anno}:</div>
-                <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-                  <div>Ricavi: <strong style={{ color: '#43a047' }}>€{marginalita.mese_corrente.ricavi.toFixed(2)}</strong></div>
-                  <div>Costi: <strong style={{ color: '#e53935' }}>€{marginalita.mese_corrente.costi.toFixed(2)}</strong></div>
-                  <div>Spese: <strong style={{ color: '#fb8c00' }}>€{marginalita.mese_corrente.spese.toFixed(2)}</strong></div>
-                  <div>Packaging: <strong style={{ color: '#7b1fa2' }}>€{(marginalita.mese_corrente.packaging || 0).toFixed(2)}</strong></div>
+              <div style={{ marginTop: '20px', padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '10px', fontWeight: '600' }}>
+                  Dettaglio {MESI[meseSelezionato - 1]} {anno}:
+                </div>
+                <div style={{ display: 'flex', gap: '24px', fontSize: '0.875rem', flexWrap: 'wrap' }}>
+                  <div>Ricavi: <strong style={{ color: 'var(--success)' }}>€{marginalita.mese_corrente.ricavi.toFixed(2)}</strong></div>
+                  <div>Costi: <strong style={{ color: 'var(--danger)' }}>€{marginalita.mese_corrente.costi.toFixed(2)}</strong></div>
+                  <div>Spese: <strong style={{ color: 'var(--warning)' }}>€{marginalita.mese_corrente.spese.toFixed(2)}</strong></div>
+                  <div>Packaging: <strong style={{ color: '#8b5cf6' }}>€{(marginalita.mese_corrente.packaging || 0).toFixed(2)}</strong></div>
                 </div>
               </div>
             </div>
@@ -364,8 +332,7 @@ function TabGrafici() {
   )
 }
 
-// ─── Tab 2: Spese di Gestione ────────────────────────────────────────────────
-
+// Tab Spese
 const formVuoto = {
   descrizione: '',
   importo: '',
@@ -450,669 +417,258 @@ function TabSpese() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ margin: 0, color: '#1a237e' }}>💸 Spese di Gestione</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 className="section-title" style={{ margin: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+          </svg>
+          Spese di Gestione
+        </h2>
         <button
-          style={btnPrimaryStyle}
+          className="btn-primary"
           onClick={() => { setForm(formVuoto); setEditId(null); setMostraForm((v) => !v) }}
         >
-          ➕ Nuova Spesa
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Nuova Spesa
         </button>
       </div>
 
-      {errore && <p style={{ color: '#d32f2f', marginBottom: '12px' }}>{errore}</p>}
+      {errore && <div className="error-banner">{errore}</div>}
 
       {mostraForm && (
-        <div style={{ ...cardStyle, borderLeft: '4px solid #1a237e' }}>
-          <h3 style={{ marginTop: 0, color: '#333' }}>{editId ? 'Modifica Spesa' : 'Nuova Spesa'}</h3>
+        <div className="card mb-6" style={{ borderLeft: '4px solid var(--primary)' }}>
+          <h3 className="section-title-sm">{editId ? 'Modifica Spesa' : 'Nuova Spesa'}</h3>
           <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <div className="form-grid">
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Descrizione *</label>
-                <input style={inputStyle} name="descrizione" value={form.descrizione} onChange={handleChange} required />
+                <label className="form-label">Descrizione *</label>
+                <input className="form-input" name="descrizione" value={form.descrizione} onChange={handleChange} required />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Importo (€) *</label>
-                <input style={inputStyle} name="importo" type="number" step="0.01" min="0" value={form.importo} onChange={handleChange} required />
+                <label className="form-label">Importo (€) *</label>
+                <input className="form-input" name="importo" type="number" step="0.01" min="0" value={form.importo} onChange={handleChange} required />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Categoria</label>
-                <input style={inputStyle} name="categoria" value={form.categoria} onChange={handleChange} placeholder="es. Affitto, Utenze..." />
+                <label className="form-label">Categoria</label>
+                <input className="form-input" name="categoria" value={form.categoria} onChange={handleChange} placeholder="es. Affitto, Utenze..." />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>Data</label>
-                <input style={inputStyle} name="data" type="date" value={form.data} onChange={handleChange} />
+                <label className="form-label">Data</label>
+                <input className="form-input" name="data" type="date" value={form.data} onChange={handleChange} />
               </div>
             </div>
-            <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input type="checkbox" name="ricorrente" id="ricorrente" checked={form.ricorrente} onChange={handleChange} />
-              <label htmlFor="ricorrente" style={{ fontSize: '0.9rem', color: '#555' }}>Spesa ricorrente (mensile)</label>
+            <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="checkbox" id="ricorrente" name="ricorrente" checked={form.ricorrente} onChange={handleChange} />
+              <label htmlFor="ricorrente" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Spesa ricorrente (mensile)</label>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="submit" style={btnPrimaryStyle}>💾 Salva</button>
-              <button type="button" style={btnSecondaryStyle} onClick={() => { setMostraForm(false); setEditId(null); setForm(formVuoto) }}>Annulla</button>
+            <div className="form-actions">
+              <button type="button" className="btn-secondary" onClick={() => setMostraForm(false)}>Annulla</button>
+              <button type="submit" className="btn-primary">{editId ? 'Salva Modifiche' : 'Aggiungi Spesa'}</button>
             </div>
           </form>
         </div>
       )}
 
-      {loading ? (
-        <p>Caricamento...</p>
-      ) : (
-        <div style={cardStyle}>
-          {spese.length === 0 ? (
-            <p style={{ color: '#888' }}>Nessuna spesa registrata.</p>
-          ) : (
-            <div className="table-wrapper">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {/* Totale */}
+      <div className="card mb-6" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ padding: '12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Totale spese</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--warning)' }}>€{totale.toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Tabella */}
+      <div className="card">
+        {loading ? (
+          <p className="text-muted" style={{ padding: '20px', textAlign: 'center' }}>Caricamento...</p>
+        ) : spese.length === 0 ? (
+          <p className="text-muted" style={{ padding: '20px', textAlign: 'center' }}>Nessuna spesa registrata.</p>
+        ) : (
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
                 <tr>
-                  <th style={thStyle}>Descrizione</th>
-                  <th style={thStyle}>Importo</th>
-                  <th style={thStyle}>Categoria</th>
-                  <th style={thStyle}>Ricorrente</th>
-                  <th style={thStyle}>Data</th>
-                  <th style={thStyle}>Azioni</th>
+                  <th>Descrizione</th>
+                  <th>Importo</th>
+                  <th>Categoria</th>
+                  <th>Data</th>
+                  <th>Ricorrente</th>
+                  <th>Azioni</th>
                 </tr>
               </thead>
               <tbody>
                 {spese.map((sp) => (
                   <tr key={sp.id}>
-                    <td style={tdStyle}>{sp.descrizione}</td>
-                    <td style={tdStyle}>€{parseFloat(sp.importo).toFixed(2)}</td>
-                    <td style={tdStyle}>{sp.categoria || '—'}</td>
-                    <td style={tdStyle}>{sp.ricorrente ? '✓' : '✗'}</td>
-                    <td style={tdStyle}>{sp.data ? new Date(sp.data).toLocaleDateString('it-IT') : '—'}</td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button style={btnSecondaryStyle} onClick={() => handleEdit(sp)}>✏️</button>
-                        <button style={btnDangerStyle} onClick={() => handleDelete(sp.id)}>🗑️</button>
+                    <td className="text-bold">{sp.descrizione}</td>
+                    <td style={{ color: 'var(--warning)', fontWeight: '600' }}>€{parseFloat(sp.importo).toFixed(2)}</td>
+                    <td>{sp.categoria || '—'}</td>
+                    <td>{sp.data ? new Date(sp.data).toLocaleDateString('it-IT') : '—'}</td>
+                    <td>
+                      {sp.ricorrente ? (
+                        <span className="badge badge-success">Si</span>
+                      ) : (
+                        <span className="badge badge-gray">No</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button className="btn-icon btn-icon-blue" onClick={() => handleEdit(sp)} title="Modifica">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        <button className="btn-icon btn-icon-red" onClick={() => handleDelete(sp.id)} title="Elimina">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr>
-                  <td style={{ ...tdStyle, fontWeight: 'bold', paddingTop: '12px' }}>Totale</td>
-                  <td style={{ ...tdStyle, fontWeight: 'bold', color: '#d32f2f', paddingTop: '12px' }}>€{totale.toFixed(2)}</td>
-                  <td colSpan={4} />
-                </tr>
-              </tfoot>
             </table>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-// ─── Tab 3: Calcolatore Packaging ────────────────────────────────────────────
-
-function TabAnalisiPackaging() {
-  const [anno, setAnno] = useState(new Date().getFullYear())
-  const [dati, setDati] = useState(null)
-  const [loading, setLoading] = useState(false)
+// Tab Storico
+function TabStorico() {
+  const [anni, setAnni] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [errore, setErrore] = useState(null)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
-    const carica = async () => {
+    const caricaDati = async () => {
       setLoading(true)
       try {
-        const res = await analisiAPI.getPackaging(anno)
-        setDati(res.data)
+        const res = await analisiAPI.getAnnuale()
+        setAnni(res.data)
       } catch {
-        setDati(null)
+        setErrore('Errore nel caricamento dei dati storici.')
       } finally {
         setLoading(false)
       }
     }
-    carica()
-  }, [anno])
+    caricaDati()
+  }, [])
+
+  if (loading) return <p className="text-muted">Caricamento...</p>
+  if (errore) return <div className="error-banner">{errore}</div>
+  if (anni.length === 0) return <p className="text-muted">Nessun dato storico disponibile.</p>
 
   return (
-    <div style={cardStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-        <h3 style={{ margin: 0, color: '#7b1fa2' }}>📦 Costi Packaging & Logistica (da Forniture)</h3>
-        <select value={anno} onChange={e => setAnno(Number(e.target.value))} style={{ ...inputStyle, width: 'auto' }}>
-          {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
-      {loading ? <p>Caricamento...</p> : !dati ? <p style={{ color: '#888' }}>Nessun dato disponibile.</p> : (
-        <>
-          <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '180px', textAlign: 'center', padding: '16px', borderRadius: '8px', backgroundColor: '#f3e5f5' }}>
-              <div style={{ fontSize: '0.85rem', color: '#6a1b9a', marginBottom: '4px' }}>Totale Annuale</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#7b1fa2' }}>€{dati.totale_annuale.toFixed(2)}</div>
-            </div>
-            <div style={{ flex: 1, minWidth: '180px', textAlign: 'center', padding: '16px', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
-              <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>Mesi con costi</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#555' }}>{dati.per_mese.length}</div>
-            </div>
-          </div>
-          {dati.per_mese.length === 0 ? (
-            <p style={{ color: '#888' }}>Nessun costo packaging registrato per questo anno.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Mese</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Totale (€)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dati.per_mese.map(r => (
-                  <tr key={r.mese}>
-                    <td style={tdStyle}>{['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][r.mese - 1]}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: '#7b1fa2' }}>€{r.totale.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-const nuovoComponenteVuoto = { nome: '', costoAcquisto: '', numeroPezzi: '' }
-
-function TabPackaging() {
-  const [componenti, setComponenti] = useState([])
-  const [nuovoComp, setNuovoComp] = useState(nuovoComponenteVuoto)
-  const [nomePreset, setNomePreset] = useState('')
-  const [presets, setPresets] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('packagingPresets') || '{}')
-    } catch {
-      return {}
-    }
-  })
-
-  const handleNuovoChange = (e) => {
-    const { name, value } = e.target
-    setNuovoComp((c) => ({ ...c, [name]: value }))
-  }
-
-  const aggiungiComponente = () => {
-    const nome = nuovoComp.nome.trim()
-    const costoAcquisto = parseFloat(nuovoComp.costoAcquisto)
-    const numeroPezzi = parseInt(nuovoComp.numeroPezzi)
-    if (!nome || isNaN(costoAcquisto) || costoAcquisto < 0 || isNaN(numeroPezzi) || numeroPezzi <= 0) return
-    setComponenti((prev) => [...prev, { nome, costoAcquisto, numeroPezzi }])
-    setNuovoComp(nuovoComponenteVuoto)
-  }
-
-  const eliminaComponente = (idx) => {
-    setComponenti((prev) => prev.filter((_, i) => i !== idx))
-  }
-
-  const totalePerUnita = componenti.reduce((acc, c) => {
-    const cpp = c.numeroPezzi > 0 ? c.costoAcquisto / c.numeroPezzi : 0
-    return acc + cpp
-  }, 0)
-
-  const salvaPreset = () => {
-    if (!nomePreset.trim()) return
-    const nuovi = { ...presets, [nomePreset.trim()]: componenti }
-    setPresets(nuovi)
-    localStorage.setItem('packagingPresets', JSON.stringify(nuovi))
-    setNomePreset('')
-  }
-
-  const caricaPreset = (nome) => {
-    setComponenti(presets[nome] || [])
-  }
-
-  const eliminaPreset = (nome) => {
-    const nuovi = { ...presets }
-    delete nuovi[nome]
-    setPresets(nuovi)
-    localStorage.setItem('packagingPresets', JSON.stringify(nuovi))
-  }
-
-  const labelStyle = { display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }
-
-  return (
-    <div>
-      {/* Analisi costi packaging da forniture */}
-      <TabAnalisiPackaging />
-
-      {/* Tabella componenti */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: '#1a237e' }}>🧮 Calcolatore Costo Imballo per Unità</h3>
-        <div className="table-wrapper">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="card">
+      <h3 className="section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 3v18h18" />
+          <path d="M18 17l-5-5-4 4-5-5" />
+        </svg>
+        Storico Annuale
+      </h3>
+      <div className="table-wrapper">
+        <table className="data-table">
           <thead>
             <tr>
-              <th style={thStyle}>Nome</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Costo acq. (€)</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>N° pezzi</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Costo/pz (€)</th>
-              <th style={{ ...thStyle, textAlign: 'center' }}>Azioni</th>
+              <th>Anno</th>
+              <th>Costi</th>
+              <th>Ricavi</th>
+              <th>Spese</th>
+              <th>Margine</th>
             </tr>
           </thead>
           <tbody>
-            {componenti.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ ...tdStyle, color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-                  Nessun componente aggiunto. Usa il form sotto per aggiungerne uno.
-                </td>
-              </tr>
-            )}
-            {componenti.map((c, idx) => {
-              const cpp = c.numeroPezzi > 0 ? c.costoAcquisto / c.numeroPezzi : 0
+            {anni.map((a) => {
+              const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
               return (
-                <tr key={idx}>
-                  <td style={tdStyle}>{c.nome}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>€ {c.costoAcquisto.toFixed(2)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>{c.numeroPezzi}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>€ {cpp.toFixed(4)}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    <button style={btnDangerStyle} onClick={() => eliminaComponente(idx)} title="Elimina">🗑️</button>
+                <tr key={a.anno}>
+                  <td className="text-bold">{a.anno}</td>
+                  <td style={{ color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</td>
+                  <td style={{ color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</td>
+                  <td style={{ color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</td>
+                  <td style={{ color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
+                    €{margine.toFixed(2)}
                   </td>
                 </tr>
               )
             })}
-            {/* Riga totale */}
-            {componenti.length > 0 && (
-              <tr>
-                <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: '#555', borderTop: '2px solid #1a237e' }}>
-                  TOTALE PACKAGING PER UNITÀ
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#1a237e', fontSize: '1.05rem', borderTop: '2px solid #1a237e', backgroundColor: '#e8eaf6' }}>
-                  € {totalePerUnita.toFixed(4)}/pz
-                </td>
-                <td style={{ ...tdStyle, borderTop: '2px solid #1a237e', backgroundColor: '#e8eaf6' }}></td>
-              </tr>
-            )}
           </tbody>
         </table>
-        </div>
-
-        {/* Form aggiunta componente */}
-        <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
-          <h4 style={{ margin: '0 0 12px', color: '#333' }}>➕ Aggiungi componente</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', alignItems: 'flex-end' }}>
-            <div>
-              <label style={labelStyle}>Nome componente</label>
-              <input
-                style={inputStyle}
-                name="nome"
-                type="text"
-                placeholder="es. Busta, Scatola, Pluriball…"
-                value={nuovoComp.nome}
-                onChange={handleNuovoChange}
-                onKeyDown={(e) => e.key === 'Enter' && aggiungiComponente()}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Costo acquisto (€)</label>
-              <input
-                style={inputStyle}
-                name="costoAcquisto"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={nuovoComp.costoAcquisto}
-                onChange={handleNuovoChange}
-                onKeyDown={(e) => e.key === 'Enter' && aggiungiComponente()}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>N° pezzi in confezione</label>
-              <input
-                style={inputStyle}
-                name="numeroPezzi"
-                type="number"
-                step="1"
-                min="1"
-                placeholder="es. 100"
-                value={nuovoComp.numeroPezzi}
-                onChange={handleNuovoChange}
-                onKeyDown={(e) => e.key === 'Enter' && aggiungiComponente()}
-              />
-            </div>
-            <div>
-              <button style={{ ...btnPrimaryStyle, whiteSpace: 'nowrap' }} onClick={aggiungiComponente}>
-                + Aggiungi
-              </button>
-            </div>
-          </div>
-          {/* Anteprima costo/pz */}
-          {nuovoComp.costoAcquisto !== '' && nuovoComp.numeroPezzi !== '' && (
-            <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#555' }}>
-              Costo al pezzo:{' '}
-              <strong style={{ color: '#1a237e' }}>
-                € {(parseFloat(nuovoComp.costoAcquisto) / (parseInt(nuovoComp.numeroPezzi) || 1)).toFixed(4)}
-              </strong>
-            </p>
-          )}
-        </div>
-
-        {/* Salva preset */}
-        <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
-          <h4 style={{ margin: '0 0 8px', color: '#333' }}>💾 Salva preset</h4>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              style={{ ...inputStyle, flex: 1 }}
-              placeholder="Nome preset"
-              value={nomePreset}
-              onChange={(e) => setNomePreset(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && salvaPreset()}
-            />
-            <button style={btnPrimaryStyle} onClick={salvaPreset}>Salva</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Preset salvati */}
-      {Object.keys(presets).length > 0 && (
-        <div style={cardStyle}>
-          <h3 style={{ marginTop: 0, color: '#1a237e' }}>📋 Preset salvati</h3>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {Object.entries(presets).map(([nome]) => (
-              <div key={nome} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#e3f2fd', borderRadius: '20px' }}>
-                <span style={{ fontSize: '0.9rem', color: '#1565c0' }}>{nome}</span>
-                <button
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1565c0', fontSize: '0.85rem', padding: '0 4px' }}
-                  onClick={() => caricaPreset(nome)}
-                  title="Carica preset"
-                >
-                  ↩️
-                </button>
-                <button
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', fontSize: '0.85rem', padding: '0 4px' }}
-                  onClick={() => eliminaPreset(nome)}
-                  title="Elimina preset"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Tab 4: Importa Dati ─────────────────────────────────────────────────────
-
-const CSV_ESEMPIO_COSTI = `data,importo,descrizione,categoria
-2024-01-15,250.00,Acquisto materiali,Forniture
-2024-02-03,45.50,Spedizioni,Logistica
-2023-11-20,1200.00,Attrezzatura,Investimenti`
-
-const CSV_ESEMPIO_RICAVI = `data,importo,descrizione,categoria
-2024-01-20,1500.00,Vendita prodotti,Vendite
-2024-02-15,350.00,Servizi consulenza,Consulenza
-2023-12-01,800.00,Vendita stock,Vendite`
-
-function scaricaCSVEsempio(tipo) {
-  const contenuto = tipo === 'costo' ? CSV_ESEMPIO_COSTI : CSV_ESEMPIO_RICAVI
-  const blob = new Blob([contenuto], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = tipo === 'costo' ? 'esempio_costi.csv' : 'esempio_ricavi.csv'
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-const MSG_ERRORE_IMPORTAZIONE = "Errore durante l'importazione"
-const MSG_ERRORE_ELIMINAZIONE = "Errore durante l'eliminazione"
-const YEAR_LENGTH = 4
-
-function SezioneUpload({ tipo, label, onImportSuccess }) {
-  const [file, setFile] = useState(null)
-  const [stato, setStato] = useState(null) // null | 'loading' | {ok, msg}
-  const [statoElimina, setStatoElimina] = useState(null)
-
-  const handleUpload = async () => {
-    if (!file) return
-    setStato('loading')
-    try {
-      const res = tipo === 'costo'
-        ? await datiStoriciAPI.importCosti(file)
-        : await datiStoriciAPI.importRicavi(file)
-      const { importati, errori } = res.data
-      setStato({ ok: true, msg: `✅ ${importati} record importati${errori.length > 0 ? ` (${errori.length} righe saltate)` : ''}` })
-      setFile(null)
-      onImportSuccess()
-    } catch (err) {
-      setStato({ ok: false, msg: `❌ ${err.response?.data?.detail || MSG_ERRORE_IMPORTAZIONE}` })
-    }
-  }
-
-  const handleElimina = async () => {
-    if (!window.confirm(`Eliminare tutti i dati di tipo "${label}"? L'operazione non è reversibile.`)) return
-    setStatoElimina('loading')
-    try {
-      const res = await datiStoriciAPI.deleteTipo(tipo)
-      setStatoElimina({ ok: true, msg: `✅ ${res.data.eliminati} record eliminati` })
-      onImportSuccess()
-    } catch (err) {
-      setStatoElimina({ ok: false, msg: `❌ ${err.response?.data?.detail || MSG_ERRORE_ELIMINAZIONE}` })
-    }
-  }
-
-  return (
-    <div style={{ ...cardStyle, flex: 1, minWidth: '280px' }}>
-      <h3 style={{ marginTop: 0, color: '#1a237e' }}>📤 Importa {label}</h3>
-      <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '12px' }}>
-        Formato CSV atteso: <code>data,importo,descrizione,categoria</code><br />
-        Date accettate: <code>YYYY-MM-DD</code>, <code>DD/MM/YYYY</code>, <code>DD-MM-YYYY</code><br />
-        Separatori supportati: <code>,</code> oppure <code>;</code>
-      </p>
-      <button
-        style={{ ...btnSecondaryStyle, marginBottom: '12px', fontSize: '0.8rem' }}
-        onClick={() => scaricaCSVEsempio(tipo)}
-      >
-        ⬇️ Scarica CSV di esempio
-      </button>
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: '#555' }}>
-          Seleziona file CSV
-        </label>
-        <input
-          type="file"
-          accept=".csv"
-          style={{ fontSize: '0.9rem' }}
-          onChange={(e) => { setFile(e.target.files[0] || null); setStato(null) }}
-        />
-      </div>
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-        <button
-          style={{ ...btnPrimaryStyle, opacity: file ? 1 : 0.5 }}
-          onClick={handleUpload}
-          disabled={!file || stato === 'loading'}
-        >
-          {stato === 'loading' ? 'Caricamento...' : '⬆️ Carica'}
-        </button>
-        <button
-          style={{ ...btnDangerStyle }}
-          onClick={handleElimina}
-          disabled={statoElimina === 'loading'}
-        >
-          {statoElimina === 'loading' ? '...' : '🗑️ Elimina tutti i dati'}
-        </button>
-      </div>
-      {stato && stato !== 'loading' && (
-        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: stato.ok ? '#388e3c' : '#d32f2f' }}>
-          {stato.msg}
-        </p>
-      )}
-      {statoElimina && statoElimina !== 'loading' && (
-        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: statoElimina.ok ? '#388e3c' : '#d32f2f' }}>
-          {statoElimina.msg}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function TabImportaDati({ onImportSuccess }) {
-  const [previewTipo, setPreviewTipo] = useState('costo')
-  const [dati, setDati] = useState([])
-  const [loadingPreview, setLoadingPreview] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
-
-  const ricarica = () => setRefreshKey((k) => k + 1)
-
-  const handleImportSuccess = () => {
-    ricarica()
-    if (onImportSuccess) onImportSuccess()
-  }
-
-  useEffect(() => {
-    const fetch = async () => {
-      setLoadingPreview(true)
-      try {
-        const res = await datiStoriciAPI.getAll({ tipo: previewTipo, limit: 500 })
-        setDati(res.data)
-      } catch {
-        setDati([])
-      } finally {
-        setLoadingPreview(false)
-      }
-    }
-    fetch()
-  }, [previewTipo, refreshKey])
-
-  const anniDisponibili = [...new Set(dati.map((d) => d.data.slice(0, YEAR_LENGTH)))].sort().reverse()
-
-  return (
-    <div>
-      {/* Sezione upload — 2 colonne */}
-      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '8px' }}>
-        <SezioneUpload tipo="costo" label="Costi" onImportSuccess={handleImportSuccess} />
-        <SezioneUpload tipo="ricavo" label="Ricavi" onImportSuccess={handleImportSuccess} />
-      </div>
-
-      {/* Sezione preview */}
-      <div style={cardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          <h3 style={{ margin: 0, color: '#1a237e' }}>🔍 Anteprima dati importati</h3>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {['costo', 'ricavo'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setPreviewTipo(t)}
-                style={{
-                  ...btnPrimaryStyle,
-                  backgroundColor: previewTipo === t ? '#1a237e' : '#90a4ae',
-                }}
-              >
-                {t === 'costo' ? '📉 Costi' : '📈 Ricavi'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {anniDisponibili.length > 0 && (
-          <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '12px' }}>
-            Anni nel dataset: {anniDisponibili.join(', ')}
-          </p>
-        )}
-
-        {loadingPreview ? (
-          <p>Caricamento...</p>
-        ) : dati.length === 0 ? (
-          <p style={{ color: '#888' }}>Nessun dato importato per questo tipo.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Data</th>
-                  <th style={thStyle}>Descrizione</th>
-                  <th style={thStyle}>Categoria</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Importo (€)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dati.map((d) => (
-                  <tr key={d.id}>
-                    <td style={tdStyle}>{d.data}</td>
-                    <td style={tdStyle}>{d.descrizione || '—'}</td>
-                    <td style={tdStyle}>{d.categoria || '—'}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>€ {parseFloat(d.importo).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={3} style={{ ...tdStyle, fontWeight: 'bold', paddingTop: '10px' }}>Totale ({dati.length} record)</td>
-                  <td style={{ ...tdStyle, fontWeight: 'bold', textAlign: 'right', color: previewTipo === 'costo' ? '#d32f2f' : '#388e3c', paddingTop: '10px' }}>
-                    € {dati.reduce((s, d) => s + parseFloat(d.importo || 0), 0).toFixed(2)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   )
 }
 
-// ─── Componente principale Analisi ──────────────────────────────────────────
+// Main Component
+export default function Analisi() {
+  const [tab, setTab] = useState('grafici')
 
-const TABS = [
-  { id: 'grafici',   label: '📈 Grafici',              labelShort: '📈' },
-  { id: 'spese',     label: '💸 Spese di Gestione',     labelShort: '💸' },
-  { id: 'packaging', label: '📦 Calcolatore Packaging', labelShort: '📦' },
-  { id: 'importa',   label: '📂 Importa Dati',          labelShort: '📂' },
-]
-
-function Analisi() {
-  const [tabAttiva, setTabAttiva] = useState('grafici')
-  const [graficiKey, setGraficiKey] = useState(0)
-  const isMobile = useIsMobile()
+  const tabs = [
+    { key: 'grafici', label: 'Grafici', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10M12 20V4M6 20v-6" /></svg> },
+    { key: 'spese', label: 'Spese', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg> },
+    { key: 'storico', label: 'Storico', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18" /><path d="M18 17l-5-5-4 4-5-5" /></svg> },
+  ]
 
   return (
-    <div>
-      <h1 style={{ marginBottom: '24px', color: '#1a237e' }}>📈 Analisi Finanziaria</h1>
+    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <div className="page-title-section">
+          <div className="page-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 20V10M12 20V4M6 20v-6" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="page-title">Analisi</h1>
+            <p className="page-subtitle">Analisi finanziaria e report</p>
+          </div>
+        </div>
+      </div>
 
-      {/* Tab header */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e0e0e0', marginBottom: '24px', gap: '4px' }}>
-        {TABS.map((tab) => (
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px' }}>
+        {tabs.map((t) => (
           <button
-            key={tab.id}
-            onClick={() => setTabAttiva(tab.id)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             style={{
-              padding: isMobile ? '10px 12px' : '10px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 20px',
               border: 'none',
-              borderBottom: tabAttiva === tab.id ? '2px solid #1a237e' : '2px solid transparent',
-              marginBottom: '-2px',
-              backgroundColor: 'transparent',
-              color: tabAttiva === tab.id ? '#1a237e' : '#666',
-              fontWeight: tabAttiva === tab.id ? 700 : 400,
-              fontSize: isMobile ? '1.3rem' : '0.95rem',
+              borderBottom: tab === t.key ? '2px solid var(--primary)' : '2px solid transparent',
+              background: 'none',
               cursor: 'pointer',
-              borderRadius: '4px 4px 0 0',
-              transition: 'all 0.15s',
+              fontSize: '0.9375rem',
+              fontWeight: tab === t.key ? '600' : '500',
+              color: tab === t.key ? 'var(--primary)' : 'var(--text-secondary)',
+              transition: 'all 0.2s ease',
             }}
           >
-            {isMobile ? tab.labelShort : tab.label}
+            {t.icon}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      {tabAttiva === 'grafici' && <TabGrafici key={graficiKey} />}
-      {tabAttiva === 'spese' && <TabSpese />}
-      {tabAttiva === 'packaging' && <TabPackaging />}
-      {tabAttiva === 'importa' && (
-        <TabImportaDati onImportSuccess={() => { setGraficiKey((k) => k + 1) }} />
-      )}
+      {/* Tab Content */}
+      {tab === 'grafici' && <TabGrafici />}
+      {tab === 'spese' && <TabSpese />}
+      {tab === 'storico' && <TabStorico />}
     </div>
   )
 }
-
-export default Analisi

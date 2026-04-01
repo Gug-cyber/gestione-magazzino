@@ -4,7 +4,7 @@ import { prodottiAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import RicercaRapidaProdotto from '../components/RicercaRapidaProdotto'
 import { normalizeSkuForCode39 } from '../utils/formatters'
-import { PRIMARY_COLOR } from '../constants/colors'
+import '../styles/shared.css'
 
 function ScannerBarcode() {
   const navigate = useNavigate()
@@ -18,17 +18,14 @@ function ScannerBarcode() {
     setSearching(true)
     setError('')
 
-    // Normalize the API response data to a consistent array format
     const toItems = (data) => Array.isArray(data) ? data : (data?.items || [])
 
-    // 0. QR code formato "prodotto:<id>" — naviga direttamente senza API call
     if (/^prodotto:\d+$/i.test(value)) {
       const id = value.split(':')[1]
       navigate(`/prodotti/${id}`)
       return
     }
 
-    // 1. Try exact barcode match via dedicated endpoint
     try {
       const res = await prodottiAPI.lookupByBarcode(value)
       if (res.data?.id) {
@@ -43,7 +40,6 @@ function ScannerBarcode() {
       }
     }
 
-    // 2. Try barcode as exact text filter in product list
     try {
       const res2 = await prodottiAPI.getAll({ barcode: value, limit: 1 })
       const items = toItems(res2.data)
@@ -53,7 +49,6 @@ function ScannerBarcode() {
       }
     } catch { /* continue */ }
 
-    // 3. Fallback: text search by normalized value with exact matching
     const normalized = normalizeSkuForCode39(value)
     try {
       const res3 = await prodottiAPI.getAll({ search: normalized, limit: 5 })
@@ -89,33 +84,58 @@ function ScannerBarcode() {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <button
-          onClick={() => navigate('/prodotti')}
-          style={{ backgroundColor: '#546e7a', color: 'white', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-        >← Prodotti</button>
-        <h1 style={{ color: PRIMARY_COLOR, margin: 0 }}>📷 Scanner QR / Barcode</h1>
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <button onClick={() => navigate('/prodotti')} className="btn-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Prodotti
+        </button>
+        <div className="page-title-section">
+          <div className="page-icon" style={{ width: '40px', height: '40px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </div>
+          <h1 className="page-title" style={{ fontSize: '1.25rem' }}>Scanner QR / Barcode</h1>
+        </div>
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: 8, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: 20 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>Scansiona con webcam</h2>
-        <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: 16 }}>
-          Scansiona il QR code sulle etichette prodotto — più affidabile dei codici a barre lineari.
-          Il sistema reindirizzerà automaticamente alla scheda del prodotto.
+      {/* Webcam Scanner */}
+      <div className="card mb-6">
+        <h2 className="section-title-sm">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+          Scansiona con webcam
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '16px', lineHeight: '1.5' }}>
+          Scansiona il QR code sulle etichette prodotto. Il sistema reindirizzerà automaticamente alla scheda del prodotto.
         </p>
-        <button
-          onClick={() => setShowScanner(true)}
-          style={{ backgroundColor: PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: 6, padding: '12px 24px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}
-        >
-          📷 Apri Scanner QR
+        <button onClick={() => setShowScanner(true)} className="btn-primary btn-full">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+          Apri Scanner QR
         </button>
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: 8, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: 20 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>🔍 Ricerca rapida prodotto</h2>
-        <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: 16 }}>
-          Cerca per nome, SKU o barcode mentre digiti — funziona da desktop e da mobile.
+      {/* Quick Search */}
+      <div className="card mb-6">
+        <h2 className="section-title-sm">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          Ricerca rapida prodotto
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '16px', lineHeight: '1.5' }}>
+          Cerca per nome, SKU o barcode mentre digiti.
         </p>
         <RicercaRapidaProdotto
           showScanner={true}
@@ -124,40 +144,60 @@ function ScannerBarcode() {
         />
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: 8, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, fontSize: '1.1rem' }}>Inserimento manuale barcode</h2>
-        <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: 16 }}>
+      {/* Manual Input */}
+      <div className="card">
+        <h2 className="section-title-sm">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+          </svg>
+          Inserimento manuale barcode
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '16px', lineHeight: '1.5' }}>
           Inserisci manualmente il valore del codice a barre o lo SKU del prodotto.
         </p>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text"
             value={manualInput}
             onChange={e => setManualInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleManualSearch()}
             placeholder="Inserisci barcode o SKU..."
-            style={{ flex: 1, padding: '10px 14px', border: '1px solid #ddd', borderRadius: 6, fontSize: '1rem' }}
+            className="form-input"
+            style={{ flex: 1 }}
           />
           <button
             onClick={handleManualSearch}
             disabled={!manualInput.trim() || searching}
-            style={{
-              backgroundColor: manualInput.trim() && !searching ? PRIMARY_COLOR : '#ccc',
-              color: 'white', border: 'none', borderRadius: 6, padding: '10px 20px',
-              cursor: manualInput.trim() && !searching ? 'pointer' : 'not-allowed', fontWeight: 'bold',
-            }}
+            className="btn-primary"
+            style={{ opacity: (!manualInput.trim() || searching) ? 0.5 : 1 }}
           >
-            {searching ? '⏳' : '🔍 Cerca'}
+            {searching ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            )}
+            Cerca
           </button>
         </div>
       </div>
 
+      {/* Error */}
       {error && (
-        <div style={{ marginTop: 16, padding: '12px 16px', backgroundColor: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 6, color: '#c62828' }}>
-          ⚠️ {error}
+        <div className="error-banner" style={{ marginTop: '16px' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          {error}
         </div>
       )}
 
+      {/* Scanner Modal */}
       {showScanner && (
         <BarcodeScanner
           onScan={handleScan}

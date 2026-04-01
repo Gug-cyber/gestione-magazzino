@@ -1,16 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fattureAPI } from '../api/client'
 import { formatDate, formatCurrency } from '../utils/formatters'
-import { PRIMARY_COLOR } from '../constants/colors'
-
-const cardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  flex: 1,
-  minWidth: '140px',
-}
+import '../styles/shared.css'
 
 const emptyForm = {
   numero_fattura: '',
@@ -35,7 +26,6 @@ export default function Fatture() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // Filters
   const [filterCliente, setFilterCliente] = useState('')
   const [filterDataDa, setFilterDataDa] = useState('')
   const [filterDataA, setFilterDataA] = useState('')
@@ -200,429 +190,373 @@ export default function Fatture() {
       .catch(() => setError('Errore durante il download del PDF'))
   }
 
-  // Stats
   const totale = fatture.length
   const pagate = fatture.filter(f => f.pagata).length
   const daPagare = totale - pagate
   const importoTotale = fatture.reduce((sum, f) => sum + (f.importo || 0), 0)
 
   return (
-    <div>
+    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 style={{ color: PRIMARY_COLOR, margin: 0 }}>🧾 Fatture</h1>
-        <button
-          onClick={openNewModal}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            backgroundColor: PRIMARY_COLOR,
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            height: '36px',
-            padding: '0 20px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '14px',
-          }}
-        >
-          ➕ Nuova Fattura
+        <div className="page-title-section">
+          <div className="page-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="page-title">Fatture</h1>
+            <p className="page-subtitle">Gestione fatture attive e passive</p>
+          </div>
+        </div>
+        <button onClick={openNewModal} className="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Nuova Fattura
         </button>
       </div>
 
-      {/* Stats cards */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <div style={cardStyle}>
-          <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>📄 Totale fatture</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: PRIMARY_COLOR }}>{totale}</div>
+      {/* Stats */}
+      <div className="stats-grid">
+        <div className="card stat-card-blue">
+          <div className="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <path d="M14 2v6h6" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{totale}</span>
+            <span className="stat-label">Totale fatture</span>
+          </div>
         </div>
-        <div style={cardStyle}>
-          <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>✅ Pagate</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2e7d32' }}>{pagate}</div>
+        <div className="card stat-card-green">
+          <div className="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+              <path d="M22 4L12 14.01l-3-3" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value" style={{ color: 'var(--success)' }}>{pagate}</span>
+            <span className="stat-label">Pagate</span>
+          </div>
         </div>
-        <div style={cardStyle}>
-          <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>⏳ Da pagare</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#e65100' }}>{daPagare}</div>
+        <div className="card stat-card-amber">
+          <div className="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value" style={{ color: 'var(--warning)' }}>{daPagare}</span>
+            <span className="stat-label">Da pagare</span>
+          </div>
         </div>
-        <div style={cardStyle}>
-          <div style={{ color: '#888', fontSize: '12px', marginBottom: '4px' }}>💰 Totale importo</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: PRIMARY_COLOR }}>{formatCurrency(importoTotale)}</div>
+        <div className="card stat-card-purple">
+          <div className="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value" style={{ color: '#8b5cf6' }}>{formatCurrency(importoTotale)}</span>
+            <span className="stat-label">Totale importo</span>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{
-        backgroundColor: '#fff',
-        borderRadius: '8px',
-        padding: '16px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        marginBottom: '20px',
-        display: 'flex',
-        gap: '12px',
-        flexWrap: 'wrap',
-        alignItems: 'flex-end',
-      }}>
-        <div style={{ flex: 1, minWidth: '140px' }}>
-          <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Cliente 🔍</label>
-          <input
-            type="text"
-            value={filterCliente}
-            onChange={e => setFilterCliente(e.target.value)}
-            placeholder="Cerca cliente..."
-            style={{ height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none' }}
-          />
+      <div className="card filter-card">
+        <div className="filter-row">
+          <div className="filter-input-wrapper">
+            <svg className="filter-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={filterCliente}
+              onChange={e => setFilterCliente(e.target.value)}
+              placeholder="Cerca cliente..."
+              className="filter-input"
+            />
+          </div>
+          <div style={{ minWidth: '150px' }}>
+            <input
+              type="date"
+              value={filterDataDa}
+              onChange={e => setFilterDataDa(e.target.value)}
+              className="form-input"
+              title="Data da"
+            />
+          </div>
+          <div style={{ minWidth: '150px' }}>
+            <input
+              type="date"
+              value={filterDataA}
+              onChange={e => setFilterDataA(e.target.value)}
+              className="form-input"
+              title="Data a"
+            />
+          </div>
+          <button onClick={handleSearch} className="btn-primary">Cerca</button>
+          <button onClick={handleReset} className="btn-secondary">Reset</button>
         </div>
-        <div style={{ flex: 1, minWidth: '130px' }}>
-          <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Data da 📅</label>
-          <input
-            type="date"
-            value={filterDataDa}
-            onChange={e => setFilterDataDa(e.target.value)}
-            style={{ height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none' }}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: '130px' }}>
-          <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Data a 📅</label>
-          <input
-            type="date"
-            value={filterDataA}
-            onChange={e => setFilterDataA(e.target.value)}
-            style={{ height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none' }}
-          />
-        </div>
-        <button
-          onClick={handleSearch}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            backgroundColor: PRIMARY_COLOR,
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            height: '36px',
-            padding: '0 16px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-          }}
-        >
-          Cerca
-        </button>
-        <button
-          onClick={handleReset}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            backgroundColor: '#fff',
-            color: PRIMARY_COLOR,
-            border: `1.5px solid ${PRIMARY_COLOR}`,
-            borderRadius: '6px',
-            height: '36px',
-            padding: '0 16px',
-            cursor: 'pointer',
-            fontSize: '14px',
-          }}
-        >
-          Reset
-        </button>
       </div>
 
-      {error && (
-        <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="error-banner">{error}</div>}
 
       {/* Table */}
-      <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'auto' }}>
+      <div className="card">
         {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Caricamento...</div>
+          <div className="loading-state">Caricamento...</div>
         ) : fatture.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>Nessuna fattura trovata</div>
+          <div className="loading-state">Nessuna fattura trovata</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-            <thead>
-              <tr style={{ backgroundColor: PRIMARY_COLOR, color: '#fff' }}>
-                <th style={thStyle}>#</th>
-                <th style={thStyle}>Numero</th>
-                <th style={thStyle}>Data</th>
-                <th style={thStyle}>Cliente</th>
-                <th style={thStyle}>Importo</th>
-                <th style={thStyle}>Tipo</th>
-                <th style={thStyle}>Pagata</th>
-                <th style={thStyle}>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fatture.map((f, i) => (
-                <tr
-                  key={f.id}
-                  style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9' }}
-                >
-                  <td style={tdStyle}>{f.id}</td>
-                  <td style={tdStyle}>{f.numero_fattura}</td>
-                  <td style={tdStyle}>{formatDate(f.data_fattura)}</td>
-                  <td style={tdStyle}>{f.cliente}</td>
-                  <td style={tdStyle}>{formatCurrency(f.importo)}</td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      backgroundColor: f.tipo === 'attiva' ? '#e8f5e9' : '#ffebee',
-                      color: f.tipo === 'attiva' ? '#2e7d32' : '#c62828',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                    }}>
-                      {f.tipo === 'attiva' ? '📈 Attiva' : '📉 Passiva'}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <span
-                      onClick={() => handleTogglePagata(f)}
-                      title="Clicca per cambiare stato"
-                      style={{
-                        backgroundColor: f.pagata ? '#e8f5e9' : '#fff3e0',
-                        color: f.pagata ? '#2e7d32' : '#e65100',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                      }}
-                    >
-                      {f.pagata ? '✅ Pagata' : '⏳ Da pagare'}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        onClick={() => handleDownload(f)}
-                        title="Scarica PDF"
-                        style={actionBtnStyle('#1565c0')}
-                      >
-                        📥
-                      </button>
-                      <button
-                        onClick={() => openEditModal(f)}
-                        title="Modifica"
-                        style={actionBtnStyle('#f57f17')}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDelete(f)}
-                        title="Elimina"
-                        style={actionBtnStyle('#c62828')}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Numero</th>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Importo</th>
+                  <th>Tipo</th>
+                  <th>Pagata</th>
+                  <th>Azioni</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {fatture.map((f) => (
+                  <tr key={f.id}>
+                    <td style={{ color: 'var(--text-muted)' }}>{f.id}</td>
+                    <td className="text-bold">{f.numero_fattura}</td>
+                    <td>{formatDate(f.data_fattura)}</td>
+                    <td>{f.cliente}</td>
+                    <td style={{ fontWeight: '600' }}>{formatCurrency(f.importo)}</td>
+                    <td>
+                      <span className={`badge ${f.tipo === 'attiva' ? 'badge-success' : 'badge-danger'}`}>
+                        {f.tipo === 'attiva' ? 'Attiva' : 'Passiva'}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        onClick={() => handleTogglePagata(f)}
+                        title="Clicca per cambiare stato"
+                        className={`badge ${f.pagata ? 'badge-success' : 'badge-warning'}`}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {f.pagata ? 'Pagata' : 'Da pagare'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          onClick={() => handleDownload(f)}
+                          title="Scarica PDF"
+                          className="btn-icon btn-icon-blue"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => openEditModal(f)}
+                          title="Modifica"
+                          className="btn-icon btn-icon-blue"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(f)}
+                          title="Elimina"
+                          className="btn-icon btn-icon-red"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Paginazione */}
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '20px', fontSize: '0.9rem', color: '#555' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: page === 1 ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 14px', cursor: page === 1 ? 'default' : 'pointer', fontSize: '14px' }}
-          >← Precedente</button>
-          <span>Pagina {page} di {totalPages} ({totalFatture} fatture)</span>
+            className="btn-secondary"
+            style={{ opacity: page === 1 ? 0.5 : 1 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Precedente
+          </button>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            Pagina {page} di {totalPages} ({totalFatture} fatture)
+          </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: page === totalPages ? '#b0bec5' : PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 14px', cursor: page === totalPages ? 'default' : 'pointer', fontSize: '14px' }}
-          >Successiva →</button>
+            className="btn-secondary"
+            style={{ opacity: page === totalPages ? 0.5 : 1 }}
+          >
+            Successiva
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
         </div>
       )}
 
       {/* Modal */}
       {showModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <div style={{
-            backgroundColor: '#fff',
-            borderRadius: '8px',
-            padding: '28px',
-            width: '100%',
-            maxWidth: '520px',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-          }}>
-            <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: '20px' }}>
-              {editingFattura ? '✏️ Modifica Fattura' : '➕ Nuova Fattura'}
-            </h2>
+        <div className="modal-overlay">
+          <div className="modal modal-lg">
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {editingFattura ? 'Modifica Fattura' : 'Nuova Fattura'}
+              </h2>
+              <button onClick={closeModal} className="modal-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-            {formError && (
-              <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '4px', marginBottom: '16px', fontSize: '14px' }}>
-                {formError}
-              </div>
-            )}
+            {formError && <div className="error-banner">{formError}</div>}
 
             <form onSubmit={handleSubmit}>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Numero fattura *</label>
-                <input
-                  type="text"
-                  name="numero_fattura"
-                  value={form.numero_fattura}
-                  onChange={handleFormChange}
-                  placeholder="Es. 2024/001"
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Data fattura *</label>
-                <input
-                  type="date"
-                  name="data_fattura"
-                  value={form.data_fattura}
-                  onChange={handleFormChange}
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Cliente *</label>
-                <input
-                  type="text"
-                  name="cliente"
-                  value={form.cliente}
-                  onChange={handleFormChange}
-                  placeholder="Nome cliente/fornitore"
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Importo € *</label>
-                <input
-                  type="number"
-                  name="importo"
-                  value={form.importo}
-                  onChange={handleFormChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Tipo *</label>
-                <select
-                  name="tipo"
-                  value={form.tipo}
-                  onChange={handleFormChange}
-                  style={inputStyle}
-                >
-                  <option value="attiva">📈 Attiva (vendita)</option>
-                  <option value="passiva">📉 Passiva (acquisto)</option>
-                </select>
-              </div>
-
-              <div style={{ ...fieldStyle, flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  name="pagata"
-                  id="pagata"
-                  checked={form.pagata}
-                  onChange={handleFormChange}
-                  style={{ width: '16px', height: '16px' }}
-                />
-                <label htmlFor="pagata" style={{ ...labelStyle, margin: 0, cursor: 'pointer' }}>
-                  Pagata
-                </label>
-              </div>
-
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Note</label>
-                <textarea
-                  name="note"
-                  value={form.note}
-                  onChange={handleFormChange}
-                  placeholder="Note opzionali..."
-                  rows={3}
-                  style={{ ...inputStyle, resize: 'vertical' }}
-                />
-              </div>
-
-              {!editingFattura && (
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Carica PDF (opzionale)</label>
+              <div className="form-grid">
+                <div>
+                  <label className="form-label">Numero fattura *</label>
                   <input
-                    type="file"
-                    name="file"
-                    accept=".pdf"
+                    type="text"
+                    name="numero_fattura"
+                    value={form.numero_fattura}
                     onChange={handleFormChange}
-                    style={{ fontSize: '14px' }}
+                    placeholder="Es. 2024/001"
+                    required
+                    className="form-input"
                   />
                 </div>
-              )}
 
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#fff',
-                    color: '#555',
-                    border: '1.5px solid #e0e4ef',
-                    borderRadius: '6px',
-                    height: '36px',
-                    padding: '0 20px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                  }}
-                >
+                <div>
+                  <label className="form-label">Data fattura *</label>
+                  <input
+                    type="date"
+                    name="data_fattura"
+                    value={form.data_fattura}
+                    onChange={handleFormChange}
+                    required
+                    className="form-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Cliente *</label>
+                  <input
+                    type="text"
+                    name="cliente"
+                    value={form.cliente}
+                    onChange={handleFormChange}
+                    placeholder="Nome cliente/fornitore"
+                    required
+                    className="form-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Importo € *</label>
+                  <input
+                    type="number"
+                    name="importo"
+                    value={form.importo}
+                    onChange={handleFormChange}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    required
+                    className="form-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Tipo *</label>
+                  <select
+                    name="tipo"
+                    value={form.tipo}
+                    onChange={handleFormChange}
+                    className="form-input"
+                  >
+                    <option value="attiva">Attiva (vendita)</option>
+                    <option value="passiva">Passiva (acquisto)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '28px' }}>
+                  <input
+                    type="checkbox"
+                    id="pagata"
+                    name="pagata"
+                    checked={form.pagata}
+                    onChange={handleFormChange}
+                  />
+                  <label htmlFor="pagata" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    Fattura pagata
+                  </label>
+                </div>
+
+                <div className="form-full">
+                  <label className="form-label">Note</label>
+                  <textarea
+                    name="note"
+                    value={form.note}
+                    onChange={handleFormChange}
+                    placeholder="Note aggiuntive..."
+                    className="form-input form-textarea"
+                    rows="3"
+                  />
+                </div>
+
+                {!editingFattura && (
+                  <div className="form-full">
+                    <label className="form-label">Allegato PDF</label>
+                    <input
+                      type="file"
+                      name="file"
+                      accept=".pdf"
+                      onChange={handleFormChange}
+                      className="form-input"
+                      style={{ padding: '8px' }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={closeModal} className="btn-secondary">
                   Annulla
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: PRIMARY_COLOR,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    height: '36px',
-                    padding: '0 20px',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    opacity: submitting ? 0.7 : 1,
-                  }}
-                >
-                  {submitting ? 'Salvataggio...' : (editingFattura ? 'Aggiorna' : 'Crea Fattura')}
+                <button type="submit" disabled={submitting} className="btn-primary">
+                  {submitting ? 'Salvataggio...' : (editingFattura ? 'Salva Modifiche' : 'Crea Fattura')}
                 </button>
               </div>
             </form>
@@ -632,58 +566,3 @@ export default function Fatture() {
     </div>
   )
 }
-
-const thStyle = {
-  padding: '11px 16px',
-  textAlign: 'left',
-  fontWeight: '700',
-  fontSize: '12px',
-  color: '#555770',
-  background: '#f5f7ff',
-  borderBottom: '2px solid #e0e4ef',
-  whiteSpace: 'nowrap',
-}
-
-const tdStyle = {
-  padding: '10px 16px',
-  borderBottom: '1px solid #f0f0f0',
-  verticalAlign: 'middle',
-}
-
-const fieldStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  marginBottom: '16px',
-}
-
-const labelStyle = {
-  fontSize: '13px',
-  color: '#444',
-  marginBottom: '6px',
-  fontWeight: '500',
-}
-
-const inputStyle = {
-  height: '36px',
-  padding: '0 12px',
-  border: '1.5px solid #e0e4ef',
-  borderRadius: '6px',
-  fontSize: '14px',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.18s, box-shadow 0.18s',
-}
-
-const actionBtnStyle = (color) => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: color,
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  height: '28px',
-  padding: '0 8px',
-  cursor: 'pointer',
-  fontSize: '13px',
-})

@@ -3,22 +3,98 @@ import { useAuth } from '../context/AuthContext'
 import { updateProfilo, activityLogAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import useLogoSettings from '../hooks/useLogoSettings'
-import { PRIMARY_COLOR } from '../constants/colors'
 import { getAzioneBadge } from '../utils/formatters'
+import '../styles/shared.css'
 
-function getPasswordStrength(password) {  if (!password) return null
+function getPasswordStrength(password) {
+  if (!password) return null
   const hasLetters = /[a-zA-Z]/.test(password)
   const hasNumbers = /[0-9]/.test(password)
   const hasSymbols = /[^a-zA-Z0-9]/.test(password)
   const len = password.length
   if (len >= 10 && hasLetters && hasNumbers && hasSymbols) {
-    return { label: 'Forte', color: '#43a047', width: '100%' }
+    return { label: 'Forte', color: 'var(--success)', width: '100%' }
   }
   if (len >= 6 && ((hasLetters && hasNumbers) || (hasLetters && hasSymbols) || (hasNumbers && hasSymbols))) {
-    return { label: 'Media', color: '#fb8c00', width: '66%' }
+    return { label: 'Media', color: 'var(--warning)', width: '66%' }
   }
-  return { label: 'Debole', color: '#e53935', width: '33%' }
+  return { label: 'Debole', color: 'var(--danger)', width: '33%' }
 }
+
+// Icons
+const UserIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+)
+
+const LockIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+)
+
+const ActivityIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </svg>
+)
+
+const PaletteIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="13.5" cy="6.5" r="0.5"/>
+    <circle cx="17.5" cy="10.5" r="0.5"/>
+    <circle cx="8.5" cy="7.5" r="0.5"/>
+    <circle cx="6.5" cy="12.5" r="0.5"/>
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z"/>
+  </svg>
+)
+
+const SaveIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+    <polyline points="17 21 17 13 7 13 7 21"/>
+    <polyline points="7 3 7 8 15 8"/>
+  </svg>
+)
+
+const EyeIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+)
+
+const EyeOffIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+)
+
+const UploadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+  </svg>
+)
+
+const RefreshIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10"/>
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+  </svg>
+)
 
 function Profilo() {
   const { user, setUser } = useAuth()
@@ -28,31 +104,25 @@ function Profilo() {
 
   const isAdmin = user?.is_admin
 
-  // Tab state — show Portale only for admins
   const tabs = isAdmin ? ['account', 'sicurezza', 'attivita', 'portale'] : ['account', 'sicurezza', 'attivita']
   const [activeTab, setActiveTab] = useState('account')
 
-  // Account tab state
   const [nuovoUsername, setNuovoUsername] = useState(user?.username || '')
   const [nuovaEmail, setNuovaEmail] = useState(user?.email || '')
   const [accountMsg, setAccountMsg] = useState(null)
 
-  // Sicurezza tab state
   const [passwordAttuale, setPasswordAttuale] = useState('')
   const [nuovaPassword, setNuovaPassword] = useState('')
   const [confermaPassword, setConfermaPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState(null)
 
-  // Portale tab state
   const [logoMsg, setLogoMsg] = useState(null)
   const [customTitle, setCustomTitle] = useState(portalTitle === DEFAULT_TITLE ? '' : portalTitle)
 
-  // Password visibility toggles
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  // Attività tab state
   const [attivita, setAttivita] = useState([])
   const [attivitaLoading, setAttivitaLoading] = useState(false)
   const [attivitaError, setAttivitaError] = useState(null)
@@ -67,7 +137,6 @@ function Profilo() {
       .finally(() => setAttivitaLoading(false))
   }, [activeTab])
 
-  // Set message with auto-dismiss for success
   const setMsgWithAutoDismiss = (setter, msg) => {
     setter(msg)
     if (msg?.type === 'success') {
@@ -120,7 +189,7 @@ function Profilo() {
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      setLogoMsg({ type: 'error', text: 'Il file è troppo grande. Dimensione massima: 2 MB.' })
+      setLogoMsg({ type: 'error', text: 'Il file e troppo grande. Dimensione massima: 2 MB.' })
       return
     }
     const reader = new FileReader()
@@ -132,7 +201,6 @@ function Profilo() {
       setLogoMsg({ type: 'error', text: 'Errore durante la lettura del file. Riprova.' })
     }
     reader.readAsDataURL(file)
-    // reset input so the same file can be re-selected
     e.target.value = ''
   }
 
@@ -155,33 +223,29 @@ function Profilo() {
   const passwordStrength = getPasswordStrength(nuovaPassword)
 
   const tabLabels = {
-    account: '👤 Account',
-    sicurezza: '🔐 Sicurezza',
-    attivita: '📋 Attività',
-    portale: '🎨 Portale',
+    account: { icon: <UserIcon />, label: 'Account' },
+    sicurezza: { icon: <LockIcon />, label: 'Sicurezza' },
+    attivita: { icon: <ActivityIcon />, label: 'Attivita' },
+    portale: { icon: <PaletteIcon />, label: 'Portale' },
   }
 
   return (
-    <div style={{ maxWidth: isMobile ? '100%' : '560px' }}>
-
-      {/* Chi sei — identity banner */}
-      <div style={{
-        background: `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, #283593 100%)`,
-        borderRadius: '12px',
+    <div style={{ maxWidth: isMobile ? '100%' : '600px' }}>
+      {/* Identity Banner */}
+      <div className="card" style={{
+        background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)',
         padding: isMobile ? '20px 16px' : '24px',
         marginBottom: '24px',
         display: 'flex',
         alignItems: 'center',
         gap: '16px',
         color: 'white',
-        boxShadow: '0 4px 16px rgba(26,35,126,0.2)',
       }}>
-        {/* Avatar with initials */}
         <div style={{
           width: '56px',
           height: '56px',
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.25)',
+          background: 'rgba(255,255,255,0.2)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -189,7 +253,7 @@ function Profilo() {
           fontWeight: 700,
           letterSpacing: '1px',
           flexShrink: 0,
-          border: '2px solid rgba(255,255,255,0.5)',
+          border: '2px solid rgba(255,255,255,0.3)',
         }}>
           {initials}
         </div>
@@ -218,10 +282,9 @@ function Profilo() {
         gap: '0',
         overflowX: 'auto',
         whiteSpace: 'nowrap',
-        borderBottom: '2px solid #e0e4ef',
-        background: 'white',
-        borderRadius: '12px 12px 0 0',
-        boxShadow: '0 -1px 0 #e0e4ef',
+        borderBottom: '1px solid var(--border-primary)',
+        background: 'var(--bg-secondary)',
+        borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
       }}>
         {tabs.map(tab => (
           <button
@@ -230,111 +293,133 @@ function Profilo() {
             style={{
               padding: '12px 20px',
               border: 'none',
-              borderBottom: activeTab === tab ? `3px solid ${PRIMARY_COLOR}` : '3px solid transparent',
+              borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
               background: 'none',
               cursor: 'pointer',
               fontSize: '14px',
-              fontWeight: activeTab === tab ? 700 : 500,
-              color: activeTab === tab ? PRIMARY_COLOR : '#666',
+              fontWeight: activeTab === tab ? 600 : 500,
+              color: activeTab === tab ? 'var(--primary)' : 'var(--text-secondary)',
               whiteSpace: 'nowrap',
               transition: 'color 0.15s, border-color 0.15s',
               fontFamily: 'inherit',
-              marginBottom: '-2px',
+              marginBottom: '-1px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            {tabLabels[tab]}
+            {tabLabels[tab].icon}
+            {tabLabels[tab].label}
           </button>
         ))}
       </div>
 
       {/* Tab content panel */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '0 0 12px 12px',
+      <div className="card" style={{
+        borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
         padding: isMobile ? '20px 16px' : '28px 24px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
       }}>
-
-        {/* ── Account tab ── */}
+        {/* Account tab */}
         {activeTab === 'account' && (
           <form onSubmit={handleSalvaAccount}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Username</label>
+              <label className="form-label">Username</label>
               <input
                 type="text"
                 value={nuovoUsername}
                 onChange={(e) => setNuovoUsername(e.target.value)}
                 required
-                style={inputStyle}
+                className="form-input"
               />
             </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Email</label>
+              <label className="form-label">Email</label>
               <input
                 type="email"
                 value={nuovaEmail}
                 onChange={(e) => setNuovaEmail(e.target.value)}
                 required
                 placeholder="Inserisci email"
-                style={inputStyle}
+                className="form-input"
               />
             </div>
             {accountMsg && (
-              <p style={accountMsg.type === 'success' ? successStyle : errorStyle} aria-live="polite">
+              <div className={accountMsg.type === 'success' ? 'success-msg' : 'error-banner'} style={{ marginBottom: '16px' }}>
                 {accountMsg.text}
-              </p>
+              </div>
             )}
-            <button type="submit" style={btnStyle}>💾 Salva modifiche</button>
+            <button type="submit" className="btn-primary">
+              <SaveIcon /> Salva modifiche
+            </button>
           </form>
         )}
 
-        {/* ── Sicurezza tab ── */}
+        {/* Sicurezza tab */}
         {activeTab === 'sicurezza' && (
           <form onSubmit={handleCambiaPassword}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Password attuale</label>
-              <div style={pwdWrapStyle}>
+              <label className="form-label">Password attuale</label>
+              <div style={{ position: 'relative' }}>
                 <input
                   type={showCurrent ? 'text' : 'password'}
                   value={passwordAttuale}
                   onChange={(e) => setPasswordAttuale(e.target.value)}
                   required
-                  style={{ ...inputStyle, paddingRight: '44px' }}
+                  className="form-input"
+                  style={{ paddingRight: '44px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrent(v => !v)}
-                  style={eyeBtnStyle}
-                  aria-label="Mostra/nascondi password"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                  }}
                 >
-                  {showCurrent ? '🙈' : '👁️'}
+                  {showCurrent ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
             </div>
             <div style={{ marginBottom: '8px' }}>
-              <label style={labelStyle}>Nuova password</label>
-              <div style={pwdWrapStyle}>
+              <label className="form-label">Nuova password</label>
+              <div style={{ position: 'relative' }}>
                 <input
                   type={showNew ? 'text' : 'password'}
                   value={nuovaPassword}
                   onChange={(e) => setNuovaPassword(e.target.value)}
                   required
-                  style={{ ...inputStyle, paddingRight: '44px' }}
+                  className="form-input"
+                  style={{ paddingRight: '44px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowNew(v => !v)}
-                  style={eyeBtnStyle}
-                  aria-label="Mostra/nascondi password"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                  }}
                 >
-                  {showNew ? '🙈' : '👁️'}
+                  {showNew ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
             </div>
-            {/* Password strength indicator */}
             {nuovaPassword && passwordStrength && (
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ height: '4px', borderRadius: '4px', background: '#e0e4ef', overflow: 'hidden' }}>
+                <div style={{ height: '4px', borderRadius: '4px', background: 'var(--bg-tertiary)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: passwordStrength.width,
@@ -349,48 +434,60 @@ function Profilo() {
               </div>
             )}
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Conferma nuova password</label>
-              <div style={pwdWrapStyle}>
+              <label className="form-label">Conferma nuova password</label>
+              <div style={{ position: 'relative' }}>
                 <input
                   type={showConfirm ? 'text' : 'password'}
                   value={confermaPassword}
                   onChange={(e) => setConfermaPassword(e.target.value)}
                   required
-                  style={{ ...inputStyle, paddingRight: '44px' }}
+                  className="form-input"
+                  style={{ paddingRight: '44px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirm(v => !v)}
-                  style={eyeBtnStyle}
-                  aria-label="Mostra/nascondi password"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                  }}
                 >
-                  {showConfirm ? '🙈' : '👁️'}
+                  {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
             </div>
             {passwordMsg && (
-              <p style={passwordMsg.type === 'success' ? successStyle : errorStyle} aria-live="polite">
+              <div className={passwordMsg.type === 'success' ? 'success-msg' : 'error-banner'} style={{ marginBottom: '16px' }}>
                 {passwordMsg.text}
-              </p>
+              </div>
             )}
-            <button type="submit" style={btnStyle}>🔑 Cambia password</button>
+            <button type="submit" className="btn-primary">
+              <LockIcon /> Cambia password
+            </button>
           </form>
         )}
 
-        {/* ── Attività tab ── */}
+        {/* Attivita tab */}
         {activeTab === 'attivita' && (
           <div>
-            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '16px' }}>
-              Le ultime 20 attività del tuo account.
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              Le ultime 20 attivita del tuo account.
             </p>
             {attivitaLoading && (
-              <div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>⏳ Caricamento...</div>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>Caricamento...</div>
             )}
             {attivitaError && (
-              <div style={errorStyle}>{attivitaError}</div>
+              <div className="error-banner">{attivitaError}</div>
             )}
             {!attivitaLoading && !attivitaError && attivita.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#aaa', padding: '20px' }}>Nessuna attività registrata.</div>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>Nessuna attivita registrata.</div>
             )}
             {attivita.map(log => {
               const badge = getAzioneBadge(log.azione)
@@ -400,27 +497,22 @@ function Profilo() {
                   alignItems: 'flex-start',
                   gap: '12px',
                   padding: '10px 0',
-                  borderBottom: '1px solid #f0f0f0',
+                  borderBottom: '1px solid var(--border-primary)',
                 }}>
-                  <div style={{ minWidth: '130px', fontSize: '12px', color: '#888', paddingTop: '2px' }}>
+                  <div style={{ minWidth: '130px', fontSize: '12px', color: 'var(--text-muted)', paddingTop: '2px' }}>
                     {new Date(log.eseguito_il).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
                   <div>
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '2px 10px',
-                      borderRadius: '12px',
+                    <span className="badge" style={{
                       background: badge.bg,
                       color: badge.color,
-                      fontWeight: 600,
-                      fontSize: '12px',
                       marginRight: '8px',
                     }}>
                       {log.azione}
                     </span>
                     {log.entita && (
-                      <span style={{ fontSize: '13px', color: '#555' }}>
-                        {log.entita}{log.entita_id ? ` #${log.entita_id}` : ''}{log.dettagli ? ` — ${log.dettagli}` : ''}
+                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {log.entita}{log.entita_id ? ` #${log.entita_id}` : ''}{log.dettagli ? ` - ${log.dettagli}` : ''}
                       </span>
                     )}
                   </div>
@@ -430,26 +522,25 @@ function Profilo() {
           </div>
         )}
 
-        {/* ── Portale tab (admin only) ── */}
-        {activeTab === 'portale' && (          <div>
-            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '20px' }}>
+        {/* Portale tab (admin only) */}
+        {activeTab === 'portale' && (
+          <div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
               Carica un logo personalizzato e imposta il nome del portale. Le modifiche sono salvate nel browser.
             </p>
 
-            {/* Logo preview */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Logo attuale</label>
+              <label className="form-label">Logo attuale</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {logoUrl
-                  ? <img src={logoUrl} alt="Logo corrente" style={{ height: '48px', width: 'auto', maxWidth: '180px', objectFit: 'contain', border: '1px solid #ddd', borderRadius: '6px', padding: '4px', background: '#f9f9f9' }} />
-                  : <span style={{ fontSize: '0.85rem', color: '#999', fontStyle: 'italic' }}>Nessun logo caricato (viene mostrato il testo del portale)</span>
+                  ? <img src={logoUrl} alt="Logo corrente" style={{ height: '48px', width: 'auto', maxWidth: '180px', objectFit: 'contain', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '4px', background: 'var(--bg-tertiary)' }} />
+                  : <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Nessun logo caricato (viene mostrato il testo del portale)</span>
                 }
               </div>
             </div>
 
-            {/* Upload logo */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Carica nuovo logo</label>
+              <label className="form-label">Carica nuovo logo</label>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   ref={fileInputRef}
@@ -461,53 +552,52 @@ function Profilo() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  style={btnStyle}
+                  className="btn-primary"
                 >
-                  📁 Scegli immagine
+                  <UploadIcon /> Scegli immagine
                 </button>
                 {logoUrl && (
                   <button
                     type="button"
                     onClick={() => { setLogo(null); setMsgWithAutoDismiss(setLogoMsg, { type: 'success', text: 'Logo rimosso.' }) }}
-                    style={{ ...btnStyle, backgroundColor: '#c62828' }}
+                    className="btn-danger"
                   >
-                    🗑️ Rimuovi
+                    <TrashIcon /> Rimuovi
                   </button>
                 )}
               </div>
-              <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '6px' }}>Formati supportati: PNG, JPG, SVG. Max 2 MB.</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>Formati supportati: PNG, JPG, SVG. Max 2 MB.</p>
             </div>
 
-            {/* Portal title */}
             <form onSubmit={handleSaveTitolo}>
               <div style={{ marginBottom: '20px' }}>
-                <label style={labelStyle}>Titolo del portale</label>
+                <label className="form-label">Titolo del portale</label>
                 <input
                   type="text"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
                   placeholder={DEFAULT_TITLE}
                   maxLength={60}
-                  style={inputStyle}
+                  className="form-input"
                 />
-                <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '4px' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Lascia vuoto per usare il titolo predefinito: <em>{DEFAULT_TITLE}</em>
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button type="submit" style={btnStyle}>
-                  💾 Salva titolo
+                <button type="submit" className="btn-primary">
+                  <SaveIcon /> Salva titolo
                 </button>
-                <button type="button" onClick={handleReset} style={{ ...btnStyle, backgroundColor: '#546e7a' }}>
-                  ↩️ Ripristina predefiniti
+                <button type="button" onClick={handleReset} className="btn-secondary">
+                  <RefreshIcon /> Ripristina predefiniti
                 </button>
               </div>
             </form>
 
             {logoMsg && (
-              <p style={logoMsg.type === 'success' ? successStyle : errorStyle} aria-live="polite">
+              <div className={logoMsg.type === 'success' ? 'success-msg' : 'error-banner'} style={{ marginTop: '16px' }}>
                 {logoMsg.text}
-              </p>
+              </div>
             )}
           </div>
         )}
@@ -516,81 +606,4 @@ function Profilo() {
   )
 }
 
-const labelStyle = {
-  display: 'block',
-  marginBottom: '6px',
-  color: '#555',
-  fontWeight: 600,
-  fontSize: '14px',
-}
-
-const inputStyle = {
-  width: '100%',
-  height: '38px',
-  padding: '0 12px',
-  borderRadius: '6px',
-  border: '1.5px solid #e0e4ef',
-  fontSize: '14px',
-  boxSizing: 'border-box',
-  fontFamily: 'inherit',
-  color: '#1a1a2e',
-  background: '#fff',
-  outline: 'none',
-  transition: 'border-color 0.18s, box-shadow 0.18s',
-}
-
-const pwdWrapStyle = {
-  position: 'relative',
-  display: 'flex',
-  alignItems: 'center',
-}
-
-const eyeBtnStyle = {
-  position: 'absolute',
-  right: '10px',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: '16px',
-  lineHeight: 1,
-  padding: '0',
-  display: 'flex',
-  alignItems: 'center',
-}
-
-const btnStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '6px',
-  height: '36px',
-  padding: '0 16px',
-  backgroundColor: PRIMARY_COLOR,
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: 600,
-  fontFamily: 'inherit',
-  whiteSpace: 'nowrap',
-}
-
-const successStyle = {
-  color: '#2e7d32',
-  backgroundColor: '#e8f5e9',
-  padding: '8px 12px',
-  borderRadius: '6px',
-  marginBottom: '12px',
-}
-
-const errorStyle = {
-  color: '#c62828',
-  backgroundColor: '#ffebee',
-  padding: '8px 12px',
-  borderRadius: '6px',
-  marginBottom: '12px',
-}
-
 export default Profilo
-

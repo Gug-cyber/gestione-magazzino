@@ -1,61 +1,95 @@
-/* frontend/src/styles/theme.css */
+/* frontend/src/styles/theme.css - Dark Mode Theme */
 :root {
-  /* Primary Colors - Blu aziendale */
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-200: #bfdbfe;
-  --primary-300: #93c5fd;
-  --primary-400: #60a5fa;
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-700: #1d4ed8;
-  --primary-800: #1e40af;
-  --primary-900: #1e3a8a;
+  /* Background Colors */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a24;
+  --bg-hover: rgba(99, 102, 241, 0.08);
+  --bg-active: rgba(99, 102, 241, 0.12);
+  
+  /* Text Colors */
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #6b6b76;
+  
+  /* Border Colors */
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-secondary: rgba(255, 255, 255, 0.15);
+  
+  /* Primary Colors - Indigo/Blu */
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --primary-50: rgba(99, 102, 241, 0.1);
+  --primary-100: rgba(99, 102, 241, 0.15);
+  --primary-200: rgba(99, 102, 241, 0.2);
+  --primary-300: #a5b4fc;
+  --primary-400: #818cf8;
+  --primary-500: #6366f1;
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --primary-800: #3730a3;
+  --primary-900: #312e81;
   
   /* Neutral Colors */
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
+  --gray-50: #18181b;
+  --gray-100: #27272a;
+  --gray-200: #3f3f46;
+  --gray-300: #52525b;
+  --gray-400: #71717a;
+  --gray-500: #a1a1aa;
+  --gray-600: #d4d4d8;
+  --gray-700: #e4e4e7;
+  --gray-800: #f4f4f5;
+  --gray-900: #fafafa;
   
   /* Semantic Colors */
-  --success-50: #f0fdf4;
+  --success: #10b981;
+  --success-50: rgba(16, 185, 129, 0.1);
   --success-500: #10b981;
-  --success-700: #047857;
+  --success-700: #059669;
   
-  --warning-50: #fffbeb;
+  --warning: #f59e0b;
+  --warning-50: rgba(245, 158, 11, 0.1);
   --warning-500: #f59e0b;
-  --warning-700: #b45309;
+  --warning-700: #d97706;
   
-  --danger-50: #fef2f2;
+  --danger: #ef4444;
+  --danger-50: rgba(239, 68, 68, 0.1);
   --danger-500: #ef4444;
-  --danger-700: #b91c1c;
+  --danger-700: #dc2626;
   
-  --info-50: #eff6ff;
-  --info-500: #3b82f6;
-  --info-700: #1d4ed8;
+  --info: #6366f1;
+  --info-50: rgba(99, 102, 241, 0.1);
+  --info-500: #6366f1;
+  --info-700: #4f46e5;
+  
+  /* Glow Effects */
+  --glow-primary: 0 0 20px rgba(99, 102, 241, 0.3);
+  --glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+  --glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
+  --glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);
   
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
   
   /* Border Radius */
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
   --radius: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --radius-full: 9999px;
   
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Font */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }

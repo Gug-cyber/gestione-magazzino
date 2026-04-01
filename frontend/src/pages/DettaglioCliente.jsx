@@ -1,19 +1,79 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { clientiAPI } from '../api/client'
-
-const primaryColor = '#1a237e'
+import '../styles/shared.css'
 
 const STATO_COLORS = {
-  bozza: { bg: '#f5f5f5', color: '#757575' },
-  confermato: { bg: '#e3f2fd', color: '#1565c0' },
-  spedito: { bg: '#fff3e0', color: '#e65100' },
-  completato: { bg: '#e8f5e9', color: '#2e7d32' },
-  annullato: { bg: '#ffebee', color: '#c62828' },
+  bozza: { bg: 'rgba(148, 163, 184, 0.15)', color: 'var(--text-secondary)' },
+  confermato: { bg: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)' },
+  spedito: { bg: 'rgba(245, 158, 11, 0.15)', color: 'var(--warning)' },
+  completato: { bg: 'rgba(16, 185, 129, 0.15)', color: 'var(--success)' },
+  annullato: { bg: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)' },
 }
 
+// Icons
+const ArrowLeftIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+)
+
+const UserIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+)
+
+const EditIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+  </svg>
+)
+
+const BuildingIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+    <path d="M9 22v-4h6v4"/>
+    <path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>
+  </svg>
+)
+
+const ClipboardIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+  </svg>
+)
+
+const ShoppingCartIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="21" r="1"/>
+    <circle cx="20" cy="21" r="1"/>
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+  </svg>
+)
+
+const FileTextIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+  </svg>
+)
+
 function formatDate(dateStr) {
-  if (!dateStr) return '—'
+  if (!dateStr) return '-'
   const parts = dateStr.split('-')
   if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
   return dateStr
@@ -21,31 +81,6 @@ function formatDate(dateStr) {
 
 function formatCurrency(amount) {
   return Number(amount).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
-}
-
-const cardStyle = {
-  backgroundColor: '#fff',
-  borderRadius: '8px',
-  padding: '20px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-}
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '0.85rem',
-  color: '#555',
-  marginBottom: '6px',
-  fontWeight: 500,
-}
-
-const inputStyle = {
-  width: '100%',
-  padding: '8px 12px',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-  fontSize: '0.9rem',
-  boxSizing: 'border-box',
-  outline: 'none',
 }
 
 const emptyForm = {
@@ -127,11 +162,11 @@ export default function DettaglioCliente() {
   const handleEditSubmit = async (e) => {
     e.preventDefault()
     if (!form.nome.trim()) {
-      setFormError('Il nome è obbligatorio')
+      setFormError('Il nome e obbligatorio')
       return
     }
     if (form.tipo === 'azienda' && !form.partita_iva.trim()) {
-      setFormError('La partita IVA è obbligatoria per le aziende')
+      setFormError('La partita IVA e obbligatoria per le aziende')
       return
     }
     setSubmitting(true)
@@ -148,7 +183,7 @@ export default function DettaglioCliente() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Sei sicuro di voler eliminare questo cliente? L\'operazione non può essere annullata.')) return
+    if (!window.confirm('Sei sicuro di voler eliminare questo cliente? L\'operazione non puo essere annullata.')) return
     try {
       await clientiAPI.delete(id)
       navigate('/clienti')
@@ -158,18 +193,15 @@ export default function DettaglioCliente() {
   }
 
   if (loading) {
-    return <div style={{ padding: '48px', textAlign: 'center', color: '#888', fontSize: '1.1rem' }}>Caricamento...</div>
+    return <div className="loading-state">Caricamento...</div>
   }
 
   if (error || !scheda) {
     return (
       <div style={{ padding: '48px', textAlign: 'center' }}>
-        <p style={{ color: '#c62828', fontSize: '1.1rem' }}>{error || 'Dati non disponibili'}</p>
-        <button
-          onClick={() => navigate('/clienti')}
-          style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          ← Torna ai Clienti
+        <p style={{ color: 'var(--danger)', fontSize: '1.1rem', marginBottom: '16px' }}>{error || 'Dati non disponibili'}</p>
+        <button onClick={() => navigate('/clienti')} className="btn-primary">
+          <ArrowLeftIcon /> Torna ai Clienti
         </button>
       </div>
     )
@@ -180,125 +212,129 @@ export default function DettaglioCliente() {
   const fatture = scheda.fatture || []
 
   return (
-    <div>
+    <div className="page-container">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => navigate('/clienti')}
-          style={{ backgroundColor: '#fff', border: `1px solid ${primaryColor}`, color: primaryColor, borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          ← Torna ai Clienti
+        <button onClick={() => navigate('/clienti')} className="btn-back">
+          <ArrowLeftIcon /> Torna ai Clienti
         </button>
-        <h1 style={{ color: primaryColor, margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>
-          👤 {nomeCompleto}
-        </h1>
-        <span style={{
-          backgroundColor: scheda.tipo === 'azienda' ? '#ede7f6' : '#e3f2fd',
-          color: scheda.tipo === 'azienda' ? '#6a1b9a' : '#1565c0',
-          borderRadius: '12px',
-          padding: '4px 12px',
-          fontSize: '0.82rem',
-          fontWeight: 'bold',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+          <div className="page-icon">
+            <UserIcon />
+          </div>
+          <h1 className="page-title" style={{ margin: 0 }}>{nomeCompleto}</h1>
+        </div>
+        <span className="badge" style={{
+          background: scheda.tipo === 'azienda' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+          color: scheda.tipo === 'azienda' ? '#8b5cf6' : 'var(--primary)',
         }}>
-          {scheda.tipo === 'azienda' ? '🏢 Azienda' : '👤 Privato'}
+          {scheda.tipo === 'azienda' ? <><BuildingIcon /> Azienda</> : <><UserIcon /> Privato</>}
         </span>
-        <button
-          onClick={handleEditOpen}
-          style={{ backgroundColor: '#fff8e1', color: '#e65100', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          ✏️ Modifica
+        <button onClick={handleEditOpen} className="btn-secondary">
+          <EditIcon /> Modifica
         </button>
-        <button
-          onClick={handleDelete}
-          style={{ backgroundColor: '#ffebee', color: '#c62828', border: 'none', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          🗑️ Elimina
+        <button onClick={handleDelete} className="btn-danger">
+          <TrashIcon /> Elimina
         </button>
       </div>
 
       {/* Dati anagrafici + Statistiche */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px' }}>
         {/* Dati anagrafici */}
-        <div style={cardStyle}>
-          <h3 style={{ color: primaryColor, marginTop: 0 }}>📋 Dati Anagrafici</h3>
+        <div className="card">
+          <h3 className="section-title"><ClipboardIcon /> Dati Anagrafici</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
               {[
                 ['Email', scheda.email],
                 ['Telefono', scheda.telefono],
                 ['Indirizzo', scheda.indirizzo],
-                ['Città', scheda.citta],
+                ['Citta', scheda.citta],
                 ['CAP', scheda.cap],
                 ['Provincia', scheda.provincia],
                 ['Partita IVA', scheda.partita_iva],
                 ['Codice Fiscale', scheda.codice_fiscale],
               ].map(([label, value]) => value ? (
                 <tr key={label}>
-                  <td style={{ padding: '6px 0', color: '#666', width: '140px', fontWeight: 500 }}>{label}:</td>
-                  <td style={{ padding: '6px 0', color: '#333' }}>{value}</td>
+                  <td style={{ padding: '6px 0', color: 'var(--text-muted)', width: '140px', fontWeight: 500 }}>{label}:</td>
+                  <td style={{ padding: '6px 0', color: 'var(--text-primary)' }}>{value}</td>
                 </tr>
               ) : null)}
             </tbody>
           </table>
           {scheda.note && (
-            <div style={{ marginTop: '12px', color: '#555', fontSize: '0.9rem' }}>
+            <div style={{ marginTop: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
               <strong>Note:</strong> {scheda.note}
             </div>
           )}
         </div>
 
         {/* Statistiche */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {[
-            { label: '📋 Fatture', value: scheda.num_fatture || 0, color: '#e3f2fd', textColor: '#1565c0' },
-            { label: '💰 Totale Speso', value: formatCurrency(scheda.totale_speso || 0), color: '#e8f5e9', textColor: '#2e7d32' },
-            { label: '🛒 Ordini', value: scheda.num_ordini || 0, color: '#fff8e1', textColor: '#e65100' },
-            { label: '✅ Completati', value: scheda.num_ordini_completati || 0, color: '#f3e5f5', textColor: '#6a1b9a' },
-          ].map(({ label, value, color, textColor }) => (
-            <div key={label} style={{ backgroundColor: color, borderRadius: '8px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div style={{ fontSize: '0.85rem', color: '#555', marginBottom: '4px' }}>{label}</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: textColor }}>{value}</div>
+        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+          <div className="card stat-card-blue">
+            <div className="stat-icon"><FileTextIcon /></div>
+            <div className="stat-content">
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>{scheda.num_fatture || 0}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fatture</span>
             </div>
-          ))}
+          </div>
+          <div className="card stat-card-green">
+            <div className="stat-icon"><ShoppingCartIcon /></div>
+            <div className="stat-content">
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--success)' }}>{formatCurrency(scheda.totale_speso || 0)}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Totale Speso</span>
+            </div>
+          </div>
+          <div className="card stat-card-amber">
+            <div className="stat-icon"><ShoppingCartIcon /></div>
+            <div className="stat-content">
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--warning)' }}>{scheda.num_ordini || 0}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ordini</span>
+            </div>
+          </div>
+          <div className="card stat-card-purple">
+            <div className="stat-icon"><ShoppingCartIcon /></div>
+            <div className="stat-content">
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{scheda.num_ordini_completati || 0}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Completati</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Storico ordini */}
-      <div style={{ ...cardStyle, padding: 0, marginBottom: '24px', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
-          <h3 style={{ color: primaryColor, margin: 0 }}>🛒 Storico Ordini</h3>
+      <div className="card" style={{ padding: 0, marginBottom: '24px' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ShoppingCartIcon />
+          <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Storico Ordini</h3>
         </div>
         {ordini.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Nessun ordine registrato</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Nessun ordine registrato</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
-                <tr style={{ backgroundColor: '#f5f5f5' }}>
-                  {['N° Ordine', 'Data', 'Stato', 'Totale'].map((h) => (
-                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem' }}>{h}</th>
-                  ))}
+                <tr>
+                  <th>N. Ordine</th>
+                  <th>Data</th>
+                  <th>Stato</th>
+                  <th>Totale</th>
                 </tr>
               </thead>
               <tbody>
                 {ordini.map((o) => (
-                  <tr key={o.id} style={{ borderTop: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '12px 16px' }}><code>{o.numero_ordine}</code></td>
-                    <td style={{ padding: '12px 16px', color: '#555' }}>{formatDate(o.data_ordine)}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        backgroundColor: STATO_COLORS[o.stato]?.bg || '#eee',
-                        color: STATO_COLORS[o.stato]?.color || '#333',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        textTransform: 'capitalize',
+                  <tr key={o.id}>
+                    <td><code style={{ color: 'var(--primary)' }}>{o.numero_ordine}</code></td>
+                    <td>{formatDate(o.data_ordine)}</td>
+                    <td>
+                      <span className="badge" style={{
+                        background: STATO_COLORS[o.stato]?.bg || 'var(--bg-tertiary)',
+                        color: STATO_COLORS[o.stato]?.color || 'var(--text-secondary)',
                       }}>
                         {o.stato}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#2e7d32' }}>{formatCurrency(o.totale)}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--success)' }}>{formatCurrency(o.totale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -308,38 +344,36 @@ export default function DettaglioCliente() {
       </div>
 
       {/* Storico fatture */}
-      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
-          <h3 style={{ color: primaryColor, margin: 0 }}>📄 Storico Fatture</h3>
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FileTextIcon />
+          <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Storico Fatture</h3>
         </div>
         {fatture.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Nessuna fattura registrata</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Nessuna fattura registrata</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
-                <tr style={{ backgroundColor: '#f5f5f5' }}>
-                  {['N° Fattura', 'Data', 'Importo', 'Pagata'].map((h) => (
-                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#555', fontWeight: 600, fontSize: '0.85rem' }}>{h}</th>
-                  ))}
+                <tr>
+                  <th>N. Fattura</th>
+                  <th>Data</th>
+                  <th>Importo</th>
+                  <th>Pagata</th>
                 </tr>
               </thead>
               <tbody>
                 {fatture.map((f) => (
-                  <tr key={f.id} style={{ borderTop: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '12px 16px' }}><code>{f.numero_fattura}</code></td>
-                    <td style={{ padding: '12px 16px', color: '#555' }}>{formatDate(f.data_fattura)}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#2e7d32' }}>{formatCurrency(f.importo)}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        backgroundColor: f.pagata ? '#e8f5e9' : '#ffebee',
-                        color: f.pagata ? '#2e7d32' : '#c62828',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
+                  <tr key={f.id}>
+                    <td><code style={{ color: 'var(--primary)' }}>{f.numero_fattura}</code></td>
+                    <td>{formatDate(f.data_fattura)}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--success)' }}>{formatCurrency(f.importo)}</td>
+                    <td>
+                      <span className="badge" style={{
+                        background: f.pagata ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: f.pagata ? 'var(--success)' : 'var(--danger)',
                       }}>
-                        {f.pagata ? '✅ Sì' : '❌ No'}
+                        {f.pagata ? 'Si' : 'No'}
                       </span>
                     </td>
                   </tr>
@@ -352,96 +386,88 @@ export default function DettaglioCliente() {
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+        <div className="modal-backdrop">
+          <div className="modal-content modal-lg">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: primaryColor, margin: 0 }}>✏️ Modifica Cliente</h2>
-              <button onClick={handleEditClose} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#999' }}>✕</button>
+              <h2 style={{ color: 'var(--primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <EditIcon /> Modifica Cliente
+              </h2>
+              <button onClick={handleEditClose} className="btn-icon btn-icon-gray">X</button>
             </div>
 
-            {formError && (
-              <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px 16px', borderRadius: '6px', marginBottom: '16px', fontSize: '0.9rem' }}>
-                {formError}
-              </div>
-            )}
+            {formError && <div className="error-banner" style={{ marginBottom: '16px' }}>{formError}</div>}
 
             <form onSubmit={handleEditSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Tipo *</label>
-                  <select name="tipo" value={form.tipo} onChange={handleFormChange} style={inputStyle}>
-                    <option value="privato">👤 Privato</option>
-                    <option value="azienda">🏢 Azienda</option>
+              <div className="form-grid">
+                <div className="form-full">
+                  <label className="form-label">Tipo *</label>
+                  <select name="tipo" value={form.tipo} onChange={handleFormChange} className="form-input">
+                    <option value="privato">Privato</option>
+                    <option value="azienda">Azienda</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={labelStyle}>{form.tipo === 'azienda' ? 'Ragione Sociale *' : 'Nome *'}</label>
-                  <input name="nome" value={form.nome} onChange={handleFormChange} required style={inputStyle} placeholder={form.tipo === 'azienda' ? 'Ragione sociale' : 'Nome'} />
+                  <label className="form-label">{form.tipo === 'azienda' ? 'Ragione Sociale *' : 'Nome *'}</label>
+                  <input name="nome" value={form.nome} onChange={handleFormChange} required className="form-input" placeholder={form.tipo === 'azienda' ? 'Ragione sociale' : 'Nome'} />
                 </div>
 
                 {form.tipo === 'privato' && (
                   <div>
-                    <label style={labelStyle}>Cognome</label>
-                    <input name="cognome" value={form.cognome} onChange={handleFormChange} style={inputStyle} placeholder="Cognome" />
+                    <label className="form-label">Cognome</label>
+                    <input name="cognome" value={form.cognome} onChange={handleFormChange} className="form-input" placeholder="Cognome" />
                   </div>
                 )}
 
                 <div>
-                  <label style={labelStyle}>Email</label>
-                  <input name="email" type="email" value={form.email} onChange={handleFormChange} style={inputStyle} placeholder="email@esempio.it" />
+                  <label className="form-label">Email</label>
+                  <input name="email" type="email" value={form.email} onChange={handleFormChange} className="form-input" placeholder="email@esempio.it" />
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Telefono</label>
-                  <input name="telefono" value={form.telefono} onChange={handleFormChange} style={inputStyle} placeholder="+39 000 0000000" />
+                  <label className="form-label">Telefono</label>
+                  <input name="telefono" value={form.telefono} onChange={handleFormChange} className="form-input" placeholder="+39 000 0000000" />
                 </div>
 
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Indirizzo</label>
-                  <input name="indirizzo" value={form.indirizzo} onChange={handleFormChange} style={inputStyle} placeholder="Via Roma, 1" />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Città</label>
-                  <input name="citta" value={form.citta} onChange={handleFormChange} style={inputStyle} placeholder="Milano" />
+                <div className="form-full">
+                  <label className="form-label">Indirizzo</label>
+                  <input name="indirizzo" value={form.indirizzo} onChange={handleFormChange} className="form-input" placeholder="Via Roma, 1" />
                 </div>
 
                 <div>
-                  <label style={labelStyle}>CAP</label>
-                  <input name="cap" value={form.cap} onChange={handleFormChange} style={inputStyle} placeholder="20100" maxLength={5} />
+                  <label className="form-label">Citta</label>
+                  <input name="citta" value={form.citta} onChange={handleFormChange} className="form-input" placeholder="Milano" />
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Provincia</label>
-                  <input name="provincia" value={form.provincia} onChange={handleFormChange} style={inputStyle} placeholder="MI" maxLength={2} />
+                  <label className="form-label">CAP</label>
+                  <input name="cap" value={form.cap} onChange={handleFormChange} className="form-input" placeholder="20100" maxLength={5} />
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Partita IVA{form.tipo === 'azienda' ? ' *' : ''}</label>
-                  <input name="partita_iva" value={form.partita_iva} onChange={handleFormChange} required={form.tipo === 'azienda'} style={inputStyle} placeholder="IT12345678901" />
+                  <label className="form-label">Provincia</label>
+                  <input name="provincia" value={form.provincia} onChange={handleFormChange} className="form-input" placeholder="MI" maxLength={2} />
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Codice Fiscale</label>
-                  <input name="codice_fiscale" value={form.codice_fiscale} onChange={handleFormChange} style={inputStyle} placeholder="RSSMRA80A01H501U" />
+                  <label className="form-label">Partita IVA{form.tipo === 'azienda' ? ' *' : ''}</label>
+                  <input name="partita_iva" value={form.partita_iva} onChange={handleFormChange} required={form.tipo === 'azienda'} className="form-input" placeholder="IT12345678901" />
                 </div>
 
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Note</label>
-                  <textarea name="note" value={form.note} onChange={handleFormChange} style={{ ...inputStyle, height: '80px', resize: 'vertical' }} placeholder="Note aggiuntive..." />
+                <div>
+                  <label className="form-label">Codice Fiscale</label>
+                  <input name="codice_fiscale" value={form.codice_fiscale} onChange={handleFormChange} className="form-input" placeholder="RSSMRA80A01H501U" />
+                </div>
+
+                <div className="form-full">
+                  <label className="form-label">Note</label>
+                  <textarea name="note" value={form.note} onChange={handleFormChange} className="form-input form-textarea" placeholder="Note aggiuntive..." />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                <button type="button" onClick={handleEditClose} style={{ backgroundColor: '#fff', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 24px', cursor: 'pointer' }}>
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ backgroundColor: primaryColor, color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: submitting ? 0.7 : 1 }}
-                >
+              <div className="modal-actions">
+                <button type="button" onClick={handleEditClose} className="btn-secondary">Annulla</button>
+                <button type="submit" disabled={submitting} className="btn-primary">
                   {submitting ? 'Salvataggio...' : 'Aggiorna'}
                 </button>
               </div>
