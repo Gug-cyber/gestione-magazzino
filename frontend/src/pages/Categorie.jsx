@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { categorieAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
+import '../styles/shared.css'
 
 const emptyForm = { nome: '' }
 
@@ -58,65 +59,121 @@ function Categorie() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ color: '#1a237e' }}>🏷️ Categorie</h1>
-        <button onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }} style={btnStyle('#1a237e')}>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
+          Categorie
+        </h1>
+        <button 
+          onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }} 
+          className={showForm ? "btn btn-secondary" : "btn btn-primary"}
+        >
           {showForm ? 'Annulla' : '+ Aggiungi Categoria'}
         </button>
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={formStyle}>
-          <h3>{editing ? 'Modifica Categoria' : 'Nuova Categoria'}</h3>
-          <div style={gridStyle}>
-            <label style={labelStyle}>
-              <span>Nome *</span>
-              <input type="text" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} style={inputStyle} />
-            </label>
-          </div>
-          <button type="submit" style={btnStyle('#2e7d32')}>{editing ? 'Salva Modifiche' : 'Crea Categoria'}</button>
-        </form>
+        <div className="card mb-6">
+          <h3 style={{ color: 'var(--text-primary)', marginTop: 0, marginBottom: '1rem' }}>
+            {editing ? 'Modifica Categoria' : 'Nuova Categoria'}
+          </h3>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">Nome *</label>
+              <input 
+                type="text" 
+                required 
+                value={form.nome} 
+                onChange={(e) => setForm({ ...form, nome: e.target.value })} 
+                className="form-input"
+                placeholder="Nome categoria"
+              />
+            </div>
+            <button type="submit" className="btn btn-success">
+              {editing ? 'Salva Modifiche' : 'Crea Categoria'}
+            </button>
+          </form>
+        </div>
       )}
 
       {isMobile ? (
         <div>
           {categorie.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessuna categoria trovata</div>
+            <div className="empty-state">
+              <div className="empty-state-text">Nessuna categoria trovata</div>
+            </div>
           ) : categorie.map((c) => (
-            <div key={c.id} style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 700, color: '#1a237e' }}>🏷️ {c.nome}</div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => handleEdit(c)} style={btnSmall('#1565c0')}>✏️</button>
-                  <button onClick={() => handleDelete(c.id)} style={btnSmall('#c62828')}>🗑️</button>
+            <div key={c.id} className="mobile-card">
+              <div className="mobile-card-header">
+                <div className="mobile-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginRight: '0.5rem', display: 'inline' }}>
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                  </svg>
+                  {c.nome}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleEdit(c)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button onClick={() => handleDelete(c.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-container">
+          <table className="table">
             <thead>
-              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-                {['ID', 'Nome', 'Azioni'].map(h => (
-                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
-                ))}
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {categorie.length === 0 ? (
-                <tr><td colSpan={3} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessuna categoria trovata</td></tr>
+                <tr>
+                  <td colSpan={3}>
+                    <div className="empty-state">
+                      <div className="empty-state-text">Nessuna categoria trovata</div>
+                    </div>
+                  </td>
+                </tr>
               ) : categorie.map((c) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={tdStyle}>{c.id}</td>
-                  <td style={tdStyle}>{c.nome}</td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleEdit(c)} style={btnSmall('#1565c0')}>✏️</button>
-                    <button onClick={() => handleDelete(c.id)} style={btnSmall('#c62828')}>🗑️</button>
+                <tr key={c.id}>
+                  <td style={{ color: 'var(--text-muted)', width: '80px' }}>{c.id}</td>
+                  <td style={{ fontWeight: 500 }}>{c.nome}</td>
+                  <td style={{ width: '120px' }}>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(c)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button onClick={() => handleDelete(c.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -127,15 +184,5 @@ function Categorie() {
     </div>
   )
 }
-
-const thStyle = { textAlign: 'left', padding: '11px 16px', fontWeight: '700', fontSize: '12px', color: '#555770', background: '#f5f7ff', borderBottom: '2px solid #e0e4ef', whiteSpace: 'nowrap' }
-const tdStyle = { padding: '10px 16px', color: '#333', verticalAlign: 'middle' }
-const btnStyle = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'filter 0.15s' })
-const btnSmall = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '28px', padding: '0 10px', cursor: 'pointer', fontSize: '13px', marginRight: '4px' })
-const inputStyle = { height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.18s, box-shadow 0.18s' }
-const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', color: '#555' }
-const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
 
 export default Categorie

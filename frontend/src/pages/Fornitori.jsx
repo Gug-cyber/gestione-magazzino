@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { fornitoriAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
+import '../styles/shared.css'
 
 const emptyForm = { nome: '', email: '', telefono: '', indirizzo: '', partita_iva: '', note: '' }
 
@@ -66,90 +67,166 @@ function Fornitori() {
   ]
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ color: '#1a237e' }}>🏢 Fornitori</h1>
-        <button onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }} style={btnStyle('#1a237e')}>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          Fornitori
+        </h1>
+        <button 
+          onClick={() => { setShowForm(!showForm); setEditing(null); setForm(emptyForm) }} 
+          className={showForm ? "btn btn-secondary" : "btn btn-primary"}
+        >
           {showForm ? 'Annulla' : '+ Aggiungi Fornitore'}
         </button>
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={formStyle}>
-          <h3>{editing ? 'Modifica Fornitore' : 'Nuovo Fornitore'}</h3>
-          <div style={gridStyle}>
-            {fields.map(({ key, label, required }) => (
-              <label key={key} style={labelStyle}>
-                <span>{label}</span>
-                <input
-                  type="text"
-                  required={required}
-                  value={form[key]}
-                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  style={inputStyle}
-                />
-              </label>
-            ))}
-          </div>
-          <label style={{ ...labelStyle, marginBottom: '16px' }}>
-            <span>Note</span>
-            <textarea
-              value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              rows={3}
-              style={{ ...inputStyle, resize: 'vertical' }}
-            />
-          </label>
-          <button type="submit" style={btnStyle('#2e7d32')}>{editing ? 'Salva Modifiche' : 'Crea Fornitore'}</button>
-        </form>
+        <div className="card mb-6">
+          <h3 style={{ color: 'var(--text-primary)', marginTop: 0, marginBottom: '1rem' }}>
+            {editing ? 'Modifica Fornitore' : 'Nuovo Fornitore'}
+          </h3>
+          <form onSubmit={handleSubmit}>
+            <div className="grid-2 mb-4">
+              {fields.map(({ key, label, required }) => (
+                <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">{label}</label>
+                  <input
+                    type="text"
+                    required={required}
+                    value={form[key]}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    className="form-input"
+                    placeholder={label.replace(' *', '')}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Note</label>
+              <textarea
+                value={form.note}
+                onChange={(e) => setForm({ ...form, note: e.target.value })}
+                rows={3}
+                className="form-textarea"
+                placeholder="Note aggiuntive..."
+              />
+            </div>
+            <button type="submit" className="btn btn-success">
+              {editing ? 'Salva Modifiche' : 'Crea Fornitore'}
+            </button>
+          </form>
+        </div>
       )}
 
       {isMobile ? (
         <div>
           {fornitori.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</div>
+            <div className="empty-state">
+              <div className="empty-state-text">Nessun fornitore trovato</div>
+            </div>
           ) : fornitori.map((f) => (
-            <div key={f.id} style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a237e' }}>🏢 {f.nome}</div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => handleEdit(f)} style={btnSmall('#1565c0')}>✏️</button>
-                  <button onClick={() => handleDelete(f.id)} style={btnSmall('#c62828')}>🗑️</button>
+            <div key={f.id} className="mobile-card">
+              <div className="mobile-card-header">
+                <div className="mobile-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginRight: '0.5rem', display: 'inline' }}>
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                  {f.nome}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleEdit(f)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button onClick={() => handleDelete(f.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
-              {f.email && <div style={cardRowStyle}><span style={cardLabelStyle}>📧 Email</span><span style={cardValueStyle}>{f.email}</span></div>}
-              {f.telefono && <div style={cardRowStyle}><span style={cardLabelStyle}>📞 Tel</span><span style={cardValueStyle}>{f.telefono}</span></div>}
-              {f.partita_iva && <div style={cardRowStyle}><span style={cardLabelStyle}>P.IVA</span><span style={cardValueStyle}>{f.partita_iva}</span></div>}
-              {f.note && <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>{f.note}</div>}
+              {f.email && (
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Email</span>
+                  <span className="mobile-card-value">{f.email}</span>
+                </div>
+              )}
+              {f.telefono && (
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Telefono</span>
+                  <span className="mobile-card-value">{f.telefono}</span>
+                </div>
+              )}
+              {f.partita_iva && (
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">P.IVA</span>
+                  <span className="mobile-card-value">{f.partita_iva}</span>
+                </div>
+              )}
+              {f.note && (
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{f.note}</div>
+              )}
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-container">
+          <table className="table">
             <thead>
-              <tr style={{ backgroundColor: '#1a237e', color: 'white' }}>
-                {['ID', 'Nome', 'Email', 'Telefono', 'Partita IVA', 'Note', 'Azioni'].map(h => (
-                  <th key={h} style={{ ...thStyle, color: 'white' }}>{h}</th>
-                ))}
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Telefono</th>
+                <th>Partita IVA</th>
+                <th>Note</th>
+                <th>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {fornitori.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>Nessun fornitore trovato</td></tr>
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty-state">
+                      <div className="empty-state-text">Nessun fornitore trovato</div>
+                    </div>
+                  </td>
+                </tr>
               ) : fornitori.map((f) => (
-                <tr key={f.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={tdStyle}>{f.id}</td>
-                  <td style={tdStyle}>{f.nome}</td>
-                  <td style={tdStyle}>{f.email || '-'}</td>
-                  <td style={tdStyle}>{f.telefono || '-'}</td>
-                  <td style={tdStyle}>{f.partita_iva || '-'}</td>
-                  <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.note || ''}>{f.note || '-'}</td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleEdit(f)} style={btnSmall('#1565c0')}>✏️</button>
-                    <button onClick={() => handleDelete(f.id)} style={btnSmall('#c62828')}>🗑️</button>
+                <tr key={f.id}>
+                  <td style={{ color: 'var(--text-muted)', width: '60px' }}>{f.id}</td>
+                  <td style={{ fontWeight: 500 }}>{f.nome}</td>
+                  <td>{f.email || '-'}</td>
+                  <td>{f.telefono || '-'}</td>
+                  <td>{f.partita_iva || '-'}</td>
+                  <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.note || ''}>
+                    {f.note || '-'}
+                  </td>
+                  <td style={{ width: '100px' }}>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(f)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button onClick={() => handleDelete(f.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -160,18 +237,5 @@ function Fornitori() {
     </div>
   )
 }
-
-const thStyle = { textAlign: 'left', padding: '11px 16px', fontWeight: '700', fontSize: '12px', color: '#555770', background: '#f5f7ff', borderBottom: '2px solid #e0e4ef', whiteSpace: 'nowrap' }
-const tdStyle = { padding: '10px 16px', color: '#333', verticalAlign: 'middle' }
-const btnStyle = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'filter 0.15s' })
-const btnSmall = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '28px', padding: '0 10px', cursor: 'pointer', fontSize: '13px', marginRight: '4px' })
-const inputStyle = { height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.18s, box-shadow 0.18s' }
-const formStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '24px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', color: '#555' }
-const cardStyle = { backgroundColor: 'white', borderRadius: '8px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e8eaf6' }
-const cardRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.9rem' }
-const cardLabelStyle = { color: '#888', fontWeight: 500, marginRight: '8px' }
-const cardValueStyle = { color: '#333', fontWeight: 600, textAlign: 'right' }
 
 export default Fornitori
