@@ -433,6 +433,78 @@
   white-space: nowrap;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE - MOBILE
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* Header: stack title + toolbar vertically */
+  .header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Toolbar: stack items vertically */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
+  /* Search bar: input takes full width, search icon button stays compact */
+  .searchBar {
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+
+  .searchInput {
+    flex: 1;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  /* All action buttons in toolbar: full width */
+  .addBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Filters: 2-column grid (label + select per row) */
+  .filtersRow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .filterGroup {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filterLabel {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .filterSelect {
+    width: 100%;
+    height: 44px;
+    font-size: 16px; /* prevent iOS zoom */
+  }
+
+  .resetFiltersBtn {
+    height: 44px;
+    width: 100%;
+  }
+
+  .filterCount {
+    text-align: center;
+  }
+}
+
 /* Column filter dropdown */
 .columnDropdown {
   position: absolute;
