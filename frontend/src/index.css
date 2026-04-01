@@ -14,17 +14,17 @@
   --color-secondary:      #06b6d4;   /* cyan-500 accent */
 
   /* ── Surface Colors (Dark Mode) ──────────────────────────────────────── */
-  --color-bg:             #0a0a0f;   /* Deep dark background */
-  --color-bg-elevated:    #12121a;   /* Slightly elevated surfaces */
-  --color-surface:        #16161f;   /* Card backgrounds */
-  --color-surface-hover:  #1c1c28;   /* Hover state for cards */
-  --color-surface-active: #22222e;   /* Active/pressed state */
+  --color-bg:             #09090b;   /* Deep dark background - zinc-950 */
+  --color-bg-elevated:    #18181b;   /* Slightly elevated surfaces - zinc-900 */
+  --color-surface:        #1f1f23;   /* Card backgrounds */
+  --color-surface-hover:  #27272a;   /* Hover state for cards - zinc-800 */
+  --color-surface-active: #3f3f46;   /* Active/pressed state - zinc-700 */
 
   /* ── Border Colors ───────────────────────────────────────────────────── */
-  --color-border:         rgba(255, 255, 255, 0.06);
-  --color-border-subtle:  rgba(255, 255, 255, 0.04);
+  --color-border:         rgba(255, 255, 255, 0.1);
+  --color-border-subtle:  rgba(255, 255, 255, 0.06);
   --color-border-focus:   #6366f1;
-  --color-border-hover:   rgba(255, 255, 255, 0.12);
+  --color-border-hover:   rgba(255, 255, 255, 0.18);
 
   /* ── Text Colors ─────────────────────────────────────────────────────── */
   --color-text:           #f1f5f9;   /* Primary text - slate-100 */
@@ -93,6 +93,31 @@
   --icon-size-sm: 14px;
   --icon-size-md: 16px;
   --icon-size-lg: 18px;
+
+  /* ── Aliases for shared.css compatibility ────────────────────────────── */
+  --bg-primary: var(--color-bg);
+  --bg-secondary: var(--color-bg-elevated);
+  --bg-tertiary: var(--color-surface);
+  --bg-hover: var(--color-surface-hover);
+  
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  
+  --border-primary: var(--color-border);
+  --border-secondary: var(--color-border-hover);
+  
+  --primary: var(--color-primary);
+  --primary-hover: var(--color-primary-dark);
+  --primary-light: var(--color-primary-light);
+  
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+  --info: var(--color-info);
+  
+  --glow-primary: 0 0 20px rgba(99, 102, 241, 0.25);
+  --glow-success: 0 0 20px rgba(34, 197, 94, 0.25);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
