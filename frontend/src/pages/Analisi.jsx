@@ -578,35 +578,76 @@ function TabStorico() {
         </svg>
         Storico Annuale
       </h3>
-      <div className="table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Anno</th>
-              <th>Costi</th>
-              <th>Ricavi</th>
-              <th>Spese</th>
-              <th>Margine</th>
-            </tr>
-          </thead>
-          <tbody>
-            {anni.map((a) => {
-              const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
-              return (
-                <tr key={a.anno}>
-                  <td className="text-bold">{a.anno}</td>
-                  <td style={{ color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</td>
-                  <td style={{ color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</td>
-                  <td style={{ color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</td>
-                  <td style={{ color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
-                    €{margine.toFixed(2)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      
+      {isMobile ? (
+        /* Mobile: Cards */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {anni.map((a) => {
+            const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
+            return (
+              <div key={a.anno} style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: '10px',
+                padding: '16px',
+              }}>
+                <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--primary)', marginBottom: '12px' }}>
+                  {a.anno}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.875rem' }}>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Ricavi</div>
+                    <div style={{ fontWeight: 600, color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Costi</div>
+                    <div style={{ fontWeight: 600, color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Spese</div>
+                    <div style={{ fontWeight: 600, color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Margine</div>
+                    <div style={{ fontWeight: 700, color: margine >= 0 ? 'var(--success)' : 'var(--danger)' }}>€{margine.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        /* Desktop: Table */
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Anno</th>
+                <th>Costi</th>
+                <th>Ricavi</th>
+                <th>Spese</th>
+                <th>Margine</th>
+              </tr>
+            </thead>
+            <tbody>
+              {anni.map((a) => {
+                const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
+                return (
+                  <tr key={a.anno}>
+                    <td className="text-bold">{a.anno}</td>
+                    <td style={{ color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</td>
+                    <td style={{ color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</td>
+                    <td style={{ color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</td>
+                    <td style={{ color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
+                      €{margine.toFixed(2)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
