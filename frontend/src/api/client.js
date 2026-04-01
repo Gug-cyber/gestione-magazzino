@@ -183,8 +183,9 @@ export const ordiniAPI = {
   updateFull: (id, data) => client.put(`/api/ordini/${id}`, data),
   delete: (id) => client.delete(`/api/ordini/${id}`),
   updateTracking: (id, { corriere, tracking_number }) =>
-    client.patch(`/api/ordini/${id}/tracking`, null, {
-      params: { corriere, tracking_number },
+    client.patch(`/api/ordini/${id}/tracking`, {
+      corriere,
+      tracking_number,
     }),
   updateStato: (id, stato) => client.patch(`/api/ordini/${id}/stato`, { stato }),
 }
