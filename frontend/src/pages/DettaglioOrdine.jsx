@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ordiniAPI, fattureAPI } from '../api/client'
+import { ordiniAPI, fattureAPI, clientiAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_ORDINE_COLORS } from '../constants/colors'
 import { CORRIERI } from '../constants/corrieri'
@@ -12,6 +12,8 @@ const STATO_NEXT = {
   confermato: 'spedito',
   spedito: 'completato',
 }
+
+const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -54,6 +56,20 @@ const FileTextIcon = () => (
   </svg>
 )
 
+const PlusIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+)
+
+const XIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+)
+
 export default function DettaglioOrdine() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -64,6 +80,17 @@ export default function DettaglioOrdine() {
   const [trackingEdit, setTrackingEdit] = useState(false)
   const [trackingForm, setTrackingForm] = useState({ corriere: '', tracking_number: '' })
   const [trackingLoading, setTrackingLoading] = useState(false)
+  const [editModal, setEditModal] = useState(false)
+  const [editForm, setEditForm] = useState({ cliente_id: '', cliente_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [clienti, setClienti] = useState([])
+  const [prodotti, setProdotti] = useState([])
+
+  useEffect(() => {
+    clientiAPI.getAll().then(r => setClienti(r.data)).catch(err => console.error('Errore caricamento clienti:', err))
+    prodottiAPI.getAll({ limit: 200 }).then(r => setProdotti(r.data)).catch(err => console.error('Errore caricamento prodotti:', err))
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -112,6 +139,69 @@ export default function DettaglioOrdine() {
       navigate('/ordini')
     } catch (err) {
       alert(err?.response?.data?.detail || "Errore nell'eliminazione")
+    }
+  }
+
+  const openEditModal = () => {
+    setEditForm({
+      cliente_id: ordine.cliente_id ? String(ordine.cliente_id) : '',
+      cliente_nome: ordine.cliente_nome || '',
+      note: ordine.note || '',
+      corriere: ordine.corriere || '',
+      tracking_number: ordine.tracking_number || '',
+      righe: (ordine.righe || []).length > 0
+        ? ordine.righe.map(r => ({ prodotto_id: String(r.prodotto_id), quantita: r.quantita, prezzo_unitario: r.prezzo_unitario }))
+        : [{ ...emptyRiga }],
+    })
+    setEditError('')
+    setEditModal(true)
+  }
+
+  const handleEditRigaChange = (index, field, value) => {
+    setEditForm(prev => {
+      const righe = [...prev.righe]
+      righe[index] = { ...righe[index], [field]: value }
+      if (field === 'prodotto_id') {
+        const prod = prodotti.find(p => p.id === parseInt(value))
+        if (prod) righe[index].prezzo_unitario = prod.prezzo_vendita || 0
+      }
+      return { ...prev, righe }
+    })
+  }
+
+  const handleAddEditRiga = () => setEditForm(prev => ({ ...prev, righe: [...prev.righe, { ...emptyRiga }] }))
+
+  const handleRemoveEditRiga = (index) => setEditForm(prev => ({ ...prev, righe: prev.righe.filter((_, i) => i !== index) }))
+
+  const editTotale = editForm.righe.reduce((acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)), 0)
+
+  const handleEditSubmit = async () => {
+    setEditError('')
+    const righe = editForm.righe.filter(r => r.prodotto_id)
+    if (!righe.length) { setEditError('Aggiungi almeno un prodotto'); return }
+    setEditLoading(true)
+    try {
+      const payload = {
+        cliente_id: editForm.cliente_id ? parseInt(editForm.cliente_id) : null,
+        cliente_nome: editForm.cliente_nome || null,
+        note: editForm.note || null,
+        corriere: editForm.corriere || null,
+        tracking_number: editForm.tracking_number || null,
+        righe: righe.map(r => ({
+          prodotto_id: parseInt(r.prodotto_id),
+          quantita: parseInt(r.quantita),
+          prezzo_unitario: parseFloat(r.prezzo_unitario),
+        })),
+      }
+      await ordiniAPI.updateFull(ordine.id, payload)
+      const res = await ordiniAPI.getById(ordine.id)
+      setOrdine(res.data)
+      setEditModal(false)
+      alert('Ordine modificato con successo')
+    } catch (err) {
+      setEditError(err?.response?.data?.detail || "Errore nel salvataggio dell'ordine")
+    } finally {
+      setEditLoading(false)
     }
   }
 
@@ -169,7 +259,7 @@ export default function DettaglioOrdine() {
               <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
               {nextStato && (
                 <button onClick={() => handleChangeStato(nextStato)} className="btn-primary" style={{ fontSize: '13px', padding: '6px 14px' }}>
-                  Avanza → {nextStato}
+                  Avanza a {nextStato}
                 </button>
               )}
               {ordine.stato !== 'annullato' && ordine.stato !== 'completato' && (
@@ -185,6 +275,20 @@ export default function DettaglioOrdine() {
               <button onClick={handleDelete} className="btn-secondary" style={{ fontSize: '13px', padding: '6px 14px', color: 'var(--danger)' }}>
                 <TrashIcon /> Elimina
               </button>
+              {ordine.stato === 'bozza' ? (
+                <button onClick={openEditModal} className="btn-primary" style={{ fontSize: '13px', padding: '6px 14px' }}>
+                  <EditIcon /> Modifica Ordine
+                </button>
+              ) : (
+                <button
+                  disabled
+                  title={`Solo ordini in bozza possono essere modificati (stato attuale: ${ordine.stato})`}
+                  className="btn-secondary"
+                  style={{ fontSize: '13px', padding: '6px 14px', opacity: 0.5, cursor: 'not-allowed' }}
+                >
+                  <EditIcon /> Modifica Ordine
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -306,6 +410,161 @@ export default function DettaglioOrdine() {
                 className="btn-primary"
               >
                 {trackingLoading ? 'Salvataggio...' : 'Salva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {editModal && (
+        <div className="modal-backdrop" style={{ alignItems: 'flex-start', overflowY: 'auto', padding: '24px 0' }}>
+          <div className="modal-content" style={{ maxWidth: '700px' }}>
+            <h3 style={{ marginTop: 0, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <EditIcon /> Modifica Ordine - {ordine.numero_ordine}
+            </h3>
+
+            {editError && <div className="error-banner">{editError}</div>}
+
+            {/* Cliente */}
+            <div style={{ marginBottom: '12px' }}>
+              <label className="form-label">Cliente</label>
+              <select
+                value={editForm.cliente_id}
+                onChange={e => setEditForm(prev => ({ ...prev, cliente_id: e.target.value }))}
+                className="form-input"
+              >
+                <option value="">- Seleziona cliente -</option>
+                {clienti.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}{c.cognome ? ` ${c.cognome}` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label className="form-label">Nome cliente (manuale)</label>
+              <input
+                value={editForm.cliente_nome}
+                onChange={e => setEditForm(prev => ({ ...prev, cliente_nome: e.target.value }))}
+                placeholder="Nome cliente..."
+                className="form-input"
+              />
+            </div>
+
+            {/* Note */}
+            <div style={{ marginBottom: '12px' }}>
+              <label className="form-label">Note</label>
+              <textarea
+                value={editForm.note}
+                onChange={e => setEditForm(prev => ({ ...prev, note: e.target.value }))}
+                placeholder="Note aggiuntive..."
+                rows={2}
+                className="form-input form-textarea"
+              />
+            </div>
+
+            {/* Corriere e Tracking */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label className="form-label">Corriere</label>
+                <select
+                  value={editForm.corriere}
+                  onChange={e => setEditForm(prev => ({ ...prev, corriere: e.target.value }))}
+                  className="form-input"
+                >
+                  <option value="">- Nessun corriere -</option>
+                  {CORRIERI.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Numero Tracking</label>
+                <input
+                  value={editForm.tracking_number}
+                  onChange={e => setEditForm(prev => ({ ...prev, tracking_number: e.target.value }))}
+                  placeholder="Codice tracking..."
+                  className="form-input"
+                />
+              </div>
+            </div>
+
+            {/* Righe prodotti */}
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className="form-label" style={{ marginBottom: 0 }}>Righe prodotti</label>
+                <button type="button" onClick={handleAddEditRiga} className="btn-primary" style={{ padding: '4px 10px', fontSize: '13px' }}>
+                  <PlusIcon /> Aggiungi riga
+                </button>
+              </div>
+              {editForm.righe.map((riga, index) => (
+                <div key={index} className="product-row">
+                  <div style={{ gridColumn: 'span 2' }}>
+                    {index === 0 && <label className="form-label">Prodotto</label>}
+                    <select
+                      value={riga.prodotto_id}
+                      onChange={e => handleEditRigaChange(index, 'prodotto_id', e.target.value)}
+                      className="form-input"
+                    >
+                      <option value="">- Seleziona prodotto -</option>
+                      {prodotti.map(p => (
+                        <option key={p.id} value={p.id}>{p.nome} (SKU: {p.sku})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    {index === 0 && <label className="form-label">Quantita</label>}
+                    <input
+                      type="number"
+                      min="1"
+                      value={riga.quantita}
+                      onChange={e => handleEditRigaChange(index, 'quantita', e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                  <div>
+                    {index === 0 && <label className="form-label">Prezzo unit.</label>}
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={riga.prezzo_unitario}
+                      onChange={e => handleEditRigaChange(index, 'prezzo_unitario', e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    {index === 0 && <label className="form-label">Subtotale</label>}
+                    <div className="subtotal-value">
+                      {formatCurrency(Number(riga.quantita) * Number(riga.prezzo_unitario))}
+                    </div>
+                  </div>
+                  <div>
+                    {index === 0 && <div style={{ height: '24px' }} />}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEditRiga(index)}
+                      disabled={editForm.righe.length <= 1}
+                      className={editForm.righe.length <= 1 ? 'btn-icon btn-icon-disabled' : 'btn-icon btn-icon-red'}
+                    >
+                      <XIcon />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="order-total">
+                <span className="order-total-label">Totale:</span>
+                <span className="order-total-value">{formatCurrency(editTotale)}</span>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={() => setEditModal(false)} disabled={editLoading} className="btn-secondary">
+                Annulla
+              </button>
+              <button
+                onClick={handleEditSubmit}
+                disabled={editLoading}
+                className="btn-primary"
+              >
+                {editLoading ? 'Salvataggio...' : 'Salva Modifiche'}
               </button>
             </div>
           </div>

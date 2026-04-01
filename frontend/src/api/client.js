@@ -180,6 +180,7 @@ export const ordiniAPI = {
   getById: (id) => client.get(`/api/ordini/${id}`),
   create: (data) => client.post('/api/ordini/', data),
   update: (id, data) => client.put(`/api/ordini/${id}`, data),
+  updateFull: (id, data) => client.put(`/api/ordini/${id}`, data),
   delete: (id) => client.delete(`/api/ordini/${id}`),
   updateTracking: (id, { corriere, tracking_number }) =>
     client.patch(`/api/ordini/${id}/tracking`, null, {
