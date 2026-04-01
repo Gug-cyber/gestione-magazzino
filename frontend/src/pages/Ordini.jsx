@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
@@ -35,6 +35,13 @@ export default function Ordini() {
   const [scannerRigaIndex, setScannerRigaIndex] = useState(null)
   const [scanError, setScanError] = useState('')
   const scanErrorTimerRef = useRef(null)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => () => { if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current) }, [])
 
@@ -283,8 +290,75 @@ export default function Ordini() {
 
       {error && <div className={styles.errorMsg}>{error}</div>}
 
-      {/* Table */}
-      <div className={styles.tableWrapper}>
+      {/* Mobile Cards */}
+      {isMobile && (
+        <div className={styles.mobileCards}>
+          {loading ? (
+            <div className={styles.emptyMsg}>Caricamento...</div>
+          ) : ordini.length === 0 ? (
+            <div className={styles.emptyMsg}>Nessun ordine trovato</div>
+          ) : ordini.map(ordine => (
+            <div key={ordine.id} className={styles.mobileCard}>
+              {/* Header: numero ordine + badge stato */}
+              <div className={styles.mobileCardHeader}>
+                <div className={styles.mobileCardTitle}>
+                  <span className={styles.mobileCardNumber}>{ordine.numero_ordine}</span>
+                  <span className={styles.mobileCardCliente}>{ordine.cliente_nome || '—'}</span>
+                </div>
+                <button
+                  onClick={() => handleQuickStateChange(ordine)}
+                  className={styles.statoBadgeBtn}
+                  title="Clicca per cambiare stato"
+                >
+                  <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
+                </button>
+              </div>
+              {/* Detail rows */}
+              <div className={styles.mobileCardRow}>
+                <span className={styles.mobileCardLabel}>Prodotti</span>
+                <span className={styles.mobileCardValue}>{ordine.righe?.length || 0} prodotti</span>
+              </div>
+              <div className={styles.mobileCardRow}>
+                <span className={styles.mobileCardLabel}>Totale</span>
+                <span className={styles.mobileCardValueSuccess}>{formatCurrency(ordine.totale)}</span>
+              </div>
+              <div className={styles.mobileCardRow}>
+                <span className={styles.mobileCardLabel}>Data</span>
+                <span className={styles.mobileCardValue}>{formatDate(ordine.data_ordine)}</span>
+              </div>
+              {ordine.tracking_number && (
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Tracking</span>
+                  <span className={styles.mobileCardValue} style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                    {ordine.corriere ? `${ordine.corriere}: ` : ''}{ordine.tracking_number}
+                  </span>
+                </div>
+              )}
+              {/* Footer actions */}
+              <div className={styles.mobileCardActions}>
+                <button
+                  onClick={() => {
+                    setTrackingModal(ordine)
+                    setTrackingForm({ corriere: ordine.corriere || '', tracking_number: ordine.tracking_number || '' })
+                  }}
+                  className={styles.mobileActionBtn}
+                >
+                  Tracking
+                </button>
+                <button
+                  onClick={() => navigate(`/ordini/${ordine.id}`)}
+                  className={styles.mobileDetailBtn}
+                >
+                  Vedi Dettaglio
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Table - Desktop only */}
+      <div className={styles.tableWrapper} style={isMobile ? { display: 'none' } : {}}>
         {loading ? (
           <div className={styles.emptyMsg}>Caricamento...</div>
         ) : ordini.length === 0 ? (

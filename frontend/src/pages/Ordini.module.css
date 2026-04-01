@@ -633,3 +633,239 @@
   cursor: not-allowed;
   transform: none !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE CARDS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.mobileCards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mobileCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
+  transition: border-color var(--transition-fast);
+}
+
+.mobileCard:hover {
+  border-color: var(--color-border-hover);
+}
+
+.mobileCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mobileCardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mobileCardNumber {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-primary-light);
+}
+
+.mobileCardCliente {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.mobileCardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.mobileCardLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mobileCardValue {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  font-weight: 500;
+  text-align: right;
+}
+
+.mobileCardValueSuccess {
+  font-size: 0.875rem;
+  color: var(--color-success);
+  font-weight: 700;
+  text-align: right;
+}
+
+.mobileCardActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.mobileActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mobileActionBtn:hover {
+  background: var(--color-surface-active);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+.mobileDetailBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--border-radius);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.mobileDetailBtn:hover {
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  background: var(--color-primary-dark);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE - MOBILE
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .newBtn {
+    width: 100%;
+    height: 44px;
+  }
+
+  .statsRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .statCard {
+    padding: 14px 16px;
+    min-width: unset;
+  }
+
+  .statValue {
+    font-size: 1.5rem;
+  }
+
+  .filterRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filterInput {
+    width: 100%;
+    min-width: unset;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .filterSelect {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .searchBtn,
+  .resetBtn {
+    height: 44px;
+    flex: 1;
+  }
+
+  .filterRow > button {
+    flex: 1;
+  }
+
+  .filterRow > button:first-of-type + button {
+    flex: 0 0 44px;
+    padding: 0;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pageBtn {
+    flex: 1;
+    height: 44px;
+  }
+
+  .modal {
+    width: 96vw;
+    max-width: 96vw;
+    padding: 20px 16px;
+    margin: 8px;
+    max-height: 90vh;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .rigaRow {
+    grid-template-columns: 1fr;
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+
+  .cancelBtn,
+  .submitBtn {
+    width: 100%;
+    height: 44px;
+  }
+}
