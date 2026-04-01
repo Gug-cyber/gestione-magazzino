@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..database import get_db
-from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineStatoUpdate, TrackingUpdateBody
+from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineStatoUpdate, TrackingUpdateBody, OrdineUpdateFull
 from ..crud import ordine as crud
 from ..auth import get_current_active_user
 from ..crud.activity_log import log_activity
@@ -85,20 +85,32 @@ def get_ordine(
 
 
 @router.put("/{ordine_id}", response_model=OrdineResponse)
-def update_ordine(
+def update_ordine_full(
     ordine_id: int,
-    ordine_update: OrdineUpdate,
+    ordine_update: OrdineUpdateFull,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    o = crud.update_ordine(db, ordine_id, ordine_update)
-    if not o:
+    """
+    Aggiorna i dati completi di un ordine.
+    Permesso solo per ordini in stato 'bozza'.
+    """
+    updated = crud.update_ordine_full(db, ordine_id, ordine_update)
+    if not updated:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
     try:
-        log_activity(db, azione="aggiorna_stato_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=o.numero_ordine)
+        log_activity(
+            db,
+            azione="modifica_ordine",
+            utente_id=current_user.id,
+            username=current_user.username,
+            entita="ordine",
+            entita_id=ordine_id,
+            dettagli=updated.numero_ordine,
+        )
     except Exception:
         pass
-    return _ordine_to_response(o)
+    return _ordine_to_response(updated)
 
 
 @router.delete("/{ordine_id}", status_code=204)

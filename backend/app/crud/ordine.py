@@ -9,7 +9,8 @@ from fastapi import HTTPException
 from ..models.ordine import Ordine, RigaOrdine, StatoOrdine
 from ..models.prodotto import Prodotto
 from ..models.movimento import Movimento, TipoMovimento
-from ..schemas.ordine import OrdineCreate, OrdineUpdate
+from ..models.cliente import Cliente
+from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineUpdateFull
 from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, genera_nota_credito
 
 logger = logging.getLogger(__name__)
@@ -300,6 +301,78 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     # Commit unico per tutta la transazione                               #
     # ------------------------------------------------------------------ #
+    db.commit()
+    db.refresh(ordine)
+    return ordine
+
+
+def update_ordine_full(db: Session, ordine_id: int, update: OrdineUpdateFull) -> Optional[Ordine]:
+    """
+    Aggiorna completamente un ordine in bozza, incluse le righe.
+    """
+    ordine = get_ordine(db, ordine_id)
+    if not ordine:
+        return None
+
+    if ordine.stato != StatoOrdine.bozza:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Impossibile modificare l'ordine: solo gli ordini in stato 'bozza' possono essere modificati (stato attuale: {ordine.stato})",
+        )
+
+    # Aggiorna campi base
+    if update.cliente_id is not None:
+        ordine.cliente_id = update.cliente_id
+        # Resolve nome se non fornito
+        if not update.cliente_nome:
+            c = db.query(Cliente).filter(Cliente.id == update.cliente_id).first()
+            if c:
+                ordine.cliente_nome = f"{c.nome} {c.cognome}".strip() if c.cognome else c.nome
+    if update.cliente_nome is not None:
+        ordine.cliente_nome = update.cliente_nome
+    if update.note is not None:
+        ordine.note = update.note
+    if update.corriere is not None:
+        ordine.corriere = update.corriere
+    if update.tracking_number is not None:
+        ordine.tracking_number = update.tracking_number
+
+    # Aggiorna righe se fornite
+    if update.righe is not None:
+        if not update.righe:
+            raise HTTPException(status_code=400, detail="L'ordine deve avere almeno una riga prodotto")
+
+        for r in update.righe:
+            if r.quantita <= 0:
+                raise HTTPException(status_code=400, detail="Quantità deve essere maggiore di 0")
+            if r.prezzo_unitario < 0:
+                raise HTTPException(status_code=400, detail="Prezzo unitario deve essere maggiore o uguale a 0")
+
+        # Rimuovi righe esistenti
+        for riga in ordine.righe:
+            db.delete(riga)
+
+        # Aggiungi nuove righe
+        totale = 0.0
+        for r in update.righe:
+            prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
+            if not prodotto:
+                raise HTTPException(status_code=404, detail=f"Prodotto con id {r.prodotto_id} non trovato")
+
+            subtotale = r.quantita * r.prezzo_unitario
+            totale += subtotale
+
+            nuova_riga = RigaOrdine(
+                ordine_id=ordine_id,
+                prodotto_id=r.prodotto_id,
+                quantita=r.quantita,
+                prezzo_unitario=r.prezzo_unitario,
+                subtotale=subtotale,
+            )
+            db.add(nuova_riga)
+
+        ordine.totale = totale
+
     db.commit()
     db.refresh(ordine)
     return ordine
