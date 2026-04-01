@@ -275,6 +275,37 @@
   height: 2rem;
   padding: 0;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.btn.btn-primary.btn-icon {
+  background: var(--primary);
+  color: white;
+}
+
+.btn.btn-primary.btn-icon:hover {
+  background: var(--primary-hover);
+  box-shadow: var(--glow-primary);
+}
+
+.btn.btn-danger.btn-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn.btn-danger.btn-icon:hover {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
 }
 
 /* Form Elements */
@@ -749,23 +780,20 @@
 /* Action Buttons */
 .action-buttons {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
-.btn-icon {
+.btn-icon-blue {
   width: 32px;
   height: 32px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.btn-icon-blue {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.15);
   color: var(--primary);
 }
 
@@ -775,7 +803,16 @@
 }
 
 .btn-icon-red {
-  background: rgba(239, 68, 68, 0.1);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(239, 68, 68, 0.15);
   color: var(--danger);
 }
 
@@ -785,6 +822,15 @@
 }
 
 .btn-icon-gray {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
 }
@@ -795,6 +841,12 @@
 }
 
 .btn-icon-disabled {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
   color: var(--text-muted);
   cursor: not-allowed;
