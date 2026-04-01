@@ -3,8 +3,44 @@ import { useNavigate } from 'react-router-dom'
 import { movimentiAPI, prodottiAPI, fornitoriAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import RicercaRapidaProdotto from '../components/RicercaRapidaProdotto'
+import '../styles/shared.css'
 
 const emptyForm = { prodotto_id: '', tipo: 'carico', quantita: 1, note: '', fornitore_id: '' }
+
+// Icons
+const ArrowLeftIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+)
+
+const PlusIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+)
+
+const CheckIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+)
+
+const ArrowDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <polyline points="19 12 12 19 5 12"/>
+  </svg>
+)
+
+const ArrowUpIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="19" x2="12" y2="5"/>
+    <polyline points="5 12 12 5 19 12"/>
+  </svg>
+)
 
 function NuovoMovimento() {
   const navigate = useNavigate()
@@ -48,28 +84,34 @@ function NuovoMovimento() {
   }
 
   return (
-    <div>
+    <div className="page-container">
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#1a237e', marginBottom: '8px' }}>➕ Registra Movimento</h1>
-        <button
-          onClick={() => navigate('/movimenti')}
-          style={{ background: 'none', border: 'none', color: '#1a237e', cursor: 'pointer', fontSize: '0.9rem', padding: 0, textDecoration: 'underline' }}
-        >
-          ← Torna ai Movimenti
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <div className="page-icon">
+            <PlusIcon />
+          </div>
+          <h1 className="page-title">Registra Movimento</h1>
+        </div>
+        <button onClick={() => navigate('/movimenti')} className="btn-back">
+          <ArrowLeftIcon /> Torna ai Movimenti
         </button>
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+      {error && <div className="error-banner">{error}</div>}
 
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', maxWidth: '800px' }}>
-        <h2 style={{ color: '#1a237e', marginTop: 0, marginBottom: '4px' }}>📝 Nuovo Movimento</h2>
-        <p style={{ color: '#666', marginTop: 0, marginBottom: '20px', fontSize: '0.92rem' }}>Compila il form per registrare un movimento di magazzino</p>
+      <div className="card" style={{ maxWidth: '800px' }}>
+        <h2 className="section-title" style={{ marginTop: 0 }}>
+          <PlusIcon /> Nuovo Movimento
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', marginTop: 0, marginBottom: '20px', fontSize: '0.92rem' }}>
+          Compila il form per registrare un movimento di magazzino
+        </p>
 
         <form onSubmit={handleSubmit}>
-          <div style={gridStyle}>
-            <label style={labelStyle}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Prodotto *</span>
+          <div className="form-grid">
+            <div className="form-full">
+              <label className="form-label">Prodotto *</label>
               <RicercaRapidaProdotto
                 onSelect={(prodotto) => setForm(f => ({ ...f, prodotto_id: String(prodotto.id) }))}
                 placeholder="Cerca prodotto per nome, SKU..."
@@ -77,59 +119,68 @@ function NuovoMovimento() {
                 onScannerOpen={() => setShowScanner(true)}
               />
               {form.prodotto_id && (
-                <span style={{ fontSize: '0.78rem', color: '#2e7d32' }}>✓ Prodotto selezionato</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                  <CheckIcon /> Prodotto selezionato
+                </span>
               )}
-            </label>
+            </div>
 
-            <label style={labelStyle}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Tipo *</span>
+            <div>
+              <label className="form-label">Tipo *</label>
               <select
                 required
                 value={form.tipo}
                 onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-                style={inputStyle}
+                className="form-input"
               >
-                <option value="carico">📥 Carico</option>
-                <option value="scarico">📤 Scarico</option>
+                <option value="carico">Carico</option>
+                <option value="scarico">Scarico</option>
               </select>
-            </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', color: form.tipo === 'carico' ? 'var(--success)' : 'var(--warning)' }}>
+                {form.tipo === 'carico' ? <ArrowDownIcon /> : <ArrowUpIcon />}
+                <span style={{ fontSize: '0.75rem' }}>{form.tipo === 'carico' ? 'Aggiunge quantita' : 'Rimuove quantita'}</span>
+              </div>
+            </div>
 
-            <label style={labelStyle}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Quantità *</span>
+            <div>
+              <label className="form-label">Quantita *</label>
               <input
                 type="number"
                 min="1"
                 required
                 value={form.quantita}
                 onChange={(e) => setForm({ ...form, quantita: e.target.value })}
-                style={inputStyle}
+                className="form-input"
               />
-            </label>
+            </div>
 
-            <label style={labelStyle}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Fornitore</span>
+            <div>
+              <label className="form-label">Fornitore</label>
               <select
                 value={form.fornitore_id}
                 onChange={(e) => setForm({ ...form, fornitore_id: e.target.value })}
-                style={inputStyle}
+                className="form-input"
               >
                 <option value="">-- Nessuno --</option>
                 {fornitori.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
-            </label>
+            </div>
 
-            <label style={{ ...labelStyle, gridColumn: 'span 2' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Note</span>
+            <div className="form-full">
+              <label className="form-label">Note</label>
               <input
                 type="text"
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
-                style={inputStyle}
+                className="form-input"
+                placeholder="Note opzionali..."
               />
-            </label>
+            </div>
           </div>
 
-          <button type="submit" style={btnStyle('#2e7d32')}>Registra Movimento</button>
+          <button type="submit" className="btn-success" style={{ marginTop: '16px' }}>
+            <CheckIcon /> Registra Movimento
+          </button>
         </form>
       </div>
 
@@ -137,20 +188,17 @@ function NuovoMovimento() {
         <BarcodeScanner
           onScan={async (value) => {
             setShowScanner(false)
-            // Handle QR code format "prodotto:<id>"
             if (/^prodotto:\d+$/i.test(value)) {
               const id = parseInt(value.split(':')[1])
               setForm(f => ({ ...f, prodotto_id: String(id) }))
               return
             }
-            // Fallback: lookup barcode/SKU via API
             try {
               const res = await prodottiAPI.lookupByBarcode(value)
               if (res.data?.id) {
                 setForm(f => ({ ...f, prodotto_id: String(res.data.id) }))
               }
             } catch {
-              // Try text search as last resort
               try {
                 const res2 = await prodottiAPI.getAll({ search: value, limit: 1 })
                 const items = Array.isArray(res2.data) ? res2.data : (res2.data?.items || [])
@@ -164,10 +212,5 @@ function NuovoMovimento() {
     </div>
   )
 }
-
-const inputStyle = { height: '36px', padding: '0 12px', border: '1.5px solid #e0e4ef', borderRadius: '6px', fontSize: '14px', width: '100%', boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.18s, box-shadow 0.18s' }
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: '4px' }
-const btnStyle = (bg) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: bg, color: 'white', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' })
 
 export default NuovoMovimento
