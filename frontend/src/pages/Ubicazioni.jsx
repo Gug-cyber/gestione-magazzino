@@ -139,29 +139,33 @@ function Ubicazioni() {
       )}
 
       {isMobile ? (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {ubicazioni.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-text">Nessuna ubicazione trovata</div>
             </div>
           ) : ubicazioni.map((u) => (
             <div key={u.id} className="mobile-card">
-              <div className="mobile-card-header">
-                <div className="mobile-card-title">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginRight: '0.5rem', display: 'inline' }}>
+              {/* Title row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ flexShrink: 0 }}>
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                     <circle cx="12" cy="10" r="3"/>
                   </svg>
-                  {u.nome}
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.nome}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>#{u.id}</span>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(u)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <button onClick={() => handleEdit(u)} className="btn-icon-blue" title="Modifica">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                   </button>
-                  <button onClick={() => handleDelete(u.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                  <button onClick={() => handleDelete(u.id)} className="btn-icon-red" title="Elimina">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -169,24 +173,24 @@ function Ubicazioni() {
                   </button>
                 </div>
               </div>
-              {u.zona && (
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Zona</span>
-                  <span className="mobile-card-value">{u.zona}</span>
-                </div>
-              )}
-              {u.scaffale && (
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Scaffale</span>
-                  <span className="mobile-card-value">{u.scaffale}</span>
-                </div>
-              )}
-              {u.piano != null && (
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Piano</span>
-                  <span className="mobile-card-value">{u.piano}</span>
-                </div>
-              )}
+              {/* Detail pills */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {u.zona && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '2px 8px', color: 'var(--text-secondary)' }}>
+                    Zona: <strong style={{ color: 'var(--text-primary)' }}>{u.zona}</strong>
+                  </span>
+                )}
+                {u.scaffale && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '2px 8px', color: 'var(--text-secondary)' }}>
+                    Scaffale: <strong style={{ color: 'var(--text-primary)' }}>{u.scaffale}</strong>
+                  </span>
+                )}
+                {u.piano != null && (
+                  <span style={{ fontSize: '0.75rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: '6px', padding: '2px 8px', color: 'var(--text-secondary)' }}>
+                    Piano: <strong style={{ color: 'var(--text-primary)' }}>{u.piano}</strong>
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -220,14 +224,14 @@ function Ubicazioni() {
                   <td>{u.scaffale || '-'}</td>
                   <td>{u.piano ?? '-'}</td>
                   <td style={{ width: '100px' }}>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEdit(u)} className="btn btn-primary btn-sm btn-icon" title="Modifica">
+                    <div className="action-buttons">
+                      <button onClick={() => handleEdit(u)} className="btn-icon-blue" title="Modifica">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(u.id)} className="btn btn-danger btn-sm btn-icon" title="Elimina">
+                      <button onClick={() => handleDelete(u.id)} className="btn-icon-red" title="Elimina">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
