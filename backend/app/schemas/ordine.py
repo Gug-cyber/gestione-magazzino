@@ -55,6 +55,16 @@ class TrackingUpdateBody(BaseModel):
     tracking_number: Optional[str] = None
 
 
+class OrdineUpdateFull(BaseModel):
+    """Schema per aggiornamento completo ordine (solo bozza)"""
+    cliente_id: Optional[int] = None
+    cliente_nome: Optional[str] = None
+    note: Optional[str] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
+    righe: Optional[List[RigaOrdineCreate]] = None
+
+
 class OrdineResponse(BaseModel):
     id: int
     numero_ordine: str
