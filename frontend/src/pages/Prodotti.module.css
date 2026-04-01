@@ -580,12 +580,6 @@
     flex-basis: 100%;
   }
 }
-  }
-
-  .searchBar {
-    flex-basis: 100%;
-  }
-}
 
 /* Column filter dropdown */
 .columnDropdown {
