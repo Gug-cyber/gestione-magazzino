@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ordiniAPI, fattureAPI, clientiAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
@@ -86,6 +86,13 @@ export default function DettaglioOrdine() {
   const [editError, setEditError] = useState('')
   const [clienti, setClienti] = useState([])
   const [prodotti, setProdotti] = useState([])
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => {
     clientiAPI.getAll().then(r => setClienti(r.data)).catch(err => console.error('Errore caricamento clienti:', err))
@@ -255,40 +262,44 @@ export default function DettaglioOrdine() {
               )}
               {ordine.note && <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>Note: {ordine.note}</p>}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
               <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
-              {nextStato && (
-                <button onClick={() => handleChangeStato(nextStato)} className="btn-primary" style={{ fontSize: '13px', padding: '6px 14px' }}>
-                  Avanza a {nextStato}
-                </button>
-              )}
-              {ordine.stato !== 'annullato' && ordine.stato !== 'completato' && (
-                <button onClick={() => handleChangeStato('annullato')} className="btn-danger" style={{ fontSize: '13px', padding: '6px 14px' }}>
-                  Annulla ordine
-                </button>
-              )}
-              {ordine.stato === 'completato' && (
-                <button onClick={() => handleChangeStato('annullato')} className="btn-danger" style={{ fontSize: '13px', padding: '6px 14px' }}>
-                  Annulla (ripristina magazzino)
-                </button>
-              )}
-              <button onClick={handleDelete} className="btn-secondary" style={{ fontSize: '13px', padding: '6px 14px', color: 'var(--danger)' }}>
-                <TrashIcon /> Elimina
-              </button>
-              {ordine.stato === 'bozza' ? (
-                <button onClick={openEditModal} className="btn-primary" style={{ fontSize: '13px', padding: '6px 14px' }}>
-                  <EditIcon /> Modifica Ordine
-                </button>
-              ) : (
-                <button
-                  disabled
-                  title={`Solo ordini in bozza possono essere modificati (stato attuale: ${ordine.stato})`}
-                  className="btn-secondary"
-                  style={{ fontSize: '13px', padding: '6px 14px', opacity: 0.5, cursor: 'not-allowed' }}
-                >
-                  <EditIcon /> Modifica Ordine
-                </button>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {nextStato && (
+                  <button onClick={() => handleChangeStato(nextStato)} className="btn-primary" style={{ fontSize: '13px', padding: '10px 14px', width: '100%' }}>
+                    Avanza a {nextStato}
+                  </button>
+                )}
+                {ordine.stato !== 'annullato' && ordine.stato !== 'completato' && (
+                  <button onClick={() => handleChangeStato('annullato')} className="btn-danger" style={{ fontSize: '13px', padding: '10px 14px', width: '100%' }}>
+                    Annulla ordine
+                  </button>
+                )}
+                {ordine.stato === 'completato' && (
+                  <button onClick={() => handleChangeStato('annullato')} className="btn-danger" style={{ fontSize: '13px', padding: '10px 14px', width: '100%' }}>
+                    Annulla (ripristina magazzino)
+                  </button>
+                )}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={handleDelete} className="btn-secondary" style={{ fontSize: '13px', padding: '10px 14px', flex: 1, color: 'var(--danger)' }}>
+                    <TrashIcon /> Elimina
+                  </button>
+                  {ordine.stato === 'bozza' ? (
+                    <button onClick={openEditModal} className="btn-primary" style={{ fontSize: '13px', padding: '10px 14px', flex: 1 }}>
+                      <EditIcon /> Modifica
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      title={`Solo ordini in bozza possono essere modificati (stato attuale: ${ordine.stato})`}
+                      className="btn-secondary"
+                      style={{ fontSize: '13px', padding: '10px 14px', flex: 1, opacity: 0.5, cursor: 'not-allowed' }}
+                    >
+                      <EditIcon /> Modifica
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -321,36 +332,76 @@ export default function DettaglioOrdine() {
           </div>
         )}
 
-        {/* Tabella righe */}
+        {/* Righe ordine */}
         <div className="card" style={{ padding: 0 }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <PackageIcon />
-            <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Righe Ordine</h3>
+            <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Prodotti dell&apos;ordine</h3>
           </div>
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Prodotto</th>
-                  <th>SKU</th>
-                  <th>Quantita</th>
-                  <th>Prezzo Unit.</th>
-                  <th>Subtotale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(ordine.righe || []).map((r, i) => (
-                  <tr key={r.id || i}>
-                    <td className="text-bold">{r.prodotto_nome || '-'}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{r.prodotto_sku || '-'}</td>
-                    <td>{r.quantita}</td>
-                    <td>{formatCurrency(r.prezzo_unitario)}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{formatCurrency(r.subtotale)}</td>
+
+          {/* Mobile: cards */}
+          {isMobile ? (
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(ordine.righe || []).map((r, i) => (
+                <div key={r.id || i} style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    {r.prodotto_nome || '-'}
+                  </div>
+                  {r.prodotto_sku && (
+                    <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px', background: 'var(--bg-tertiary)', display: 'inline-block', padding: '2px 8px', borderRadius: '4px' }}>
+                      {r.prodotto_sku}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quantita</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.quantita}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prezzo unit.</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(r.prezzo_unitario)}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subtotale</span>
+                      <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(r.subtotale)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Desktop: table */
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Prodotto</th>
+                    <th>SKU</th>
+                    <th>Quantita</th>
+                    <th>Prezzo Unit.</th>
+                    <th>Subtotale</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {(ordine.righe || []).map((r, i) => (
+                    <tr key={r.id || i}>
+                      <td className="text-bold">{r.prodotto_nome || '-'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{r.prodotto_sku || '-'}</td>
+                      <td>{r.quantita}</td>
+                      <td>{formatCurrency(r.prezzo_unitario)}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{formatCurrency(r.subtotale)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-primary)', textAlign: 'right' }}>
             <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>
               Totale: {formatCurrency(ordine.totale)}
