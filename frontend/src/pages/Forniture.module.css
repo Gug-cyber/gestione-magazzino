@@ -108,6 +108,38 @@
   align-items: center;
 }
 
+.filterInputWrapper {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+}
+
+.scannerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.scannerBtn:hover {
+  background: var(--color-primary-dark);
+}
+
 .filterInput {
   flex: 1;
   min-width: 200px;
@@ -657,21 +689,50 @@
   }
 
   .filterRow {
+    display: flex;
     flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Search input with scanner button inline */
+  .filterInputWrapper {
+    display: flex;
+    gap: 8px;
+    width: 100%;
   }
 
   .filterInput {
+    flex: 1;
     width: 100%;
     min-width: unset;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .scannerBtn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
   }
 
   .filterSelect {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  /* Cerca and Reset buttons side by side */
+  .filterActions {
+    display: flex;
+    gap: 8px;
     width: 100%;
   }
 
   .searchBtn,
   .resetBtn {
     flex: 1;
+    height: 44px;
   }
 
   /* Hide table on mobile */
