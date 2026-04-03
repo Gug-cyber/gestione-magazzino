@@ -52,23 +52,6 @@ def get_analisi_mensile(
         )
         ricavi = sum(float(o.totale or 0) for o in ordini_completati)
 
-        # Ricavi da movimenti di scarico manuali (escludi quelli automatici degli ordini)
-        movimenti_scarico_manuali = (
-            db.query(Movimento, Prodotto)
-            .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
-            .filter(
-                Movimento.tipo == TipoMovimento.scarico,
-                extract("year", Movimento.data_movimento) == anno,
-                extract("month", Movimento.data_movimento) == mese,
-                ~Movimento.note.like("Scarico automatico ordine %"),
-            )
-            .all()
-        )
-        ricavi += sum(
-            float(m.quantita) * float(p.prezzo_vendita or 0)
-            for m, p in movimenti_scarico_manuali
-        )
-
         spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == anno,
             extract("month", SpesaGestione.data) == mese,
@@ -180,22 +163,6 @@ def get_analisi_annuale(
             .all()
         )
         ricavi = sum(float(o.totale or 0) for o in ordini_completati)
-
-        # Ricavi da movimenti di scarico manuali (escludi automatici ordini)
-        movimenti_scarico_manuali = (
-            db.query(Movimento, Prodotto)
-            .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
-            .filter(
-                Movimento.tipo == TipoMovimento.scarico,
-                extract("year", Movimento.data_movimento) == anno,
-                ~Movimento.note.like("Scarico automatico ordine %"),
-            )
-            .all()
-        )
-        ricavi += sum(
-            float(m.quantita) * float(p.prezzo_vendita or 0)
-            for m, p in movimenti_scarico_manuali
-        )
 
         spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == anno,
@@ -325,22 +292,6 @@ def get_marginalita_confronto(
             .all()
         )
         ricavi = sum(float(o.totale or 0) for o in ordini_completati)
-
-        movimenti_scarico_manuali = (
-            db.query(Movimento, Prodotto)
-            .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
-            .filter(
-                Movimento.tipo == TipoMovimento.scarico,
-                extract("year", Movimento.data_movimento) == a,
-                extract("month", Movimento.data_movimento) == m,
-                ~Movimento.note.like("Scarico automatico ordine %"),
-            )
-            .all()
-        )
-        ricavi += sum(
-            float(mov.quantita) * float(prod.prezzo_vendita or 0)
-            for mov, prod in movimenti_scarico_manuali
-        )
 
         spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == a,
