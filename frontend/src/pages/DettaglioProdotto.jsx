@@ -627,29 +627,23 @@ function DettaglioProdotto() {
           fontSize: '1.1rem',
           borderBottom: '2px solid #e8eaf6',
           paddingBottom: 12,
-        }}>💰 Confronto Prezzi di Mercato</h2>
+        }}>Confronto Prezzi di Mercato</h2>
 
-        <div className={styles.marketGrid}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           {/* eBay */}
-          <div style={{
-            backgroundColor: '#f8f9fa',
-            borderRadius: 8,
-            padding: 16,
-            borderLeft: '4px solid #1565c0',
-          }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#1565c0', fontWeight: 700 }}>
-              🛒 Prezzi eBay
-            </h3>
-            {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>⏳ Caricamento...</div>}
-            {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>⚠️ Non disponibile</div>}
+          <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0' }}>
+            <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>🛒</div>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzi eBay</div>
+            {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>Caricamento...</div>}
+            {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>Non disponibile</div>}
             {ebayData && !ebayError && !ebayLoading && (
               ebayData.configurato === false
                 ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Non configurato</div>
                 : ebayData.numero_risultati === 0
                   ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
                   : <div>
-                      <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
-                        Medio: <strong style={{ color: '#1565c0' }}>€{Number(ebayData.prezzo_medio).toFixed(2)}</strong>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1565c0', marginBottom: 4 }}>
+                        €{Number(ebayData.prezzo_medio).toFixed(2)}
                       </div>
                       {ebayData.ultimo_prezzo_venduto != null && (
                         <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
@@ -659,21 +653,17 @@ function DettaglioProdotto() {
                       <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 6 }}>{ebayData.numero_risultati} annunci</div>
                       <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
                         aria-label="Vedi su eBay (apre in una nuova scheda)"
-                        style={{ fontSize: '0.75rem', color: '#1565c0', display: 'inline-block', marginBottom: 4 }}>🔗 Vedi su eBay</a>
+                        style={{ fontSize: '0.75rem', color: '#1565c0', display: 'inline-block', marginBottom: 4 }}>Vedi su eBay</a>
                     </div>
             )}
             <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" style={{ marginTop: 6, fontSize: '0.75rem', color: '#1565c0', background: 'none', border: 'none', cursor: ebayLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: ebayLoading ? 0.6 : 1 }}>
-              🔄 Aggiorna
+              Aggiorna
             </button>
           </div>
 
+          {/* Placeholder per futuri integrazioni quando saranno riabilitate */}
           {/* TEMPORANEAMENTE DISABILITATO - CardTrader API issues */}
-          {/* <div style={{
-            backgroundColor: '#faf8fc',
-            borderRadius: 8,
-            padding: 16,
-            borderLeft: '4px solid #7b1fa2',
-          }}>
+          {/* <div style={{ ...statCardStyle, borderLeft: '4px solid #7b1fa2' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#7b1fa2', fontWeight: 700 }}>
               🃏 Prezzi CardTrader
             </h3>
@@ -714,12 +704,7 @@ function DettaglioProdotto() {
           </div> */}
 
           {/* TEMPORANEAMENTE DISABILITATO - CardMarket API issues */}
-          {/* <div style={{
-            backgroundColor: '#fff8f0',
-            borderRadius: 8,
-            padding: 16,
-            borderLeft: '4px solid #ff9800',
-          }}>
+          {/* <div style={{ ...statCardStyle, borderLeft: '4px solid #ff9800' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#ff9800', fontWeight: 700 }}>
               🃏 Prezzi CardMarket
             </h3>
