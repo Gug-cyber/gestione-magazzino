@@ -10,6 +10,7 @@ export interface BarcodeScannerProps {
   autoStart?: boolean
   placeholder?: string
   className?: string
+  scanMode?: 'auto' | 'barcode' | 'qr'
 }
 
 type ScannerState = 'idle' | 'scanning' | 'detected' | 'error'
@@ -20,16 +21,21 @@ function BarcodeScannerInner({
   autoStart = false,
   placeholder = 'Inserisci codice manualmente',
   className,
+  scanMode = 'auto',
 }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<{ stop: () => void } | null>(null)
   const detectedRef = useRef(false)
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null)
 
   const [isOpen, setIsOpen] = useState(autoStart)
   const [scannerState, setScannerState] = useState<ScannerState>('idle')
   const [detectedCode, setDetectedCode] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [manualCode, setManualCode] = useState<string>('')
+  const [torchEnabled, setTorchEnabled] = useState(false)
+  const [torchAvailable, setTorchAvailable] = useState(false)
+  const [activeScanMode, setActiveScanMode] = useState(scanMode)
 
   const stopScanner = useCallback(() => {
     if (controlsRef.current) {
@@ -38,6 +44,10 @@ function BarcodeScannerInner({
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null
+    }
+    if (videoTrackRef.current) {
+      videoTrackRef.current.stop()
+      videoTrackRef.current = null
     }
     detectedRef.current = false
   }, [])
@@ -57,11 +67,28 @@ function BarcodeScannerInner({
     }
 
     try {
-      const { BrowserMultiFormatReader } = await import('@zxing/browser')
+      const { BrowserMultiFormatReader, DecodeHintType } = await import('@zxing/browser')
       const reader = new BrowserMultiFormatReader()
 
+      // Configure hints based on scan mode for better accuracy
+      const hints = new Map()
+      if (activeScanMode === 'barcode' || activeScanMode === 'auto') {
+        hints.set(DecodeHintType.TRY_HARDER, true)
+        hints.set(DecodeHintType.ALSO_INVERTED, true)
+      }
+      reader.setHints(hints)
+
+      // Request camera with higher resolution for better barcode clarity
+      const constraints = {
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+        },
+      }
+
       const controls = await reader.decodeFromConstraints(
-        { video: { facingMode: 'environment' } },
+        constraints,
         videoRef.current!,
         (result, error) => {
           if (detectedRef.current) return
@@ -72,6 +99,11 @@ function BarcodeScannerInner({
             setDetectedCode(code)
             setScannerState('detected')
             onDetected(code)
+
+            // Haptic feedback on detection
+            if (navigator.vibrate) {
+              navigator.vibrate([50, 100, 50])
+            }
 
             setTimeout(() => {
               stopScanner()
@@ -93,6 +125,18 @@ function BarcodeScannerInner({
         }
       )
 
+      // Check torch availability
+      try {
+        const stream = videoRef.current?.srcObject as MediaStream
+        const track = stream?.getVideoTracks?.()?.[0]
+        videoTrackRef.current = track || null
+        if (track?.getCapabilities?.()?.torch) {
+          setTorchAvailable(true)
+        }
+      } catch {
+        // Ignore torch detection errors
+      }
+
       controlsRef.current = controls
     } catch (err: unknown) {
       const msg =
@@ -103,7 +147,7 @@ function BarcodeScannerInner({
       setScannerState('error')
       onError?.(msg)
     }
-  }, [onDetected, onError, stopScanner])
+  }, [onDetected, onError, stopScanner, activeScanMode])
 
   useEffect(() => {
     if (isOpen) {
@@ -121,6 +165,18 @@ function BarcodeScannerInner({
 
   const handleToggle = () => {
     setIsOpen((prev) => !prev)
+  }
+
+  const toggleTorch = async () => {
+    if (!videoTrackRef.current) return
+    try {
+      await videoTrackRef.current.applyConstraints({
+        advanced: [{ torch: !torchEnabled }],
+      })
+      setTorchEnabled(!torchEnabled)
+    } catch (err) {
+      console.error('Torch toggle failed:', err)
+    }
   }
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -143,6 +199,27 @@ function BarcodeScannerInner({
         {isOpen ? '✕ Chiudi Scanner' : '📷 Apri Scanner'}
       </button>
 
+      {/* Scan Mode Selector */}
+      {isOpen && (
+        <div className={styles.modeSelector}>
+          {(['auto', 'barcode', 'qr'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setActiveScanMode(mode)}
+              className={[
+                styles.modeBtn,
+                activeScanMode === mode ? styles.modeBtnActive : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={activeScanMode === mode}
+            >
+              {mode === 'auto' ? '🔄 Auto' : mode === 'barcode' ? '📊 Barcode' : '📱 QR'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {isOpen && (
         <div className={styles.videoWrapper}>
           <video
@@ -160,13 +237,36 @@ function BarcodeScannerInner({
             <div
               className={[
                 styles.reticle,
+                activeScanMode === 'barcode' ? styles.reticleBarcode : '',
+                activeScanMode === 'qr' ? styles.reticleQr : '',
                 scannerState === 'scanning' ? styles.reticlePulse : '',
                 scannerState === 'detected' ? styles.reticleDetected : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
             />
+            {scannerState === 'scanning' && (
+              <div className={styles.scanLine} />
+            )}
           </div>
+
+          {/* Torch button */}
+          {torchAvailable && (
+            <button
+              type="button"
+              onClick={toggleTorch}
+              className={[
+                styles.torchBtn,
+                torchEnabled ? styles.torchBtnOn : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-pressed={torchEnabled}
+              title={torchEnabled ? 'Disattiva torcia' : 'Attiva torcia'}
+            >
+              {torchEnabled ? '🔦' : '💡'}
+            </button>
+          )}
         </div>
       )}
 
