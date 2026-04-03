@@ -575,7 +575,7 @@ function DettaglioProdotto() {
             </div>
 
             {/* Prezzo Vendita */}
-            <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0' }}>
+          <div style={{ ...statCardStyle, borderLeft: '4px solid #e65100' }}>
               <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>💰</div>
               <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzo Vendita</div>
               <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1565c0' }}>{fmtPrice(prodotto.prezzo_vendita)}</div>
@@ -643,7 +643,7 @@ function DettaglioProdotto() {
                   ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
                   : <div>
                       <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 2 }}>Medio:</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1565c0', marginBottom: 8 }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#e65100', marginBottom: 8 }}>
                         {'\u20AC'}{Number(ebayData.prezzo_medio).toFixed(2)}
                       </div>
                       {ebayData.ultimo_prezzo_venduto != null && (
@@ -654,16 +654,16 @@ function DettaglioProdotto() {
                       <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 8 }}>{ebayData.numero_risultati} annunci</div>
                       <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
                         aria-label="Vedi su eBay (apre in una nuova scheda)"
-                        style={{ fontSize: '0.75rem', color: '#1565c0', display: 'inline-block', marginBottom: 6, textDecoration: 'none', cursor: 'pointer' }}>Vedi su eBay</a>
+                        style={{ fontSize: '0.75rem', color: '#e65100', display: 'inline-block', marginBottom: 6, textDecoration: 'none', cursor: 'pointer' }}>Vedi su eBay</a>
                     </div>
             )}
             <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" 
               style={{ 
                 marginTop: 8, 
                 fontSize: '0.75rem', 
-                color: '#1565c0', 
+                color: '#e65100', 
                 background: 'transparent', 
-                border: '1px solid #1565c0',
+                border: '1px solid #e65100',
                 borderRadius: '4px',
                 padding: '6px 12px',
                 cursor: ebayLoading ? 'not-allowed' : 'pointer', 
