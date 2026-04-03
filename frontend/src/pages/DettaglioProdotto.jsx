@@ -26,7 +26,7 @@ const LINGUA_MAP = {
 
 function QuantitaChart({ storico }) {
   if (!storico || storico.length === 0) {
-    return <p style={{ color: '#888', textAlign: 'center', padding: '32px 0' }}>Nessun movimento registrato</p>
+    return <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '32px 0' }}>Nessun movimento registrato</p>
   }
 
   const W = 600
@@ -77,31 +77,31 @@ function QuantitaChart({ storico }) {
       {yLabels.map(({ v, y }, i) => (
         <g key={i}>
           <line x1={padLeft - 4} y1={y} x2={W - padRight} y2={y}
-            stroke="#e0e0e0" strokeWidth="1" />
+            stroke="var(--color-border-subtle)" strokeWidth="1" />
           <text x={padLeft - 8} y={y + 4} textAnchor="end"
-            fontSize="10" fill="#888">{v}</text>
+            fontSize="10" fill="var(--color-text-muted)">{v}</text>
         </g>
       ))}
 
       {/* X axis */}
       <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom}
-        stroke="#ccc" strokeWidth="1" />
+        stroke="var(--color-border)" strokeWidth="1" />
 
       {/* X axis labels */}
       {xLabels.map(({ i, label }) => (
         <text key={i} x={toX(i)} y={H - padBottom + 14}
-          textAnchor="middle" fontSize="10" fill="#888">{label}</text>
+          textAnchor="middle" fontSize="10" fill="var(--color-text-muted)">{label}</text>
       ))}
 
       {/* Line */}
       {n > 1 && (
-        <polyline points={points} fill="none" stroke="#1565c0" strokeWidth="2" strokeLinejoin="round" />
+        <polyline points={points} fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinejoin="round" />
       )}
 
       {/* Dots */}
       {storico.map((s, i) => (
         <circle key={i} cx={toX(i)} cy={toY(s.quantita)} r="4"
-          fill="#1565c0" stroke="white" strokeWidth="1.5">
+          fill="var(--color-primary)" stroke="var(--color-surface)" strokeWidth="1.5">
           <title>{`${fmtDate(s.data)}: ${s.quantita} (${s.tipo} ${s.variazione > 0 ? '+' : ''}${s.variazione})`}</title>
         </circle>
       ))}
@@ -373,17 +373,17 @@ function DettaglioProdotto() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <button onClick={() => navigate('/prodotti')} style={btnStyle('#546e7a')}>← Torna ai Prodotti</button>
-        <h1 style={{ color: PRIMARY_COLOR, margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
+        <h1 style={{ color: 'var(--color-text)', margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
         {prodotto.stato_conservazione && <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />}
-        <button onClick={handleEditOpen} style={btnStyle(PRIMARY_COLOR)}>✏️ Modifica</button>
-        <button onClick={handleDelete} style={btnStyle('#c62828')}>🗑️ Elimina</button>
+        <button onClick={handleEditOpen} className="gm-btn gm-btn-secondary">Modifica</button>
+        <button onClick={handleDelete} className="gm-btn gm-btn-danger">Elimina</button>
       </div>
 
       {/* Edit form */}
       {showEditForm && (
-        <form onSubmit={handleSave} style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
-          <h3 style={{ color: PRIMARY_COLOR, marginTop: 0 }}>✏️ Modifica Prodotto</h3>
-          {formError && <div style={{ color: 'red', marginBottom: '12px' }}>{formError}</div>}
+        <form onSubmit={handleSave} style={{ ...cardStyle, marginBottom: '24px' }}>
+          <h3 style={{ color: 'var(--color-text)', marginTop: 0 }}>Modifica Prodotto</h3>
+          {formError && <div style={{ color: 'var(--color-danger)', marginBottom: '12px' }}>{formError}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             {[
               { key: 'nome', label: 'Nome *', required: true },
@@ -395,22 +395,22 @@ function DettaglioProdotto() {
               { key: 'prezzo_vendita', label: 'Prezzo Vendita (€)', type: 'number', step: '0.01' },
             ].map(({ key, label, type = 'text', required, step }) => (
               <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>{label}</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{label}</span>
                 <input
                   type={type}
                   step={step}
                   required={required}
                   value={form[key] ?? ''}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}
+                  style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}
                 />
               </label>
             ))}
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Stato di Conservazione</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Stato di Conservazione</span>
               <select value={form.stato_conservazione} onChange={(e) => setForm({ ...form, stato_conservazione: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}>
                 <option value="">-- Nessuno --</option>
                 <option value="Mint">Mint</option>
                 <option value="Near Mint">Near Mint</option>
@@ -423,9 +423,9 @@ function DettaglioProdotto() {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Lingua</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Lingua</span>
               <select value={form.lingua} onChange={(e) => setForm({ ...form, lingua: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}>
                 <option value="">-- Nessuna --</option>
                 <option value="Italiano">Italiano</option>
                 <option value="Inglese">Inglese</option>
@@ -436,18 +436,18 @@ function DettaglioProdotto() {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Categoria</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Categoria</span>
               <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}>
                 <option value="">-- Nessuna --</option>
                 {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>Ubicazione</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Ubicazione</span>
               <select value={form.ubicazione_id} onChange={(e) => setForm({ ...form, ubicazione_id: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%' }}>
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}>
                 <option value="">-- Nessuna --</option>
                 {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
@@ -457,12 +457,12 @@ function DettaglioProdotto() {
           {/* CardTrader Blueprint ID - SOLO INPUT */}
           <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>🃏 CardTrader Blueprint ID</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>🃏 CardTrader Blueprint ID</span>
               <input
                 type="number"
                 value={form.cardtrader_blueprint_id ?? ''}
                 onChange={(e) => setForm({ ...form, cardtrader_blueprint_id: e.target.value })}
-                style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.95rem', width: '100%', maxWidth: 300 }}
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%', maxWidth: 300 }}
                 placeholder="es. 123456"
               />
               <span style={{ fontSize: '0.75rem', color: '#888', marginTop: 2 }}>
@@ -472,8 +472,8 @@ function DettaglioProdotto() {
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-            <button type="submit" style={{ backgroundColor: PRIMARY_COLOR, color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}>💾 Salva</button>
-            <button type="button" onClick={() => setShowEditForm(false)} style={{ backgroundColor: '#f5f5f5', color: '#555', border: '1px solid #ddd', borderRadius: '6px', padding: '10px 20px', cursor: 'pointer' }}>✕ Annulla</button>
+            <button type="submit" className="gm-btn gm-btn-primary" style={{ padding: '10px 20px' }}>Salva</button>
+            <button type="button" onClick={() => setShowEditForm(false)} style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius)', padding: '10px 20px', cursor: 'pointer' }}>Annulla</button>
           </div>
         </form>
       )}
@@ -523,11 +523,11 @@ function DettaglioProdotto() {
               }}
             />
             <div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: PRIMARY_COLOR, marginBottom: 4 }}>{prodotto.nome}</div>
-              {prodotto.descrizione && <div style={{ color: '#555', fontSize: '0.9rem', marginBottom: 8 }}>{prodotto.descrizione}</div>}
-              <div style={{ fontSize: '0.85rem', color: '#888' }}>SKU: <code style={{ backgroundColor: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{prodotto.sku}</code></div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{prodotto.nome}</div>
+              {prodotto.descrizione && <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 8 }}>{prodotto.descrizione}</div>}
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>SKU: <code style={{ backgroundColor: 'var(--color-surface-hover)', padding: '1px 6px', borderRadius: 4 }}>{prodotto.sku}</code></div>
               {prodotto.cardtrader_blueprint_id && (
-                <div style={{ fontSize: '0.85rem', color: '#888', marginTop: 2 }}>🃏 Blueprint ID: <code style={{ backgroundColor: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{prodotto.cardtrader_blueprint_id}</code></div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>Blueprint ID: <code style={{ backgroundColor: 'var(--color-surface-hover)', padding: '1px 6px', borderRadius: 4 }}>{prodotto.cardtrader_blueprint_id}</code></div>
               )}
               {fotoError && <div style={{ color: 'red', fontSize: '0.8rem', marginTop: 4 }}>{fotoError}</div>}
             </div>
@@ -563,35 +563,34 @@ function DettaglioProdotto() {
         {/* Right: 2x2 stat cards + margine badge */}
         <div style={cardStyle}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-            {/* Quantità */}
-            <div style={{ ...statCardStyle, borderLeft: `4px solid ${sottoScorta ? '#c62828' : '#2e7d32'}` }}>
+            {/* Quantita */}
+            <div style={{ ...statCardStyle, borderLeft: `4px solid ${sottoScorta ? 'var(--color-danger)' : 'var(--color-success)'}` }}>
               <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>📦</div>
-              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Quantità</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: sottoScorta ? '#c62828' : '#2e7d32' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Quantita</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: sottoScorta ? 'var(--color-danger)' : 'var(--color-success)' }}>
                 {prodotto.quantita}
-                {sottoScorta && <span style={{ fontSize: '0.9rem', marginLeft: 4 }}>⚠️</span>}
               </div>
-              {sottoScorta && <div style={{ fontSize: '0.72rem', color: '#c62828', marginTop: 2 }}>Sotto scorta (min: {prodotto.quantita_minima})</div>}
+              {sottoScorta && <div style={{ fontSize: '0.72rem', color: 'var(--color-danger)', marginTop: 2 }}>Sotto scorta (min: {prodotto.quantita_minima})</div>}
             </div>
 
             {/* Prezzo Vendita */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #e65100' }}>
+            <div style={{ ...statCardStyle, borderLeft: '4px solid var(--color-info)' }}>
               <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>💰</div>
-              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzo Vendita</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1565c0' }}>{fmtPrice(prodotto.prezzo_vendita)}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Prezzo Vendita</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-info)' }}>{fmtPrice(prodotto.prezzo_vendita)}</div>
             </div>
 
             {/* Prezzo Acquisto */}
-            <div style={{ ...statCardStyle, borderLeft: '4px solid #7b1fa2' }}>
+            <div style={{ ...statCardStyle, borderLeft: '4px solid var(--color-primary)' }}>
               <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>🛒</div>
-              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzo Acquisto</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#7b1fa2' }}>{fmtPrice(prodotto.prezzo_acquisto)}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Prezzo Acquisto</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary-light)' }}>{fmtPrice(prodotto.prezzo_acquisto)}</div>
             </div>
 
             {/* Margine Lordo */}
             <div style={{ ...statCardStyle, borderLeft: `4px solid ${margineColor}` }}>
               <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>📈</div>
-              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Margine Lordo</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Margine Lordo</div>
               <div style={{ fontSize: '1.2rem', fontWeight: 700, color: margineColor }}>
                 {margine != null ? fmtPrice(margine) : '—'}
               </div>
@@ -601,16 +600,16 @@ function DettaglioProdotto() {
           {/* Margine percentuale badge */}
           {stats.margine_percentuale != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ color: '#555', fontSize: '0.9rem' }}>Margine %:</span>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Margine %:</span>
               <span style={{
-                backgroundColor: stats.margine_percentuale >= 0 ? '#e8f5e9' : '#ffebee',
-                color: stats.margine_percentuale >= 0 ? '#2e7d32' : '#c62828',
+                backgroundColor: stats.margine_percentuale >= 0 ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+                color: stats.margine_percentuale >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
                 padding: '4px 14px', borderRadius: '20px',
                 fontWeight: 700, fontSize: '0.95rem',
               }}>
                 {stats.margine_percentuale >= 0 ? '+' : ''}{stats.margine_percentuale}%
               </span>
-              <span style={{ color: '#888', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
                 (Carico tot: {stats.totale_carico} | Scarico tot: {stats.totale_scarico})
               </span>
             </div>
@@ -621,54 +620,54 @@ function DettaglioProdotto() {
       {/* Confronto Prezzi di Mercato */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <h2 style={{
-          color: PRIMARY_COLOR,
+          color: 'var(--color-text)',
           marginTop: 0,
           marginBottom: 16,
           fontSize: '1.1rem',
-          borderBottom: '2px solid #e8eaf6',
+          borderBottom: '1px solid var(--color-border)',
           paddingBottom: 12,
         }}>Confronto Prezzi di Mercato</h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           {/* eBay */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #1565c0' }}>
+          <div style={{ ...statCardStyle, borderLeft: '4px solid var(--color-warning)' }}>
             <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>🛒</div>
-            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>Prezzi eBay</div>
-            {ebayLoading && <div style={{ fontSize: '0.85rem', color: '#888' }}>Caricamento...</div>}
-            {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: '#c62828' }}>Non disponibile</div>}
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Prezzi eBay</div>
+            {ebayLoading && <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Caricamento...</div>}
+            {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Non disponibile</div>}
             {ebayData && !ebayError && !ebayLoading && (
               ebayData.configurato === false
-                ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Non configurato</div>
+                ? <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Non configurato</div>
                 : ebayData.numero_risultati === 0
-                  ? <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>Nessun risultato</div>
+                  ? <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Nessun risultato</div>
                   : <div>
-                      <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 2 }}>Medio:</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#e65100', marginBottom: 8 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Medio:</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-warning)', marginBottom: 8 }}>
                         {'\u20AC'}{Number(ebayData.prezzo_medio).toFixed(2)}
                       </div>
                       {ebayData.ultimo_prezzo_venduto != null && (
-                        <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>
-                          Venduto: <span style={{ color: '#e65100', fontWeight: 600 }}>{'\u20AC'}{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</span>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                          Venduto: <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{'\u20AC'}{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</span>
                         </div>
                       )}
-                      <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 8 }}>{ebayData.numero_risultati} annunci</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 8 }}>{ebayData.numero_risultati} annunci</div>
                       <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
                         aria-label="Vedi su eBay (apre in una nuova scheda)"
-                        style={{ fontSize: '0.75rem', color: '#e65100', display: 'inline-block', marginBottom: 6, textDecoration: 'none', cursor: 'pointer' }}>Vedi su eBay</a>
+                        style={{ fontSize: '0.75rem', color: 'var(--color-primary-light)', display: 'inline-block', marginBottom: 6, textDecoration: 'none', cursor: 'pointer' }}>Vedi su eBay</a>
                     </div>
             )}
             <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" 
               style={{ 
                 marginTop: 8, 
                 fontSize: '0.75rem', 
-                color: '#e65100', 
+                color: 'var(--color-primary-light)', 
                 background: 'transparent', 
-                border: '1px solid #e65100',
-                borderRadius: '4px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--border-radius-sm)',
                 padding: '6px 12px',
                 cursor: ebayLoading ? 'not-allowed' : 'pointer', 
                 opacity: ebayLoading ? 0.6 : 1,
-                transition: 'all 0.2s',
+                transition: 'all var(--transition-fast)',
                 fontWeight: 500,
               }}>
               {ebayLoading ? 'Caricamento...' : 'Aggiorna'}
@@ -764,7 +763,7 @@ function DettaglioProdotto() {
 
       {/* Chart */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>📊 Quantità nel tempo</h2>
+        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Quantita nel tempo</h2>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <QuantitaChart storico={storico_quantita} />
         </div>
@@ -772,18 +771,18 @@ function DettaglioProdotto() {
 
       {/* Movements table */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
-          📋 Storico Movimenti
-          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#888', marginLeft: 8 }}>({movimenti.length} totali)</span>
+        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
+          Storico Movimenti
+          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--color-text-secondary)', marginLeft: 8 }}>({movimenti.length} totali)</span>
         </h2>
         {movimenti.length === 0 ? (
-          <p style={{ color: '#888', textAlign: 'center', padding: '24px 0' }}>Nessun movimento registrato</p>
+          <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>Nessun movimento registrato</p>
         ) : (
           <>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
-                  <tr style={{ backgroundColor: PRIMARY_COLOR, color: 'white' }}>
+                  <tr style={{ backgroundColor: 'var(--color-surface-hover)', color: 'var(--color-text)' }}>
                     {['Data', 'Tipo', 'Quantità', 'Fornitore', 'Note'].map(h => (
                       <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                     ))}
@@ -791,18 +790,18 @@ function DettaglioProdotto() {
                 </thead>
                 <tbody>
                   {movimentiPagina.map((m, i) => (
-                    <tr key={m.id} style={{ borderBottom: '1px solid #eee', backgroundColor: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                      <td style={{ padding: '9px 14px', color: '#555', whiteSpace: 'nowrap' }}>{fmtDate(m.data_movimento)}</td>
+                    <tr key={m.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', backgroundColor: i % 2 === 0 ? 'var(--color-bg-elevated)' : 'var(--color-surface)' }}>
+                      <td style={{ padding: '9px 14px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{fmtDate(m.data_movimento)}</td>
                       <td style={{ padding: '9px 14px' }}>
                         <span style={{
-                          backgroundColor: m.tipo === 'carico' ? '#e8f5e9' : '#ffebee',
-                          color: m.tipo === 'carico' ? '#2e7d32' : '#c62828',
+                          backgroundColor: m.tipo === 'carico' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+                          color: m.tipo === 'carico' ? 'var(--color-success)' : 'var(--color-danger)',
                           padding: '2px 10px', borderRadius: '12px', fontWeight: 600, fontSize: '0.82rem',
                         }}>{m.tipo}</span>
                       </td>
-                      <td style={{ padding: '9px 14px', fontWeight: 600 }}>{m.quantita}</td>
-                      <td style={{ padding: '9px 14px', color: '#555' }}>{m.fornitore_nome || '—'}</td>
-                      <td style={{ padding: '9px 14px', color: '#777', fontStyle: m.note ? 'normal' : 'italic' }}>{m.note || '—'}</td>
+                      <td style={{ padding: '9px 14px', fontWeight: 600, color: 'var(--color-text)' }}>{m.quantita}</td>
+                      <td style={{ padding: '9px 14px', color: 'var(--color-text-secondary)' }}>{m.fornitore_nome || '—'}</td>
+                      <td style={{ padding: '9px 14px', color: 'var(--color-text-muted)', fontStyle: m.note ? 'normal' : 'italic' }}>{m.note || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -811,12 +810,12 @@ function DettaglioProdotto() {
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
                 <button onClick={() => setMovPage(p => Math.max(0, p - 1))} disabled={movPage === 0}
-                  style={btnSmall(movPage === 0 ? '#ccc' : PRIMARY_COLOR)}>‹ Prec</button>
-                <span style={{ padding: '4px 10px', fontSize: '0.9rem', color: '#555' }}>
+                  style={btnSmall(movPage === 0 ? 'var(--color-surface-hover)' : 'var(--color-primary)')}>Prec</button>
+                <span style={{ padding: '4px 10px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
                   {movPage + 1} / {totalPages}
                 </span>
                 <button onClick={() => setMovPage(p => Math.min(totalPages - 1, p + 1))} disabled={movPage === totalPages - 1}
-                  style={btnSmall(movPage === totalPages - 1 ? '#ccc' : PRIMARY_COLOR)}>Succ ›</button>
+                  style={btnSmall(movPage === totalPages - 1 ? 'var(--color-surface-hover)' : 'var(--color-primary)')}>Succ</button>
               </div>
             )}
           </>
@@ -825,23 +824,23 @@ function DettaglioProdotto() {
 
       {/* Sezione Codici & Etichette */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔖 Codici &amp; Etichette</h2>
-        {barcodeError && <div style={{ color: 'red', marginBottom: 8, fontSize: '0.9rem' }}>{barcodeError}</div>}
+        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Codici e Etichette</h2>
+        {barcodeError && <div style={{ color: 'var(--color-danger)', marginBottom: 8, fontSize: '0.9rem' }}>{barcodeError}</div>}
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           {prodotto.barcode ? (
             <div>
               <BarcodeDisplay value={prodotto.barcode} productName={prodotto.nome} width={2} height={60} />
-              <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#555', fontFamily: 'monospace', textAlign: 'center' }}>{prodotto.barcode}</div>
+              <div style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace', textAlign: 'center' }}>{prodotto.barcode}</div>
             </div>
           ) : (
-            <div style={{ color: '#aaa', fontStyle: 'italic', fontSize: '0.9rem', padding: '8px 0' }}>
+            <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.9rem', padding: '8px 0' }}>
               Nessun barcode generato
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555' }}>QR Code</div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-text-secondary)' }}>QR Code</div>
             <QRCodeDisplay value={`prodotto:${prodotto.id}`} size={100} productName={prodotto.nome} />
-            <div style={{ fontSize: '0.75rem', color: '#555', textAlign: 'center' }}>📱 Scansiona con fotocamera</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>Scansiona con fotocamera</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button
@@ -866,18 +865,18 @@ function DettaglioProdotto() {
       {/* Prodotti correlati */}
       {prodotti_correlati.length > 0 && (
         <div style={{ ...cardStyle, marginBottom: 24 }}>
-          <h2 style={{ color: PRIMARY_COLOR, marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>🔗 Prodotti correlati</h2>
+          <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Prodotti correlati</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
             {prodotti_correlati.map(pc => (
               <div key={pc.id}
                 onClick={() => navigate(`/prodotti/${pc.id}`)}
                 style={{
-                  cursor: 'pointer', borderRadius: 8, border: '1px solid #e8eaf6',
-                  padding: 12, transition: 'box-shadow 0.2s',
-                  backgroundColor: 'white',
+                  cursor: 'pointer', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-border)',
+                  padding: 12, transition: 'all var(--transition-fast)',
+                  backgroundColor: 'var(--color-surface)',
                 }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--card-shadow-hover)'; e.currentTarget.style.borderColor = 'var(--color-border-hover)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
               >
                 <div style={{ textAlign: 'center', marginBottom: 8 }}>
                   {pc.foto_url
@@ -886,11 +885,11 @@ function DettaglioProdotto() {
                     : <span style={{ fontSize: '2.5rem' }}>📦</span>
                   }
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: PRIMARY_COLOR, marginBottom: 4, textAlign: 'center' }}>{pc.nome}</div>
-                <div style={{ fontSize: '0.78rem', color: '#888', textAlign: 'center', marginBottom: 4 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: 4, textAlign: 'center' }}>{pc.nome}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', textAlign: 'center', marginBottom: 4 }}>
                   <code>{pc.sku}</code>
                 </div>
-                <div style={{ fontSize: '0.82rem', textAlign: 'center', color: pc.quantita < pc.quantita_minima ? '#c62828' : '#2e7d32', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.82rem', textAlign: 'center', color: pc.quantita < pc.quantita_minima ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 600 }}>
                   Qty: {pc.quantita}
                 </div>
               </div>
@@ -910,28 +909,34 @@ function DettaglioProdotto() {
 }
 
 const cardStyle = {
-  backgroundColor: 'white', borderRadius: '8px',
-  padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  backgroundColor: 'var(--color-surface)', 
+  borderRadius: 'var(--border-radius-lg)',
+  padding: '20px', 
+  border: '1px solid var(--color-border)',
+  boxShadow: 'var(--card-shadow)',
 }
 
 const statCardStyle = {
-  backgroundColor: 'white', borderRadius: '8px',
-  padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  backgroundColor: 'var(--color-surface)', 
+  borderRadius: 'var(--border-radius)',
+  padding: '12px', 
+  border: '1px solid var(--color-border)',
 }
 
 const infoRowStyle = {
   display: 'flex', justifyContent: 'space-between',
-  alignItems: 'center', gap: 8, padding: '4px 0',
-  borderBottom: '1px solid #f0f0f0',
+  alignItems: 'center', gap: 8, padding: '8px 0',
+  borderBottom: '1px solid var(--color-border-subtle)',
 }
 
-const labelStyle = { fontSize: '0.85rem', color: '#888', fontWeight: 500 }
-const valueStyle = { fontSize: '0.9rem', color: '#333', fontWeight: 600, textAlign: 'right' }
+const labelStyle = { fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }
+const valueStyle = { fontSize: '0.9rem', color: 'var(--color-text)', fontWeight: 600, textAlign: 'right' }
 
 const btnStyle = (bg) => ({
   backgroundColor: bg, color: 'white', border: 'none',
-  borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold',
+  borderRadius: 'var(--border-radius)', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold',
   fontSize: '0.9rem',
+  transition: 'all var(--transition-fast)',
 })
 
 const btnSmall = (bg) => ({
