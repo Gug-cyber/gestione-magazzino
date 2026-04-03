@@ -646,18 +646,30 @@ function DettaglioProdotto() {
                         €{Number(ebayData.prezzo_medio).toFixed(2)}
                       </div>
                       {ebayData.ultimo_prezzo_venduto != null && (
-                        <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
-                          Venduto: <strong style={{ color: '#e65100' }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</strong>
+                        <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>
+                          Venduto: <span style={{ color: '#e65100', fontWeight: 600 }}>€{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</span>
                         </div>
                       )}
-                      <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 6 }}>{ebayData.numero_risultati} annunci</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 6 }}>📦 {ebayData.numero_risultati} annunci</div>
                       <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
                         aria-label="Vedi su eBay (apre in una nuova scheda)"
-                        style={{ fontSize: '0.75rem', color: '#1565c0', display: 'inline-block', marginBottom: 4 }}>Vedi su eBay</a>
+                        style={{ fontSize: '0.75rem', color: '#1565c0', display: 'inline-block', marginBottom: 6, textDecoration: 'none', cursor: 'pointer' }}>🔗 Vedi su eBay</a>
                     </div>
             )}
-            <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" style={{ marginTop: 6, fontSize: '0.75rem', color: '#1565c0', background: 'none', border: 'none', cursor: ebayLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: ebayLoading ? 0.6 : 1 }}>
-              Aggiorna
+            <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" 
+              style={{ 
+                marginTop: 6, 
+                fontSize: '0.75rem', 
+                color: '#1565c0', 
+                background: 'none', 
+                border: '1px solid #1565c0',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                cursor: ebayLoading ? 'not-allowed' : 'pointer', 
+                opacity: ebayLoading ? 0.6 : 1,
+                transition: 'all 0.2s',
+              }}>
+              {ebayLoading ? '⏳ Caricamento...' : '🔄 Aggiorna'}
             </button>
           </div>
 
