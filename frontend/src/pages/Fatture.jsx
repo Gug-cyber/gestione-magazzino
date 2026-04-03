@@ -484,7 +484,7 @@ export default function Fatture() {
                 </div>
 
                 <div>
-                  <label className="form-label">Importo *</label>
+                  <label className="form-label">Importo € *</label>
                   <input
                     type="number"
                     name="importo"
@@ -492,6 +492,7 @@ export default function Fatture() {
                     onChange={handleFormChange}
                     placeholder="0.00"
                     step="0.01"
+                    min="0"
                     required
                     className="form-input"
                   />
@@ -510,7 +511,7 @@ export default function Fatture() {
                   </select>
                 </div>
 
-                <div className="form-checkbox-wrapper">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '28px' }}>
                   <input
                     type="checkbox"
                     id="pagata"
@@ -518,7 +519,7 @@ export default function Fatture() {
                     checked={form.pagata}
                     onChange={handleFormChange}
                   />
-                  <label htmlFor="pagata">
+                  <label htmlFor="pagata" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     Fattura pagata
                   </label>
                 </div>

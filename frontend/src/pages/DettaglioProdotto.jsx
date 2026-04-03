@@ -47,13 +47,20 @@ function QuantitaChart({ storico }) {
   const toX = (i) => padLeft + i * xStep
   const toY = (v) => padTop + (H - padTop - padBottom) * (1 - (v - minVal) / range)
 
-  // Y axis labels
-  const yLabels = []
+  // Y axis labels - deduplicate to avoid showing same value twice
+  const yLabelsRaw = []
   const steps = 4
   for (let i = 0; i <= steps; i++) {
     const v = minVal + (range * i) / steps
-    yLabels.push({ v: Math.round(v), y: toY(v) })
+    yLabelsRaw.push({ v: Math.round(v), y: toY(v) })
   }
+  // Remove duplicate values
+  const seen = new Set()
+  const yLabels = yLabelsRaw.filter(({ v }) => {
+    if (seen.has(v)) return false
+    seen.add(v)
+    return true
+  })
 
   // Polyline points
   const points = storico.map((s, i) => `${toX(i)},${toY(s.quantita)}`).join(' ')
@@ -628,50 +635,62 @@ function DettaglioProdotto() {
           paddingBottom: 12,
         }}>Confronto Prezzi di Mercato</h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
           {/* eBay */}
-          <div style={{ ...statCardStyle, borderLeft: '4px solid var(--color-warning)' }}>
-            <div style={{ fontSize: '1.2rem', marginBottom: 4 }}>🛒</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Prezzi eBay</div>
-            {ebayLoading && <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Caricamento...</div>}
-            {ebayError && !ebayLoading && <div style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Non disponibile</div>}
-            {ebayData && !ebayError && !ebayLoading && (
-              ebayData.configurato === false
-                ? <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Non configurato</div>
-                : ebayData.numero_risultati === 0
-                  ? <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Nessun risultato</div>
-                  : <div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Medio:</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-warning)', marginBottom: 8 }}>
-                        {'\u20AC'}{Number(ebayData.prezzo_medio).toFixed(2)}
-                      </div>
-                      {ebayData.ultimo_prezzo_venduto != null && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
-                          Venduto: <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{'\u20AC'}{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}</span>
+          <div style={{ 
+            ...statCardStyle, 
+            borderLeft: '4px solid var(--color-warning)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 16,
+            minWidth: 280,
+            flex: '1 1 auto',
+          }}>
+            <div style={{ fontSize: '2rem', opacity: 0.8 }}>🛒</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4, fontWeight: 500 }}>Prezzi eBay</div>
+              {ebayLoading && <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Caricamento...</div>}
+              {ebayError && !ebayLoading && <div style={{ fontSize: '0.85rem', color: 'var(--color-danger)' }}>Non disponibile</div>}
+              {ebayData && !ebayError && !ebayLoading && (
+                ebayData.configurato === false
+                  ? <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Non configurato</div>
+                  : ebayData.numero_risultati === 0
+                    ? <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Nessun risultato</div>
+                    : <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 16px' }}>
+                        <div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Medio: </span>
+                          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-warning)' }}>
+                            {'\u20AC'}{Number(ebayData.prezzo_medio).toFixed(2)}
+                          </span>
                         </div>
-                      )}
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 8 }}>{ebayData.numero_risultati} annunci</div>
-                      <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
-                        aria-label="Vedi su eBay (apre in una nuova scheda)"
-                        style={{ fontSize: '0.75rem', color: 'var(--color-primary-light)', display: 'inline-block', marginBottom: 6, textDecoration: 'none', cursor: 'pointer' }}>Vedi su eBay</a>
-                    </div>
-            )}
-            <button onClick={refreshEbay} disabled={ebayLoading} aria-label="Aggiorna prezzi eBay" 
-              style={{ 
-                marginTop: 8, 
-                fontSize: '0.75rem', 
-                color: 'var(--color-primary-light)', 
-                background: 'transparent', 
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--border-radius-sm)',
-                padding: '6px 12px',
-                cursor: ebayLoading ? 'not-allowed' : 'pointer', 
-                opacity: ebayLoading ? 0.6 : 1,
-                transition: 'all var(--transition-fast)',
-                fontWeight: 500,
-              }}>
-              {ebayLoading ? 'Caricamento...' : 'Aggiorna'}
-            </button>
+                        {ebayData.ultimo_prezzo_venduto != null && (
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Venduto: </span>
+                            <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-success)' }}>
+                              {'\u20AC'}{Number(ebayData.ultimo_prezzo_venduto).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                          {ebayData.numero_risultati} annunci
+                        </div>
+                      </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+              {ebayData?.url_ricerca && (
+                <a href={ebayData.url_ricerca} target="_blank" rel="noopener noreferrer"
+                  className="gm-btn gm-btn-sm gm-btn-secondary"
+                  style={{ fontSize: '0.75rem', textDecoration: 'none' }}>
+                  Vedi su eBay
+                </a>
+              )}
+              <button onClick={refreshEbay} disabled={ebayLoading} 
+                className="gm-btn gm-btn-sm"
+                style={{ fontSize: '0.75rem', opacity: ebayLoading ? 0.6 : 1 }}>
+                {ebayLoading ? 'Caricamento...' : 'Aggiorna'}
+              </button>
+            </div>
           </div>
 
           {/* Placeholder per futuri integrazioni quando saranno riabilitate */}
@@ -779,29 +798,45 @@ function DettaglioProdotto() {
           <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>Nessun movimento registrato</p>
         ) : (
           <>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <div style={{ overflowX: 'auto', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-border)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ backgroundColor: 'var(--color-surface-hover)', color: 'var(--color-text)' }}>
-                    {['Data', 'Tipo', 'Quantità', 'Fornitore', 'Note'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                  <tr style={{ backgroundColor: 'var(--color-surface-hover)' }}>
+                    {['Data', 'Tipo', 'Quantita', 'Fornitore', 'Note'].map(h => (
+                      <th key={h} style={{ 
+                        padding: '12px 16px', 
+                        textAlign: 'left', 
+                        fontWeight: 600, 
+                        color: 'var(--color-text)',
+                        borderBottom: '1px solid var(--color-border)',
+                        fontSize: '0.8rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {movimentiPagina.map((m, i) => (
-                    <tr key={m.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', backgroundColor: i % 2 === 0 ? 'var(--color-bg-elevated)' : 'var(--color-surface)' }}>
-                      <td style={{ padding: '9px 14px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{fmtDate(m.data_movimento)}</td>
-                      <td style={{ padding: '9px 14px' }}>
+                    <tr key={m.id} style={{ 
+                      borderBottom: i < movimentiPagina.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{fmtDate(m.data_movimento)}</td>
+                      <td style={{ padding: '12px 16px' }}>
                         <span style={{
                           backgroundColor: m.tipo === 'carico' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
                           color: m.tipo === 'carico' ? 'var(--color-success)' : 'var(--color-danger)',
-                          padding: '2px 10px', borderRadius: '12px', fontWeight: 600, fontSize: '0.82rem',
+                          padding: '4px 12px', borderRadius: '12px', fontWeight: 600, fontSize: '0.75rem',
+                          textTransform: 'capitalize',
                         }}>{m.tipo}</span>
                       </td>
-                      <td style={{ padding: '9px 14px', fontWeight: 600, color: 'var(--color-text)' }}>{m.quantita}</td>
-                      <td style={{ padding: '9px 14px', color: 'var(--color-text-secondary)' }}>{m.fornitore_nome || '—'}</td>
-                      <td style={{ padding: '9px 14px', color: 'var(--color-text-muted)', fontStyle: m.note ? 'normal' : 'italic' }}>{m.note || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text)' }}>{m.quantita}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>{m.fornitore_nome || '—'}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontStyle: m.note ? 'normal' : 'italic', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.note || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -825,39 +860,62 @@ function DettaglioProdotto() {
       {/* Sezione Codici & Etichette */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Codici e Etichette</h2>
-        {barcodeError && <div style={{ color: 'var(--color-danger)', marginBottom: 8, fontSize: '0.9rem' }}>{barcodeError}</div>}
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          {prodotto.barcode ? (
-            <div>
-              <BarcodeDisplay value={prodotto.barcode} productName={prodotto.nome} width={2} height={60} />
-              <div style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace', textAlign: 'center' }}>{prodotto.barcode}</div>
-            </div>
-          ) : (
-            <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.9rem', padding: '8px 0' }}>
-              Nessun barcode generato
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-text-secondary)' }}>QR Code</div>
-            <QRCodeDisplay value={`prodotto:${prodotto.id}`} size={100} productName={prodotto.nome} />
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>Scansiona con fotocamera</div>
+        {barcodeError && <div style={{ color: 'var(--color-danger)', marginBottom: 12, fontSize: '0.9rem' }}>{barcodeError}</div>}
+        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Barcode */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            padding: '16px 24px',
+            backgroundColor: 'var(--color-surface-hover)',
+            borderRadius: 'var(--border-radius)',
+            minWidth: 140,
+          }}>
+            {prodotto.barcode ? (
+              <>
+                <BarcodeDisplay value={prodotto.barcode} productName={prodotto.nome} width={2} height={50} />
+                <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--color-text)', fontFamily: 'monospace' }}>{prodotto.barcode}</div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem', padding: '16px 0' }}>
+                Nessun barcode
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          
+          {/* QR Code */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            padding: '16px 24px',
+            backgroundColor: 'var(--color-surface-hover)',
+            borderRadius: 'var(--border-radius)',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>QR Code</div>
+            <QRCodeDisplay value={`prodotto:${prodotto.id}`} size={80} productName={prodotto.nome} />
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 8 }}>Scansiona con fotocamera</div>
+          </div>
+          
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginLeft: 'auto' }}>
             <button
               onClick={handleGenerateBarcode}
               disabled={generatingBarcode}
-              style={{ ...btnStyle(PRIMARY_COLOR), opacity: generatingBarcode ? 0.6 : 1, cursor: generatingBarcode ? 'not-allowed' : 'pointer' }}
+              className="gm-btn gm-btn-secondary"
+              style={{ opacity: generatingBarcode ? 0.6 : 1 }}
             >
-              {generatingBarcode ? '⏳ Generazione...' : prodotto.barcode ? '🔄 Rigenera Barcode' : '🔖 Genera Barcode'}
+              {generatingBarcode ? 'Generazione...' : prodotto.barcode ? 'Rigenera Barcode' : 'Genera Barcode'}
             </button>
             <button
               onClick={() => setShowPrintModal(true)}
-              style={btnStyle('#1565c0')}
-            >🖨️ Stampa Etichetta</button>
+              className="gm-btn gm-btn-primary"
+            >Stampa Etichetta</button>
             <button
               onClick={handleStampaQR}
-              style={btnStyle('#7c3aed')}
-            >🖨️ Stampa QR</button>
+              className="gm-btn gm-btn-secondary"
+            >Stampa QR</button>
           </div>
         </div>
       </div>
@@ -866,30 +924,58 @@ function DettaglioProdotto() {
       {prodotti_correlati.length > 0 && (
         <div style={{ ...cardStyle, marginBottom: 24 }}>
           <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Prodotti correlati</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
             {prodotti_correlati.map(pc => (
               <div key={pc.id}
                 onClick={() => navigate(`/prodotti/${pc.id}`)}
                 style={{
-                  cursor: 'pointer', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-border)',
-                  padding: 12, transition: 'all var(--transition-fast)',
+                  cursor: 'pointer', 
+                  borderRadius: 'var(--border-radius)', 
+                  border: '1px solid var(--color-border)',
+                  padding: 16, 
+                  transition: 'all var(--transition-fast)',
                   backgroundColor: 'var(--color-surface)',
+                  minWidth: 150,
+                  flexShrink: 0,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--card-shadow-hover)'; e.currentTarget.style.borderColor = 'var(--color-border-hover)' }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = 'var(--color-primary)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'var(--color-border)' }}
               >
-                <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                <div style={{ textAlign: 'center', marginBottom: 12 }}>
                   {pc.foto_url
                     ? <img src={getFotoUrl(pc.foto_url)} alt={pc.nome}
-                        style={{ width: 60, height: 60, borderRadius: 6, objectFit: 'cover' }} />
-                    : <span style={{ fontSize: '2.5rem' }}>📦</span>
+                        style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover' }} />
+                    : <div style={{ 
+                        width: 64, height: 64, 
+                        borderRadius: 8, 
+                        backgroundColor: 'var(--color-surface-hover)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        margin: '0 auto',
+                        fontSize: '1.5rem',
+                      }}>📦</div>
                   }
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: 4, textAlign: 'center' }}>{pc.nome}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', textAlign: 'center', marginBottom: 4 }}>
-                  <code>{pc.sku}</code>
+                <div style={{ 
+                  fontWeight: 600, 
+                  fontSize: '0.85rem', 
+                  color: 'var(--color-text)', 
+                  marginBottom: 4, 
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>{pc.nome}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 6 }}>
+                  {pc.sku}
                 </div>
-                <div style={{ fontSize: '0.82rem', textAlign: 'center', color: pc.quantita < pc.quantita_minima ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 600 }}>
+                <div style={{ 
+                  fontSize: '0.8rem', 
+                  textAlign: 'center', 
+                  color: pc.quantita < pc.quantita_minima ? 'var(--color-danger)' : 'var(--color-success)', 
+                  fontWeight: 600,
+                }}>
                   Qty: {pc.quantita}
                 </div>
               </div>
