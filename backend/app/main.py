@@ -16,7 +16,11 @@ from .routers import ebay
 from .routers import cardmarket_scraper
 from .routers import cms_sync
 from .routers import tracking as tracking_router
+from .routers.cms import contenuti as cms_contenuti, banner as cms_banner, prodotti as cms_prodotti
 from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
+from .models import contenuto as _contenuto_model  # noqa: F401 – ensures contenuti table is created
+from .models import banner as _banner_model  # noqa: F401 – ensures banner table is created
+from .models import prodotto_pubblico as _prodotto_pubblico_model  # noqa: F401 – ensures prodotti_pubblici table is created
 from .models import tracking_update as _tracking_update_model  # noqa: F401 – ensures tracking_updates table is created
 from .models import cardmarket_price as _cardmarket_price_model  # noqa: F401 – ensures cardmarket_prices table is created
 from .routers import activity_log as activity_log_router
@@ -97,6 +101,9 @@ app.include_router(ebay.router, prefix="/api/ebay", tags=["eBay"])
 app.include_router(cardmarket_scraper.router, prefix="/api/cardmarket-scraper", tags=["CardMarket Scraper"])
 app.include_router(cms_sync.router, prefix="/api/cms", tags=["CMS Sync"])
 app.include_router(tracking_router.router, prefix="/api/tracking", tags=["Tracking"])
+app.include_router(cms_contenuti.router, prefix="/api/cms", tags=["CMS - Contenuti"])
+app.include_router(cms_banner.router, prefix="/api/cms", tags=["CMS - Banner"])
+app.include_router(cms_prodotti.router, prefix="/api/cms", tags=["CMS - Prodotti"])
 
 
 @app.on_event("startup")
