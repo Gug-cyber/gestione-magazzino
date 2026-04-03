@@ -780,13 +780,15 @@ function DettaglioProdotto() {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart - DISABILITATO */}
+      {/* 
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Quantita nel tempo</h2>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <QuantitaChart storico={storico_quantita} />
         </div>
       </div>
+      */}
 
       {/* Movements table */}
       <div style={{ ...cardStyle, marginBottom: 24 }}>
