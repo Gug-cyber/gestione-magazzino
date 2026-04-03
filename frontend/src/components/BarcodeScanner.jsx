@@ -5,23 +5,28 @@ const STATUS = {
   INIT: '⏳ Inizializzazione fotocamera...',
   WAITING: '🔍 In attesa del codice a barre...',
   DETECTED: '✅ Codice rilevato!',
+  FOCUSING: '🎯 Messa a fuoco...',
 }
 
-// Formats to scan: QR_CODE first (most reliable with any camera),
-// then common 1D barcode formats for backward compatibility with existing labels.
-// CODE_39 is excluded as it often causes false positives with CODE_128 barcodes.
+// Enhanced formats: QR_CODE first (most reliable), then common 1D barcodes
+// Added CODE_39, ITF, CODABAR, DATA_MATRIX for better compatibility
 const FORMATS_TO_SUPPORT = [
-  Html5QrcodeSupportedFormats.QR_CODE,      // ← primo: più affidabile con qualsiasi fotocamera
+  Html5QrcodeSupportedFormats.QR_CODE,
   Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.UPC_A,
   Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.ITF,
+  Html5QrcodeSupportedFormats.CODABAR,
+  Html5QrcodeSupportedFormats.DATA_MATRIX,
 ]
 
-// Scanning region dimensions — square for QR codes, also works for 1D barcodes.
-// Shared between the html5-qrcode config and the viewfinder overlay so both stay in sync.
-const QRBOX = { width: 280, height: 280 }
+// Scanning regions: wider for 1D barcodes, square for QR codes
+const QRBOX_1D = { width: 320, height: 160 }  // Optimized for barcode
+const QRBOX_QR = { width: 280, height: 280 }  // Square for QR
+const QRBOX = QRBOX_QR  // Default
 
 function BarcodeScanner({ onScan, onClose }) {
   const [error, setError] = useState('')
@@ -29,10 +34,14 @@ function BarcodeScanner({ onScan, onClose }) {
   const [scanning, setScanning] = useState(false)
   const [cameras, setCameras] = useState([])
   const [selectedCamera, setSelectedCamera] = useState(null)
+  const [torchEnabled, setTorchEnabled] = useState(false)
+  const [torchAvailable, setTorchAvailable] = useState(false)
+  const [scanMode, setScanMode] = useState('auto') // 'auto', 'barcode', 'qr'
 
   const scannerRef = useRef(null)
   const mountedRef = useRef(true)
   const successHandledRef = useRef(false)
+  const streamRef = useRef(null)
 
   // Initialize scanner and enumerate cameras on mount
   useEffect(() => {
@@ -99,6 +108,24 @@ function BarcodeScanner({ onScan, onClose }) {
         scannerRef.current = null
       }
 
+      // Check torch availability from stream
+      if (scanMode === 'barcode' || scanMode === 'auto') {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+          })
+          streamRef.current = stream
+          const track = stream.getVideoTracks()[0]
+          if (track?.getCapabilities?.().torch) {
+            setTorchAvailable(true)
+          }
+          // Close this test stream
+          stream.getTracks().forEach(t => t.stop())
+        } catch {
+          // Ignore torch check errors
+        }
+      }
+
       const html5QrCode = new Html5Qrcode('barcode-reader')
       scannerRef.current = html5QrCode
 
@@ -106,17 +133,23 @@ function BarcodeScanner({ onScan, onClose }) {
       setError('')
 
       const config = {
-        fps: 20,
-        qrbox: QRBOX,
+        fps: 30, // Increased from 20 for faster, more responsive scanning
+        qrbox: scanMode === 'qr' ? QRBOX_QR : scanMode === 'barcode' ? QRBOX_1D : { width: 300, height: 200 },
         aspectRatio: 1.777778,
         formatsToSupport: FORMATS_TO_SUPPORT,
+        disableFlip: false, // Allow reading flipped/mirrored barcodes
         videoConstraints: {
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1920, min: 1280 }, // Full HD for better barcode clarity
+          height: { ideal: 1080, min: 720 },
+          advanced: [
+            { focusMode: 'continuous' },
+            { exposureMode: 'continuous' },
+            { whiteBalanceMode: 'continuous' },
+          ],
         },
         experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
+          useBarCodeDetectorIfSupported: true, // Use native BarcodeDetector API when available
         },
       }
 
@@ -186,6 +219,11 @@ function BarcodeScanner({ onScan, onClose }) {
       try { scannerRef.current.clear() } catch { /* ignore */ }
       scannerRef.current = null
     }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setTorchEnabled(false)
   }
 
   const switchCamera = async (cameraId) => {
@@ -197,6 +235,19 @@ function BarcodeScanner({ onScan, onClose }) {
     }
     successHandledRef.current = false
     await startScanning(cameraId)
+  }
+
+  const toggleTorch = async () => {
+    if (!streamRef.current) return
+    try {
+      const track = streamRef.current.getVideoTracks()[0]
+      if (track) {
+        await track.applyConstraints({ advanced: [{ torch: !torchEnabled }] })
+        setTorchEnabled(!torchEnabled)
+      }
+    } catch (err) {
+      console.error('Torch toggle error:', err)
+    }
   }
 
   const handleClose = () => {
@@ -228,6 +279,30 @@ function BarcodeScanner({ onScan, onClose }) {
       }}>
         <h3 style={{ color: '#1a237e', marginTop: 0 }}>📷 Scansiona QR / Barcode</h3>
 
+        {/* Scan Mode Selector */}
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '16px' }}>
+          {['auto', 'barcode', 'qr'].map(mode => (
+            <button
+              key={mode}
+              onClick={() => setScanMode(mode)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '20px',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                border: `2px solid ${scanMode === mode ? '#1a237e' : '#ccc'}`,
+                background: scanMode === mode ? '#1a237e' : 'white',
+                color: scanMode === mode ? 'white' : '#1a237e',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              aria-pressed={scanMode === mode}
+            >
+              {mode === 'auto' ? '🔄 Auto' : mode === 'barcode' ? '📊 Barcode' : '📱 QR'}
+            </button>
+          ))}
+        </div>
+
         {/* Status indicator */}
         <p style={{
           color: statusColor, fontSize: '0.9rem', marginBottom: '12px',
@@ -255,8 +330,10 @@ function BarcodeScanner({ onScan, onClose }) {
               position: 'absolute',
               top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: '70%', maxWidth: QRBOX.width,
-              height: '70%', maxHeight: QRBOX.height,
+              width: scanMode === 'qr' ? '70%' : '80%',
+              maxWidth: scanMode === 'qr' ? QRBOX_QR.width : QRBOX_1D.width,
+              height: scanMode === 'qr' ? '70%' : '30%',
+              maxHeight: scanMode === 'qr' ? QRBOX_QR.height : QRBOX_1D.height,
               border: '3px solid #00e5ff',
               borderRadius: '8px',
               boxSizing: 'border-box',
@@ -276,6 +353,35 @@ function BarcodeScanner({ onScan, onClose }) {
                 }} />
               ))}
             </div>
+          )}
+
+          {/* Torch button */}
+          {torchAvailable && (
+            <button
+              onClick={toggleTorch}
+              style={{
+                position: 'absolute',
+                bottom: '12px',
+                right: '12px',
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                cursor: 'pointer',
+                background: torchEnabled ? '#ffc107' : 'rgba(255,255,255,0.2)',
+                color: torchEnabled ? '#000' : '#fff',
+                fontSize: '1.2rem',
+                transition: 'all 0.2s',
+                zIndex: 10,
+              }}
+              title={torchEnabled ? 'Disattiva torcia' : 'Attiva torcia'}
+              aria-pressed={torchEnabled}
+            >
+              {torchEnabled ? '🔦' : '💡'}
+            </button>
           )}
         </div>
 
