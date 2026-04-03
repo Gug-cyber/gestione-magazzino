@@ -422,6 +422,7 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+.modal,
 .modal-content {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
@@ -961,9 +962,13 @@
   color: var(--primary-hover);
 }
 
-/* Modal */
+/* Modal sizes */
 .modal-lg {
   max-width: 700px;
+}
+
+.modal-lg,
+.modal {
   padding: 1.5rem;
 }
 
@@ -1027,6 +1032,27 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 0.25rem;
+}
+
+/* Checkbox styling */
+.form-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1.75rem;
+}
+
+.form-checkbox-wrapper input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.form-checkbox-wrapper label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
 /* Buttons */
