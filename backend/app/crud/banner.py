@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from ..models.banner import Banner
 from ..schemas.banner import BannerCreate, BannerUpdate
 
@@ -17,13 +17,13 @@ def get_banner_attivi(db: Session) -> List[Banner]:
     """
     Restituisce solo i banner attivi e nel periodo di validità.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return (
         db.query(Banner)
         .filter(
-            Banner.attivo == True,
-            (Banner.data_inizio == None) | (Banner.data_inizio <= now),
-            (Banner.data_fine == None) | (Banner.data_fine >= now)
+            Banner.attivo.is_(True),
+            (Banner.data_inizio.is_(None)) | (Banner.data_inizio <= now),
+            (Banner.data_fine.is_(None)) | (Banner.data_fine >= now)
         )
         .order_by(Banner.ordine)
         .all()

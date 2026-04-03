@@ -27,14 +27,14 @@ def get_prodotti_pubblici(
     query = (
         db.query(Prodotto)
         .join(ProdottoPubblico, Prodotto.id == ProdottoPubblico.prodotto_id)
-        .filter(ProdottoPubblico.visibile == True)
+        .filter(ProdottoPubblico.visibile.is_(True))
     )
 
     if categoria_id:
         query = query.filter(Prodotto.categoria_id == categoria_id)
 
     if in_evidenza:
-        query = query.filter(ProdottoPubblico.in_evidenza == True)
+        query = query.filter(ProdottoPubblico.in_evidenza.is_(True))
 
     if search:
         term = f"%{search}%"
