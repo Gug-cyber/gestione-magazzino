@@ -40,15 +40,13 @@ def get_analisi_mensile(
             for m, p in movimenti_carico
         )
 
-        # Ricavi da ordini completati: contabilizzati nel mese di conferma
-        # (data_conferma se disponibile, altrimenti data_completamento come fallback)
-        data_ricavo = func.coalesce(Ordine.data_conferma, Ordine.data_completamento)
+        # Ricavi da ordini completati: contabilizzati nel mese di completamento
         ordini_completati = (
             db.query(Ordine)
             .filter(
                 Ordine.stato == StatoOrdine.completato,
-                extract("year", data_ricavo) == anno,
-                extract("month", data_ricavo) == mese,
+                extract("year", Ordine.data_completamento) == anno,
+                extract("month", Ordine.data_completamento) == mese,
             )
             .all()
         )
@@ -155,14 +153,12 @@ def get_analisi_annuale(
             for m, p in movimenti_carico
         )
 
-        # Ricavi da ordini completati nell'anno: contabilizzati nell'anno di conferma
-        # (data_conferma se disponibile, altrimenti data_completamento come fallback)
-        data_ricavo = func.coalesce(Ordine.data_conferma, Ordine.data_completamento)
+        # Ricavi da ordini completati nell'anno: contabilizzati nell'anno di completamento
         ordini_completati = (
             db.query(Ordine)
             .filter(
                 Ordine.stato == StatoOrdine.completato,
-                extract("year", data_ricavo) == anno,
+                extract("year", Ordine.data_completamento) == anno,
             )
             .all()
         )
@@ -235,8 +231,8 @@ def get_top_prodotti_mensile(
         .join(Ordine, RigaOrdine.ordine_id == Ordine.id)
         .filter(
             Ordine.stato == StatoOrdine.completato,
-            extract("year", func.coalesce(Ordine.data_conferma, Ordine.data_completamento)) == anno,
-            extract("month", func.coalesce(Ordine.data_conferma, Ordine.data_completamento)) == mese,
+            extract("year", Ordine.data_completamento) == anno,
+            extract("month", Ordine.data_completamento) == mese,
         )
         .group_by(Prodotto.id, Prodotto.nome, Prodotto.sku)
         .order_by(desc("quantita_venduta"))
@@ -294,8 +290,8 @@ def get_marginalita_confronto(
             db.query(Ordine)
             .filter(
                 Ordine.stato == StatoOrdine.completato,
-                extract("year", func.coalesce(Ordine.data_conferma, Ordine.data_completamento)) == a,
-                extract("month", func.coalesce(Ordine.data_conferma, Ordine.data_completamento)) == m,
+                extract("year", Ordine.data_completamento) == a,
+                extract("month", Ordine.data_completamento) == m,
             )
             .all()
         )

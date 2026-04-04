@@ -157,7 +157,7 @@ def _crea_prodotto_analisi(client, auth_headers, sku="RICAVI-PROD-001"):
 
 
 def _crea_e_conferma_ordine(client, auth_headers, prodotto_id, quantita=1, prezzo=10.00):
-    """Crea un ordine, lo porta a confermato (imposta data_conferma) e poi a completato."""
+    """Crea un ordine, lo porta a confermato e poi a completato."""
     resp = client.post(
         "/api/ordini/",
         json={
@@ -169,15 +169,13 @@ def _crea_e_conferma_ordine(client, auth_headers, prodotto_id, quantita=1, prezz
     assert resp.status_code == 201
     ordine_id = resp.json()["id"]
 
-    # bozza → confermato via PATCH /stato (imposta data_conferma)
+    # bozza → confermato via PATCH /stato
     resp_conf = client.patch(
         f"/api/ordini/{ordine_id}/stato",
         json={"stato": "confermato"},
         headers=auth_headers,
     )
     assert resp_conf.status_code == 200
-    ordine = resp_conf.json()
-    assert ordine["data_conferma"] is not None, "data_conferma deve essere impostata alla conferma"
 
     # confermato → completato via PATCH /stato (imposta data_completamento)
     resp_comp = client.patch(
@@ -189,38 +187,10 @@ def _crea_e_conferma_ordine(client, auth_headers, prodotto_id, quantita=1, prezz
     return resp_comp.json()
 
 
-def test_data_conferma_impostata_alla_conferma(client, auth_headers):
-    """
-    REGRESSION TEST: data_conferma deve essere impostata quando l'ordine viene confermato.
-    """
-    prodotto = _crea_prodotto_analisi(client, auth_headers, sku="CONF-001")
-
-    resp = client.post(
-        "/api/ordini/",
-        json={
-            "cliente_nome": "Cliente Test",
-            "righe": [{"prodotto_id": prodotto["id"], "quantita": 1, "prezzo_unitario": 10.0}],
-        },
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    ordine_id = resp.json()["id"]
-    assert resp.json()["data_conferma"] is None
-
-    resp_conf = client.patch(
-        f"/api/ordini/{ordine_id}/stato",
-        json={"stato": "confermato"},
-        headers=auth_headers,
-    )
-    assert resp_conf.status_code == 200
-    assert resp_conf.json()["data_conferma"] is not None
-
-
-def test_ricavi_attribuiti_al_mese_di_conferma(client, auth_headers):
+def test_ricavi_attribuiti_al_mese_di_completamento(client, auth_headers):
     """
     REGRESSION TEST: i ricavi di un ordine completato devono essere contabilizzati
-    nel mese in cui l'ordine è stato confermato (data_conferma), non nel mese
-    di completamento.
+    nel mese di completamento dell'ordine (data_completamento).
     """
     prodotto = _crea_prodotto_analisi(client, auth_headers, sku="CONF-002")
     anno = datetime.now(timezone.utc).year
@@ -229,7 +199,7 @@ def test_ricavi_attribuiti_al_mese_di_conferma(client, auth_headers):
     ordine = _crea_e_conferma_ordine(client, auth_headers, prodotto["id"], quantita=2, prezzo=10.0)
     totale_atteso = ordine["totale"]
 
-    # I ricavi devono apparire nel mese corrente (mese di conferma)
+    # I ricavi devono apparire nel mese corrente (mese di completamento)
     resp = client.get(f"/api/analisi/mensile?anno={anno}", headers=auth_headers)
     assert resp.status_code == 200
     dati = resp.json()
