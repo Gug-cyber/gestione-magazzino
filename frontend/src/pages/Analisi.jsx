@@ -611,6 +611,14 @@ function TabStorico() {
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Margine</div>
                     <div style={{ fontWeight: 700, color: margine >= 0 ? 'var(--success)' : 'var(--danger)' }}>€{margine.toFixed(2)}</div>
                   </div>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Marginalità %</div>
+                    <div style={{ fontWeight: 700, color: (a.marginalita_percentuale ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                      {a.marginalita_percentuale !== null && a.marginalita_percentuale !== undefined
+                        ? `${a.marginalita_percentuale.toFixed(1)}%`
+                        : 'N/A'}
+                    </div>
+                  </div>
                 </div>
               </div>
             )
@@ -627,6 +635,7 @@ function TabStorico() {
                 <th>Ricavi</th>
                 <th>Spese</th>
                 <th>Margine</th>
+                <th>Marginalità %</th>
               </tr>
             </thead>
             <tbody>
@@ -640,6 +649,14 @@ function TabStorico() {
                     <td style={{ color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</td>
                     <td style={{ color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
                       €{margine.toFixed(2)}
+                    </td>
+                    <td style={{
+                      color: (a.marginalita_percentuale ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)',
+                      fontWeight: '700'
+                    }}>
+                      {a.marginalita_percentuale !== null && a.marginalita_percentuale !== undefined
+                        ? `${a.marginalita_percentuale.toFixed(1)}%`
+                        : 'N/A'}
                     </td>
                   </tr>
                 )
