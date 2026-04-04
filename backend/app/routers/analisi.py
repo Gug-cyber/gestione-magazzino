@@ -188,6 +188,9 @@ def get_analisi_annuale(
         ).scalar()
         ricavi += float(storici_ricavi or 0)
 
+        margine = ricavi - costi - spese - packaging
+        marginalita_percentuale = round((margine / ricavi) * 100, 2) if ricavi > 0 else None
+
         risultati.append({
             "anno": anno,
             "costi": round(costi, 2),
@@ -195,6 +198,7 @@ def get_analisi_annuale(
             "spese": round(spese, 2),
             "packaging": round(packaging, 2),
             "totale_spese": round(spese + packaging, 2),
+            "marginalita_percentuale": marginalita_percentuale,
         })
 
     return risultati
