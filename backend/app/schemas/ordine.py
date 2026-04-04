@@ -76,7 +76,6 @@ class OrdineResponse(BaseModel):
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
     data_ordine: Optional[datetime] = None
-    data_conferma: Optional[datetime] = None
     data_completamento: Optional[datetime] = None
     righe: List[RigaOrdineResponse] = []
 

@@ -205,7 +205,6 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     # Scala stock quando ordine confermato
     if nuovo_stato == StatoOrdine.confermato and stato_precedente != StatoOrdine.confermato:
-        ordine.data_conferma = datetime.now(timezone.utc)
         logger.info(
             "Transizione a CONFERMATO per ordine %s (id=%s): stock_scalato=%s",
             ordine.numero_ordine,

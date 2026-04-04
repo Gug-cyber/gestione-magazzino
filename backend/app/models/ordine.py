@@ -23,7 +23,6 @@ class Ordine(Base):
     stato = Column(Enum(StatoOrdine), default=StatoOrdine.bozza, nullable=False)
     note = Column(String, nullable=True)
     data_ordine = Column(DateTime(timezone=True), server_default=func.now())
-    data_conferma = Column(DateTime(timezone=True), nullable=True)
     data_completamento = Column(DateTime(timezone=True), nullable=True)
     totale = Column(Float, default=0.0)
     corriere = Column(String, nullable=True)
