@@ -336,7 +336,7 @@ def get_marginalita_confronto(
 
     variazione_assoluta = corrente["marginalita"] - precedente["marginalita"]
     variazione_percentuale = (
-        round(variazione_assoluta / precedente["marginalita"] * 100, 2)
+        round(variazione_assoluta / abs(precedente["marginalita"]) * 100, 2)
         if precedente["marginalita"] != 0
         else None
     )
