@@ -40,13 +40,13 @@ def get_analisi_mensile(
             for m, p in movimenti_carico
         )
 
-        # Ricavi da ordini completati nel mese
+        # Ricavi da ordini completati nel mese (contabilizzati alla data di conferma)
         ordini_completati = (
             db.query(Ordine)
             .filter(
                 Ordine.stato == StatoOrdine.completato,
-                extract("year", Ordine.data_completamento) == anno,
-                extract("month", Ordine.data_completamento) == mese,
+                extract("year", Ordine.data_conferma) == anno,
+                extract("month", Ordine.data_conferma) == mese,
             )
             .all()
         )
@@ -153,12 +153,12 @@ def get_analisi_annuale(
             for m, p in movimenti_carico
         )
 
-        # Ricavi da ordini completati nell'anno
+        # Ricavi da ordini completati nell'anno (contabilizzati alla data di conferma)
         ordini_completati = (
             db.query(Ordine)
             .filter(
                 Ordine.stato == StatoOrdine.completato,
-                extract("year", Ordine.data_completamento) == anno,
+                extract("year", Ordine.data_conferma) == anno,
             )
             .all()
         )
@@ -227,8 +227,8 @@ def get_top_prodotti_mensile(
         .join(Ordine, RigaOrdine.ordine_id == Ordine.id)
         .filter(
             Ordine.stato == StatoOrdine.completato,
-            extract("year", Ordine.data_completamento) == anno,
-            extract("month", Ordine.data_completamento) == mese,
+            extract("year", Ordine.data_conferma) == anno,
+            extract("month", Ordine.data_conferma) == mese,
         )
         .group_by(Prodotto.id, Prodotto.nome, Prodotto.sku)
         .order_by(desc("quantita_venduta"))
@@ -286,8 +286,8 @@ def get_marginalita_confronto(
             db.query(Ordine)
             .filter(
                 Ordine.stato == StatoOrdine.completato,
-                extract("year", Ordine.data_completamento) == a,
-                extract("month", Ordine.data_completamento) == m,
+                extract("year", Ordine.data_conferma) == a,
+                extract("month", Ordine.data_conferma) == m,
             )
             .all()
         )
