@@ -1,0 +1,268 @@
+name: Auto Test-Fix-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    outputs:
+      tests-passed: ${{ steps.test-result.outputs.passed }}
+      error-report: ${{ steps.test-result.outputs.report }}
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Install Node dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run Backend Tests
+        id: backend-tests
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+        run: |
+          set -o pipefail
+          cd backend
+          pytest -v --tb=short > ../test-backend-output.txt 2>&1
+          backend_exit=$?
+          echo "backend_exit_code=$backend_exit" >> $GITHUB_OUTPUT
+
+      - name: Run Security Tests
+        id: security-tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cd backend
+          pytest tests/security/ -v --tb=short > ../test-security-output.txt 2>&1
+          security_exit=$?
+          echo "security_exit_code=$security_exit" >> $GITHUB_OUTPUT
+
+      - name: Run Frontend Tests
+        id: frontend-tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cd frontend
+          npm test -- --watchAll=false > ../test-frontend-output.txt 2>&1
+          frontend_exit=$?
+          echo "frontend_exit_code=$frontend_exit" >> $GITHUB_OUTPUT
+
+      - name: Aggregate Test Results
+        id: test-result
+        run: |
+          backend_code=${{ steps.backend-tests.outputs.backend_exit_code }}
+          security_code=${{ steps.security-tests.outputs.security_exit_code }}
+          frontend_code=${{ steps.frontend-tests.outputs.frontend_exit_code }}
+
+          if [ "$backend_code" = "0" ] && [ "$security_code" = "0" ] && [ "$frontend_code" = "0" ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "✅ All tests passed!"
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+
+            # Create error report
+            echo "## 🔴 Test Failures Detected" > error-report.md
+            echo "" >> error-report.md
+
+            if [ "$backend_code" != "0" ]; then
+              echo "### Backend Tests Failed" >> error-report.md
+              echo '```' >> error-report.md
+              tail -50 test-backend-output.txt >> error-report.md
+              echo '```' >> error-report.md
+              echo "" >> error-report.md
+            fi
+
+            if [ "$security_code" != "0" ]; then
+              echo "### Security Tests Failed" >> error-report.md
+              echo '```' >> error-report.md
+              tail -50 test-security-output.txt >> error-report.md
+              echo '```' >> error-report.md
+              echo "" >> error-report.md
+            fi
+
+            if [ "$frontend_code" != "0" ]; then
+              echo "### Frontend Tests Failed" >> error-report.md
+              echo '```' >> error-report.md
+              tail -50 test-frontend-output.txt >> error-report.md
+              echo '```' >> error-report.md
+            fi
+
+            echo "report<<EOF" >> $GITHUB_OUTPUT
+            cat error-report.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Test Outputs
+        if: steps.test-result.outputs.passed == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-outputs
+          path: |
+            test-*.txt
+            error-report.md
+
+  copilot-fix:
+    needs: run-tests
+    if: needs.run-tests.outputs.tests-passed == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR with errors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const errorReport = `${{ needs.run-tests.outputs.error-report }}`;
+
+            const comment = `
+            ${errorReport}
+
+            ---
+
+            🤖 **Copilot is now analyzing these failures and will attempt to fix them automatically.**
+
+            Please wait for the automated fix to be committed to this PR.
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Create Issue for Copilot
+        id: create-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const errorReport = `${{ needs.run-tests.outputs.error-report }}`;
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Auto-Fix] Test failures in PR #${{ github.event.pull_request.number }}`,
+              body: `
+            ## Test Failures Report
+
+            ${errorReport}
+
+            ---
+
+            **PR:** #${{ github.event.pull_request.number }}
+            **Branch:** ${{ github.event.pull_request.head.ref }}
+            **Commit:** ${{ github.event.pull_request.head.sha }}
+
+            @copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch \`${{ github.event.pull_request.head.ref }}\`.
+
+            ## Context
+
+            This is an automated request from the CI/CD pipeline. The tests failed after the latest commit. Please:
+
+            1. Analyze the error messages above
+            2. Identify the root cause
+            3. Fix the issues in the appropriate files
+            4. Commit the fixes to branch \`${{ github.event.pull_request.head.ref }}\`
+
+            The workflow will automatically re-run tests after your fix.
+            `,
+              labels: ['auto-fix', 'copilot']
+            });
+
+            return issue.data.number;
+
+  auto-merge:
+    needs: run-tests
+    if: needs.run-tests.outputs.tests-passed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Auto-merge PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Check if PR is approved
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const approved = reviews.some(review => review.state === 'APPROVED');
+
+            if (approved) {
+              // Comment success
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '✅ **All tests passed!** Auto-merging this PR...'
+              });
+
+              // Merge PR
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                merge_method: 'squash'
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '✅ **All tests passed!** Waiting for approval before auto-merge.'
+              });
+            }
