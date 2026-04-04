@@ -11,6 +11,8 @@ on:
 jobs:
   dependency-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +52,8 @@ jobs:
 
   code-security-analysis:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -100,6 +104,9 @@ jobs:
 
   container-security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - uses: actions/checkout@v4
