@@ -248,6 +248,7 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                     note=f"Scarico ordine {ordine.numero_ordine}",
                 ))
             ordine.stock_scalato = True
+            ordine.data_conferma = datetime.now(timezone.utc)
             logger.info(
                 "Stock scalato per ordine %s: stock_scalato=%s",
                 ordine.numero_ordine,

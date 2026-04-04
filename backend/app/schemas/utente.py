@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -10,6 +10,13 @@ class UtenteBase(BaseModel):
 
 class UtenteCreate(UtenteBase):
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v):
+        if len(v) < 8:
+            raise ValueError("La password deve contenere almeno 8 caratteri")
+        return v
 
 
 class UtenteUpdate(BaseModel):
