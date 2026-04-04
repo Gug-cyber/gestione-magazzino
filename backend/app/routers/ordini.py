@@ -23,6 +23,7 @@ def _ordine_to_response(o) -> OrdineResponse:
         "corriere": o.corriere,
         "tracking_number": o.tracking_number,
         "data_ordine": o.data_ordine,
+        "data_conferma": o.data_conferma,
         "data_completamento": o.data_completamento,
         "righe": [
             {

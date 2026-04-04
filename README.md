@@ -1,5 +1,10 @@
 # 🏭 Gestione Magazzino
 
+![Tests](https://github.com/Gug-cyber/gestione-magazzino/workflows/Tests/badge.svg)
+![Security Scan](https://github.com/Gug-cyber/gestione-magazzino/workflows/Security%20Scanning/badge.svg)
+[![codecov](https://codecov.io/gh/Gug-cyber/gestione-magazzino/branch/main/graph/badge.svg)](https://codecov.io/gh/Gug-cyber/gestione-magazzino)
+![Security Rating](https://img.shields.io/badge/security-A-brightgreen)
+
 Software completo per la gestione del magazzino, sviluppato con un moderno stack tecnologico.
 
 ## 📋 Descrizione

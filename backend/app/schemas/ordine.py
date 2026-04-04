@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 import enum
@@ -16,6 +16,20 @@ class RigaOrdineCreate(BaseModel):
     prodotto_id: int
     quantita: int
     prezzo_unitario: float
+
+    @field_validator("quantita")
+    @classmethod
+    def quantita_positiva(cls, v):
+        if v <= 0:
+            raise ValueError("La quantità deve essere maggiore di 0")
+        return v
+
+    @field_validator("prezzo_unitario")
+    @classmethod
+    def prezzo_non_negativo(cls, v):
+        if v < 0:
+            raise ValueError("Il prezzo unitario non può essere negativo")
+        return v
 
 
 class RigaOrdineResponse(RigaOrdineCreate):
@@ -76,6 +90,7 @@ class OrdineResponse(BaseModel):
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
     data_ordine: Optional[datetime] = None
+    data_conferma: Optional[datetime] = None
     data_completamento: Optional[datetime] = None
     righe: List[RigaOrdineResponse] = []
 

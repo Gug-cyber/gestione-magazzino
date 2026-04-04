@@ -30,6 +30,7 @@ class Ordine(Base):
     # Flag: True quando lo stock e' gia' stato scalato per questo ordine.
     # Impedisce doppi scarichi in caso di aggiornamenti multipli di stato.
     stock_scalato = Column(Boolean, default=False, nullable=False)
+    data_conferma = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

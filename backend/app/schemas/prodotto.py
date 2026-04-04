@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from decimal import Decimal
 from datetime import datetime
@@ -19,6 +19,20 @@ class ProdottoBase(BaseModel):
     foto_path: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
+
+    @field_validator("quantita", "quantita_minima")
+    @classmethod
+    def quantita_non_negativa(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("La quantità non può essere negativa")
+        return v
+
+    @field_validator("prezzo_acquisto", "prezzo_vendita")
+    @classmethod
+    def prezzo_non_negativo(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Il prezzo non può essere negativo")
+        return v
 
 
 class ProdottoCreate(ProdottoBase):
