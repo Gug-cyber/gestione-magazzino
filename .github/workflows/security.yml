@@ -171,10 +171,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue create \
-            --title "[Security] Vulnerabilities detected in PR #${{ github.event.pull_request.number }}" \
+            --title "[Auto-Fix][Security] Vulnerabilities detected in PR #${{ github.event.pull_request.number }}" \
             --body-file security-issue-body.md \
-            --label "security,auto-fix" \
-            --assignee "${{ github.event.pull_request.user.login }}"
+            --label "security,auto-fix,copilot" \
+            --assignee "copilot"
 
       - name: Comment on PR
         if: hashFiles('security-summary.md') != ''
