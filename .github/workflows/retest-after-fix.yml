@@ -7,59 +7,7 @@ on:
       - develop
 
 jobs:
-  check-if-auto-fix:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      is-auto-fix: ${{ steps.check.outputs.is-auto-fix }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check if commit is from Copilot
-        id: check
-        run: |
-          author=$(git log -1 --pretty=format:'%an')
-          author_email=$(git log -1 --pretty=format:'%ae')
-          if [[ "$author" == *"copilot"* ]] || [[ "$author_email" == *"copilot"* ]] || [[ "$author_email" == "github-actions[bot]@users.noreply.github.com" ]]; then
-            echo "is-auto-fix=true" >> $GITHUB_OUTPUT
-          else
-            echo "is-auto-fix=false" >> $GITHUB_OUTPUT
-          fi
-
-  retest:
-    needs: check-if-auto-fix
-    if: needs.check-if-auto-fix.outputs.is-auto-fix == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Find associated PR and comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: pulls } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
-              state: 'open'
-            });
-
-            if (pulls.length > 0) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pulls[0].number,
-                body: '🔄 **Auto-fix committed!** Re-running tests...'
-              });
-            }
-
   run-tests:
-    needs: check-if-auto-fix
-    if: needs.check-if-auto-fix.outputs.is-auto-fix == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -117,8 +65,7 @@ jobs:
           set -o pipefail
           cd backend
           pytest -v --tb=short > ../test-backend-output.txt 2>&1
-          backend_exit=$?
-          echo "backend_exit_code=$backend_exit" >> $GITHUB_OUTPUT
+          echo "backend_exit_code=$?" >> $GITHUB_OUTPUT
 
       - name: Run Frontend Tests
         id: frontend-tests
@@ -127,8 +74,7 @@ jobs:
           set -o pipefail
           cd frontend
           npm run test > ../test-frontend-output.txt 2>&1
-          frontend_exit=$?
-          echo "frontend_exit_code=$frontend_exit" >> $GITHUB_OUTPUT
+          echo "frontend_exit_code=$?" >> $GITHUB_OUTPUT
 
       - name: Aggregate Test Results
         id: test-result
@@ -138,21 +84,16 @@ jobs:
 
           if [ "$backend_code" = "0" ] && [ "$frontend_code" = "0" ]; then
             echo "passed=true" >> $GITHUB_OUTPUT
-            echo "✅ All tests passed!"
           else
             echo "passed=false" >> $GITHUB_OUTPUT
 
             echo "## 🔴 Test Failures Detected" > error-report.md
-            echo "" >> error-report.md
-
             if [ "$backend_code" != "0" ]; then
               echo "### Backend Tests Failed" >> error-report.md
               echo '```' >> error-report.md
               tail -50 test-backend-output.txt >> error-report.md
               echo '```' >> error-report.md
-              echo "" >> error-report.md
             fi
-
             if [ "$frontend_code" != "0" ]; then
               echo "### Frontend Tests Failed" >> error-report.md
               echo '```' >> error-report.md
@@ -165,17 +106,18 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
-  auto-merge:
+  notify-pr:
     needs: run-tests
-    if: needs.run-tests.outputs.tests-passed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-
     steps:
-      - name: Auto-merge PR
+      - name: Comment and auto-merge if passing
         uses: actions/github-script@v7
+        env:
+          ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
+          TESTS_PASSED: ${{ needs.run-tests.outputs.tests-passed }}
         with:
           script: |
             const branch = context.ref.replace('refs/heads/', '');
@@ -187,58 +129,41 @@ jobs:
             });
 
             if (pulls.length === 0) {
-              core.info('No open PR found for this branch.');
+              core.info('No open PR found for this branch. Skipping.');
               return;
             }
 
             const prNumber = pulls[0].number;
+            const passed = process.env.TESTS_PASSED === 'true';
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: '✅ **All tests passed after auto-fix!** Auto-merging this PR...'
-            });
-
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              merge_method: 'squash'
-            });
-
-  comment-on-failure:
-    needs: run-tests
-    if: needs.run-tests.outputs.tests-passed == 'false'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-
-    steps:
-      - name: Comment failure on PR
-        uses: actions/github-script@v7
-        env:
-          ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
-        with:
-          script: |
-            const branch = context.ref.replace('refs/heads/', '');
-            const { data: pulls } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:${branch}`,
-              state: 'open'
-            });
-
-            if (pulls.length === 0) {
-              core.info('No open PR found for this branch.');
-              return;
+            if (passed) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: '✅ **All tests passed!** Auto-merging this PR...'
+              });
+              try {
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  merge_method: 'squash'
+                });
+              } catch (e) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: `⚠️ Tests passed but auto-merge failed: ${e.message}. Please merge manually.`
+                });
+              }
+            } else {
+              const errorReport = process.env.ERROR_REPORT || '_(No error details available)_';
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `❌ **Tests still failing.**\n\n${errorReport}`
+              });
             }
-
-            const errorReport = process.env.ERROR_REPORT || '_(No error details available)_';
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pulls[0].number,
-              body: `❌ **Tests still failing after auto-fix.**\n\n${errorReport}`
-            });
