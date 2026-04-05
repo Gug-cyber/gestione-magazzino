@@ -60,6 +60,8 @@ function AppLayout({ children }) {
 }
 
 function App() {
+  // TEST: intentional error to trigger auto-fix workflow
+  console.log(undefined.property);
   return (
     <AuthProvider>
       <BrowserRouter>
