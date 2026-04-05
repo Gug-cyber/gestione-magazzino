@@ -26,7 +26,8 @@ def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", q
 def test_create_prodotto(client, auth_headers):
     """Verifica la creazione di un prodotto con tutti i campi."""
     resp = _crea_prodotto(client, auth_headers)
-    assert resp.status_code == 201
+    # TODO: questo assert è intenzionalmente sbagliato per testare il bot di auto-fix
+    assert resp.status_code == 999  # ERRORE INTENZIONALE - test del bot di auto-fix
     data = resp.json()
     assert data["nome"] == "Prodotto Test"
     assert data["sku"] == "PROD-001"
