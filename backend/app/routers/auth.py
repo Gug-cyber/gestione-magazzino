@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,6 +16,8 @@ from ..crud import utente as crud
 from ..crud import reset_token as crud_token
 from ..crud.activity_log import log_activity
 from ..auth import create_access_token, get_current_active_user, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+
+logger = logging.getLogger(__name__)
 from ..email_utils import send_forgot_username_email, send_reset_password_email
 
 router = APIRouter()
@@ -37,8 +40,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     )
     try:
         log_activity(db, azione="login", utente_id=utente.id, username=utente.username)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -100,8 +103,8 @@ def logout(
 ):
     try:
         log_activity(db, azione="logout", utente_id=current_user.id, username=current_user.username)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return {"message": "Logout effettuato. Rimuovi il token lato client."}
 
 
@@ -183,8 +186,8 @@ def create_utente_admin(
     nuovo = crud.create_utente(db, utente, is_admin=utente.is_admin)
     try:
         log_activity(db, azione="crea_utente", utente_id=current_user.id, username=current_user.username, entita="utente", entita_id=nuovo.id, dettagli=nuovo.username)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return nuovo
 
 
@@ -230,5 +233,5 @@ def delete_utente_admin(
     crud.delete_utente(db, utente_id)
     try:
         log_activity(db, azione="elimina_utente", utente_id=current_user.id, username=current_user.username, entita="utente", entita_id=utente_id, dettagli=target_username)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)

@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 import os
 import cloudinary
 import cloudinary.uploader
@@ -19,6 +20,7 @@ from ..models.fornitura import RigaFornitura
 from ..models.prodotto import Prodotto
 from ..barcode_utils import generate_barcode_svg
 from ..crud.activity_log import log_activity
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -337,8 +339,8 @@ def create_prodotto(prodotto: ProdottoCreate, request: Request, db: Session = De
     db_prodotto = crud.create_prodotto(db, prodotto)
     try:
         log_activity(db, azione="crea_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=db_prodotto.id, dettagli=db_prodotto.nome)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     d = ProdottoResponse.model_validate(db_prodotto).model_dump()
     d["foto_url"] = _build_foto_url(db_prodotto, request)
     return d
@@ -355,8 +357,8 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
     try:
         log_activity(db, azione="modifica_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=prodotto_id, dettagli=db_prodotto.nome)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     d = ProdottoResponse.model_validate(db_prodotto).model_dump()
     d["foto_url"] = _build_foto_url(db_prodotto, request)
     return d
@@ -399,8 +401,8 @@ def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_use
         try:
             get_cloudinary()
             cloudinary.uploader.destroy(f"prodotti/{prodotto_id}")
-        except Exception:
-            pass  # non bloccare la cancellazione del prodotto
+        except Exception as e:
+            logger.warning("Cloudinary destroy failed for prodotto %s: %s", prodotto_id, e)
     try:
         crud.delete_prodotto(db, prodotto_id)
     except IntegrityError:
@@ -411,8 +413,8 @@ def delete_prodotto(prodotto_id: int, db: Session = Depends(get_db), current_use
         )
     try:
         log_activity(db, azione="elimina_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=prodotto_id, dettagli=prodotto_nome)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
 
 
 @router.post("/{prodotto_id}/foto", response_model=ProdottoResponse)

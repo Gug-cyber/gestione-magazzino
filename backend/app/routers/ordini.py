@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -7,6 +8,8 @@ from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineS
 from ..crud import ordine as crud
 from ..auth import get_current_active_user
 from ..crud.activity_log import log_activity
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -67,8 +70,8 @@ def create_ordine(
     nuovo = crud.create_ordine(db, ordine)
     try:
         log_activity(db, azione="crea_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=nuovo.id, dettagli=nuovo.numero_ordine)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return _ordine_to_response(nuovo)
 
 
@@ -108,8 +111,8 @@ def update_ordine_full(
             entita_id=ordine_id,
             dettagli=updated.numero_ordine,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return _ordine_to_response(updated)
 
 
@@ -125,8 +128,8 @@ def delete_ordine(
         raise HTTPException(status_code=404, detail="Ordine non trovato")
     try:
         log_activity(db, azione="elimina_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=numero)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
 
 
 @router.patch("/{ordine_id}/tracking", response_model=OrdineResponse)
@@ -148,8 +151,8 @@ def update_tracking(
     db.refresh(o)
     try:
         log_activity(db, azione="aggiorna_tracking_ordine", utente_id=current_user.id, username=current_user.username, entita="ordine", entita_id=ordine_id, dettagli=o.numero_ordine)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return _ordine_to_response(o)
 
 
@@ -180,6 +183,6 @@ def update_stato(
             entita_id=ordine_id,
             dettagli=f"{o.numero_ordine} → {o.stato}",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return _ordine_to_response(o)

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -7,6 +8,8 @@ from ..schemas.fornitura import FornituraCreate, FornituraUpdate, FornituraRespo
 from ..crud import fornitura as crud
 from ..auth import get_current_active_user
 from ..crud.activity_log import log_activity
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -70,8 +73,8 @@ def create_fornitura(
     nuova = crud.create_fornitura(db, fornitura)
     try:
         log_activity(db, azione="crea_fornitura", utente_id=current_user.id, username=current_user.username, entita="fornitura", entita_id=nuova.id, dettagli=nuova.numero_fornitura)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
     return _fornitura_to_response(nuova)
 
 
@@ -112,5 +115,5 @@ def delete_fornitura(
         raise HTTPException(status_code=404, detail="Fornitura non trovata")
     try:
         log_activity(db, azione="elimina_fornitura", utente_id=current_user.id, username=current_user.username, entita="fornitura", entita_id=fornitura_id, dettagli=numero)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
