@@ -159,9 +159,11 @@ jobs:
 
       - name: Comment on PR with errors
         uses: actions/github-script@v7
+        env:
+          ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
         with:
           script: |
-            const errorReport = `${{ needs.run-tests.outputs.error-report }}`;
+            const errorReport = process.env.ERROR_REPORT;
 
             const comment = `
             ${errorReport}
@@ -183,9 +185,11 @@ jobs:
       - name: Create Issue for Copilot
         id: create-issue
         uses: actions/github-script@v7
+        env:
+          ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
         with:
           script: |
-            const errorReport = `${{ needs.run-tests.outputs.error-report }}`;
+            const errorReport = process.env.ERROR_REPORT;
 
             const issue = await github.rest.issues.create({
               owner: context.repo.owner,
@@ -202,17 +206,9 @@ jobs:
             **Branch:** ${{ github.event.pull_request.head.ref }}
             **Commit:** ${{ github.event.pull_request.head.sha }}
 
-            @copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch \`${{ github.event.pull_request.head.ref }}\`.
-
-            ## Context
-
-            This is an automated request from the CI/CD pipeline. The tests failed after the latest commit. Please:
-
-            1. Analyze the error messages above
-            2. Identify the root cause
-            3. Fix the issues in the appropriate files
-            4. Commit the fixes to branch \`${{ github.event.pull_request.head.ref }}\`
-
+            @copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch 
+            
+            
             The workflow will automatically re-run tests after your fix.
             `,
               labels: ['auto-fix', 'copilot']
@@ -266,3 +262,4 @@ jobs:
                 body: '✅ **All tests passed!** Waiting for approval before auto-merge.'
               });
             }
+          
