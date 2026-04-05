@@ -1,9 +1,6 @@
-"""
-Test per la logica dei prodotti.
-"""
+"""Test per la logica dei prodotti."""
 import pytest
 from app.models.prodotto import Prodotto as ProdottoModel
-
 
 def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", quantita=10):
     """Helper per creare un prodotto di test."""
@@ -22,11 +19,11 @@ def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", q
     )
     return response
 
-
 def test_create_prodotto(client, auth_headers):
     """Verifica la creazione di un prodotto con tutti i campi."""
     resp = _crea_prodotto(client, auth_headers)
-    assert resp.status_code == 201
+    # TODO: questo assert è intenzionalmente sbagliato per testare il bot di auto-fix
+    assert resp.status_code == 999  # ERRORE INTENZIONALE - test del bot di auto-fix
     data = resp.json()
     assert data["nome"] == "Prodotto Test"
     assert data["sku"] == "PROD-001"
@@ -37,7 +34,6 @@ def test_create_prodotto(client, auth_headers):
     assert data["stato_conservazione"] == "Near Mint"
     assert data["id"] is not None
 
-
 def test_create_prodotto_sku_duplicato(client, auth_headers):
     """Verifica HTTP 400 con SKU duplicato."""
     resp1 = _crea_prodotto(client, auth_headers, sku="DUPL-001")
@@ -46,7 +42,6 @@ def test_create_prodotto_sku_duplicato(client, auth_headers):
     resp2 = _crea_prodotto(client, auth_headers, nome="Altro Prodotto", sku="DUPL-001")
     assert resp2.status_code == 400
     assert "sku" in resp2.json()["detail"].lower()
-
 
 def test_get_prodotti_search(client, auth_headers):
     """Verifica la ricerca server-side per nome e SKU."""
@@ -68,7 +63,6 @@ def test_get_prodotti_search(client, auth_headers):
     assert resp_sku.status_code == 200
     assert len(resp_sku.json()) == 1
     assert resp_sku.json()[0]["sku"] == "PIKA-001"
-
 
 def test_get_prodotti_sotto_scorta(client, auth_headers):
     """Verifica il filtro sotto-scorta."""
@@ -104,7 +98,6 @@ def test_get_prodotti_sotto_scorta(client, auth_headers):
     assert "Prodotto Sotto Scorta" in nomi
     assert "Prodotto OK" not in nomi
 
-
 def test_get_foto_prodotto_no_auth(client, auth_headers, db):
     """Verifica che GET /foto non richieda autenticazione (no 401 senza token)."""
     # Crea un prodotto
@@ -125,7 +118,6 @@ def test_get_foto_prodotto_no_auth(client, auth_headers, db):
     )
     assert resp_no_auth.status_code == 404
 
-
 def test_get_foto_prodotto_cloudinary_no_auth(client, auth_headers, db):
     """Verifica che GET /foto con URL Cloudinary faccia redirect senza autenticazione."""
     resp = _crea_prodotto(client, auth_headers, sku="FOTO-CLOUD-001")
@@ -144,7 +136,6 @@ def test_get_foto_prodotto_cloudinary_no_auth(client, auth_headers, db):
     )
     assert resp_no_auth.status_code == 302
 
-
 def test_get_foto_prodotto_valid_query_token(client, auth_headers, db):
     """Verifica che GET /foto restituisca la foto anche senza token (endpoint pubblico)."""
     resp = _crea_prodotto(client, auth_headers, sku="FOTO-TOKEN-001")
@@ -158,7 +149,6 @@ def test_get_foto_prodotto_valid_query_token(client, auth_headers, db):
     # Richiesta senza token: deve restituire 404 (file mancante), NON 401
     resp = client.get(f"/api/prodotti/{prodotto_id}/foto")
     assert resp.status_code == 404
-
 
 def test_get_foto_prodotto_invalid_token(client, auth_headers, db):
     """Verifica che GET /foto ignori un token non valido (endpoint pubblico, nessun 401)."""
@@ -180,7 +170,6 @@ def test_get_foto_prodotto_invalid_token(client, auth_headers, db):
         headers={"Authorization": "Bearer invalid.jwt.token"},
     )
     assert resp_bearer.status_code == 404
-
 
 def test_get_foto_prodotto_valid_bearer_header(client, auth_headers, db):
     """Verifica che GET /foto restituisca la foto indipendentemente dall'header Authorization (endpoint pubblico)."""
