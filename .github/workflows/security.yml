@@ -163,12 +163,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ISSUE_BODY=$(cat security-issue-body.md)
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
           gh issue create \
-            --title "[Security] Vulnerabilities detected in PR #${PR_NUMBER}" \
-            --body "${ISSUE_BODY}" \
+            --title "[Security] Vulnerabilities detected in PR #${{ github.event.pull_request.number }}" \
+            --body-file security-issue-body.md \
             --label "security,auto-fix" \
             --assignee "${{ github.event.pull_request.user.login }}"
 
@@ -177,5 +174,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SUMMARY=$(cat security-summary.md)
-          gh pr comment ${{ github.event.pull_request.number }} --body "${SUMMARY}"
+          gh pr comment ${{ github.event.pull_request.number }} --body-file security-summary.md
