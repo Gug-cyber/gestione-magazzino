@@ -8,6 +8,13 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sunday
 
+# Global permissions required for all workflow jobs
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  security-events: write
+
 jobs:
   dependency-scan:
     runs-on: ubuntu-latest
