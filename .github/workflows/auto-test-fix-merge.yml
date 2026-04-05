@@ -219,7 +219,8 @@ jobs:
 
             The workflow will automatically re-run tests after your fix.
             `,
-              labels: ['auto-fix', 'copilot']
+              labels: ['auto-fix', 'copilot'],
+              assignees: ['copilot']
             });
 
             return issue.data.number;
