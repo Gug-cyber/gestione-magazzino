@@ -8,7 +8,7 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sunday
 
-# Permessi globali necessari per tutti i job del workflow
+# Global permissions required for all workflow jobs
 permissions:
   contents: read
   issues: write
