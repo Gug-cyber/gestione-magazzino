@@ -85,23 +85,30 @@ def get_ordine(
 
 
 @router.put("/{ordine_id}", response_model=OrdineResponse)
-def update_ordine_full(
+def update_ordine(
     ordine_id: int,
     ordine_update: OrdineUpdateFull,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """
-    Aggiorna i dati completi di un ordine.
-    Permesso solo per ordini in stato 'bozza'.
+    Aggiorna un ordine.
+    - Se `stato` è fornito, esegue la transizione di stato (gestisce stock, fatture, ecc.).
+    - Altrimenti aggiorna i dati completi dell'ordine (permesso solo in stato 'bozza').
     """
-    updated = crud.update_ordine_full(db, ordine_id, ordine_update)
+    if ordine_update.stato is not None:
+        state_update = OrdineUpdate(stato=ordine_update.stato)
+        updated = crud.update_ordine(db, ordine_id, state_update)
+        azione = "aggiorna_stato_ordine"
+    else:
+        updated = crud.update_ordine_full(db, ordine_id, ordine_update)
+        azione = "modifica_ordine"
     if not updated:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
     try:
         log_activity(
             db,
-            azione="modifica_ordine",
+            azione=azione,
             utente_id=current_user.id,
             username=current_user.username,
             entita="ordine",

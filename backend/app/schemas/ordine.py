@@ -70,10 +70,11 @@ class TrackingUpdateBody(BaseModel):
 
 
 class OrdineUpdateFull(BaseModel):
-    """Schema per aggiornamento completo ordine (solo bozza)"""
+    """Schema per aggiornamento completo ordine (solo bozza) o transizione di stato."""
     cliente_id: Optional[int] = None
     cliente_nome: Optional[str] = None
     note: Optional[str] = None
+    stato: Optional[StatoOrdineSchema] = None
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
     righe: Optional[List[RigaOrdineCreate]] = None
