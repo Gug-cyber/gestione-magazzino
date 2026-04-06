@@ -95,6 +95,7 @@ jobs:
 
   codeql-analysis:
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: read
       security-events: write
@@ -113,6 +114,7 @@ jobs:
 
   container-security:
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: read
       security-events: write

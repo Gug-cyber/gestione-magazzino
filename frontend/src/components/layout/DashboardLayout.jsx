@@ -109,19 +109,19 @@ const DashboardLayout = ({ children }) => {
           <div className="flex flex-shrink-0 border-t border-gray-200 p-4">
             <div className="group block w-full flex-shrink-0">
               <div className="flex items-center">
-                <div>
-                  <img
-                    className="inline-block h-9 w-9 rounded-full"
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || user?.username || '')}&background=3b82f6&color=fff`}
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                      {user?.full_name || user?.username}
-                    </p>
-                    <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
-                      {user?.role === 'admin' ? 'Amministratore' : 'Operatore'}
-                    </p>
-                  </div>
-                )}
+                <img
+                  className="inline-block h-9 w-9 rounded-full"
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || user?.username || '')}&background=3b82f6&color=fff`}
+                  alt=""
+                />
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                    {user?.full_name || user?.username}
+                  </p>
+                  <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
+                    {user?.role === 'admin' ? 'Amministratore' : 'Operatore'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
