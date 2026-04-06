@@ -1,7 +1,8 @@
 """
 Configurazione fixtures per i test pytest.
 
-Usa SQLite in-memory per isolare i test dal database di produzione.
+Usa SQLite in-memory per isolare i test dal database di produzione,
+oppure PostgreSQL se DATABASE_URL è già impostata nell'ambiente (es. in CI).
 """
 import os
 import pytest
@@ -9,7 +10,9 @@ import pytest
 # Queste variabili devono essere impostate PRIMA di importare qualsiasi modulo dell'app
 os.environ["APP_ENV"] = "development"
 os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-must-be-long-enough-123456"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Use the existing DATABASE_URL if set in the environment (e.g. PostgreSQL in CI),
+# otherwise fall back to SQLite in-memory for local development.
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/gestione_magazzino_test_uploads")
 
 from sqlalchemy import create_engine  # noqa: E402
@@ -19,17 +22,22 @@ from fastapi.testclient import TestClient  # noqa: E402
 # Importa database prima di app per poter patchare l'engine
 import app.database as _db_module  # noqa: E402
 
-SQLALCHEMY_TEST_URL = "sqlite:///:memory:"
+_DB_URL = os.environ["DATABASE_URL"]
 
-# Crea un engine SQLite persistente per la sessione di test
-# (same connection string ma con StaticPool per avere un'unica connessione in-memory)
-from sqlalchemy.pool import StaticPool  # noqa: E402
+# Crea un engine per i test basato sulla DATABASE_URL effettiva
+if _DB_URL.startswith("sqlite"):
+    from sqlalchemy.pool import StaticPool  # noqa: E402
 
-engine_test = create_engine(
-    SQLALCHEMY_TEST_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+    engine_test = create_engine(
+        _DB_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+else:
+    engine_test = create_engine(
+        _DB_URL,
+        pool_pre_ping=True,
+    )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 
 # Sostituisce l'engine dell'app con quello di test

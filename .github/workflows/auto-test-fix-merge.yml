@@ -12,6 +12,8 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_db
 
     outputs:
       tests-passed: ${{ steps.test-result.outputs.passed }}
@@ -60,8 +62,6 @@ jobs:
       - name: Run Backend Tests
         id: backend-tests
         continue-on-error: true
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
         run: |
           set +e
           cd backend

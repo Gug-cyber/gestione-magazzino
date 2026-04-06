@@ -42,7 +42,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         log_activity(db, azione="login", utente_id=utente.id, username=utente.username)
     except Exception as e:
         logger.warning("log_activity failed: %s", e)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer"}  # nosec B105 – "bearer" is the standard OAuth2 token type, not a password
 
 
 @router.post("/register", response_model=UtenteResponse, status_code=201)
@@ -129,7 +129,7 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     reset_url = f"{frontend_url}/reset-password?token={token_obj.token}"
     email_sent = send_reset_password_email(utente.email, token_obj.token, reset_url)
     if email_sent:
-        return {"reset_token": None, "message": "Link di reset inviato via email", "email_sent": True}
+        return {"reset_token": None, "message": "Link di reset inviato via email", "email_sent": True}  # nosec B105 – None is not a password; key name triggers false positive
     return {
         "reset_token": token_obj.token,
         "message": "Usa questo token per reimpostare la password (email non configurata)",

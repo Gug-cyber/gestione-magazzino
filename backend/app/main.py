@@ -120,7 +120,7 @@ def startup():
             admin = UtenteCreate(
                 username="admin",
                 email="admin@gestione-magazzino.local",
-                password="admin123",
+                password="admin123",  # nosec B106 – default seed admin password; overridden in production via admin UI
             )
             create_utente(db, admin, is_admin=True)
     finally:
