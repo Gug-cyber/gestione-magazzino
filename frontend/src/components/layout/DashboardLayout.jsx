@@ -112,7 +112,7 @@ const DashboardLayout = ({ children }) => {
                 <img
                   className="inline-block h-9 w-9 rounded-full"
                   src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || user?.username || '')}&background=3b82f6&color=fff`}
-                  alt=""
+                  alt={user?.full_name || user?.username || 'User avatar'}
                 />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
