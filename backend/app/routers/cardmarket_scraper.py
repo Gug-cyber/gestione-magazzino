@@ -74,7 +74,7 @@ CACHE_DAYS = 7
 
 def _rate_limit_sleep() -> None:
     """Sleep a random interval to avoid hammering CardMarket with direct requests."""
-    time.sleep(random.uniform(10, 20))
+    time.sleep(random.uniform(10, 20))  # nosec B311 – random used only for rate-limiting delays, not for security purposes
 
 
 class CardMarketPriceResponse(BaseModel):

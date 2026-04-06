@@ -13,8 +13,8 @@ from .schemas.utente import TokenData
 
 logger = logging.getLogger(__name__)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "changeme-use-a-long-random-secret-key-in-production")
-if SECRET_KEY == "changeme-use-a-long-random-secret-key-in-production":
+SECRET_KEY = os.getenv("SECRET_KEY", "changeme-use-a-long-random-secret-key-in-production")  # nosec B105 – default triggers warning below; real secret must be set via env var
+if SECRET_KEY == "changeme-use-a-long-random-secret-key-in-production":  # nosec B105 – checking against the default to warn users; not a real credential
     logger.warning(
         "SECRET_KEY is using the default insecure value. "
         "Set the SECRET_KEY environment variable to a strong random secret in production."

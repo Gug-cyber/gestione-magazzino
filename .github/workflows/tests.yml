@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_db
 
     services:
       postgres:
@@ -50,8 +52,6 @@ jobs:
           pip install pytest-cov
 
       - name: Run tests with coverage
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
         run: |
           cd backend
           pytest --cov=app --cov-report=xml --cov-report=html --cov-report=term-missing

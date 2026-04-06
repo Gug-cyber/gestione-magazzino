@@ -20,7 +20,7 @@ EBAY_SCOPE = "https://api.ebay.com/oauth/api_scope"
 
 # In-memory token cache to avoid requesting a new token on every call
 _token_cache: dict = {
-    "access_token": None,
+    "access_token": None,  # nosec B105 – None placeholder for a cached OAuth token, not a hardcoded password
     "expires_at": 0.0,
     "env": None,
 }
