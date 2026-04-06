@@ -1,0 +1,65 @@
+name: "🤖 CI/CD Bug Report (Auto-generated)"
+description: "Issue automatica generata dalla pipeline CI/CD quando i test falliscono"
+title: "[Auto-Fix] "
+labels:
+  - "auto-fix"
+  - "copilot"
+  - "bug"
+assignees:
+  - "copilot"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ⚠️ Questa issue è stata generata automaticamente dalla pipeline CI/CD.
+        > È assegnata a **@copilot** per l'analisi e il fix automatico.
+
+  - type: textarea
+    id: error-report
+    attributes:
+      label: "📋 Report degli errori"
+      description: "Output dei test falliti"
+      placeholder: "Incollare qui l'output dei test..."
+    validations:
+      required: true
+
+  - type: input
+    id: pr-number
+    attributes:
+      label: "🔗 PR correlata"
+      placeholder: "#123"
+    validations:
+      required: false
+
+  - type: input
+    id: branch
+    attributes:
+      label: "🌿 Branch"
+      placeholder: "feature/mia-feature"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: failure-type
+    attributes:
+      label: "🏷️ Tipo di fallimento"
+      options:
+        - "Test funzionali backend (pytest)"
+        - "Test di sicurezza (pytest security)"
+        - "Test frontend (jest)"
+        - "Scansione Bandit"
+        - "Multiplo"
+    validations:
+      required: true
+
+  - type: textarea
+    id: copilot-instructions
+    attributes:
+      label: "🤖 Istruzioni per Copilot"
+      value: |
+        Per favore:
+        1. Analizza i test falliti nel report sopra
+        2. Identifica la causa radice del fallimento
+        3. Applica il fix nel file appropriato
+        4. Commita il fix sul branch indicato
+        5. Il sistema rieseguirà i test automaticamente
