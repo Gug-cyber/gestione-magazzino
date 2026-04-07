@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { AuthProvider } from './context/AuthContext'
+import { CartProvider } from './context/CartContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -37,6 +38,10 @@ import MobileHome from './pages/mobile/MobileHome.jsx'
 import MobileCaricoFornitura from './pages/mobile/MobileCaricoFornitura.jsx'
 import MobileNuovoOrdine from './pages/mobile/MobileNuovoOrdine.jsx'
 import TrackingDetail from './pages/TrackingDetail.jsx'
+import StorePage from './pages/store/StorePage'
+import StoreProductPage from './pages/store/StoreProductPage'
+import StoreCartPage from './pages/store/StoreCartPage'
+import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -61,9 +66,14 @@ function AppLayout({ children }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <CartProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/store" element={<StorePage />} />
+            <Route path="/store/product/:id" element={<StoreProductPage />} />
+            <Route path="/store/cart" element={<StoreCartPage />} />
+            <Route path="/store/checkout" element={<StoreCheckoutPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -233,8 +243,9 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </CartProvider>
   )
 }
 

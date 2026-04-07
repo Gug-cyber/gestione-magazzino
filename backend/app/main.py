@@ -27,6 +27,7 @@ from .models import prodotto_pubblico as _prodotto_pubblico_model  # noqa: F401 
 from .models import tracking_update as _tracking_update_model  # noqa: F401 – ensures tracking_updates table is created
 from .models import cardmarket_price as _cardmarket_price_model  # noqa: F401 – ensures cardmarket_prices table is created
 from .routers import activity_log as activity_log_router
+from .routers import store as store_router
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
 from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti table is created
@@ -110,6 +111,7 @@ app.include_router(tracking_router.router, prefix="/api/tracking", tags=["Tracki
 app.include_router(cms_contenuti.router, prefix="/api/cms", tags=["CMS - Contenuti"])
 app.include_router(cms_banner.router, prefix="/api/cms", tags=["CMS - Banner"])
 app.include_router(cms_prodotti.router, prefix="/api/cms", tags=["CMS - Prodotti"])
+app.include_router(store_router.router, prefix="/api/store", tags=["Store Pubblico"])
 
 
 @app.on_event("startup")
