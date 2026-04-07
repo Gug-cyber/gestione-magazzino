@@ -1,7 +1,7 @@
 import logging
 import os
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime, timezone
@@ -16,6 +16,7 @@ from ..crud import utente as crud
 from ..crud import reset_token as crud_token
 from ..crud.activity_log import log_activity
 from ..auth import create_access_token, get_current_active_user, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
 from ..email_utils import send_forgot_username_email, send_reset_password_email
@@ -24,7 +25,8 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     utente = crud.authenticate_utente(db, form_data.username, form_data.password)
     if not utente:
         raise HTTPException(

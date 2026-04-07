@@ -76,6 +76,9 @@ def client(db):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+    # Reset rate limiter state between tests to avoid interference
+    if hasattr(app.state, "limiter"):
+        app.state.limiter.reset()
 
 
 @pytest.fixture(scope="function")
