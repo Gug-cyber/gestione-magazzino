@@ -334,8 +334,7 @@ jobs:
 
             The workflow will automatically re-run tests after your fix.
             `,
-              labels: ['auto-fix', 'copilot'],
-              assignees: ['copilot']
+              labels: ['auto-fix', 'copilot']
             });
 
             return issue.data.number;
