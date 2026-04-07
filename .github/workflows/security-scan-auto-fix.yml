@@ -171,10 +171,11 @@ jobs:
 
           @copilot Please fix this security vulnerability. The issue is in `{filename}` at line {line_no}.
 
-          1. Analyze the code at `{filename}` line {line_no}
-          2. Apply the recommended fix for {test_id}
-          3. Run `pytest tests/` to verify the fix does not break existing tests
-          4. Commit the fix to the `main` branch
+          1. Create a new branch (e.g. `fix/bandit-{test_id.lower()}-<short-hash>`)
+          2. Analyze the code at `{filename}` line {line_no}
+          3. Apply the recommended fix for {test_id}
+          4. Run `pytest tests/` to verify the fix does not break existing tests
+          5. Open a pull request targeting `main` with the fix
 
           This is an automated security report from the CI/CD pipeline.
           """
@@ -293,10 +294,11 @@ jobs:
 
           @copilot Please fix this vulnerable dependency.
 
-          1. Open `backend/requirements.txt`
-          2. Upgrade `{pkg}` to version `{fix_str}` or later
-          3. Run `pip install -r backend/requirements.txt` and `pytest tests/` to verify compatibility
-          4. Commit the fix to the `main` branch
+          1. Create a new branch (e.g. `fix/safety-{pkg}-vulnerability`)
+          2. Open `backend/requirements.txt`
+          3. Upgrade `{pkg}` to version `{fix_str}` or later
+          4. Run `pip install -r backend/requirements.txt` and `pytest tests/` to verify compatibility
+          5. Open a pull request targeting `main` with the fix
 
           This is an automated security report from the CI/CD pipeline.
           """
@@ -440,10 +442,11 @@ jobs:
 
           @copilot Please fix this vulnerable npm dependency.
 
-          1. Navigate to `frontend/`
-          2. Run `npm audit fix` to attempt an automatic fix, or manually upgrade `{name}`
-          3. Run `npm test` to verify nothing is broken
-          4. Commit the updated `package.json` and `package-lock.json` to the `main` branch
+          1. Create a new branch (e.g. `fix/npm-{name}-vulnerability`)
+          2. Navigate to `frontend/`
+          3. Run `npm audit fix` to attempt an automatic fix, or manually upgrade `{name}`
+          4. Run `npm test` to verify nothing is broken
+          5. Open a pull request targeting `main` with the updated `package.json` and `package-lock.json`
 
           This is an automated security report from the CI/CD pipeline.
           """
@@ -574,10 +577,11 @@ jobs:
 
           @copilot Please fix this security vulnerability. The issue is in `{filepath}` at line {line_no}.
 
-          1. Analyze the code at `{filepath}` line {line_no}
-          2. Apply the fix recommended by Semgrep rule `{rule_id}`
-          3. Run `pytest tests/` to verify the fix does not break existing tests
-          4. Commit the fix to the `main` branch
+          1. Create a new branch (e.g. `fix/semgrep-{rule_id.replace("/", "-").lower()[:40]}`)
+          2. Analyze the code at `{filepath}` line {line_no}
+          3. Apply the fix recommended by Semgrep rule `{rule_id}`
+          4. Run `pytest tests/` to verify the fix does not break existing tests
+          5. Open a pull request targeting `main` with the fix
 
           This is an automated security report from the CI/CD pipeline.
           """
