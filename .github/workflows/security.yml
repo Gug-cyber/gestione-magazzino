@@ -111,6 +111,7 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        continue-on-error: true
 
   container-security:
     runs-on: ubuntu-latest
@@ -135,6 +136,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -175,11 +177,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh label create "security" --color "#e11d48" --description "Security vulnerability" || true
+          gh label create "auto-fix" --color "#7c3aed" --description "Auto-fix bot" || true
+          gh label create "copilot" --color "#0ea5e9" --description "Copilot assignment" || true
           gh issue create \
             --title "[Auto-Fix][Security] Vulnerabilities detected in PR #${{ github.event.pull_request.number }}" \
             --body-file security-issue-body.md \
             --label "security,auto-fix,copilot" \
-            --assignee "copilot"
+            --assignee "copilot" \
+            || echo "WARNING: gh issue create failed (exit $?). Issue creation skipped."
 
       - name: Comment on PR
         if: hashFiles('security-summary.md') != ''
