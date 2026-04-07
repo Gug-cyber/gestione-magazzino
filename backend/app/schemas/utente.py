@@ -31,6 +31,7 @@ class UtenteResponse(UtenteBase):
     is_active: bool
     is_admin: bool
     ruolo: str = "operatore"
+    must_change_password: bool = False
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

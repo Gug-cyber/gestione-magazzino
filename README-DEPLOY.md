@@ -107,7 +107,7 @@ Vai nelle impostazioni del servizio Koyeb → Environment Variables:
 - **App**: `https://gestione-magazzino-xxx.vercel.app`
 - **API docs**: `https://TUO-SERVIZIO.koyeb.app/docs`
 
-**Credenziali default**: `admin` / `admin123` (cambiale subito nelle impostazioni!)
+**Credenziali default**: username `admin` / password generata automaticamente al primo avvio (visibile nei log del server). Al primo accesso il cambio password è obbligatorio.
 
 ---
 

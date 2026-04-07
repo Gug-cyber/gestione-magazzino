@@ -12,8 +12,9 @@ Al termine, apri il browser su: **http://localhost:5173**
 **Credenziali di default:**
 ```
 Username: admin
-Password: admin123
+Password: generata automaticamente al primo avvio (visibile nei log del server)
 ```
+> ⚠️ Al primo accesso ti verrà chiesto di impostare una nuova password.
 
 ---
 
