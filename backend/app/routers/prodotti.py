@@ -21,6 +21,9 @@ from ..models.fornitura import RigaFornitura
 from ..models.prodotto import Prodotto
 from ..barcode_utils import generate_barcode_svg
 from ..crud.activity_log import log_activity
+
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -435,6 +438,8 @@ async def upload_foto_prodotto(prodotto_id: int, request: Request, file: UploadF
             detail="Cloudinary non configurato. Impostare CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET."
         )
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Il file supera il limite massimo di 10 MB")
     get_cloudinary()
     result = cloudinary.uploader.upload(
         contents,
@@ -530,6 +535,8 @@ def get_barcode_image(
 @router.post("/import/csv")
 async def import_prodotti_csv(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Il file supera il limite massimo di 10 MB")
     try:
         text = content.decode('utf-8-sig')
     except UnicodeDecodeError:

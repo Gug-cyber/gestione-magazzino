@@ -17,6 +17,8 @@ from ..auth import get_current_active_user
 from ..dependencies import get_current_admin
 from ..models.fattura import Fattura
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -65,8 +67,10 @@ async def create_fattura(
         ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "pdf"
         unique_name = f"{uuid.uuid4()}.{ext}"
         file_path = os.path.join(UPLOAD_DIR, unique_name)
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="Il file supera il limite massimo di 10 MB")
         with open(file_path, "wb") as buffer:
-            content = await file.read()
             buffer.write(content)
         nome_file = file.filename
 
