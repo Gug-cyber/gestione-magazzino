@@ -26,6 +26,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 hours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+_jwt_key = OctKey.import_key(SECRET_KEY.encode())
 
 def _prepare_password(password: str) -> str:
     """
@@ -44,8 +45,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": int(expire.timestamp())})
-    key = OctKey.import_key(SECRET_KEY.encode())
-    return jwt.encode({"alg": ALGORITHM}, to_encode, key)
+    return jwt.encode({"alg": ALGORITHM}, to_encode, _jwt_key)
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     from .crud.utente import get_utente_by_username
@@ -56,8 +56,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        key = OctKey.import_key(SECRET_KEY.encode())
-        token_obj = jwt.decode(token, key)
+        token_obj = jwt.decode(token, _jwt_key)
         username: str = token_obj.claims.get("sub")
         if username is None:
             raise credentials_exception
