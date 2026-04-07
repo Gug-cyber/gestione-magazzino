@@ -36,15 +36,15 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.11'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '18'
 
@@ -148,7 +148,7 @@ jobs:
 
       - name: Upload Test Outputs
         if: steps.test-result.outputs.passed == 'false'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-outputs
           path: |
@@ -164,7 +164,7 @@ jobs:
       issues: write
     steps:
       - name: Comment and auto-merge if passing
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
         env:
           ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
           TESTS_PASSED: ${{ needs.run-tests.outputs.tests-passed }}
