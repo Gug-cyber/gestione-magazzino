@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { prodottiAPI, ordiniAPI } from '../api/client'
+import { prodottiAPI, ordiniAPI, fattureAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
+import DashboardAlerts from '../components/alerts/DashboardAlerts'
 
 // Icons
 const Icons = {
@@ -221,19 +222,23 @@ function Dashboard() {
     ordiniRecenti: [],
     prodottiSottoScortaList: [],
     ordiniInCorso: [],
+    prodotti: [],
+    ordini: [],
+    fatture: [],
   })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prodottiRes, sottoScortaRes, ordiniRes, tuttiOrdiniRes, ordiniConfermatiRes, ordiniSpeditiRes] = await Promise.all([
+        const [prodottiRes, sottoScortaRes, ordiniRes, tuttiOrdiniRes, ordiniConfermatiRes, ordiniSpeditiRes, fattureRes] = await Promise.all([
           prodottiAPI.getAll({ limit: 1000 }),
           prodottiAPI.getSottoScorta(),
           ordiniAPI.getAll({ limit: 5 }),
           ordiniAPI.getAll({ limit: 1000 }),
           ordiniAPI.getAll({ stato: 'confermato', limit: 1000 }),
           ordiniAPI.getAll({ stato: 'spedito', limit: 1000 }),
+          fattureAPI.getAll({ limit: 1000 }),
         ])
         const ordiniInCorso = [...(ordiniConfermatiRes.data || []), ...(ordiniSpeditiRes.data || [])]
           .sort((a, b) => new Date(b.data_ordine || 0) - new Date(a.data_ordine || 0))
@@ -244,6 +249,9 @@ function Dashboard() {
           ordiniRecenti: ordiniRes.data,
           prodottiSottoScortaList: sottoScortaRes.data,
           ordiniInCorso,
+          prodotti: prodottiRes.data,
+          ordini: tuttiOrdiniRes.data,
+          fatture: fattureRes.data,
         })
       } catch (err) {
         console.error('Errore nel caricamento dashboard:', err)
@@ -321,6 +329,13 @@ function Dashboard() {
           isMobile={isMobile}
         />
       </div>
+
+      {/* Alert Intelligenti */}
+      <DashboardAlerts
+        products={stats.prodotti}
+        orders={stats.ordini}
+        invoices={stats.fatture}
+      />
 
       {/* Recent Orders Card */}
       <div style={{
