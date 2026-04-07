@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, getFotoUrl } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import PrintBarcodeModal from '../components/PrintBarcodeModal'
@@ -8,11 +8,14 @@ import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_CONSERVAZIONE_COLORS } from '../constants/colors'
 import styles from './Prodotti.module.css'
 import { normalizeSkuForCode39 } from '../utils/formatters'
+import { lowStockProducts, stagnantProducts, lowMarginProducts, productsWithMissingPricing } from '../utils/alertHelpers'
 
 const PAGE_SIZE = 50
 
 function Prodotti() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const alertFilter = searchParams.get('alert')
   const isMobile = useIsMobile()
   const [prodotti, setProdotti] = useState([])
   const [allProdotti, setAllProdotti] = useState([])
@@ -144,7 +147,17 @@ function Prodotti() {
 
   const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all'
 
-  const prodottiFiltrati = useMemo(() => applyFilters(isFilterActive ? allProdotti : prodotti), [allProdotti, prodotti, applyFilters, isFilterActive])
+  const prodottiFiltrati = useMemo(() => {
+    const base = applyFilters(isFilterActive ? allProdotti : prodotti)
+    if (!alertFilter) return base
+    const pool = allProdotti.length ? allProdotti : prodotti
+    if (alertFilter === 'sotto_scorta') return lowStockProducts(pool)
+    if (alertFilter === 'fermi_30') return stagnantProducts(pool, 30)
+    if (alertFilter === 'fermi_60') return stagnantProducts(pool, 60)
+    if (alertFilter === 'margine_basso') return lowMarginProducts(pool, 15)
+    if (alertFilter === 'senza_prezzo') return productsWithMissingPricing(pool)
+    return base
+  }, [allProdotti, prodotti, applyFilters, isFilterActive, alertFilter])
 
   const resetFilters = () => {
     setFilterBarcode('all')
@@ -160,7 +173,7 @@ function Prodotti() {
   const fetchProdotti = useCallback(async (currentSearch, currentPage) => {
     try {
       let resp
-      if (isFilterActive) {
+      if (isFilterActive || alertFilter) {
         // Filtri attivi: carica TUTTI i prodotti per applicare i filtri lato client
         resp = await prodottiAPI.getAll({ limit: 10000, search: currentSearch || undefined })
         setAllProdotti(resp.data)
@@ -183,7 +196,7 @@ function Prodotti() {
       pendingScanAlertRef.current = null
       setError('Errore nel caricamento dei dati')
     }
-  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, isFilterActive])
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, isFilterActive, alertFilter])
 
   useEffect(() => {
     fetchProdotti(search, page)
@@ -429,6 +442,19 @@ function Prodotti() {
       )}
 
       {error && <div className={styles.errorMsg}>{error}</div>}
+
+      {alertFilter && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', marginBottom: '16px', backgroundColor: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: '8px', fontSize: '13px', color: '#fbbf24' }}>
+          <span>
+            {alertFilter === 'sotto_scorta' && 'Filtro attivo: Prodotti sotto scorta minima'}
+            {alertFilter === 'fermi_30' && 'Filtro attivo: Prodotti fermi da +30 giorni'}
+            {alertFilter === 'fermi_60' && 'Filtro attivo: Prodotti fermi da +60 giorni'}
+            {alertFilter === 'margine_basso' && 'Filtro attivo: Prodotti con margine basso (<15%)'}
+            {alertFilter === 'senza_prezzo' && 'Filtro attivo: Prodotti senza prezzo'}
+          </span>
+          <Link to="/prodotti" style={{ marginLeft: 'auto', color: 'var(--color-text-secondary)', fontSize: '12px', textDecoration: 'none', padding: '2px 8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}>✕ Rimuovi filtro</Link>
+        </div>
+      )}
 
       {isMobile ? (
         <div className={styles.cardList}>
