@@ -14,25 +14,24 @@ export default function StoreProductPage() {
   const [added, setAdded] = useState(false)
 
   useEffect(() => {
+    async function fetchProdotto() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await storeAPI.getProdotto(id)
+        setProdotto(res.data)
+      } catch (err) {
+        if (err.response?.status === 404) {
+          setError('Prodotto non trovato o non disponibile.')
+        } else {
+          setError('Errore nel caricamento del prodotto.')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchProdotto()
   }, [id])
-
-  async function fetchProdotto() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await storeAPI.getProdotto(id)
-      setProdotto(res.data)
-    } catch (err) {
-      if (err.response?.status === 404) {
-        setError('Prodotto non trovato o non disponibile.')
-      } else {
-        setError('Errore nel caricamento del prodotto.')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function handleAddToCart() {
     if (!prodotto) return

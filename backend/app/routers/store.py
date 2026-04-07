@@ -152,8 +152,8 @@ def get_store_prodotto(
 ):
     """Restituisce un singolo prodotto pubblico."""
     prodotto = crud_prodotti.get_prodotto(db, prodotto_id)
-    if not prodotto or prodotto.quantita <= 0:
-        raise HTTPException(status_code=404, detail="Prodotto non trovato o non disponibile")
+    if not prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
     return _to_public(prodotto, request)
 
 

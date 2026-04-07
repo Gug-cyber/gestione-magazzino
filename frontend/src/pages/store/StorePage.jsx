@@ -15,30 +15,29 @@ export default function StorePage() {
   const [disponibiliOnly, setDisponibiliOnly] = useState(true)
 
   useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      setError(null)
+      try {
+        const [prodRes, catRes] = await Promise.all([
+          storeAPI.getProdotti({
+            search: search || undefined,
+            categoria_id: categoriaId || undefined,
+            disponibili_only: disponibiliOnly,
+            limit: 200,
+          }),
+          storeAPI.getCategorie(),
+        ])
+        setProdotti(prodRes.data)
+        setCategorie(catRes.data)
+      } catch (err) {
+        setError('Errore nel caricamento dei prodotti.')
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchData()
   }, [search, categoriaId, disponibiliOnly])
-
-  async function fetchData() {
-    setLoading(true)
-    setError(null)
-    try {
-      const [prodRes, catRes] = await Promise.all([
-        storeAPI.getProdotti({
-          search: search || undefined,
-          categoria_id: categoriaId || undefined,
-          disponibili_only: disponibiliOnly,
-          limit: 200,
-        }),
-        storeAPI.getCategorie(),
-      ])
-      setProdotti(prodRes.data)
-      setCategorie(catRes.data)
-    } catch (err) {
-      setError('Errore nel caricamento dei prodotti.')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function handleAddToCart(prodotto) {
     addItem({ ...prodotto, quantita_disponibile: prodotto.quantita }, 1)
