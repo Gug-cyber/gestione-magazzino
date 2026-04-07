@@ -64,15 +64,16 @@ jobs:
             core.info(`Found ${occurrences} occurrence(s) of '${targetStr}'`);
 
             // Introduce the intentional error ONLY in test_create_prodotto (first occurrence).
-            // The lazy quantifier [\s\S]*? stops at the first _crea_prodotto call found within
-            // the function, so this only affects test_create_prodotto even if other functions
-            // also call _crea_prodotto with different signatures.
-            const pattern = /(def test_create_prodotto[\s\S]*?_crea_prodotto\(client, auth_headers\)\n)(    assert resp\.status_code == 201)/;
+            // The lazy quantifier [\s\S]*? stops at the first assert resp.status_code == 201
+            // found after the function definition, regardless of what's in between.
+            const pattern = /(def test_create_prodotto[\s\S]*?)(    assert resp\.status_code == 201)/;
             const replacement = `$1    # ERRORE INTENZIONALE: test del flusso auto-fix bot\n    assert resp.status_code == 999`;
 
             const newContent = content.replace(pattern, replacement);
 
             if (newContent === content) {
+              core.info('--- First 30 lines of file for diagnostics ---');
+              lines.slice(0, 30).forEach((line, i) => core.info(`${i + 1}: ${line}`));
               core.setFailed('Replacement failed: target string not found in file. Verify that test_prodotti.py contains the expected assert line in test_create_prodotto.');
               return;
             }
