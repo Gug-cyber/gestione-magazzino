@@ -7,6 +7,7 @@ import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency, normalizeSkuForCode39 } from '../utils/formatters'
 import BarcodeScanner from '../components/BarcodeScanner'
 import styles from './Ordini.module.css'
+import { pendingOrders } from '../utils/alertHelpers'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
 
@@ -236,7 +237,7 @@ export default function Ordini() {
   const fatturatoTotale = ordini.filter(o => o.stato === 'completato').reduce((acc, o) => acc + (o.totale || 0), 0)
 
   const ordiniFiltrati = alertFilter === 'da_completare'
-    ? ordini.filter(o => o.stato === 'confermato' || o.stato === 'spedito')
+    ? pendingOrders(ordini)
     : ordini
 
   return (

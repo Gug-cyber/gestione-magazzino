@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { fattureAPI } from '../api/client'
 import { formatDate, formatCurrency } from '../utils/formatters'
 import '../styles/shared.css'
+import { unpaidInvoices } from '../utils/alertHelpers'
 
 const emptyForm = {
   numero_fattura: '',
@@ -199,7 +200,7 @@ export default function Fatture() {
   const importoTotale = fatture.reduce((sum, f) => sum + (f.importo || 0), 0)
 
   const fattureFiltrate = alertFilter === 'da_pagare'
-    ? fatture.filter(f => f.pagata === false)
+    ? unpaidInvoices(fatture)
     : fatture
 
   return (
