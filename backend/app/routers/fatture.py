@@ -128,6 +128,7 @@ def delete_all_fatture(db: Session = Depends(get_db), current_user=Depends(get_c
     Elimina tutte le fatture dal database.
     Nullifica prima la FK auto-referenziale nota_credito_di per evitare
     violazioni di integrità referenziale.
+    Operazione riservata agli amministratori.
     ATTENZIONE: Operazione irreversibile!
     """
     try:

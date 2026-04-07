@@ -369,7 +369,7 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
 def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_admin)):
     """
     Elimina tutti i prodotti dal database insieme alle loro dipendenze.
-    Operazione riservata agli utenti autenticati.
+    Operazione riservata agli amministratori.
     ATTENZIONE: Operazione irreversibile!
     """
     try:
