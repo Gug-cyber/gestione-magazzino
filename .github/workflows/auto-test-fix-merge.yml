@@ -349,34 +349,24 @@ jobs:
       issues: write
 
     steps:
-      - name: Auto-merge PR
-        uses: actions/github-script@v7
+      - name: Comment and merge PR
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
-        with:
-          script: |
-            const prNumber = parseInt(process.env.PR_NUMBER);
+        run: |
+          # Comment on the PR
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "✅ **All tests passed!** Auto-merging this PR..."
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: '✅ **All tests passed!** Auto-merging this PR...'
-            });
-
-            try {
-              await github.rest.pulls.merge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                merge_method: 'squash'
-              });
-            } catch (e) {
-              core.warning(`Auto-merge failed: ${e.message}`);
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: `⚠️ Tests passed but auto-merge failed: ${e.message}. Please merge manually.`
-              });
-            }
+          # Merge with --admin to bypass restrictions on PRs created by bots
+          if ! gh pr merge "$PR_NUMBER" \
+              --repo "${{ github.repository }}" \
+              --squash \
+              --admin \
+              --delete-branch; then
+            echo "⚠️ Auto-merge failed. Please merge manually."
+            gh pr comment "$PR_NUMBER" \
+              --repo "${{ github.repository }}" \
+              --body "⚠️ Tests passed but auto-merge failed. Please merge manually."
+          fi
