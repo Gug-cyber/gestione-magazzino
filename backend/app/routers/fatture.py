@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import re
 import uuid
@@ -13,9 +14,11 @@ from ..database import get_db
 from ..schemas.fattura import FatturaCreate, FatturaUpdate, FatturaResponse, TipoFatturaSchema
 from ..crud import fattura as crud
 from ..auth import get_current_active_user
+from ..dependencies import get_current_admin
 from ..models.fattura import Fattura
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.path.join(os.getenv("UPLOAD_DIR", "/app/uploads"), "fatture")
 
@@ -120,11 +123,12 @@ def toggle_pagata(
 
 
 @router.delete("/all", status_code=200)
-def delete_all_fatture(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def delete_all_fatture(db: Session = Depends(get_db), current_user=Depends(get_current_admin)):
     """
     Elimina tutte le fatture dal database.
     Nullifica prima la FK auto-referenziale nota_credito_di per evitare
     violazioni di integrità referenziale.
+    Operazione riservata agli amministratori.
     ATTENZIONE: Operazione irreversibile!
     """
     try:
@@ -139,9 +143,10 @@ def delete_all_fatture(db: Session = Depends(get_db), current_user=Depends(get_c
         }
     except Exception as e:
         db.rollback()
+        logger.exception("Errore durante l'eliminazione di tutte le fatture")
         raise HTTPException(
             status_code=500,
-            detail=f"Errore durante l'eliminazione: {str(e)}",
+            detail="Errore interno del server durante l'eliminazione.",
         )
 
 
@@ -179,7 +184,8 @@ def download_fattura(
     try:
         pdf_bytes = _genera_pdf_fattura(db_fattura)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Errore nella generazione del PDF: {str(e)}")
+        logger.exception("Errore nella generazione del PDF per fattura %s", fattura_id)
+        raise HTTPException(status_code=500, detail="Errore nella generazione del PDF.")
 
     # Sanitize filename: remove non-ASCII-safe characters
     numero_safe = re.sub(r"[^\w.\-]", "_", db_fattura.numero_fattura or "fattura")

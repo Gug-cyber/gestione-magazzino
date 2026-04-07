@@ -113,6 +113,7 @@ def list_dati_storici(
     skip: int = Query(default=0),
     limit: int = Query(default=10000),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
 ):
     return get_dati_storici(db, tipo=tipo, anno=anno, skip=skip, limit=limit)
 
