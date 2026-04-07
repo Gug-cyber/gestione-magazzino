@@ -3,10 +3,67 @@ name: Auto Test-Fix-Merge
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["Create E2E Test Branch"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
+  find-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      pr-number: ${{ steps.find.outputs.pr-number }}
+      head-ref: ${{ steps.find.outputs.head-ref }}
+      head-sha: ${{ steps.find.outputs.head-sha }}
+      should-run: ${{ steps.find.outputs.should-run }}
+    steps:
+      - name: Find PR
+        id: find
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'pull_request') {
+              core.setOutput('pr-number', context.payload.pull_request.number);
+              core.setOutput('head-ref', context.payload.pull_request.head.ref);
+              core.setOutput('head-sha', context.payload.pull_request.head.sha);
+              core.setOutput('should-run', 'true');
+              return;
+            }
+
+            // workflow_run: cerca la PR aperta più recente su branch test/e2e-auto-fix-*
+            if (context.payload.workflow_run?.conclusion !== 'success') {
+              core.info('Workflow run did not succeed, skipping.');
+              core.setOutput('should-run', 'false');
+              return;
+            }
+
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'created',
+              direction: 'desc',
+              per_page: 10
+            });
+
+            const testPR = pulls.find(pr => pr.head.ref.startsWith('test/e2e-auto-fix-'));
+            if (!testPR) {
+              core.warning('No open test/e2e-auto-fix-* PR found.');
+              core.setOutput('should-run', 'false');
+              return;
+            }
+
+            core.info(`Found PR #${testPR.number}: ${testPR.head.ref}`);
+            core.setOutput('pr-number', testPR.number);
+            core.setOutput('head-ref', testPR.head.ref);
+            core.setOutput('head-sha', testPR.head.sha);
+            core.setOutput('should-run', 'true');
+
   run-tests:
+    needs: find-pr
+    if: needs.find-pr.outputs.should-run == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -36,6 +93,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.find-pr.outputs.head-sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -163,8 +222,8 @@ jobs:
             error-report.md
 
   copilot-fix:
-    needs: run-tests
-    if: needs.run-tests.outputs.tests-passed == 'false'
+    needs: [find-pr, run-tests]
+    if: needs.find-pr.outputs.should-run == 'true' && needs.run-tests.outputs.tests-passed == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -174,7 +233,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ needs.find-pr.outputs.head-ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bootstrap Labels
@@ -209,9 +268,11 @@ jobs:
         uses: actions/github-script@v7
         env:
           ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
+          PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
         with:
           script: |
             const errorReport = process.env.ERROR_REPORT;
+            const prNumber = parseInt(process.env.PR_NUMBER);
 
             const comment = `
             ${errorReport}
@@ -226,7 +287,7 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: prNumber,
               body: comment
             });
 
@@ -235,14 +296,20 @@ jobs:
         uses: actions/github-script@v7
         env:
           ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
+          PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
+          HEAD_REF: ${{ needs.find-pr.outputs.head-ref }}
+          HEAD_SHA: ${{ needs.find-pr.outputs.head-sha }}
         with:
           script: |
             const errorReport = process.env.ERROR_REPORT;
+            const prNumber = parseInt(process.env.PR_NUMBER);
+            const headRef = process.env.HEAD_REF;
+            const headSha = process.env.HEAD_SHA;
 
             const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `[Auto-Fix] Test failures in PR #${{ github.event.pull_request.number }}`,
+              title: `[Auto-Fix] Test failures in PR #${prNumber}`,
               body: `
             ## Test Failures Report
 
@@ -250,11 +317,11 @@ jobs:
 
             ---
 
-            **PR:** #${{ github.event.pull_request.number }}
-            **Branch:** ${{ github.event.pull_request.head.ref }}
-            **Commit:** ${{ github.event.pull_request.head.sha }}
+            **PR:** #${prNumber}
+            **Branch:** ${headRef}
+            **Commit:** ${headSha}
 
-            @copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch \`${{ github.event.pull_request.head.ref }}\`.
+            @copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch \`${headRef}\`.
 
             ## Context
 
@@ -263,7 +330,7 @@ jobs:
             1. Analyze the error messages above
             2. Identify the root cause
             3. Fix the issues in the appropriate files
-            4. Commit the fixes to branch \`${{ github.event.pull_request.head.ref }}\`
+            4. Commit the fixes to branch \`${headRef}\`
 
             The workflow will automatically re-run tests after your fix.
             `,
@@ -274,8 +341,8 @@ jobs:
             return issue.data.number;
 
   auto-merge:
-    needs: run-tests
-    if: needs.run-tests.outputs.tests-passed == 'true'
+    needs: [find-pr, run-tests]
+    if: needs.find-pr.outputs.should-run == 'true' && needs.run-tests.outputs.tests-passed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -285,14 +352,11 @@ jobs:
     steps:
       - name: Auto-merge PR
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
         with:
           script: |
-            if (!context.payload.pull_request) {
-              core.warning('No pull_request payload found. Skipping auto-merge.');
-              return;
-            }
-
-            const prNumber = context.payload.pull_request.number;
+            const prNumber = parseInt(process.env.PR_NUMBER);
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
