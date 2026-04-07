@@ -106,3 +106,24 @@ jobs:
               base: 'main'
             });
             core.info(`PR #${newPr.number} created: ${newPr.html_url}`);
+
+            // Enable auto-merge on the newly created PR so it can be merged when checks pass
+            try {
+              await github.graphql(`
+                mutation EnableAutoMerge($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(input: {
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: SQUASH
+                  }) {
+                    pullRequest {
+                      autoMergeRequest {
+                        enabledAt
+                      }
+                    }
+                  }
+                }
+              `, { pullRequestId: newPr.node_id });
+              core.info(`Auto-merge enabled for PR #${newPr.number}`);
+            } catch (e) {
+              core.warning(`Could not enable auto-merge: ${e.message}`);
+            }

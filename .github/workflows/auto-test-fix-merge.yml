@@ -354,6 +354,7 @@ jobs:
         env:
           PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = parseInt(process.env.PR_NUMBER);
 
@@ -364,6 +365,7 @@ jobs:
               body: '✅ **All tests passed!** Auto-merging this PR...'
             });
 
+            // First try direct merge
             try {
               await github.rest.pulls.merge({
                 owner: context.repo.owner,
@@ -371,12 +373,48 @@ jobs:
                 pull_number: prNumber,
                 merge_method: 'squash'
               });
-            } catch (e) {
-              core.warning(`Auto-merge failed: ${e.message}`);
+              core.info(`PR #${prNumber} merged successfully.`);
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: `⚠️ Tests passed but auto-merge failed: ${e.message}. Please merge manually.`
+                body: '🎉 **PR merged successfully!**'
+              });
+              return;
+            } catch (e) {
+              core.warning(`Direct merge failed: ${e.message}. Trying GraphQL enablePullRequestAutoMerge...`);
+            }
+
+            // Fallback: enable auto-merge via GraphQL
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+
+              await github.graphql(`
+                mutation EnableAutoMerge($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(input: {
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: SQUASH
+                  }) {
+                    pullRequest {
+                      autoMergeRequest {
+                        enabledAt
+                      }
+                    }
+                  }
+                }
+              `, { pullRequestId: pr.node_id });
+
+              core.info(`Auto-merge enabled for PR #${prNumber}`);
+            } catch (e2) {
+              core.warning(`Auto-merge via GraphQL also failed: ${e2.message}`);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `⚠️ Tests passed but auto-merge failed: ${e2.message}. Please merge manually.`
               });
             }
