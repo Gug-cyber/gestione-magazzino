@@ -170,6 +170,12 @@ const BASE_SECTIONS = [
       { to: '/scanner', label: 'Scanner Barcode', icon: 'Camera' },
     ],
   },
+  {
+    label: 'Negozio',
+    links: [
+      { to: '/store', label: 'Store Pubblico', icon: 'ShoppingCart', external: true },
+    ],
+  },
 ]
 
 const SISTEMA_LINKS_BASE = [
@@ -247,7 +253,41 @@ function NavLinks({ onLinkClick }) {
             maxHeight: openSections[idx] ? '500px' : '0px',
             transition: 'max-height 250ms ease',
           }}>
-            {section.links.map(({ to, label, icon, end }) => (
+            {section.links.map(({ to, label, icon, end, external }) => (
+              external ? (
+                <a
+                  key={to}
+                  href={to}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onLinkClick}
+                  onMouseEnter={() => setHoveredTo(to)}
+                  onMouseLeave={() => setHoveredTo(null)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 16px',
+                    marginLeft: '8px',
+                    marginRight: '8px',
+                    marginBottom: '2px',
+                    color: 'var(--color-text-secondary)',
+                    textDecoration: 'none',
+                    backgroundColor: hoveredTo === to ? 'var(--color-surface-hover)' : 'transparent',
+                    borderRadius: '8px',
+                    fontWeight: '400',
+                    fontSize: '14px',
+                    transition: 'all 150ms ease',
+                    borderLeft: '2px solid transparent',
+                  }}
+                >
+                  <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center' }}>
+                    {renderIcon(icon)}
+                  </span>
+                  <span>{label}</span>
+                  <span style={{ fontSize: '11px', opacity: 0.5, marginLeft: 'auto' }}>↗</span>
+                </a>
+              ) : (
               <NavLink
                 key={to}
                 to={to}
@@ -286,6 +326,7 @@ function NavLinks({ onLinkClick }) {
                 </span>
                 <span>{label}</span>
               </NavLink>
+              )
             ))}
           </div>
         </div>
