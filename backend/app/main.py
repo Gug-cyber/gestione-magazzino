@@ -119,16 +119,31 @@ def startup():
 
     from .crud.utente import get_utenti, create_utente
     from .schemas.utente import UtenteCreate
+    import secrets
+    import string
 
     db = SessionLocal()
     try:
         if not get_utenti(db, skip=0, limit=1):
+            alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+            random_password = ''.join(secrets.choice(alphabet) for _ in range(16))
             admin = UtenteCreate(
                 username="admin",
                 email="admin@gestione-magazzino.local",
-                password="admin123",  # nosec B106 – default seed admin password; overridden in production via admin UI
+                password=random_password,
             )
-            create_utente(db, admin, is_admin=True)
+            db_admin = create_utente(db, admin, is_admin=True)
+            db_admin.must_change_password = True
+            db.commit()
+            print(
+                f"\n{'='*60}\n"
+                f"ADMIN ACCOUNT CREATED\n"
+                f"Username : admin\n"
+                f"Password : {random_password}\n"
+                f"⚠️  Change this password immediately after first login!\n"
+                f"{'='*60}\n",
+                file=sys.stderr,
+            )
     finally:
         db.close()
 

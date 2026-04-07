@@ -103,9 +103,10 @@ function Profilo() {
   const fileInputRef = useRef(null)
 
   const isAdmin = user?.is_admin
+  const mustChangePassword = user?.must_change_password === true
 
   const tabs = isAdmin ? ['account', 'sicurezza', 'attivita', 'portale'] : ['account', 'sicurezza', 'attivita']
-  const [activeTab, setActiveTab] = useState('account')
+  const [activeTab, setActiveTab] = useState(mustChangePassword ? 'sicurezza' : 'account')
 
   const [nuovoUsername, setNuovoUsername] = useState(user?.username || '')
   const [nuovaEmail, setNuovaEmail] = useState(user?.email || '')
@@ -168,10 +169,11 @@ function Profilo() {
       return
     }
     try {
-      await updateProfilo({
+      const res = await updateProfilo({
         current_password: passwordAttuale,
         new_password: nuovaPassword,
       })
+      setUser(res.data)
       setMsgWithAutoDismiss(setPasswordMsg, { type: 'success', text: 'Password cambiata con successo!' })
       setPasswordAttuale('')
       setNuovaPassword('')
@@ -231,6 +233,30 @@ function Profilo() {
 
   return (
     <div style={{ maxWidth: isMobile ? '100%' : '600px' }}>
+      {/* Forced password change warning */}
+      {mustChangePassword && (
+        <div style={{
+          background: '#fff3cd',
+          border: '1px solid #ffc107',
+          borderRadius: '8px',
+          padding: '14px 18px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          color: '#856404',
+          fontSize: '14px',
+        }}>
+          <span style={{ fontSize: '20px', flexShrink: 0 }}>⚠️</span>
+          <div>
+            <strong>Cambio password obbligatorio</strong>
+            <div style={{ marginTop: '4px' }}>
+              Per motivi di sicurezza devi impostare una nuova password prima di poter utilizzare il sistema.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Identity Banner */}
       <div className="card" style={{
         background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)',

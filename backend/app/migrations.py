@@ -147,6 +147,11 @@ COLUMN_MIGRATIONS = [
         "column": "cardtrader_blueprint_id",
         "definition": "INTEGER",
     },
+    {
+        "table": "utenti",
+        "column": "must_change_password",
+        "definition": "BOOLEAN DEFAULT FALSE",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)

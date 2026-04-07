@@ -430,9 +430,11 @@ function Login() {
             color: 'var(--color-primary-light)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
           }}>
-            <strong style={{ color: 'var(--color-text)' }}>Credenziali di test:</strong>
-            <div style={{ marginTop: '8px', fontFamily: 'monospace' }}>
-              Username: <code style={{ color: 'var(--color-text)' }}>admin</code> | Password: <code style={{ color: 'var(--color-text)' }}>admin123</code>
+            <strong style={{ color: 'var(--color-text)' }}>Primo accesso:</strong>
+            <div style={{ marginTop: '8px' }}>
+              Username: <code style={{ color: 'var(--color-text)', fontFamily: 'monospace' }}>admin</code>
+              <br />
+              La password generata automaticamente è visibile nei log del server al primo avvio.
             </div>
           </div>
         )}
