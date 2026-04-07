@@ -1,0 +1,665 @@
+name: Security Scan & Auto-Fix
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch:      # Manual trigger
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # ── Create labels ──────────────────────────────────────────────────────
+      - name: Create required labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "security" \
+            --color "d73a4a" \
+            --description "Security vulnerability" \
+            --repo "${{ github.repository }}" || true
+
+          gh label create "copilot" \
+            --color "6366f1" \
+            --description "Assigned to Copilot" \
+            --repo "${{ github.repository }}" || true
+
+          gh label create "auto-fix" \
+            --color "e11d48" \
+            --description "Automated fix requested" \
+            --repo "${{ github.repository }}" || true
+
+      # ── Install security tools ─────────────────────────────────────────────
+      - name: Install Python security tools
+        run: pip install bandit safety semgrep
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+        continue-on-error: true
+
+      # ── Bandit ────────────────────────────────────────────────────────────
+      - name: Run Bandit (Python SAST)
+        run: |
+          bandit -r backend/app -f json -o bandit-report.json \
+            --severity-level medium || true
+        continue-on-error: true
+
+      - name: Open issues for Bandit findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, subprocess, urllib.request, urllib.parse
+
+          REPO  = os.environ["REPO"]
+          TOKEN = os.environ["GH_TOKEN"]
+          MAX_ISSUES = 10
+          count = 0
+
+          try:
+              with open("bandit-report.json") as f:
+                  data = json.load(f)
+          except Exception as e:
+              print(f"No bandit report or parse error: {e}")
+              raise SystemExit(0)
+
+          results = data.get("results", [])
+          # Filter: only MEDIUM and HIGH severity
+          results = [
+              r for r in results
+              if r.get("issue_severity", "").upper() in ("MEDIUM", "HIGH")
+          ]
+          # Sort by severity (HIGH first)
+          sev_order = {"HIGH": 0, "MEDIUM": 1}
+          results.sort(key=lambda r: sev_order.get(r.get("issue_severity", "").upper(), 99))
+
+          def search_issue(title):
+              q = urllib.parse.quote(f'is:issue is:open repo:{REPO} label:security in:title {title}')
+              url = f"https://api.github.com/search/issues?q={q}"
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["total_count"]
+
+          def create_issue(title, body):
+              url = f"https://api.github.com/repos/{REPO}/issues"
+              payload = json.dumps({
+                  "title": title,
+                  "body": body,
+                  "labels": ["security", "copilot", "auto-fix"],
+                  "assignees": ["copilot"],
+              }).encode()
+              req = urllib.request.Request(url, data=payload, method="POST", headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["number"]
+
+          for r in results:
+              if count >= MAX_ISSUES:
+                  break
+
+              test_id   = r.get("test_id", "")
+              test_name = r.get("test_name", "")
+              severity  = r.get("issue_severity", "").upper()
+              confidence= r.get("issue_confidence", "").upper()
+              filename  = r.get("filename", "")
+              line_no   = r.get("line_number", "")
+              issue_text= r.get("issue_text", "")
+              code      = r.get("code", "").strip()
+              more_info = r.get("more_info", "")
+
+              short_desc = f"{test_id} - {issue_text[:80]}"
+              title = f"[Security] Bandit: {short_desc}"
+
+              if search_issue(title) > 0:
+                  print(f"⏭  Skipping duplicate: {title}")
+                  continue
+
+              body = f"""## 🔴 Security Vulnerability Detected
+
+          **Tool:** Bandit
+          **Severity:** {severity}
+          **Confidence:** {confidence}
+          **File:** `{filename}`
+          **Line:** {line_no}
+          **Issue:** {test_id} - {issue_text}
+          {f"**Reference:** {more_info}" if more_info else ""}
+
+          ### Code
+          ```python
+          {code}
+          ```
+
+          ### Recommended Fix
+          Review the flagged code and apply the remediation suggested by Bandit.
+          Refer to: {more_info if more_info else "https://bandit.readthedocs.io/en/latest/"}
+
+          ---
+
+          @copilot Please fix this security vulnerability. The issue is in `{filename}` at line {line_no}.
+
+          1. Analyze the code at `{filename}` line {line_no}
+          2. Apply the recommended fix for {test_id}
+          3. Run `pytest tests/` to verify the fix does not break existing tests
+          4. Commit the fix to the `main` branch
+
+          This is an automated security report from the CI/CD pipeline.
+          """
+
+              num = create_issue(title, body)
+              print(f"✅ Created issue #{num}: {title}")
+              count += 1
+
+          print(f"Bandit: {count} issue(s) opened.")
+          PYEOF
+        continue-on-error: true
+
+      # ── Safety ────────────────────────────────────────────────────────────
+      - name: Run Safety (Python dependencies)
+        run: |
+          pip install -r backend/requirements.txt --quiet || true
+          safety check -r backend/requirements.txt \
+            --json > safety-report.json || true
+        continue-on-error: true
+
+      - name: Open issues for Safety findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, urllib.request, urllib.parse
+
+          REPO  = os.environ["REPO"]
+          TOKEN = os.environ["GH_TOKEN"]
+          MAX_ISSUES = 10
+          count = 0
+
+          try:
+              with open("safety-report.json") as f:
+                  raw = f.read().strip()
+              if not raw:
+                  raise ValueError("empty")
+              data = json.loads(raw)
+          except Exception as e:
+              print(f"No safety report or parse error: {e}")
+              raise SystemExit(0)
+
+          # Safety output can be a list or dict with 'vulnerabilities' key
+          if isinstance(data, list):
+              vulns = data
+          elif isinstance(data, dict):
+              vulns = data.get("vulnerabilities", [])
+          else:
+              vulns = []
+
+          def search_issue(title):
+              q = urllib.parse.quote(f'is:issue is:open repo:{REPO} label:security in:title {title}')
+              url = f"https://api.github.com/search/issues?q={q}"
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["total_count"]
+
+          def create_issue(title, body):
+              url = f"https://api.github.com/repos/{REPO}/issues"
+              payload = json.dumps({
+                  "title": title,
+                  "body": body,
+                  "labels": ["security", "copilot", "auto-fix"],
+                  "assignees": ["copilot"],
+              }).encode()
+              req = urllib.request.Request(url, data=payload, method="POST", headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["number"]
+
+          for v in vulns:
+              if count >= MAX_ISSUES:
+                  break
+
+              # Safety v3 schema
+              pkg        = v.get("package_name") or v.get("name", "unknown")
+              vuln_id    = v.get("vulnerability_id") or v.get("id", "")
+              advisory   = v.get("advisory", "")
+              affected   = v.get("affected_versions") or v.get("vulnerable_spec", "")
+              fixed_ver  = v.get("fixed_versions", [])
+              severity   = (v.get("severity") or "UNKNOWN").upper()
+
+              short_desc = advisory[:80] if advisory else vuln_id
+              title = f"[Security] Safety: {pkg} - {vuln_id}"
+
+              if search_issue(title) > 0:
+                  print(f"⏭  Skipping duplicate: {title}")
+                  continue
+
+              fix_str = ", ".join(fixed_ver) if fixed_ver else "N/A"
+              body = f"""## 🔴 Vulnerable Dependency Detected
+
+          **Tool:** Safety
+          **Package:** `{pkg}`
+          **Vulnerability ID:** {vuln_id}
+          **Severity:** {severity}
+          **Affected versions:** `{affected}`
+          **Fixed in:** `{fix_str}`
+
+          ### Advisory
+          {advisory}
+
+          ### Recommended Fix
+          Upgrade `{pkg}` to a non-vulnerable version ({fix_str}).
+
+          ---
+
+          @copilot Please fix this vulnerable dependency.
+
+          1. Open `backend/requirements.txt`
+          2. Upgrade `{pkg}` to version `{fix_str}` or later
+          3. Run `pip install -r backend/requirements.txt` and `pytest tests/` to verify compatibility
+          4. Commit the fix to the `main` branch
+
+          This is an automated security report from the CI/CD pipeline.
+          """
+
+              num = create_issue(title, body)
+              print(f"✅ Created issue #{num}: {title}")
+              count += 1
+
+          print(f"Safety: {count} issue(s) opened.")
+          PYEOF
+        continue-on-error: true
+
+      # ── npm audit ─────────────────────────────────────────────────────────
+      - name: Run npm audit (frontend dependencies)
+        run: |
+          cd frontend
+          npm audit --json > ../npm-audit-report.json || true
+        continue-on-error: true
+
+      - name: Open issues for npm audit findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, urllib.request, urllib.parse
+
+          REPO  = os.environ["REPO"]
+          TOKEN = os.environ["GH_TOKEN"]
+          MAX_ISSUES = 10
+          count = 0
+          CRITICAL_SEVS = {"high", "critical"}
+
+          try:
+              with open("npm-audit-report.json") as f:
+                  data = json.load(f)
+          except Exception as e:
+              print(f"No npm audit report or parse error: {e}")
+              raise SystemExit(0)
+
+          # npm audit v7+ uses "vulnerabilities" dict, older uses "advisories"
+          vulns = []
+          if "vulnerabilities" in data:
+              for pkg_name, info in data["vulnerabilities"].items():
+                  sev = info.get("severity", "")
+                  if sev not in CRITICAL_SEVS:
+                      continue
+                  via = info.get("via", [])
+                  advisory_text = ""
+                  cve = ""
+                  for v in via:
+                      if isinstance(v, dict):
+                          advisory_text = v.get("title", "")
+                          cve = v.get("url", "")
+                          break
+                  vulns.append({
+                      "name": pkg_name,
+                      "severity": sev,
+                      "advisory": advisory_text,
+                      "url": cve,
+                      "range": info.get("range", ""),
+                      "fixAvailable": info.get("fixAvailable", False),
+                  })
+          elif "advisories" in data:
+              for adv_id, adv in data["advisories"].items():
+                  sev = adv.get("severity", "")
+                  if sev not in CRITICAL_SEVS:
+                      continue
+                  vulns.append({
+                      "name": adv.get("module_name", ""),
+                      "severity": sev,
+                      "advisory": adv.get("overview", ""),
+                      "url": adv.get("url", ""),
+                      "range": adv.get("vulnerable_versions", ""),
+                      "fixAvailable": bool(adv.get("patched_versions")),
+                  })
+
+          def search_issue(title):
+              q = urllib.parse.quote(f'is:issue is:open repo:{REPO} label:security in:title {title}')
+              url = f"https://api.github.com/search/issues?q={q}"
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["total_count"]
+
+          def create_issue(title, body):
+              url = f"https://api.github.com/repos/{REPO}/issues"
+              payload = json.dumps({
+                  "title": title,
+                  "body": body,
+                  "labels": ["security", "copilot", "auto-fix"],
+                  "assignees": ["copilot"],
+              }).encode()
+              req = urllib.request.Request(url, data=payload, method="POST", headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["number"]
+
+          for v in vulns:
+              if count >= MAX_ISSUES:
+                  break
+
+              name     = v["name"]
+              severity = v["severity"].upper()
+              advisory = v["advisory"]
+              url_ref  = v["url"]
+              rng      = v["range"]
+              fix_avail= v["fixAvailable"]
+
+              short_desc = advisory[:80] if advisory else name
+              title = f"[Security] npm audit: {name} - {severity}"
+
+              if search_issue(title) > 0:
+                  print(f"⏭  Skipping duplicate: {title}")
+                  continue
+
+              fix_note = "Run `npm audit fix` or upgrade the package manually." if fix_avail else "No automatic fix available; consider replacing the dependency."
+
+              body = f"""## 🔴 Vulnerable npm Dependency Detected
+
+          **Tool:** npm audit
+          **Package:** `{name}`
+          **Severity:** {severity}
+          **Vulnerable range:** `{rng}`
+          {f"**Reference:** {url_ref}" if url_ref else ""}
+
+          ### Advisory
+          {advisory}
+
+          ### Recommended Fix
+          {fix_note}
+
+          ---
+
+          @copilot Please fix this vulnerable npm dependency.
+
+          1. Navigate to `frontend/`
+          2. Run `npm audit fix` to attempt an automatic fix, or manually upgrade `{name}`
+          3. Run `npm test` to verify nothing is broken
+          4. Commit the updated `package.json` and `package-lock.json` to the `main` branch
+
+          This is an automated security report from the CI/CD pipeline.
+          """
+
+              num = create_issue(title, body)
+              print(f"✅ Created issue #{num}: {title}")
+              count += 1
+
+          print(f"npm audit: {count} issue(s) opened.")
+          PYEOF
+        continue-on-error: true
+
+      # ── Semgrep ───────────────────────────────────────────────────────────
+      - name: Run Semgrep (SAST)
+        run: |
+          semgrep --config=auto backend/app \
+            --json -o semgrep-report.json || true
+        continue-on-error: true
+
+      - name: Open issues for Semgrep findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, urllib.request, urllib.parse
+
+          REPO  = os.environ["REPO"]
+          TOKEN = os.environ["GH_TOKEN"]
+          MAX_ISSUES = 10
+          count = 0
+          ALLOWED_SEVS = {"ERROR", "WARNING"}
+
+          try:
+              with open("semgrep-report.json") as f:
+                  data = json.load(f)
+          except Exception as e:
+              print(f"No semgrep report or parse error: {e}")
+              raise SystemExit(0)
+
+          results = data.get("results", [])
+          # Filter by severity
+          results = [
+              r for r in results
+              if r.get("extra", {}).get("severity", "").upper() in ALLOWED_SEVS
+          ]
+          # Sort: ERROR first
+          sev_order = {"ERROR": 0, "WARNING": 1}
+          results.sort(
+              key=lambda r: sev_order.get(
+                  r.get("extra", {}).get("severity", "").upper(), 99
+              )
+          )
+
+          def search_issue(title):
+              q = urllib.parse.quote(f'is:issue is:open repo:{REPO} label:security in:title {title}')
+              url = f"https://api.github.com/search/issues?q={q}"
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["total_count"]
+
+          def create_issue(title, body):
+              url = f"https://api.github.com/repos/{REPO}/issues"
+              payload = json.dumps({
+                  "title": title,
+                  "body": body,
+                  "labels": ["security", "copilot", "auto-fix"],
+                  "assignees": ["copilot"],
+              }).encode()
+              req = urllib.request.Request(url, data=payload, method="POST", headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["number"]
+
+          for r in results:
+              if count >= MAX_ISSUES:
+                  break
+
+              extra     = r.get("extra", {})
+              severity  = extra.get("severity", "").upper()
+              message   = extra.get("message", "")
+              rule_id   = r.get("check_id", "")
+              filepath  = r.get("path", "")
+              start     = r.get("start", {})
+              line_no   = start.get("line", "")
+              code_lines= extra.get("lines", "")
+              metadata  = extra.get("metadata", {})
+              refs      = metadata.get("references", [])
+              ref_str   = refs[0] if refs else ""
+
+              short_desc = message[:80] if message else rule_id
+              title = f"[Security] Semgrep: {rule_id} in {os.path.basename(filepath)}"
+
+              if search_issue(title) > 0:
+                  print(f"⏭  Skipping duplicate: {title}")
+                  continue
+
+              body = f"""## 🔴 Security Vulnerability Detected
+
+          **Tool:** Semgrep
+          **Rule:** `{rule_id}`
+          **Severity:** {severity}
+          **File:** `{filepath}`
+          **Line:** {line_no}
+
+          ### Description
+          {message}
+
+          ### Code
+          ```
+          {code_lines}
+          ```
+
+          {f"### Reference{chr(10)}{ref_str}" if ref_str else ""}
+
+          ### Recommended Fix
+          Review the flagged code at `{filepath}` line {line_no} and apply the remediation suggested by the Semgrep rule `{rule_id}`.
+
+          ---
+
+          @copilot Please fix this security vulnerability. The issue is in `{filepath}` at line {line_no}.
+
+          1. Analyze the code at `{filepath}` line {line_no}
+          2. Apply the fix recommended by Semgrep rule `{rule_id}`
+          3. Run `pytest tests/` to verify the fix does not break existing tests
+          4. Commit the fix to the `main` branch
+
+          This is an automated security report from the CI/CD pipeline.
+          """
+
+              num = create_issue(title, body)
+              print(f"✅ Created issue #{num}: {title}")
+              count += 1
+
+          print(f"Semgrep: {count} issue(s) opened.")
+          PYEOF
+        continue-on-error: true
+
+      # ── Summary ───────────────────────────────────────────────────────────
+      - name: Security scan summary
+        run: |
+          python3 - <<'PYEOF'
+          import json, os
+
+          def count_bandit():
+              try:
+                  with open("bandit-report.json") as f:
+                      data = json.load(f)
+                  return len([r for r in data.get("results", [])
+                               if r.get("issue_severity","").upper() in ("MEDIUM","HIGH")])
+              except Exception:
+                  return 0
+
+          def count_safety():
+              try:
+                  with open("safety-report.json") as f:
+                      raw = f.read().strip()
+                  if not raw:
+                      return 0
+                  data = json.loads(raw)
+                  if isinstance(data, list):
+                      return len(data)
+                  return len(data.get("vulnerabilities", []))
+              except Exception:
+                  return 0
+
+          def count_npm():
+              try:
+                  with open("npm-audit-report.json") as f:
+                      data = json.load(f)
+                  if "vulnerabilities" in data:
+                      return sum(1 for v in data["vulnerabilities"].values()
+                                 if v.get("severity") in ("high","critical"))
+                  if "advisories" in data:
+                      return sum(1 for a in data["advisories"].values()
+                                 if a.get("severity") in ("high","critical"))
+                  return 0
+              except Exception:
+                  return 0
+
+          def count_semgrep():
+              try:
+                  with open("semgrep-report.json") as f:
+                      data = json.load(f)
+                  return len([r for r in data.get("results",[])
+                               if r.get("extra",{}).get("severity","").upper()
+                                  in ("ERROR","WARNING")])
+              except Exception:
+                  return 0
+
+          b = count_bandit()
+          s = count_safety()
+          n = count_npm()
+          sg = count_semgrep()
+          total = b + s + n + sg
+
+          print("=" * 50)
+          print("🔒 SECURITY SCAN SUMMARY")
+          print("=" * 50)
+          print(f"  Bandit (Python SAST):          {b}")
+          print(f"  Safety (Python dependencies):  {s}")
+          print(f"  npm audit (JS dependencies):   {n}")
+          print(f"  Semgrep (SAST):                {sg}")
+          print("-" * 50)
+          print(f"  TOTAL vulnerabilities found:   {total}")
+          print("=" * 50)
+          if total == 0:
+              print("✅ No actionable vulnerabilities found!")
+          else:
+              print(f"⚠️  {min(total, 10)} issue(s) opened (max 10 per run).")
+          PYEOF
