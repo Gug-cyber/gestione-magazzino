@@ -26,7 +26,7 @@ router = APIRouter()
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):  # noqa: ARG001 – request is required by slowapi for rate limiting
     utente = crud.authenticate_utente(db, form_data.username, form_data.password)
     if not utente:
         raise HTTPException(
