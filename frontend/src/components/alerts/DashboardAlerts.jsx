@@ -96,7 +96,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: lowStockProducts(effectiveProducts).length,
       variant: 'danger',
       icon: <IconBox />,
-      linkTo: '/prodotti',
+      linkTo: '/prodotti?alert=sotto_scorta',
       description: 'Quantità ≤ scorta minima',
     },
     {
@@ -105,7 +105,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: stagnantProducts(effectiveProducts, 30).length,
       variant: 'warning',
       icon: <IconClock />,
-      linkTo: '/prodotti',
+      linkTo: '/prodotti?alert=fermi_30',
       description: 'Nessun movimento recente',
     },
     {
@@ -114,7 +114,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: stagnantProducts(effectiveProducts, 60).length,
       variant: 'danger',
       icon: <IconClock />,
-      linkTo: '/prodotti',
+      linkTo: '/prodotti?alert=fermi_60',
       description: 'Valuta una promozione',
     },
     {
@@ -123,7 +123,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: lowMarginProducts(effectiveProducts, 15).length,
       variant: 'warning',
       icon: <IconTrendingDown />,
-      linkTo: '/prodotti',
+      linkTo: '/prodotti?alert=margine_basso',
       description: 'Margine < 15%',
     },
     {
@@ -132,7 +132,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: productsWithMissingPricing(effectiveProducts).length,
       variant: 'info',
       icon: <IconTagX />,
-      linkTo: '/prodotti',
+      linkTo: '/prodotti?alert=senza_prezzo',
       description: 'Prezzo acquisto o vendita mancante',
     },
     {
@@ -141,7 +141,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: pendingOrders(effectiveOrders).length,
       variant: 'warning',
       icon: <IconCartClock />,
-      linkTo: '/ordini',
+      linkTo: '/ordini?alert=da_completare',
       description: 'Stato: confermato o spedito',
     },
     {
@@ -150,7 +150,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
       count: unpaidInvoices(effectiveInvoices).length,
       variant: 'danger',
       icon: <IconFileAlert />,
-      linkTo: '/fatture',
+      linkTo: '/fatture?alert=da_pagare',
       description: 'Attenzione alla liquidità',
     },
   ]

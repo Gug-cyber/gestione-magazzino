@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import { fattureAPI } from '../api/client'
 import { formatDate, formatCurrency } from '../utils/formatters'
 import '../styles/shared.css'
+import { unpaidInvoices } from '../utils/alertHelpers'
 
 const emptyForm = {
   numero_fattura: '',
@@ -15,6 +17,8 @@ const emptyForm = {
 }
 
 export default function Fatture() {
+  const [searchParams] = useSearchParams()
+  const alertFilter = searchParams.get('alert')
   const [fatture, setFatture] = useState([])
   const [totalFatture, setTotalFatture] = useState(0)
   const [page, setPage] = useState(1)
@@ -195,6 +199,10 @@ export default function Fatture() {
   const daPagare = totale - pagate
   const importoTotale = fatture.reduce((sum, f) => sum + (f.importo || 0), 0)
 
+  const fattureFiltrate = alertFilter === 'da_pagare'
+    ? unpaidInvoices(fatture)
+    : fatture
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       {/* Header */}
@@ -311,11 +319,18 @@ export default function Fatture() {
 
       {error && <div className="error-banner">{error}</div>}
 
+      {alertFilter === 'da_pagare' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', marginBottom: '16px', backgroundColor: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: '8px', fontSize: '13px', color: '#fbbf24' }}>
+          <span>Filtro attivo: Fatture da pagare</span>
+          <Link to="/fatture" style={{ marginLeft: 'auto', color: 'var(--color-text-secondary)', fontSize: '12px', textDecoration: 'none', padding: '2px 8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}>✕ Rimuovi filtro</Link>
+        </div>
+      )}
+
       {/* Table */}
       <div className="card">
         {loading ? (
           <div className="loading-state">Caricamento...</div>
-        ) : fatture.length === 0 ? (
+        ) : fattureFiltrate.length === 0 ? (
           <div className="loading-state">Nessuna fattura trovata</div>
         ) : (
           <div className="table-wrapper">
@@ -333,7 +348,7 @@ export default function Fatture() {
                 </tr>
               </thead>
               <tbody>
-                {fatture.map((f) => (
+                {fattureFiltrate.map((f) => (
                   <tr key={f.id}>
                     <td style={{ color: 'var(--text-muted)' }}>{f.id}</td>
                     <td className="text-bold">{f.numero_fattura}</td>

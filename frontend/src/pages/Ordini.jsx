@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ordiniAPI, clientiAPI, prodottiAPI } from '../api/client'
 import StatoBadge from '../components/ui/StatoBadge'
 import { STATO_ORDINE_COLORS } from '../constants/colors'
@@ -7,6 +7,7 @@ import { CORRIERI } from '../constants/corrieri'
 import { formatDate, formatCurrency, normalizeSkuForCode39 } from '../utils/formatters'
 import BarcodeScanner from '../components/BarcodeScanner'
 import styles from './Ordini.module.css'
+import { pendingOrders } from '../utils/alertHelpers'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
 
@@ -15,6 +16,8 @@ const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
 
 export default function Ordini() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const alertFilter = searchParams.get('alert')
   const [ordini, setOrdini] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -233,6 +236,10 @@ export default function Ordini() {
   const totaleCompletati = ordini.filter(o => o.stato === 'completato').length
   const fatturatoTotale = ordini.filter(o => o.stato === 'completato').reduce((acc, o) => acc + (o.totale || 0), 0)
 
+  const ordiniFiltrati = alertFilter === 'da_completare'
+    ? pendingOrders(ordini)
+    : ordini
+
   return (
     <div className={styles.container}>
       {/* Header */}
@@ -296,14 +303,21 @@ export default function Ordini() {
 
       {error && <div className={styles.errorMsg}>{error}</div>}
 
+      {alertFilter === 'da_completare' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', marginBottom: '16px', backgroundColor: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: '8px', fontSize: '13px', color: '#fbbf24' }}>
+          <span>Filtro attivo: Ordini da completare (confermato / spedito)</span>
+          <Link to="/ordini" style={{ marginLeft: 'auto', color: 'var(--color-text-secondary)', fontSize: '12px', textDecoration: 'none', padding: '2px 8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}>✕ Rimuovi filtro</Link>
+        </div>
+      )}
+
       {/* Mobile Cards */}
       {isMobile && (
         <div className={styles.mobileCards}>
           {loading ? (
             <div className={styles.emptyMsg}>Caricamento...</div>
-          ) : ordini.length === 0 ? (
+          ) : ordiniFiltrati.length === 0 ? (
             <div className={styles.emptyMsg}>Nessun ordine trovato</div>
-          ) : ordini.map(ordine => (
+          ) : ordiniFiltrati.map(ordine => (
             <div key={ordine.id} className={styles.mobileCard}>
               {/* Header: numero ordine + badge stato */}
               <div className={styles.mobileCardHeader}>
@@ -367,7 +381,7 @@ export default function Ordini() {
       <div className={styles.tableWrapper} style={isMobile ? { display: 'none' } : {}}>
         {loading ? (
           <div className={styles.emptyMsg}>Caricamento...</div>
-        ) : ordini.length === 0 ? (
+        ) : ordiniFiltrati.length === 0 ? (
           <div className={styles.emptyMsg}>Nessun ordine trovato</div>
         ) : (
           <table className={styles.table}>
@@ -379,7 +393,7 @@ export default function Ordini() {
               </tr>
             </thead>
             <tbody>
-              {ordini.map(ordine => (
+              {ordiniFiltrati.map(ordine => (
                 <tr key={ordine.id} className={styles.tr}>
                   <td className={`${styles.td} ${styles.ordineNum}`}>{ordine.numero_ordine}</td>
                   <td className={styles.td}>{ordine.cliente_nome || '—'}</td>
