@@ -3,7 +3,9 @@ import logging
 import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import JWTError, jwt
+from joserfc import jwt
+from joserfc.jwk import OctKey
+from joserfc.errors import JoseError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -24,6 +26,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 hours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+_jwt_key = OctKey.import_key(SECRET_KEY.encode())
 
 def _prepare_password(password: str) -> str:
     """
@@ -41,8 +44,8 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    to_encode.update({"exp": int(expire.timestamp())})
+    return jwt.encode({"alg": ALGORITHM}, to_encode, _jwt_key)
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     from .crud.utente import get_utente_by_username
@@ -53,12 +56,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        token_obj = jwt.decode(token, _jwt_key)
+        username: str = token_obj.claims.get("sub")
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
-    except JWTError:
+    except JoseError:
         raise credentials_exception
 
     utente = get_utente_by_username(db, token_data.username)
