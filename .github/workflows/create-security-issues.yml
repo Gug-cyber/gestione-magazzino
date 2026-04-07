@@ -1,0 +1,939 @@
+name: Create Security Issues
+
+on:
+  workflow_dispatch:    # Manual trigger only
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/create-security-issues.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Create labels ──────────────────────────────────────────────────────
+      - name: Create required labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "security" \
+            --color "d73a4a" \
+            --description "Security vulnerability" \
+            --repo "${{ github.repository }}" 2>/dev/null || true
+
+          gh label create "copilot" \
+            --color "6366f1" \
+            --description "Assigned to Copilot" \
+            --repo "${{ github.repository }}" 2>/dev/null || true
+
+          gh label create "auto-fix" \
+            --color "e11d48" \
+            --description "Automated fix requested" \
+            --repo "${{ github.repository }}" 2>/dev/null || true
+
+      # ── Create Issues ──────────────────────────────────────────────────────
+      - name: Create security issues for identified vulnerabilities
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          import os
+          import urllib.request
+          import urllib.parse
+
+          REPO  = os.environ["REPO"]
+          TOKEN = os.environ["GH_TOKEN"]
+
+          VULNERABILITIES = [
+              # ── HIGH ──────────────────────────────────────────────────────────────
+              {
+                  "title": "[Security][HIGH] Endpoint DELETE /api/prodotti/all e /api/fatture/all senza autenticazione admin",
+                  "body": """## 🔴 Vulnerabilità di Sicurezza
+
+          **Severità:** HIGH
+          **File:** `backend/app/routers/prodotti.py` (riga 368), `backend/app/routers/fatture.py` (riga 126)
+          **Tipo:** Missing Authorization — Privilege Escalation
+
+          ### Descrizione
+          Gli endpoint `DELETE /api/prodotti/all` e `DELETE /api/fatture/all` richiedono solo
+          autenticazione generica (`get_current_active_user`), ma non verificano che l'utente
+          sia un amministratore. Qualsiasi utente autenticato (anche con ruolo `guest` o `operatore`)
+          può eliminare **tutti** i prodotti o tutte le fatture in un'unica richiesta.
+          Questa è un'operazione irreversibile ad alto impatto.
+
+          ### Codice vulnerabile
+          ```python
+          # prodotti.py
+          @router.delete("/all", status_code=200)
+          def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+              # Nessun controllo is_admin!
+              ...
+
+          # fatture.py
+          @router.delete("/all", status_code=200)
+          def delete_all_fatture(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+              # Nessun controllo is_admin!
+              ...
+          ```
+
+          ### Fix raccomandato
+          Sostituire `get_current_active_user` con `get_current_admin` (già disponibile in `backend/app/dependencies.py`).
+
+          ```python
+          from ..dependencies import get_current_admin
+
+          @router.delete("/all", status_code=200)
+          def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_admin)):
+              ...
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/routers/prodotti.py`: aggiungi l'import di `get_current_admin` da `..dependencies` e sostituisci `get_current_active_user` con `get_current_admin` nell'endpoint `DELETE /all`
+          2. In `backend/app/routers/fatture.py`: stessa modifica per l'endpoint `DELETE /all`
+          3. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          4. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][HIGH] Endpoint GET /api/prodotti/{id}/foto esposto senza autenticazione",
+                  "body": """## 🔴 Vulnerabilità di Sicurezza
+
+          **Severità:** HIGH
+          **File:** `backend/app/routers/prodotti.py` (riga 454)
+          **Tipo:** Missing Authentication — Information Disclosure
+
+          ### Descrizione
+          L'endpoint `GET /api/prodotti/{prodotto_id}/foto` non richiede alcuna autenticazione.
+          Chiunque (anche utenti non autenticati) può accedere alle foto dei prodotti
+          conoscendo l'ID. Questo espone dati aziendali (immagini di inventario) a chiunque
+          abbia accesso alla rete.
+
+          ### Codice vulnerabile
+          ```python
+          @router.get("/{prodotto_id}/foto")
+          def get_foto_prodotto(
+              prodotto_id: int,
+              db: Session = Depends(get_db),
+              # Nessuna autenticazione!
+          ):
+          ```
+
+          ### Fix raccomandato
+          Aggiungere `current_user=Depends(get_current_active_user)` come parametro.
+
+          ```python
+          @router.get("/{prodotto_id}/foto")
+          def get_foto_prodotto(
+              prodotto_id: int,
+              db: Session = Depends(get_db),
+              current_user=Depends(get_current_active_user),
+          ):
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/routers/prodotti.py`, alla funzione `get_foto_prodotto` (riga ~454), aggiungi il parametro `current_user=Depends(get_current_active_user)` — l'import è già presente nel file
+          2. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          3. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][HIGH] Endpoint GET /api/dati-storici/ esposto senza autenticazione",
+                  "body": """## 🔴 Vulnerabilità di Sicurezza
+
+          **Severità:** HIGH
+          **File:** `backend/app/routers/dati_storici.py` (riga 109)
+          **Tipo:** Missing Authentication — Information Disclosure
+
+          ### Descrizione
+          L'endpoint `GET /api/dati-storici/` non richiede autenticazione.
+          Tutti gli altri endpoint nel router (import CSV, delete) richiedono auth,
+          ma il GET principale che restituisce i dati storici finanziari (costi e ricavi)
+          è completamente aperto. Chiunque può leggere i dati finanziari dell'azienda.
+
+          ### Codice vulnerabile
+          ```python
+          @router.get("/", response_model=List[DatoStoricoResponse])
+          def list_dati_storici(
+              tipo: Optional[str] = Query(default=None),
+              anno: Optional[int] = Query(default=None),
+              skip: int = Query(default=0),
+              limit: int = Query(default=10000),
+              db: Session = Depends(get_db),
+              # Nessuna autenticazione!
+          ):
+          ```
+
+          ### Fix raccomandato
+          Aggiungere `current_user=Depends(get_current_active_user)`.
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/routers/dati_storici.py`, alla funzione `list_dati_storici`, aggiungi `current_user=Depends(get_current_active_user)` come parametro — `get_current_active_user` è già importato nel file
+          2. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          3. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][HIGH] Reset password token esposto in chiaro nella risposta API",
+                  "body": """## 🔴 Vulnerabilità di Sicurezza
+
+          **Severità:** HIGH
+          **File:** `backend/app/routers/auth.py` (riga 133)
+          **Tipo:** Sensitive Data Exposure — Token Leakage
+
+          ### Descrizione
+          L'endpoint `POST /api/auth/forgot-password` restituisce il token di reset password
+          in chiaro nella risposta JSON quando il servizio email non è configurato.
+          Questo permette a chiunque intercetti la risposta (MITM, log, ecc.) di ottenere
+          il token e reimpostare la password di qualsiasi utente.
+
+          ### Codice vulnerabile
+          ```python
+          # Quando email non è configurata, il token viene esposto!
+          return {
+              "reset_token": token_obj.token,  # ← TOKEN IN CHIARO!
+              "message": "Usa questo token per reimpostare la password (email non configurata)",
+              "email_sent": False,
+          }
+          ```
+
+          ### Fix raccomandato
+          Il token non deve mai essere restituito nella risposta API.
+          Restituire sempre `reset_token: null` e un messaggio generico.
+
+          ```python
+          return {
+              "reset_token": None,
+              "message": "Token di reset generato. Configura il servizio email per inviarlo all'utente.",
+              "email_sent": False,
+          }
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/routers/auth.py`, nella funzione `forgot_password`, rimuovi il branch che restituisce `token_obj.token` in chiaro
+          2. Restituisci sempre `"reset_token": None` indipendentemente dallo stato dell'email
+          3. Aggiorna il messaggio per informare l'admin di configurare il servizio email
+          4. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][HIGH] Endpoint login senza rate limiting - vulnerabile a brute force",
+                  "body": """## 🔴 Vulnerabilità di Sicurezza
+
+          **Severità:** HIGH
+          **File:** `backend/app/routers/auth.py` (riga 25), `backend/app/main.py`
+          **Tipo:** Missing Rate Limiting — Brute Force Attack
+
+          ### Descrizione
+          L'endpoint `POST /api/auth/login` non ha alcun rate limiting.
+          Un attaccante può effettuare un numero illimitato di tentativi di login
+          (attacco brute force o dizionario) senza alcuna limitazione.
+          Questo è particolarmente critico per account con password deboli o default.
+
+          ### Fix raccomandato
+          Implementare rate limiting usando `slowapi` (libreria standard per FastAPI):
+
+          ```python
+          # requirements.txt
+          slowapi==0.1.9
+
+          # main.py
+          from slowapi import Limiter, _rate_limit_exceeded_handler
+          from slowapi.util import get_remote_address
+          from slowapi.errors import RateLimitExceeded
+
+          limiter = Limiter(key_func=get_remote_address)
+          app.state.limiter = limiter
+          app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+          # auth.py
+          from slowapi import Limiter
+          from slowapi.util import get_remote_address
+          limiter = Limiter(key_func=get_remote_address)
+
+          @router.post("/login", response_model=Token)
+          @limiter.limit("5/minute")
+          def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+              ...
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. Aggiungi `slowapi` a `backend/requirements.txt`
+          2. Configura il limiter in `backend/app/main.py`
+          3. Aggiungi il decorator `@limiter.limit("5/minute")` all'endpoint login in `backend/app/routers/auth.py`
+          4. Aggiungi `request: Request` come primo parametro della funzione login (richiesto da slowapi)
+          5. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          6. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][HIGH] Dipendenza python-jose deprecata e con CVE - migrare a joserfc",
+                  "body": """## 🔴 Vulnerabilità di Sicurezza
+
+          **Severità:** HIGH
+          **File:** `backend/requirements.txt` (riga 9), `backend/app/auth.py` (riga 6)
+          **Tipo:** Vulnerable Dependency — CVE
+
+          ### Descrizione
+          Il progetto usa `python-jose[cryptography]==3.4.0` che è una libreria JWT
+          non più attivamente mantenuta e affetta da vulnerabilità note (CVE).
+          In particolare, `python-jose` ha vulnerabilità legate ad algoritmi JWT non sicuri
+          e problemi di validazione. La community raccomanda la migrazione a `joserfc`.
+
+          ### Codice vulnerabile
+          ```
+          # requirements.txt
+          python-jose[cryptography]==3.4.0  # ← DEPRECATO CON CVE
+          ```
+
+          ```python
+          # auth.py
+          from jose import JWTError, jwt  # ← libreria vulnerabile
+          ```
+
+          ### Fix raccomandato
+          Sostituire `python-jose` con `joserfc`:
+
+          ```
+          # requirements.txt
+          joserfc==1.0.0  # o versione più recente stabile
+          ```
+
+          ```python
+          # auth.py
+          from joserfc import jwt
+          from joserfc.errors import JoseError
+          ```
+
+          Nota: l'API di `joserfc` è diversa da `python-jose`, quindi il codice in `auth.py`
+          che usa `jwt.encode()` e `jwt.decode()` dovrà essere aggiornato.
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/requirements.txt`, sostituisci `python-jose[cryptography]` con `joserfc` (verifica la versione stabile più recente)
+          2. In `backend/app/auth.py`, aggiorna gli import e le chiamate `jwt.encode()`/`jwt.decode()` per usare l'API di `joserfc`
+          3. Testa l'autenticazione end-to-end con `pytest backend/tests/`
+          4. Verifica che login, refresh e verifica token funzionino correttamente
+          5. Committa il fix su `main`
+          """,
+              },
+              # ── MEDIUM ────────────────────────────────────────────────────────────
+              {
+                  "title": "[Security][MEDIUM] Password admin default non viene forzata al cambio al primo accesso",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/main.py` (riga 122)
+          **Tipo:** Insecure Default Configuration — Weak Default Credentials
+
+          ### Descrizione
+          All'avvio, l'applicazione crea automaticamente un utente admin con password
+          `admin123` se non esistono utenti. Questa password di default non viene mai
+          forzata al cambio al primo accesso. Un attaccante che conosce questa convenzione
+          può accedere all'applicazione con privilegi admin su installazioni fresche.
+
+          ### Codice vulnerabile
+          ```python
+          # main.py - startup()
+          admin = UtenteCreate(
+              username="admin",
+              email="admin@gestione-magazzino.local",
+              password="admin123",  # ← PASSWORD DEFAULT NON CAMBIATA
+          )
+          create_utente(db, admin, is_admin=True)
+          ```
+
+          ### Fix raccomandato
+          1. Aggiungere un campo `must_change_password` al modello `Utente`
+          2. Impostarlo a `True` per l'utente admin creato al primo avvio
+          3. Verificare questo flag al login e forzare il redirect alla pagina di cambio password
+          4. Oppure, generare una password random all'avvio e loggarla solo in console
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. Aggiungi colonna `must_change_password: bool = False` al modello `Utente` in `backend/app/models/utente.py`
+          2. Imposta `must_change_password=True` quando si crea l'utente admin di default in `backend/app/main.py`
+          3. Nel response del login in `backend/app/routers/auth.py`, includi il flag `must_change_password` nel token JWT o nella risposta
+          4. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] Webhook CMS in cms_sync.py senza validazione firma/secret",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/routers/cms_sync.py` (riga 143)
+          **Tipo:** Missing HMAC Validation — Webhook Spoofing
+
+          ### Descrizione
+          L'endpoint webhook `POST /api/cms/webhook/product-updated` non valida la firma
+          del payload ricevuto da Strapi. Chiunque può inviare richieste false a questo
+          endpoint e manipolare i dati del magazzino. Il webhook è completamente aperto
+          senza alcuna autenticazione o verifica di integrità.
+
+          ### Codice vulnerabile
+          ```python
+          @router.post("/webhook/product-updated")
+          async def handle_product_update_webhook(
+              payload: dict,
+              db: Session = Depends(get_db)
+              # Nessuna validazione della firma!
+          ):
+          ```
+
+          ### Fix raccomandato
+          Aggiungere validazione HMAC-SHA256 usando un secret condiviso:
+
+          ```python
+          import hmac
+          import hashlib
+
+          CMS_WEBHOOK_SECRET = os.getenv("CMS_WEBHOOK_SECRET", "")
+
+          @router.post("/webhook/product-updated")
+          async def handle_product_update_webhook(
+              request: Request,
+              db: Session = Depends(get_db),
+              x_strapi_signature: Optional[str] = Header(default=None),
+          ):
+              raw_body = await request.body()
+              if CMS_WEBHOOK_SECRET:
+                  if not x_strapi_signature:
+                      raise HTTPException(status_code=401, detail="Firma webhook mancante")
+                  expected = hmac.new(
+                      CMS_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256
+                  ).hexdigest()
+                  if not hmac.compare_digest(expected, x_strapi_signature):
+                      raise HTTPException(status_code=401, detail="Firma webhook non valida")
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/routers/cms_sync.py`, aggiungi la variabile d'ambiente `CMS_WEBHOOK_SECRET`
+          2. Aggiungi gli import `hmac`, `hashlib`, `Header`, `Request` da fastapi
+          3. Modifica `handle_product_update_webhook` per accettare il body raw e validare la firma HMAC
+          4. Documenta la variabile `CMS_WEBHOOK_SECRET` nel README o nel file `.env.example`
+          5. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          6. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] File upload senza limiti di dimensione - rischio DoS",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/routers/prodotti.py` (riga 423), `backend/app/routers/fatture.py` (riga 54), `backend/app/routers/dati_storici.py` (riga 85)
+          **Tipo:** Missing File Size Validation — Denial of Service (DoS)
+
+          ### Descrizione
+          Tutti gli endpoint di upload file non hanno limiti di dimensione.
+          Un utente malintenzionato può caricare file di dimensioni illimitate,
+          esaurendo la memoria del server o lo spazio su disco (attacco DoS).
+
+          Gli endpoint vulnerabili:
+          - `POST /api/prodotti/{id}/foto` — upload immagini
+          - `POST /api/fatture/` — upload PDF fatture
+          - `POST /api/dati-storici/import/costi` — upload CSV
+          - `POST /api/dati-storici/import/ricavi` — upload CSV
+
+          ### Fix raccomandato
+          Aggiungere controllo della dimensione del file:
+
+          ```python
+          MAX_FILE_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
+          MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+          async def upload_foto_prodotto(..., file: UploadFile = File(...)):
+              content = await file.read()
+              if len(content) > MAX_FILE_SIZE_BYTES:
+                  raise HTTPException(
+                      status_code=413,
+                      detail=f"File troppo grande. Dimensione massima: {MAX_FILE_SIZE_MB}MB"
+                  )
+          ```
+
+          Oppure, configurare `max_upload_size` a livello di middleware FastAPI.
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. Aggiungi la variabile d'ambiente `MAX_UPLOAD_SIZE_MB` (default: 10) controllata in ogni endpoint di upload
+          2. In `prodotti.py`: aggiungi controllo dimensione in `upload_foto_prodotto`
+          3. In `fatture.py`: aggiungi controllo dimensione nell'endpoint di creazione fattura con file
+          4. In `dati_storici.py`: aggiungi controllo dimensione negli endpoint import CSV
+          5. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          6. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] GitHub Actions non pinnate a commit SHA nei workflow",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `.github/workflows/security.yml` (righe 88, 131)
+          **Tipo:** Supply Chain Attack — Unpinned Actions
+
+          ### Descrizione
+          I workflow GitHub Actions usano riferimenti mutabili per alcune actions:
+          - `returntocorp/semgrep-action@v1` — tag mutabile
+          - `aquasecurity/trivy-action@master` — branch mutabile (molto pericoloso!)
+
+          Usare `@master` o tag mutabili come `@v1` significa che se il repository
+          di quella action viene compromesso (supply chain attack), il codice malevolo
+          viene eseguito automaticamente nel tuo CI/CD con accesso a secrets e token.
+
+          ### Fix raccomandato
+          Pinnare tutte le actions a commit SHA specifico:
+
+          ```yaml
+          # Invece di:
+          uses: aquasecurity/trivy-action@master
+          uses: returntocorp/semgrep-action@v1
+
+          # Usare SHA specifico:
+          uses: aquasecurity/trivy-action@76071ef0d7ac797a8a672e15702c4ea9c90e0ee4  # v0.28.0
+          uses: semgrep/semgrep-action@v1  # (verificare SHA attuale)
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `.github/workflows/security.yml`, sostituisci `aquasecurity/trivy-action@master` con il SHA del commit dell'ultima release stabile
+          2. Sostituisci `returntocorp/semgrep-action@v1` con il SHA specifico dell'ultima versione stabile
+          3. Verifica anche gli altri workflow per actions non pinnate
+          4. Aggiungi un commento con la versione corrispondente al SHA per leggibilità
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] Eccezioni interne esposte nelle risposte HTTP 500",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/routers/prodotti.py` (riga 390), `backend/app/routers/fatture.py` (righe 147, 185), `backend/app/routers/cardmarket_scraper.py` (riga 217)
+          **Tipo:** Information Disclosure — Error Message Exposure
+
+          ### Descrizione
+          Diversi endpoint restituiscono il messaggio di eccezione interno (`str(e)`)
+          direttamente nella risposta HTTP 500. Questo espone dettagli sull'implementazione
+          interna, lo stack del database, nomi di tabelle, path del filesystem, ecc.
+          che possono essere sfruttati da un attaccante per pianificare attacchi più mirati.
+
+          ### Codice vulnerabile
+          ```python
+          # prodotti.py
+          raise HTTPException(
+              status_code=500,
+              detail=f"Errore durante l'eliminazione: {str(e)}",  # ← ESPONE DETTAGLI INTERNI
+          )
+
+          # fatture.py
+          raise HTTPException(status_code=500, detail=f"Errore nella generazione del PDF: {str(e)}")
+
+          # cardmarket_scraper.py
+          raise HTTPException(status_code=502, detail=f"Errore ScraperAPI: {str(e)}")
+          ```
+
+          ### Fix raccomandato
+          Loggare l'eccezione internamente e restituire un messaggio generico:
+
+          ```python
+          except Exception as e:
+              logger.exception("Errore durante l'operazione")
+              raise HTTPException(
+                  status_code=500,
+                  detail="Errore interno del server. Contatta l'amministratore.",
+              )
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In tutti i blocchi `except Exception as e` che usano `str(e)` nelle risposte HTTP, sostituisci con `logger.exception(...)` + messaggio generico
+          2. Assicurati che ogni router abbia un logger configurato: `logger = logging.getLogger(__name__)`
+          3. File da aggiornare: `prodotti.py`, `fatture.py`, `cardmarket_scraper.py`
+          4. Cerca altri occorrenze con `grep -rn "str(e)" backend/app/routers/`
+          5. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          6. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] CORS troppo permissivo - CORS_ALLOW_LAN=true espone l'API a tutti",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/main.py` (righe 62-75)
+          **Tipo:** Misconfiguration — Overly Permissive CORS
+
+          ### Descrizione
+          La configurazione CORS permette di abilitare `allow_origins=["*"]` tramite la
+          variabile d'ambiente `CORS_ALLOW_LAN=true`. Quando questa opzione è attiva,
+          qualsiasi origine web può fare richieste cross-origin all'API.
+          In ambiente di produzione, questo può permettere ad attacchi CSRF di funzionare
+          da qualsiasi sito web malevolo.
+
+          ### Codice vulnerabile
+          ```python
+          allow_all_origins = os.getenv("CORS_ALLOW_LAN", "false").lower() == "true"
+          app.add_middleware(
+              CORSMiddleware,
+              allow_origins=["*"] if allow_all_origins else allowed_origins,
+              # Con CORS_ALLOW_LAN=true → qualsiasi origine è permessa!
+          )
+          ```
+
+          ### Fix raccomandato
+          1. Non usare `["*"]` in produzione
+          2. Usare una lista esplicita di origini consentite anche per LAN
+          3. Aggiungere un avviso quando `CORS_ALLOW_LAN=true` è usato in produzione
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/main.py`, aggiungi un warning prominente quando `CORS_ALLOW_LAN=true` è impostato in produzione (`APP_ENV=production`)
+          2. Considera di rimuovere il supporto per `CORS_ALLOW_LAN=true` o limitarlo a `APP_ENV != production`
+          3. Documenta nel README il rischio di sicurezza di questa opzione
+          4. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] Validazione MIME type mancante nell'upload foto prodotti",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/routers/prodotti.py` (riga 423)
+          **Tipo:** Missing Input Validation — File Upload Bypass
+
+          ### Descrizione
+          L'endpoint `POST /api/prodotti/{id}/foto` verifica il content_type del file,
+          ma questa verifica si basa solo sul campo `content_type` dichiarato dal client,
+          che può essere facilmente falsificato. Non viene effettuata una verifica reale
+          del magic bytes del file per determinarne il tipo reale.
+          Un attaccante potrebbe caricare file eseguibili o script mascherati da immagini.
+
+          ### Fix raccomandato
+          Verificare il tipo di file tramite magic bytes (non solo content_type):
+
+          ```python
+          import magic  # python-magic
+
+          ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+          async def upload_foto_prodotto(...):
+              content = await file.read()
+              real_mime = magic.from_buffer(content, mime=True)
+              if real_mime not in ALLOWED_MIME_TYPES:
+                  raise HTTPException(status_code=400, detail="Tipo di file non consentito")
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. Aggiungi `python-magic` a `backend/requirements.txt`
+          2. In `backend/app/routers/prodotti.py`, nella funzione `upload_foto_prodotto`, leggi il file e verifica il tipo reale tramite magic bytes
+          3. Definisci una lista di MIME type consentiti (solo immagini)
+          4. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][MEDIUM] Mancanza di header di sicurezza HTTP nelle risposte API",
+                  "body": """## 🟠 Vulnerabilità di Sicurezza
+
+          **Severità:** MEDIUM
+          **File:** `backend/app/main.py`
+          **Tipo:** Missing Security Headers
+
+          ### Descrizione
+          Le risposte HTTP dell'API non includono header di sicurezza standard:
+          - `X-Content-Type-Options: nosniff` — previene MIME sniffing
+          - `X-Frame-Options: DENY` — previene clickjacking
+          - `Strict-Transport-Security` — forza HTTPS
+          - `Content-Security-Policy` — limita origini di risorse
+          - `X-XSS-Protection: 1; mode=block` — protezione XSS legacy
+          - `Referrer-Policy: strict-origin-when-cross-origin`
+
+          Anche se l'applicazione è principalmente un'API REST (non una web app),
+          questi header riducono la superficie di attacco.
+
+          ### Fix raccomandato
+          Aggiungere un middleware per security headers:
+
+          ```python
+          from fastapi.middleware.trustedhost import TrustedHostMiddleware
+          from starlette.middleware.base import BaseHTTPMiddleware
+
+          class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+              async def dispatch(self, request, call_next):
+                  response = await call_next(request)
+                  response.headers["X-Content-Type-Options"] = "nosniff"
+                  response.headers["X-Frame-Options"] = "DENY"
+                  response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                  return response
+
+          app.add_middleware(SecurityHeadersMiddleware)
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/main.py`, aggiungi un middleware `SecurityHeadersMiddleware` che aggiunge header di sicurezza a tutte le risposte
+          2. Includi almeno: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+          3. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          4. Committa il fix su `main`
+          """,
+              },
+              # ── LOW ───────────────────────────────────────────────────────────────
+              {
+                  "title": "[Security][LOW] Logging con f-string può esporre dati sensibili",
+                  "body": """## 🟡 Vulnerabilità di Sicurezza
+
+          **Severità:** LOW
+          **File:** `backend/app/routers/cms_sync.py`, vari router
+          **Tipo:** Sensitive Data in Logs — Information Disclosure
+
+          ### Descrizione
+          Diversi logger usano f-string per includere dati di input utente nei log.
+          Questo può portare a logging di dati sensibili (email, username, payload webhook)
+          nei log di produzione, che potrebbero essere letti da persone non autorizzate.
+
+          Esempio nel cms_sync.py:
+          ```python
+          logger.info(f"Webhook ricevuto da Strapi: {payload}")
+          # Il payload potrebbe contenere dati sensibili!
+          ```
+
+          ### Fix raccomandato
+          - Usare `%s` invece di f-string nei log: `logger.info("Webhook ricevuto: %s", payload_summary)`
+          - Non loggare payload completi, ma solo metadati (event_type, entity_id)
+          - Assicurarsi che le credenziali non vengano mai loggate
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. Cerca tutti i `logger.*` che usano f-string con dati utente in `backend/app/routers/`
+          2. Sostituisci con `%s` formatting: `logger.info("Messaggio %s", variabile)`
+          3. Rimuovi il logging di payload completi, usa solo identificatori sicuri
+          4. In `cms_sync.py`, rimuovi `payload` dal log del webhook
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][LOW] Token JWT con scadenza di 8 ore - periodo troppo lungo",
+                  "body": """## 🟡 Vulnerabilità di Sicurezza
+
+          **Severità:** LOW
+          **File:** `backend/app/auth.py` (riga 22)
+          **Tipo:** Insecure Configuration — Long-lived JWT Tokens
+
+          ### Descrizione
+          I token JWT hanno una scadenza di 8 ore (`ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8`).
+          Un token rubato o compromesso rimane valido per 8 ore senza possibilità di revoca
+          (non c'è blacklist/revoca). Questo amplia la finestra di opportunità per un attaccante
+          che riesce ad ottenere un token valido.
+
+          ### Fix raccomandato
+          1. Ridurre la scadenza del token a 1 ora o meno
+          2. Implementare refresh token con scadenza più lunga (1-7 giorni)
+          3. O implementare una blacklist token per la revoca
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/auth.py`, riduci `ACCESS_TOKEN_EXPIRE_MINUTES` a 60 (1 ora) o renderlo configurabile via env var
+          2. Opzionale: implementa un sistema di refresh token
+          3. Documenta il comportamento nel README
+          4. Esegui i test con `pytest backend/tests/` per verificare che il fix non rompa nulla
+          5. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][LOW] Secret key JWT con valore default insicuro",
+                  "body": """## 🟡 Vulnerabilità di Sicurezza
+
+          **Severità:** LOW
+          **File:** `backend/app/auth.py` (riga 15), `backend/app/main.py` (riga 38)
+          **Tipo:** Hardcoded Credentials — Weak Default Secret
+
+          ### Descrizione
+          La SECRET_KEY JWT ha un valore di default hardcoded:
+          `"changeme-use-a-long-random-secret-key-in-production"`.
+          Sebbene ci sia un controllo che blocca l'avvio in produzione con questa chiave,
+          in ambiente di sviluppo (`APP_ENV=development`) l'applicazione gira con questa
+          chiave prevedibile, permettendo a chiunque di firmare JWT validi.
+
+          ### Fix raccomandato
+          1. Generare una chiave random all'avvio se non configurata (solo in dev)
+          2. Aggiungere la chiave al `.env.example` con istruzioni chiare
+          3. Aggiungere un test che verifica che la chiave non sia quella di default
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/auth.py`, se `SECRET_KEY` è il valore default e `APP_ENV != production`, genera una chiave random temporanea con `secrets.token_hex(32)`
+          2. Logga un WARNING chiaro che la chiave è temporanea e non persistente
+          3. Aggiorna `.env.example` (se esiste) o crea un file `.env.example` con `SECRET_KEY=`
+          4. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][LOW] Endpoint /health esposto senza autenticazione",
+                  "body": """## 🟡 Vulnerabilità di Sicurezza
+
+          **Severità:** LOW
+          **File:** `backend/app/main.py` (riga 132)
+          **Tipo:** Information Disclosure — Exposed Health Endpoint
+
+          ### Descrizione
+          L'endpoint `GET /health` è accessibile senza autenticazione e restituisce
+          informazioni sullo stato del server. Sebbene il contenuto attuale sia minimo
+          (`{"status": "ok"}`), questo endpoint può essere usato per:
+          1. Confermare che il server è attivo (reconnaissance)
+          2. Potenzialmente esporre future informazioni di sistema se non gestito correttamente
+
+          ### Fix raccomandato
+          Per un'API interna, l'endpoint /health può restare aperto ma andrebbe
+          documentato e monitorato. Valutare se aggiungere autenticazione o limitare
+          l'accesso per IP.
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. Valuta se l'endpoint `/health` deve essere protetto da autenticazione
+          2. Se rimane aperto, assicurati che non esponga informazioni sensibili (versione DB, path, ecc.)
+          3. Considera di aggiungere un endpoint `/health` più dettagliato accessibile solo agli admin
+          4. Committa il fix su `main`
+          """,
+              },
+              {
+                  "title": "[Security][LOW] Password admin default 'admin123' nell'utente seed",
+                  "body": """## 🟡 Vulnerabilità di Sicurezza
+
+          **Severità:** LOW
+          **File:** `backend/app/main.py` (riga 122)
+          **Tipo:** Hardcoded Credentials — Weak Seed Password
+
+          ### Descrizione
+          L'utente admin di seed viene creato con password hardcoded `admin123`.
+          Anche se annotata con `# nosec`, questa password è estremamente debole
+          e prevedibile. Un attaccante che sa che l'app usa questo seed può tentare
+          `admin` + `admin123` come prime credenziali.
+
+          ### Fix raccomandato
+          Generare una password random al primo avvio e stamparla una sola volta nei log:
+
+          ```python
+          import secrets
+          import string
+
+          def generate_temp_password(length=16):
+              alphabet = string.ascii_letters + string.digits + "!@#$%"
+              return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+          # In startup():
+          temp_password = generate_temp_password()
+          admin = UtenteCreate(
+              username="admin",
+              email="admin@gestione-magazzino.local",
+              password=temp_password,
+          )
+          create_utente(db, admin, is_admin=True)
+          print(f"ADMIN TEMPORANEO CREATO - Password: {temp_password} - CAMBIALA SUBITO!", flush=True)
+          ```
+
+          ---
+
+          @copilot Per favore fixa questa vulnerabilità di sicurezza:
+          1. In `backend/app/main.py`, nella funzione `startup()`, sostituisci la password hardcoded `admin123` con una password random generata tramite `secrets`
+          2. Stampa la password temporanea nei log solo al primo avvio
+          3. Imposta `must_change_password=True` se il campo esiste
+          4. Esegui i test con `pytest backend/tests/` (aggiorna le fixture che usano la password admin)
+          5. Committa il fix su `main`
+          """,
+              },
+          ]
+
+          def search_issue(title):
+              q = urllib.parse.quote(f'is:issue repo:{REPO} in:title "{title[:60]}"')
+              url = f"https://api.github.com/search/issues?q={q}"
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      return json.loads(resp.read())["total_count"]
+              except Exception as e:
+                  print(f"Warning: search failed: {e}")
+                  return 0
+
+          def create_issue(title, body):
+              url = f"https://api.github.com/repos/{REPO}/issues"
+              payload = json.dumps({
+                  "title": title,
+                  "body": body,
+                  "labels": ["security", "copilot", "auto-fix"],
+                  "assignees": ["copilot"],
+              }).encode()
+              req = urllib.request.Request(url, data=payload, method="POST", headers={
+                  "Authorization": f"Bearer {TOKEN}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read())["number"]
+
+          created = 0
+          skipped = 0
+          for vuln in VULNERABILITIES:
+              title = vuln["title"]
+              body = vuln["body"]
+              # Dedent body
+              import textwrap
+              body = textwrap.dedent(body).strip()
+
+              existing = search_issue(title)
+              if existing > 0:
+                  print(f"⏭  Skipping duplicate: {title[:70]}")
+                  skipped += 1
+                  continue
+
+              try:
+                  num = create_issue(title, body)
+                  print(f"✅ Created issue #{num}: {title[:70]}")
+                  created += 1
+              except Exception as e:
+                  print(f"❌ Failed to create issue '{title[:70]}': {e}")
+
+          print(f"\nDone: {created} issue(s) created, {skipped} skipped.")
+          PYEOF

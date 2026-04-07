@@ -14,6 +14,7 @@ from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
 from ..crud import prodotto as crud
 from ..auth import get_current_active_user
+from ..dependencies import get_current_admin
 from ..models.movimento import Movimento, TipoMovimento
 from ..models.ordine import RigaOrdine
 from ..models.fornitura import RigaFornitura
@@ -365,7 +366,7 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
 
 
 @router.delete("/all", status_code=200)
-def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_current_admin)):
     """
     Elimina tutti i prodotti dal database insieme alle loro dipendenze.
     Operazione riservata agli utenti autenticati.
@@ -384,9 +385,10 @@ def delete_all_prodotti(db: Session = Depends(get_db), current_user=Depends(get_
         }
     except Exception as e:
         db.rollback()
+        logger.exception("Errore durante l'eliminazione di tutti i prodotti")
         raise HTTPException(
             status_code=500,
-            detail=f"Errore durante l'eliminazione: {str(e)}",
+            detail="Errore interno del server durante l'eliminazione.",
         )
 
 
@@ -453,6 +455,7 @@ async def upload_foto_prodotto(prodotto_id: int, request: Request, file: UploadF
 def get_foto_prodotto(
     prodotto_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
 ):
     db_prodotto = crud.get_prodotto(db, prodotto_id)
     if not db_prodotto or not db_prodotto.foto_path:

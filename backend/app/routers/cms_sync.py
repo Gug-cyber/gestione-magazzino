@@ -1,7 +1,9 @@
 """
 Router per sincronizzazione Magazzino → CMS Strapi
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+import hashlib
+import hmac
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import httpx
@@ -19,6 +21,7 @@ router = APIRouter()
 # Configurazione Strapi
 STRAPI_URL = os.getenv("STRAPI_URL", "http://localhost:1337")
 STRAPI_API_TOKEN = os.getenv("STRAPI_API_TOKEN", "")
+CMS_WEBHOOK_SECRET = os.getenv("CMS_WEBHOOK_SECRET", "")
 
 
 class SyncResult(BaseModel):
@@ -142,13 +145,23 @@ async def sync_single_product(
 
 @router.post("/webhook/product-updated")
 async def handle_product_update_webhook(
-    payload: dict,
-    db: Session = Depends(get_db)
+    request: Request,
+    db: Session = Depends(get_db),
+    x_strapi_signature: Optional[str] = Header(default=None),
 ):
     """
     Webhook chiamato da Strapi quando un prodotto viene modificato nel CMS
     Aggiorna il magazzino di conseguenza (sync bidirezionale)
     """
+    raw_body = await request.body()
+    if CMS_WEBHOOK_SECRET:
+        if not x_strapi_signature:
+            raise HTTPException(status_code=401, detail="Firma webhook mancante")
+        expected = hmac.new(
+            CMS_WEBHOOK_SECRET.encode("utf-8"), raw_body, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, x_strapi_signature):
+            raise HTTPException(status_code=401, detail="Firma webhook non valida")
     # TODO: Implementare sync CMS → Magazzino se necessario
-    logger.info(f"Webhook ricevuto da Strapi: {payload}")
+    logger.info("Webhook ricevuto da Strapi per aggiornamento prodotto")
     return {"message": "Webhook processato"}

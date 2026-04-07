@@ -130,9 +130,11 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     email_sent = send_reset_password_email(utente.email, token_obj.token, reset_url)
     if email_sent:
         return {"reset_token": None, "message": "Link di reset inviato via email", "email_sent": True}  # nosec B105 – None is not a password; key name triggers false positive
+    # Token is never returned in the API response — it is only delivered via email.
+    # If email is not configured, instruct the admin to configure it.
     return {
-        "reset_token": token_obj.token,
-        "message": "Usa questo token per reimpostare la password (email non configurata)",
+        "reset_token": None,  # nosec B105 – never expose the token in the API response
+        "message": "Token di reset generato. Configura il servizio email per inviarlo all'utente.",
         "email_sent": False,
     }
 

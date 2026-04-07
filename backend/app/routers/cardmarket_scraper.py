@@ -213,8 +213,8 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
             logger.warning("scraperapi-sdk non installato, fallback a richieste dirette")
             soup = _scrape_direct(url)
         except Exception as e:
-            logger.error(f"Errore ScraperAPI: {e}")
-            raise HTTPException(status_code=502, detail=f"Errore ScraperAPI: {str(e)}")
+            logger.error("Errore ScraperAPI: %s", e)
+            raise HTTPException(status_code=502, detail="Errore durante il recupero dei dati da ScraperAPI.")
 
     # Strategia B: Richieste dirette (fallback)
     else:
