@@ -140,8 +140,8 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
     imponibile = round(ordine.totale / (1 + aliquota_iva / 100), 2)
     importo_iva = round(ordine.totale - imponibile, 2)
     data_fattura = (
-        ordine.data_completamento.date()
-        if ordine.data_completamento
+        ordine.data_ordine.date()
+        if ordine.data_ordine
         else datetime.now(timezone.utc).date()
     )
     numero = _genera_numero_fattura(db)
