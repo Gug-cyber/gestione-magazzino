@@ -1,3 +1,4 @@
+import logging
 import os
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -6,6 +7,8 @@ from ..models.dati_azienda import DatiAzienda
 from ..schemas.fattura import FatturaCreate, FatturaUpdate
 from typing import List, Optional
 from datetime import date, datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 
 def _genera_numero_fattura(db: Session) -> str:
@@ -46,7 +49,12 @@ def _genera_numero_nota_credito(db: Session) -> str:
 
 def _get_dati_azienda(db: Session) -> Optional[DatiAzienda]:
     """Restituisce il primo record DatiAzienda disponibile, o None se non configurato."""
-    return db.query(DatiAzienda).first()
+    azienda = db.query(DatiAzienda).first()
+    if azienda is None:
+        logger.warning(
+            "DatiAzienda non trovati nel database — la fattura verrà generata senza dati emittente."
+        )
+    return azienda
 
 
 def get_fatture(
@@ -154,7 +162,7 @@ def genera_fattura_da_ordine(db: Session, ordine) -> Fattura:
         ordine_id=ordine.id,
         auto_generata=True,
         annullata=False,
-        pagata=False,
+        pagata=True,
         # Dati emittente (snapshot al momento della generazione)
         emittente_ragione_sociale=azienda.ragione_sociale if azienda else None,
         emittente_partita_iva=azienda.partita_iva if azienda else None,
