@@ -13,6 +13,8 @@ export default function StoreProductPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [added, setAdded] = useState(false)
+  const [promozioni, setPromozioni] = useState([])
+  const [flags, setFlags] = useState({})
   const addedTimerRef = useRef(null)
 
   useEffect(() => {
@@ -29,12 +31,41 @@ export default function StoreProductPage() {
   }, [id])
 
   useEffect(() => {
+    async function fetchPublic() {
+      try {
+        const [flagsRes, promosRes] = await Promise.allSettled([
+          storeAPI.getFlagsPublici(),
+          storeAPI.getPromozioniAttive(),
+        ])
+        if (flagsRes.status === 'fulfilled') setFlags(flagsRes.value.data)
+        if (promosRes.status === 'fulfilled') setPromozioni(promosRes.value.data)
+      } catch {}
+    }
+    fetchPublic()
+  }, [])
+
+  useEffect(() => {
     return () => { if (addedTimerRef.current) clearTimeout(addedTimerRef.current) }
   }, [])
 
+  const activePromos = flags.discounts_enabled !== false ? promozioni : []
+  const promo = prodotto
+    ? activePromos.find(p =>
+        (p.prodotto_id != null && prodotto.id != null && Number(p.prodotto_id) === Number(prodotto.id)) ||
+        (p.categoria_id != null && prodotto.categoria_id != null && Number(p.categoria_id) === Number(prodotto.categoria_id))
+      ) || null
+    : null
+  const prezzoBase = prodotto?.prezzo_vendita != null ? Number(prodotto.prezzo_vendita) : null
+  const prezzoScontato = promo && prezzoBase != null
+    ? Math.max(0, promo.tipo === 'percentage'
+        ? prezzoBase * (1 - promo.valore / 100)
+        : prezzoBase - promo.valore)
+    : null
+
   function handleAddToCart(qty) {
     if (!prodotto) return
-    addItem({ ...prodotto, quantita_disponibile: prodotto.quantita }, qty)
+    const prezzoUnitario = prezzoScontato !== null ? prezzoScontato : prezzoBase
+    addItem({ ...prodotto, quantita_disponibile: prodotto.quantita, prezzo_unitario: prezzoUnitario }, qty)
     setAdded(true)
     if (addedTimerRef.current) clearTimeout(addedTimerRef.current)
     addedTimerRef.current = setTimeout(() => setAdded(false), 2200)
@@ -98,6 +129,7 @@ export default function StoreProductPage() {
             cartQty={getItemQty(prodotto.id)}
             added={added}
             onAddToCart={handleAddToCart}
+            prezzoScontato={prezzoScontato}
           />
         </div>
 
