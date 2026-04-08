@@ -20,6 +20,7 @@ export const STATO_ORDINE_COLORS = {
   spedito:    { bg: '#fff3e0',  text: '#e65100' },
   completato: { bg: '#e8f5e9',  text: '#2e7d32' },
   annullato:  { bg: '#ffebee',  text: '#c62828' },
+  reso:       { bg: '#f3e5f5',  text: '#6a1b9a' },
 }
 
 /** Colori per lo stato delle forniture */

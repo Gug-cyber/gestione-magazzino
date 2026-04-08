@@ -10,6 +10,7 @@ class StatoOrdineSchema(str, enum.Enum):
     spedito = "spedito"
     completato = "completato"
     annullato = "annullato"
+    reso = "reso"
 
 
 class RigaOrdineCreate(BaseModel):
