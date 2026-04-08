@@ -395,7 +395,32 @@ function DettaglioProdotto() {
             {[
               { key: 'nome', label: 'Nome *', required: true },
               { key: 'sku', label: 'SKU *', required: true },
-              { key: 'descrizione', label: 'Descrizione' },
+            ].map(({ key, label, type = 'text', required, step }) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{label}</span>
+                <input
+                  type={type}
+                  step={step}
+                  required={required}
+                  value={form[key] ?? ''}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}
+                />
+              </label>
+            ))}
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Descrizione</span>
+              <textarea
+                value={form.descrizione ?? ''}
+                onChange={(e) => setForm({ ...form, descrizione: e.target.value })}
+                rows={3}
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                placeholder="Descrizione opzionale del prodotto"
+              />
+            </label>
+
+            {[
               { key: 'quantita', label: 'Quantità', type: 'number' },
               { key: 'quantita_minima', label: 'Quantità Minima', type: 'number' },
               { key: 'prezzo_acquisto', label: 'Prezzo Acquisto (€)', type: 'number', step: '0.01' },

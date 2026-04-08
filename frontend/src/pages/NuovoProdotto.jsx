@@ -46,7 +46,7 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
 }
 
 const emptyForm = {
-  nome: '', descrizione: '', sku: '', quantita: 0,
+  nome: '', descrizione: '', sku: '', barcode: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
   categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '',
 }
@@ -504,7 +504,7 @@ function NuovoProdotto() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: normalizeSkuForCode39(value) })); setShowScanner(false) }}
+          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: normalizeSkuForCode39(value), barcode: value })); setShowScanner(false) }}
           onClose={() => setShowScanner(false)}
         />
       )}
