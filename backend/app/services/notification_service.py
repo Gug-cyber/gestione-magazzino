@@ -80,7 +80,10 @@ class TelegramChannel(BaseNotificationChannel):
 def _format_new_order_message(ordine) -> tuple:
     subject = f"Nuovo ordine: {ordine.numero_ordine}"
     num_articoli = sum(r.quantita for r in ordine.righe) if ordine.righe else 0
-    data_ora = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
+    ts = getattr(ordine, "data_ordine", None) or datetime.now(timezone.utc)
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    data_ora = ts.strftime("%d/%m/%Y %H:%M UTC")
     cliente = _escape_md(ordine.cliente_nome or "N/D")
     admin_url = os.getenv("ADMIN_BASE_URL", "").strip()
     link_admin = f"\n🔗 [Vedi ordine in admin]({admin_url}/ordini/{ordine.id})" if admin_url else ""
@@ -97,7 +100,7 @@ def _format_new_order_message(ordine) -> tuple:
 
 class NotificationService:
     def __init__(self):
-        self.channels: list = [
+        self.channels: list[BaseNotificationChannel] = [
             TelegramChannel(),
         ]
 
