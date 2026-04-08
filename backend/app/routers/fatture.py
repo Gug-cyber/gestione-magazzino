@@ -209,12 +209,58 @@ def _genera_pdf_fattura(fattura) -> bytes:
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Intestazione azienda
+    # Intestazione azienda — usa dati emittente salvati nella fattura
+    ragione_sociale = getattr(fattura, "emittente_ragione_sociale", None) or "GESTIONE MAGAZZINO"
+    partita_iva = getattr(fattura, "emittente_partita_iva", None)
+    codice_fiscale = getattr(fattura, "emittente_codice_fiscale", None)
+    indirizzo = getattr(fattura, "emittente_indirizzo", None)
+    citta = getattr(fattura, "emittente_citta", None)
+    cap = getattr(fattura, "emittente_cap", None)
+    provincia = getattr(fattura, "emittente_provincia", None)
+    pec = getattr(fattura, "emittente_pec", None)
+    codice_sdi = getattr(fattura, "emittente_codice_sdi", None)
+    iban = getattr(fattura, "emittente_iban", None)
+
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "GESTIONE MAGAZZINO", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 10, ragione_sociale, new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 5, "Via Esempio 1 - 00100 Roma (RM)", new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.cell(0, 5, "P.IVA: 00000000000 - info@gestione-magazzino.local", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    # Indirizzo
+    if indirizzo or citta:
+        parts = []
+        if indirizzo:
+            parts.append(indirizzo)
+        location = ""
+        if cap:
+            location += cap + " "
+        if citta:
+            location += citta
+        if provincia:
+            location += f" ({provincia})"
+        if location:
+            parts.append(location.strip())
+        pdf.cell(0, 5, " - ".join(parts), new_x="LMARGIN", new_y="NEXT", align="C")
+
+    # P.IVA / CF
+    fiscal_line = ""
+    if partita_iva:
+        fiscal_line += f"P.IVA: {partita_iva}"
+    if codice_fiscale:
+        fiscal_line += f"  CF: {codice_fiscale}" if fiscal_line else f"CF: {codice_fiscale}"
+    if pec:
+        fiscal_line += f"  PEC: {pec}" if fiscal_line else f"PEC: {pec}"
+    if fiscal_line:
+        pdf.cell(0, 5, fiscal_line, new_x="LMARGIN", new_y="NEXT", align="C")
+
+    # SDI / IBAN
+    extra_line = ""
+    if codice_sdi:
+        extra_line += f"Cod. SDI: {codice_sdi}"
+    if iban:
+        extra_line += f"  IBAN: {iban}" if extra_line else f"IBAN: {iban}"
+    if extra_line:
+        pdf.cell(0, 5, extra_line, new_x="LMARGIN", new_y="NEXT", align="C")
+
     pdf.ln(8)
 
     # Linea separatrice
