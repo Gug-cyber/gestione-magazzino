@@ -1,39 +1,41 @@
-export default function StockBadge({ quantita, soglia = 3 }) {
+/**
+ * StockBadge — dot + text availability indicator
+ * Props:
+ *   quantita       – number (0 = out of stock)
+ *   in_esaurimento – boolean (low stock flag from backend)
+ *   soglia         – threshold below which "Solo N disponibili" is shown (default 3)
+ */
+export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   if (quantita === 0) {
-    return (
-      <Badge bg="var(--color-danger-bg)" color="var(--color-danger)" border="var(--color-danger-border)">
-        ✕ Esaurito
-      </Badge>
-    )
+    return <DotBadge dotColor="var(--color-danger)">Esaurito</DotBadge>
   }
-  if (quantita <= soglia) {
-    return (
-      <Badge bg="var(--color-warning-bg)" color="var(--color-warning)" border="var(--color-warning-border)">
-        ⚡ Solo {quantita} disponibili
-      </Badge>
-    )
+  if (in_esaurimento && quantita > 0) {
+    return <DotBadge dotColor="var(--color-warning)">In esaurimento</DotBadge>
   }
-  return (
-    <Badge bg="var(--color-success-bg)" color="var(--color-success)" border="var(--color-success-border)">
-      ✓ Disponibile
-    </Badge>
-  )
+  if (quantita > 0 && quantita <= soglia) {
+    return <DotBadge dotColor="var(--color-info)">Solo {quantita} disponibili</DotBadge>
+  }
+  return <DotBadge dotColor="var(--color-success)">Disponibile</DotBadge>
 }
 
-function Badge({ bg, color, border, children }) {
+function DotBadge({ dotColor, children }) {
   return (
     <span style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '5px',
-      backgroundColor: bg,
-      color,
-      border: `1px solid ${border}`,
-      borderRadius: '20px',
-      padding: '5px 14px',
-      fontSize: '13px',
-      fontWeight: '600',
+      gap: '7px',
+      fontSize: '14px',
+      fontWeight: '500',
+      color: 'var(--color-text-secondary)',
     }}>
+      <span style={{
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        backgroundColor: dotColor,
+        flexShrink: 0,
+        boxShadow: `0 0 0 3px color-mix(in srgb, ${dotColor} 20%, transparent)`,
+      }} />
       {children}
     </span>
   )

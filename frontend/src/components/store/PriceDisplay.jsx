@@ -1,11 +1,32 @@
-export default function PriceDisplay({ prezzoVendita, prezzoScontato }) {
-  const base = prezzoVendita != null ? Number(prezzoVendita) : null
+/**
+ * PriceDisplay — shows base price with optional discount
+ * Props:
+ *   prezzoVendita  – original price (legacy alias, same as prezzoBase)
+ *   prezzoBase     – original price (preferred)
+ *   prezzoScontato – discounted price (null = no discount)
+ *   size           – 'card' (~20px) | 'detail' (~36px, default)
+ */
+export default function PriceDisplay({
+  prezzoVendita,
+  prezzoBase: prezzoBaseProp,
+  prezzoScontato,
+  size = 'detail',
+}) {
+  const base = (prezzoBaseProp ?? prezzoVendita) != null
+    ? Number(prezzoBaseProp ?? prezzoVendita)
+    : null
   const scontato = prezzoScontato != null ? Number(prezzoScontato) : null
 
   const hasDiscount = scontato != null && base != null && scontato < base
   const percentuale = hasDiscount
     ? Math.round((1 - scontato / base) * 100)
     : null
+
+  const isCard = size === 'card'
+  const mainSize = isCard ? '20px' : '36px'
+  const strikeSize = isCard ? '13px' : '14px'
+  const badgePad = isCard ? '2px 6px' : '4px 10px'
+  const badgeFont = isCard ? '11px' : '13px'
 
   if (base == null) {
     return (
@@ -19,12 +40,12 @@ export default function PriceDisplay({ prezzoVendita, prezzoScontato }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       {hasDiscount ? (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{
-              fontSize: '42px',
+              fontSize: mainSize,
               fontWeight: '800',
               color: 'var(--color-success)',
-              letterSpacing: '-1.5px',
+              letterSpacing: '-0.5px',
               lineHeight: '1',
             }}>
               €{scontato.toFixed(2)}
@@ -34,23 +55,23 @@ export default function PriceDisplay({ prezzoVendita, prezzoScontato }) {
               color: 'var(--color-success)',
               border: '1px solid var(--color-success-border)',
               borderRadius: '8px',
-              padding: '4px 10px',
-              fontSize: '13px',
+              padding: badgePad,
+              fontSize: badgeFont,
               fontWeight: '700',
             }}>
               -{percentuale}%
             </span>
           </div>
-          <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
-            Prezzo originale: €{base.toFixed(2)}
+          <span style={{ fontSize: strikeSize, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
+            {!isCard ? 'Prezzo originale: ' : ''}€{base.toFixed(2)}
           </span>
         </>
       ) : (
         <span style={{
-          fontSize: '42px',
+          fontSize: mainSize,
           fontWeight: '800',
           color: 'var(--color-primary)',
-          letterSpacing: '-1.5px',
+          letterSpacing: '-0.5px',
           lineHeight: '1',
         }}>
           €{base.toFixed(2)}
