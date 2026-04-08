@@ -5,8 +5,8 @@ import { useCart } from '../../context/CartContext'
 function cercaPromozioneAttiva(prodotto, promozioni) {
   if (!promozioni || promozioni.length === 0) return null
   return promozioni.find(p =>
-    p.prodotto_id === prodotto.id ||
-    (p.categoria_id != null && p.categoria_id === prodotto.categoria_id)
+    (p.prodotto_id != null && Number(p.prodotto_id) === Number(prodotto.id)) ||
+    (p.categoria_id != null && Number(p.categoria_id) === Number(prodotto.categoria_id))
   ) || null
 }
 

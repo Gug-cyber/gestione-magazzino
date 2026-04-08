@@ -114,6 +114,7 @@ function StatCard({ title, value, color, icon: Icon, isMobile, trend }) {
           borderRadius: '10px',
           backgroundColor: colors.bg,
           color: colors.text,
+          fill: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
