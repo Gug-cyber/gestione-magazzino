@@ -99,7 +99,7 @@ export default function StorePage() {
     <StoreLayout>
       <div className="animate-fade-in">
         {/* Header */}
-        <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+        <div style={{ marginBottom: '40px', textAlign: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '24px' }}>
           <h1 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: '700', margin: '0 0 8px', color: 'var(--color-text)' }}>
             🃏 TCG Store
           </h1>
@@ -170,10 +170,10 @@ export default function StorePage() {
           flexWrap: 'wrap',
           gap: '12px',
           marginBottom: '28px',
-          padding: '16px',
+          padding: '20px',
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
-          borderRadius: '10px',
+          borderRadius: '12px',
         }}>
           <input
             type="text"
@@ -182,10 +182,10 @@ export default function StorePage() {
             onChange={e => setSearch(e.target.value)}
             style={{
               flex: '1 1 200px',
-              padding: '8px 12px',
+              padding: '10px 14px',
               backgroundColor: 'var(--color-bg)',
               border: '1px solid var(--color-border)',
-              borderRadius: '6px',
+              borderRadius: '8px',
               color: 'var(--color-text)',
               fontSize: '14px',
               outline: 'none',
@@ -197,10 +197,10 @@ export default function StorePage() {
             onChange={e => setCategoriaId(e.target.value)}
             style={{
               flex: '1 1 160px',
-              padding: '8px 12px',
+              padding: '10px 14px',
               backgroundColor: 'var(--color-bg)',
               border: '1px solid var(--color-border)',
-              borderRadius: '6px',
+              borderRadius: '8px',
               color: 'var(--color-text)',
               fontSize: '14px',
               outline: 'none',
@@ -256,8 +256,8 @@ export default function StorePage() {
         ) : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: '20px',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: '24px',
           }}>
             {prodotti.map(p => (
               <ProductCard

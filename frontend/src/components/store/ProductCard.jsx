@@ -38,24 +38,25 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) 
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
-        borderRadius: '10px',
+        borderRadius: '12px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         transition: 'box-shadow 200ms ease, transform 200ms ease',
-        boxShadow: hovered ? 'var(--card-shadow-hover, 0 8px 24px rgba(0,0,0,0.2))' : 'none',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 12px 32px rgba(0,0,0,0.22)' : 'none',
+        transform: hovered ? 'translateY(-3px) scale(1.01)' : 'translateY(0)',
       }}
     >
-      {/* Image */}
-      <Link to={`/store/product/${prodotto.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+      {/* Image with overlay name + absolute badges */}
+      <Link to={`/store/product/${prodotto.id}`} style={{ textDecoration: 'none', display: 'block', position: 'relative' }}>
         <div style={{
-          height: '180px',
+          height: '220px',
           backgroundColor: prodotto.foto_url ? undefined : 'var(--color-surface-hover)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
+          position: 'relative',
         }}>
           {prodotto.foto_url ? (
             <img
@@ -66,46 +67,57 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) 
           ) : (
             <span style={{ fontSize: '48px', opacity: 0.4 }}>🃏</span>
           )}
+
+          {/* Badges — absolute top-left */}
+          <div style={{ position: 'absolute', top: '8px', left: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {isEsaurito && (
+              <span className="gm-badge" style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', fontSize: '11px' }}>
+                Esaurito
+              </span>
+            )}
+            {prodotto.in_esaurimento && !isEsaurito && (
+              <span className="gm-badge" style={{ backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)', fontSize: '11px' }}>
+                In esaurimento
+              </span>
+            )}
+            {isSoloN && !isEsaurito && (
+              <span className="gm-badge" style={{ backgroundColor: 'var(--color-info-bg)', color: 'var(--color-info)', fontSize: '11px' }}>
+                Solo {prodotto.quantita}
+              </span>
+            )}
+            {promo && (
+              <span className="gm-badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: '11px' }}>
+                🏷️ {promo.tipo === 'percentage' ? `-${promo.valore}%` : `-€${promo.valore}`}
+              </span>
+            )}
+          </div>
+
+          {/* Product name overlay — gradient from bottom */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 100%)',
+            padding: '28px 10px 10px',
+          }}>
+            <p style={{
+              margin: 0,
+              fontWeight: '600',
+              fontSize: '14px',
+              lineHeight: '1.3',
+              color: '#fff',
+              textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+            }}>
+              {prodotto.nome}
+            </p>
+          </div>
         </div>
       </Link>
 
-      {/* Content */}
-      <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {/* Badges */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-          {isEsaurito && (
-            <span className="gm-badge" style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', fontSize: '11px' }}>
-              Esaurito
-            </span>
-          )}
-          {prodotto.in_esaurimento && !isEsaurito && (
-            <span className="gm-badge" style={{ backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)', fontSize: '11px' }}>
-              In esaurimento
-            </span>
-          )}
-          {isSoloN && !isEsaurito && (
-            <span className="gm-badge" style={{ backgroundColor: 'var(--color-info-bg)', color: 'var(--color-info)', fontSize: '11px' }}>
-              Solo {prodotto.quantita} disponibili
-            </span>
-          )}
-          {promo && (
-            <span className="gm-badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: '11px' }}>
-              🏷️ {promo.tipo === 'percentage' ? `-${promo.valore}%` : `-€${promo.valore}`}
-            </span>
-          )}
-        </div>
-
-        <Link to={`/store/product/${prodotto.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <p style={{ margin: 0, fontWeight: '500', fontSize: '14px', lineHeight: '1.4', color: 'var(--color-text)' }}>
-            {prodotto.nome}
-          </p>
-        </Link>
-
-        {prodotto.sku && (
-          <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-muted)' }}>SKU: {prodotto.sku}</p>
-        )}
-
-        <p style={{ margin: 0, fontWeight: '700', fontSize: '18px', color: 'var(--color-primary)', marginTop: 'auto' }}>
+      {/* Content — price + add-to-cart only */}
+      <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: '20px', color: 'var(--color-primary)' }}>
           {promo && prezzoScontato != null ? (
             <span>
               <span style={{ textDecoration: 'line-through', color: 'var(--color-text-muted)', fontSize: '14px', marginRight: '6px' }}>
@@ -135,8 +147,8 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) 
             border: inCart ? '1px solid var(--color-success)' : 'none',
             cursor: isEsaurito ? 'not-allowed' : 'pointer',
             width: '100%',
-            padding: '8px',
-            borderRadius: '6px',
+            padding: '9px 12px',
+            borderRadius: '8px',
             fontWeight: '500',
             fontSize: '13px',
             transition: 'all 150ms ease',
