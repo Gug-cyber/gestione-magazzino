@@ -21,6 +21,7 @@ from ..schemas.promozione import PromozioneResponse
 from ..models.prodotto import Prodotto
 from ..models.cliente import Cliente
 from ..limiter import limiter
+from ..services.notification_service import notification_service
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +237,12 @@ def store_checkout(
         ordine.id,
         OrdineUpdate(stato=StatoOrdineSchema.confermato),
     )
+
+    # Notifica nuovo ordine (non critico: non interrompe il checkout se fallisce)
+    try:
+        notification_service.send_new_order_notification(ordine)
+    except Exception as e:
+        logger.warning("Notifica ordine fallita (non critico): %s", e)
 
     return StoreCheckoutResponse(
         ordine=OrdineResponse.model_validate(ordine),
