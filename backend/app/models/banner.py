@@ -18,4 +18,6 @@ class Banner(Base):
     attivo = Column(Boolean, default=True)
     data_inizio = Column(DateTime(timezone=True), nullable=True)
     data_fine = Column(DateTime(timezone=True), nullable=True)
+    # posizione: "top" (banner orizzontale in cima), "sidebar_left", "sidebar_right", "sidebar_both"
+    posizione = Column(String(50), nullable=True, default="top")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
