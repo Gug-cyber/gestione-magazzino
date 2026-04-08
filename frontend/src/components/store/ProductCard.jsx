@@ -5,8 +5,6 @@ import { useCart } from '../../context/CartContext'
 function cercaPromozioneAttiva(prodotto, promozioni) {
   if (!promozioni || promozioni.length === 0) return null
   return promozioni.find(p =>
-    // Promozione globale (nessun filtro prodotto/categoria)
-    (p.prodotto_id === null && p.categoria_id === null) ||
     // Promozione specifica per prodotto
     (p.prodotto_id != null && prodotto.id != null && Number(p.prodotto_id) === Number(prodotto.id)) ||
     // Promozione specifica per categoria
