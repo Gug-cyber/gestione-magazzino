@@ -284,7 +284,7 @@ export default function DettaglioOrdine() {
                   <button
                     onClick={() => handleChangeStato('reso')}
                     className="btn-secondary"
-                    style={{ fontSize: '13px', padding: '10px 14px', width: '100%', color: '#6a1b9a', borderColor: '#6a1b9a' }}
+                    style={{ fontSize: '13px', padding: '10px 14px', width: '100%', color: STATO_ORDINE_COLORS.reso.text, borderColor: STATO_ORDINE_COLORS.reso.text }}
                   >
                     📦 Segna come reso
                   </button>

@@ -249,6 +249,12 @@ def run_enum_migrations(engine) -> None:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         for enum_type, value in ENUM_MIGRATIONS:
             try:
+                _validate_identifier(enum_type, "enum type")
+                _validate_identifier(value, "enum value")
+            except ValueError as exc:
+                logger.error("Skipping unsafe enum migration: %s", exc)
+                continue
+            try:
                 conn.execute(text(f"ALTER TYPE {enum_type} ADD VALUE IF NOT EXISTS '{value}'"))
                 logger.info("Enum migration applied: %s += '%s'", enum_type, value)
             except Exception as exc:
