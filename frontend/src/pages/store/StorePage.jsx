@@ -99,13 +99,18 @@ export default function StorePage() {
     <StoreLayout>
       <div className="animate-fade-in">
         {/* Header */}
-        <div style={{ marginBottom: '40px', textAlign: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '24px' }}>
+        <div style={{ marginBottom: '40px', textAlign: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '28px' }}>
           <h1 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: '700', margin: '0 0 8px', color: 'var(--color-text)' }}>
             🃏 TCG Store
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '15px' }}>
             Scopri la nostra selezione di carte, giochi e collezioni
           </p>
+          {!loading && prodotti.length > 0 && (
+            <p style={{ margin: '6px 0 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
+              {prodotti.length} prodott{prodotti.length === 1 ? 'o' : 'i'} disponibil{prodotti.length === 1 ? 'e' : 'i'}
+            </p>
+          )}
         </div>
 
         {/* Banners */}
@@ -170,10 +175,10 @@ export default function StorePage() {
           flexWrap: 'wrap',
           gap: '12px',
           marginBottom: '28px',
-          padding: '20px',
+          padding: '18px 20px',
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
-          borderRadius: '12px',
+          borderRadius: '14px',
         }}>
           <input
             type="text"

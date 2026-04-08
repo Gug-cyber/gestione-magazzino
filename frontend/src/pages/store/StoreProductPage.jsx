@@ -73,150 +73,118 @@ export default function StoreProductPage() {
       <div className="animate-fade-in">
         <Link
           to="/store"
-          style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '24px' }}
+          style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '32px', transition: 'color 150ms ease' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-text)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-secondary)' }}
         >
           ← Torna allo store
         </Link>
 
-        <div style={{
-          display: 'flex',
-          gap: '48px',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-        }}>
-          {/* Image */}
+        <div style={{ display: 'flex', gap: '48px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{
             flex: '0 0 auto',
-            width: 'min(420px, 100%)',
-            height: '420px',
+            width: 'min(460px, 100%)',
+            height: '460px',
             backgroundColor: prodotto.foto_url ? undefined : 'var(--color-surface-hover)',
-            borderRadius: '16px',
+            borderRadius: '20px',
             overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
           }}>
             {prodotto.foto_url ? (
-              <img
-                src={prodotto.foto_url}
-                alt={prodotto.nome}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+              <img src={prodotto.foto_url} alt={prodotto.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <span style={{ fontSize: '80px', opacity: 0.3 }}>🃏</span>
+              <span style={{ fontSize: '100px', opacity: 0.25 }}>🃏</span>
             )}
           </div>
 
-          {/* Details */}
-          <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h1 style={{ margin: 0, fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: '800', letterSpacing: '-0.5px', color: 'var(--color-text)' }}>
+          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h1 style={{ margin: 0, fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.5px', lineHeight: '1.2' }}>
               {prodotto.nome}
             </h1>
 
-            {/* Badges */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {isEsaurito && (
-                <span className="gm-badge" style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}>
+                <span style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--color-danger-border)' }}>
                   Esaurito
                 </span>
               )}
               {prodotto.in_esaurimento && !isEsaurito && (
-                <span className="gm-badge" style={{ backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}>
+                <span style={{ backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--color-warning-border)' }}>
                   In esaurimento
                 </span>
               )}
               {!isEsaurito && prodotto.quantita <= 3 && (
-                <span className="gm-badge" style={{ backgroundColor: 'var(--color-info-bg)', color: 'var(--color-info)', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}>
+                <span style={{ backgroundColor: 'var(--color-info-bg)', color: 'var(--color-info)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--color-info-border)' }}>
                   Solo {prodotto.quantita} disponibili
                 </span>
               )}
               {!isEsaurito && prodotto.quantita > 3 && (
-                <span className="gm-badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}>
-                  Disponibile ({prodotto.quantita})
+                <span style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', border: '1px solid var(--color-success-border)' }}>
+                  ✓ Disponibile
                 </span>
               )}
             </div>
 
-            {/* Price */}
-            <p style={{ margin: 0, fontSize: '38px', fontWeight: '700', color: 'var(--color-primary)', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
-              {prezzo}
-            </p>
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '20px' }}>
+              <p style={{ margin: 0, fontSize: '40px', fontWeight: '800', color: 'var(--color-primary)', letterSpacing: '-1px', lineHeight: '1' }}>
+                {prezzo}
+              </p>
+            </div>
 
-            {/* Description */}
-            {prodotto.descrizione && (
-              <div style={{ backgroundColor: 'var(--color-surface-hover)', borderRadius: '8px', padding: '12px 16px', borderLeft: '3px solid var(--color-primary)' }}>
-                <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.6' }}>
+            {prodotto.descrizione ? (
+              <div style={{ backgroundColor: 'var(--color-surface)', borderRadius: '10px', padding: '14px 16px', borderLeft: '3px solid var(--color-primary)' }}>
+                <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.7', whiteSpace: 'pre-line' }}>
                   {prodotto.descrizione}
                 </p>
               </div>
+            ) : (
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '14px', fontStyle: 'italic' }}>
+                Nessuna descrizione disponibile.
+              </p>
             )}
 
-            {/* Quantity selector */}
             {!isEsaurito && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Quantità:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: '500' }}>Quantità:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <button
                     onClick={() => setQty(q => Math.max(1, q - 1))}
-                    style={{
-                      width: '40px', height: '40px',
-                      backgroundColor: 'var(--color-surface)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      color: 'var(--color-text)',
-                      fontSize: '16px',
-                    }}
+                    style={{ width: '40px', height: '40px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--color-text)', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >−</button>
-                  <span style={{
-                    width: '40px', textAlign: 'center',
-                    fontWeight: 700, fontSize: '18px',
-                    color: 'var(--color-text)',
-                  }}>{qty}</span>
+                  <span style={{ width: '44px', textAlign: 'center', fontWeight: '700', fontSize: '18px', color: 'var(--color-text)' }}>{qty}</span>
                   <button
                     onClick={() => setQty(q => Math.min(prodotto.quantita, q + 1))}
-                    style={{
-                      width: '40px', height: '40px',
-                      backgroundColor: 'var(--color-surface)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      color: 'var(--color-text)',
-                      fontSize: '16px',
-                    }}
+                    style={{ width: '40px', height: '40px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--color-text)', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >+</button>
                 </div>
               </div>
             )}
 
-            {/* Actions */}
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
                 onClick={handleAddToCart}
                 disabled={isEsaurito}
                 className="gm-btn"
                 style={{
-                  backgroundColor: added
-                    ? 'var(--color-success)'
-                    : isEsaurito
-                      ? 'var(--color-surface-hover)'
-                      : 'var(--color-primary)',
+                  backgroundColor: added ? 'var(--color-success)' : isEsaurito ? 'var(--color-surface-hover)' : 'var(--color-primary)',
                   color: isEsaurito ? 'var(--color-text-muted)' : '#fff',
                   cursor: isEsaurito ? 'not-allowed' : 'pointer',
                   padding: '14px 32px',
-                  borderRadius: '10px',
-                  fontWeight: 700,
+                  borderRadius: '12px',
+                  fontWeight: '700',
                   fontSize: '16px',
                   border: 'none',
                   transition: 'background-color 200ms ease',
                 }}
               >
-                {isEsaurito ? 'Esaurito' : added ? '✓ Aggiunto!' : inCart ? `Aggiungi ancora (${cartQty} nel carrello)` : 'Aggiungi al carrello'}
+                {isEsaurito ? 'Esaurito' : added ? '✓ Aggiunto al carrello!' : inCart ? `Aggiungi ancora (${cartQty} nel carrello)` : '🛒 Aggiungi al carrello'}
               </button>
 
               {inCart && (
-                <Link to="/store/cart" className="gm-btn gm-btn-secondary" style={{ padding: '14px 32px', textDecoration: 'none' }}>
+                <Link to="/store/cart" className="gm-btn gm-btn-secondary" style={{ padding: '14px 24px', textDecoration: 'none', borderRadius: '12px', fontSize: '15px' }}>
                   Vai al carrello →
                 </Link>
               )}
