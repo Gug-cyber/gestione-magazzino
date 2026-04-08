@@ -295,7 +295,7 @@ function NavLinks({ onLinkClick }) {
                     borderLeft: '2px solid transparent',
                   }}
                 >
-                  <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center' }}>
+                  <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'inherit' }}>
                     {renderIcon(icon)}
                   </span>
                   <span>{label}</span>
@@ -335,6 +335,9 @@ function NavLinks({ onLinkClick }) {
                   opacity: 0.8,
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  color: 'inherit',
                 }}>
                   {renderIcon(icon)}
                 </span>
