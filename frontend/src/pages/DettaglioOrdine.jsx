@@ -106,7 +106,7 @@ export default function DettaglioOrdine() {
       try {
         const res = await ordiniAPI.getById(id)
         setOrdine(res.data)
-        if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
+        if (res.data.stato === 'completato' || res.data.stato === 'annullato' || res.data.stato === 'reso') {
           const fr = await fattureAPI.getByOrdine(res.data.id)
           const fatture = fr.data || []
           const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
@@ -126,7 +126,7 @@ export default function DettaglioOrdine() {
       await ordiniAPI.updateStato(ordine.id, nuovoStato)
       const res = await ordiniAPI.getById(ordine.id)
       setOrdine(res.data)
-      if (res.data.stato === 'completato' || res.data.stato === 'annullato') {
+      if (res.data.stato === 'completato' || res.data.stato === 'annullato' || res.data.stato === 'reso') {
         const fr = await fattureAPI.getByOrdine(ordine.id)
         const fatture = fr.data || []
         const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
@@ -270,7 +270,7 @@ export default function DettaglioOrdine() {
                     Avanza a {nextStato}
                   </button>
                 )}
-                {ordine.stato !== 'annullato' && ordine.stato !== 'completato' && (
+                {ordine.stato !== 'annullato' && ordine.stato !== 'completato' && ordine.stato !== 'reso' && (
                   <button onClick={() => handleChangeStato('annullato')} className="btn-danger" style={{ fontSize: '13px', padding: '10px 14px', width: '100%' }}>
                     Annulla ordine
                   </button>
@@ -278,6 +278,15 @@ export default function DettaglioOrdine() {
                 {ordine.stato === 'completato' && (
                   <button onClick={() => handleChangeStato('annullato')} className="btn-danger" style={{ fontSize: '13px', padding: '10px 14px', width: '100%' }}>
                     Annulla (ripristina magazzino)
+                  </button>
+                )}
+                {(ordine.stato === 'completato' || ordine.stato === 'spedito') && (
+                  <button
+                    onClick={() => handleChangeStato('reso')}
+                    className="btn-secondary"
+                    style={{ fontSize: '13px', padding: '10px 14px', width: '100%', color: STATO_ORDINE_COLORS.reso.text, borderColor: STATO_ORDINE_COLORS.reso.text }}
+                  >
+                    📦 Segna come reso
                   </button>
                 )}
                 <div style={{ display: 'flex', gap: '8px' }}>

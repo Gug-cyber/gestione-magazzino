@@ -239,11 +239,34 @@ def run_column_migrations(db) -> None:
             logger.warning("Post-column SQL failed: %s — %s", sql[:80], exc)
 
 
+ENUM_MIGRATIONS = [
+    ("statoordine", "reso"),
+]
+
+
+def run_enum_migrations(engine) -> None:
+    """Aggiunge valori mancanti agli enum Postgres. Deve girare fuori transazione (AUTOCOMMIT)."""
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        for enum_type, value in ENUM_MIGRATIONS:
+            try:
+                _validate_identifier(enum_type, "enum type")
+                _validate_identifier(value, "enum value")
+            except ValueError as exc:
+                logger.error("Skipping unsafe enum migration: %s", exc)
+                continue
+            try:
+                conn.execute(text(f"ALTER TYPE {enum_type} ADD VALUE IF NOT EXISTS '{value}'"))
+                logger.info("Enum migration applied: %s += '%s'", enum_type, value)
+            except Exception as exc:
+                logger.warning("Enum migration skipped for %s.%s: %s", enum_type, value, exc)
+
+
 def run_migrations(engine) -> None:
     """
     Entry point chiamato da main.py al startup.
     Accetta un SQLAlchemy Engine, apre una sessione e applica tutte le migrazioni.
     """
+    run_enum_migrations(engine)   # PRIMA, fuori transazione
     from sqlalchemy.orm import sessionmaker
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()

@@ -9,7 +9,7 @@ import BarcodeScanner from '../components/BarcodeScanner'
 import styles from './Ordini.module.css'
 import { pendingOrders } from '../utils/alertHelpers'
 
-const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato']
+const STATI = ['bozza', 'confermato', 'spedito', 'completato', 'annullato', 'reso']
 
 const PAGE_SIZE = 50
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: 0 }
@@ -101,6 +101,7 @@ export default function Ordini() {
       'spedito': 'completato',
       'completato': null,
       'annullato': null,
+      'reso': null,
     }
 
     const nextState = stateFlow[ordine.stato]

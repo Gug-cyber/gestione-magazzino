@@ -300,6 +300,17 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
             genera_nota_credito(db, fattura_esistente)
 
     # ------------------------------------------------------------------ #
+    # Transizione → RESO                                                  #
+    # ------------------------------------------------------------------ #
+    elif nuovo_stato == StatoOrdine.reso and stato_precedente != StatoOrdine.reso:
+        # Stock NON ripristinato automaticamente: la merce potrebbe essere
+        # danneggiata. L'operatore aggiornerà il magazzino manualmente.
+        # Emetti nota di credito per la fattura auto-generata, se presente.
+        fattura_esistente = get_fattura_by_ordine(db, ordine.id)
+        if fattura_esistente and not fattura_esistente.annullata:
+            genera_nota_credito(db, fattura_esistente)
+
+    # ------------------------------------------------------------------ #
     # Commit unico per tutta la transazione                               #
     # ------------------------------------------------------------------ #
     db.commit()

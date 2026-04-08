@@ -11,6 +11,7 @@ class StatoOrdine(str, enum.Enum):
     spedito = "spedito"
     completato = "completato"
     annullato = "annullato"
+    reso = "reso"
 
 
 class Ordine(Base):
