@@ -13,6 +13,26 @@ export default function StorePage() {
   const [search, setSearch] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
   const [disponibiliOnly, setDisponibiliOnly] = useState(true)
+  const [flags, setFlags] = useState({})
+  const [banners, setBanners] = useState([])
+  const [promozioni, setPromozioni] = useState([])
+  const [bannerIdx, setBannerIdx] = useState(0)
+
+  useEffect(() => {
+    async function fetchPublic() {
+      try {
+        const [flagsRes, bannersRes, promosRes] = await Promise.allSettled([
+          storeAPI.getFlagsPublici(),
+          storeAPI.getBannersPublici(),
+          storeAPI.getPromozioniAttive(),
+        ])
+        if (flagsRes.status === 'fulfilled') setFlags(flagsRes.value.data)
+        if (bannersRes.status === 'fulfilled') setBanners(bannersRes.value.data)
+        if (promosRes.status === 'fulfilled') setPromozioni(promosRes.value.data)
+      } catch {}
+    }
+    fetchPublic()
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
@@ -43,6 +63,21 @@ export default function StorePage() {
     addItem({ ...prodotto, quantita_disponibile: prodotto.quantita }, 1)
   }
 
+  // Se store_enabled è esplicitamente false, mostra pagina di indisponibilità
+  if (flags.store_enabled === false) {
+    return (
+      <StoreLayout>
+        <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+          <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔒</p>
+          <h2 style={{ color: 'var(--color-text)', margin: '0 0 8px' }}>Store temporaneamente non disponibile</h2>
+          <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Torneremo presto. Grazie per la pazienza.</p>
+        </div>
+      </StoreLayout>
+    )
+  }
+
+  const showBanners = flags.banners_enabled !== false && banners.length > 0
+
   return (
     <StoreLayout>
       <div className="animate-fade-in">
@@ -55,6 +90,62 @@ export default function StorePage() {
             Scopri la nostra selezione di carte, giochi e collezioni
           </p>
         </div>
+
+        {/* Banners */}
+        {showBanners && (
+          <div style={{ marginBottom: '28px', position: 'relative' }}>
+            <div style={{
+              borderRadius: '10px',
+              overflow: 'hidden',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+            }}>
+              {banners.map((b, idx) => idx === bannerIdx && (
+                <div key={b.id} style={{ position: 'relative' }}>
+                  {b.immagine_url && (
+                    <img
+                      src={b.immagine_url}
+                      alt={b.titolo}
+                      style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }}
+                      onError={e => { e.target.style.display = 'none' }}
+                    />
+                  )}
+                  <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontWeight: '600', color: 'var(--color-text)', fontSize: '16px' }}>{b.titolo}</div>
+                      {b.descrizione && <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>{b.descrizione}</div>}
+                    </div>
+                    {b.link_url && (
+                      <a href={b.link_url} className="gm-btn gm-btn-primary gm-btn-sm" target="_blank" rel="noopener noreferrer">
+                        Scopri →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {banners.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '8px' }}>
+                {banners.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setBannerIdx(idx)}
+                    style={{
+                      width: idx === bannerIdx ? '20px' : '8px',
+                      height: '8px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      backgroundColor: idx === bannerIdx ? 'var(--color-primary)' : 'var(--color-border)',
+                      transition: 'all 200ms ease',
+                      padding: 0,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div style={{
@@ -156,6 +247,7 @@ export default function StorePage() {
                 key={p.id}
                 prodotto={p}
                 onAddToCart={handleAddToCart}
+                promozioni={flags.discounts_enabled !== false ? promozioni : []}
               />
             ))}
           </div>

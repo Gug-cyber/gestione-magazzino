@@ -2,7 +2,15 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 
-export default function ProductCard({ prodotto, onAddToCart }) {
+function cercaPromozioneAttiva(prodotto, promozioni) {
+  if (!promozioni || promozioni.length === 0) return null
+  return promozioni.find(p =>
+    p.prodotto_id === prodotto.id ||
+    (p.categoria_id != null && p.categoria_id === prodotto.categoria_id)
+  ) || null
+}
+
+export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) {
   const { isInCart, getItemQty } = useCart()
   const [hovered, setHovered] = useState(false)
 
@@ -10,9 +18,16 @@ export default function ProductCard({ prodotto, onAddToCart }) {
   const cartQty = getItemQty(prodotto.id)
   const isEsaurito = prodotto.quantita === 0
   const isSoloN = prodotto.quantita > 0 && prodotto.quantita <= 3
-  const prezzo = prodotto.prezzo_vendita != null
-    ? `€${Number(prodotto.prezzo_vendita).toFixed(2)}`
-    : '—'
+
+  const promo = cercaPromozioneAttiva(prodotto, promozioni)
+  const prezzoBase = prodotto.prezzo_vendita != null ? Number(prodotto.prezzo_vendita) : null
+  const prezzoScontato = promo && prezzoBase != null
+    ? Math.max(0, promo.tipo === 'percentage'
+      ? prezzoBase * (1 - promo.valore / 100)
+      : prezzoBase - promo.valore)
+    : null
+
+  const prezzoDisplay = prezzoBase != null ? `€${prezzoBase.toFixed(2)}` : '—'
 
   return (
     <div
@@ -71,6 +86,11 @@ export default function ProductCard({ prodotto, onAddToCart }) {
               Solo {prodotto.quantita} disponibili
             </span>
           )}
+          {promo && (
+            <span className="gm-badge" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: '11px' }}>
+              🏷️ {promo.tipo === 'percentage' ? `-${promo.valore}%` : `-€${promo.valore}`}
+            </span>
+          )}
         </div>
 
         <Link to={`/store/product/${prodotto.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -84,7 +104,14 @@ export default function ProductCard({ prodotto, onAddToCart }) {
         )}
 
         <p style={{ margin: 0, fontWeight: '700', fontSize: '18px', color: 'var(--color-primary)', marginTop: 'auto' }}>
-          {prezzo}
+          {promo && prezzoScontato != null ? (
+            <span>
+              <span style={{ textDecoration: 'line-through', color: 'var(--color-text-muted)', fontSize: '14px', marginRight: '6px' }}>
+                {prezzoDisplay}
+              </span>
+              <span style={{ color: 'var(--color-success)' }}>€{prezzoScontato.toFixed(2)}</span>
+            </span>
+          ) : prezzoDisplay}
         </p>
 
         {/* Add to cart button */}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
@@ -7,6 +7,7 @@ import { useCart } from '../../context/CartContext'
 export default function StoreCheckoutPage() {
   const { items, totalPrice, clearCart } = useCart()
   const navigate = useNavigate()
+  const [checkoutEnabled, setCheckoutEnabled] = useState(true)
 
   const [form, setForm] = useState({
     nome: '',
@@ -20,6 +21,14 @@ export default function StoreCheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(null)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    storeAPI.getFlagsPublici()
+      .then(res => {
+        if (res.data.checkout_enabled === false) setCheckoutEnabled(false)
+      })
+      .catch(() => {})
+  }, [])
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -58,6 +67,20 @@ export default function StoreCheckoutPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Checkout disabled
+  if (!checkoutEnabled) {
+    return (
+      <StoreLayout>
+        <div style={{ textAlign: 'center', padding: '80px 0' }} className="animate-fade-in">
+          <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔒</p>
+          <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>Checkout non disponibile al momento</h2>
+          <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>Il servizio di acquisto è temporaneamente sospeso.</p>
+          <Link to="/store" className="gm-btn gm-btn-secondary">Torna allo store</Link>
+        </div>
+      </StoreLayout>
+    )
   }
 
   // Empty cart redirect prompt

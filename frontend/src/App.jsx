@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { FeatureFlagsProvider } from './context/FeatureFlagsContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -42,6 +43,7 @@ import StorePage from './pages/store/StorePage'
 import StoreProductPage from './pages/store/StoreProductPage'
 import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
+import ControlPanel from './pages/ControlPanel'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -68,6 +70,7 @@ function App() {
   return (
     <CartProvider>
       <AuthProvider>
+        <FeatureFlagsProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/store" element={<StorePage />} />
@@ -242,8 +245,14 @@ function App() {
               <AppLayout><TrackingDetail /></AppLayout>
             </ProtectedRoute>
           } />
+          <Route path="/control-panel" element={
+            <ProtectedRoute>
+              <AppLayout><ControlPanel /></AppLayout>
+            </ProtectedRoute>
+          } />
         </Routes>
         </BrowserRouter>
+        </FeatureFlagsProvider>
       </AuthProvider>
     </CartProvider>
   )

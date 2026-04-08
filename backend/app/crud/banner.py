@@ -9,8 +9,38 @@ def get_banner(db: Session, skip: int = 0, limit: int = 100) -> List[Banner]:
     return db.query(Banner).order_by(Banner.ordine).offset(skip).limit(limit).all()
 
 
+# Alias per compatibilità con il router control_panel
+def get_banners(db: Session, only_active: bool = False) -> List[Banner]:
+    query = db.query(Banner)
+    if only_active:
+        now = datetime.now(timezone.utc)
+        query = query.filter(
+            Banner.attivo.is_(True),
+            (Banner.data_inizio.is_(None)) | (Banner.data_inizio <= now),
+            (Banner.data_fine.is_(None)) | (Banner.data_fine >= now),
+        )
+    return query.order_by(Banner.ordine).all()
+
+
 def get_banner_by_id(db: Session, banner_id: int) -> Optional[Banner]:
     return db.query(Banner).filter(Banner.id == banner_id).first()
+
+
+def get_banners_pubblici(db: Session) -> List[Banner]:
+    """
+    Restituisce solo i banner attivi e nel periodo di validità.
+    """
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(Banner)
+        .filter(
+            Banner.attivo.is_(True),
+            (Banner.data_inizio.is_(None)) | (Banner.data_inizio <= now),
+            (Banner.data_fine.is_(None)) | (Banner.data_fine >= now)
+        )
+        .order_by(Banner.ordine)
+        .all()
+    )
 
 
 def get_banner_attivi(db: Session) -> List[Banner]:
