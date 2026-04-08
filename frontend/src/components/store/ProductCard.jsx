@@ -22,9 +22,9 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) 
   const promo = cercaPromozioneAttiva(prodotto, promozioni)
   const prezzoBase = prodotto.prezzo_vendita != null ? Number(prodotto.prezzo_vendita) : null
   const prezzoScontato = promo && prezzoBase != null
-    ? promo.tipo === 'percentage'
+    ? Math.max(0, promo.tipo === 'percentage'
       ? prezzoBase * (1 - promo.valore / 100)
-      : prezzoBase - promo.valore
+      : prezzoBase - promo.valore)
     : null
 
   const prezzoDisplay = prezzoBase != null ? `€${prezzoBase.toFixed(2)}` : '—'

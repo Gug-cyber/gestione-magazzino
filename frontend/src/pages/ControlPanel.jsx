@@ -71,7 +71,7 @@ function TabFlags() {
   useEffect(() => {
     controlPanelAPI.getFlagsAdmin()
       .then(res => setFlags(res.data))
-      .catch(() => {})
+      .catch(err => { console.error('Errore caricamento flags admin:', err) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -80,7 +80,8 @@ function TabFlags() {
     try {
       await controlPanelAPI.updateFlag(key, { enabled })
       setToast('Salvato ✓')
-    } catch {
+    } catch (err) {
+      console.error('Errore aggiornamento flag:', err)
       setFlags(prev => prev.map(f => f.key === key ? { ...f, enabled: !enabled } : f))
       setToast('Errore nel salvataggio')
     }
@@ -148,7 +149,7 @@ function TabBanner() {
     try {
       const res = await controlPanelAPI.getBanners()
       setBanners(res.data)
-    } catch {} finally { setLoading(false) }
+    } catch (err) { console.error('Errore caricamento banner:', err) } finally { setLoading(false) }
   }
 
   function openNew() { setEditId(null); setForm(EMPTY_BANNER); setShowForm(true) }
@@ -189,7 +190,7 @@ function TabBanner() {
       setToast('Salvato ✓')
       setShowForm(false)
       fetchBanners()
-    } catch { setToast('Errore nel salvataggio') } finally { setSaving(false) }
+    } catch (err) { console.error('Errore salvataggio:', err); setToast('Errore nel salvataggio') } finally { setSaving(false) }
   }
 
   async function handleDelete(id) {
@@ -198,7 +199,7 @@ function TabBanner() {
       await controlPanelAPI.deleteBanner(id)
       setToast('Banner eliminato')
       fetchBanners()
-    } catch { setToast('Errore eliminazione') }
+    } catch (err) { console.error('Errore eliminazione:', err); setToast('Errore eliminazione') }
   }
 
   const inputStyle = {
@@ -345,7 +346,7 @@ function TabPromozioni() {
     try {
       const res = await controlPanelAPI.getPromozioni()
       setPromos(res.data)
-    } catch {} finally { setLoading(false) }
+    } catch (err) { console.error('Errore caricamento promozioni:', err) } finally { setLoading(false) }
   }
 
   function openNew() { setEditId(null); setForm(EMPTY_PROMO); setShowForm(true) }
@@ -386,7 +387,7 @@ function TabPromozioni() {
       setToast('Salvato ✓')
       setShowForm(false)
       fetchPromos()
-    } catch { setToast('Errore nel salvataggio') } finally { setSaving(false) }
+    } catch (err) { console.error('Errore salvataggio:', err); setToast('Errore nel salvataggio') } finally { setSaving(false) }
   }
 
   async function handleDelete(id) {
@@ -395,7 +396,7 @@ function TabPromozioni() {
       await controlPanelAPI.deletePromozione(id)
       setToast('Promozione eliminata')
       fetchPromos()
-    } catch { setToast('Errore eliminazione') }
+    } catch (err) { console.error('Errore eliminazione:', err); setToast('Errore eliminazione') }
   }
 
   const inputStyle = {
@@ -412,8 +413,8 @@ function TabPromozioni() {
   // Calcola anteprima prezzo scontato
   const prevAnteprima = form.valore && !isNaN(parseFloat(form.valore))
     ? form.tipo === 'percentage'
-      ? `Es: prezzo €100 → €${(100 * (1 - parseFloat(form.valore) / 100)).toFixed(2)}`
-      : `Es: prezzo €100 → €${(100 - parseFloat(form.valore)).toFixed(2)}`
+      ? `Es: prezzo €100 → €${Math.max(0, 100 * (1 - parseFloat(form.valore) / 100)).toFixed(2)}`
+      : `Es: prezzo €100 → €${Math.max(0, 100 - parseFloat(form.valore)).toFixed(2)}`
     : null
 
   return (
@@ -544,7 +545,7 @@ function TabMagazzino() {
   useEffect(() => {
     controlPanelAPI.getWarehouseSettings()
       .then(res => setSettings(res.data))
-      .catch(() => {})
+      .catch(err => { console.error('Errore caricamento warehouse settings:', err) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -555,7 +556,7 @@ function TabMagazzino() {
       const res = await controlPanelAPI.updateWarehouseSettings(settings)
       setSettings(res.data)
       setToast('Salvato ✓')
-    } catch { setToast('Errore nel salvataggio') } finally { setSaving(false) }
+    } catch (err) { console.error('Errore salvataggio:', err); setToast('Errore nel salvataggio') } finally { setSaving(false) }
   }
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><div className="spinner" /></div>
