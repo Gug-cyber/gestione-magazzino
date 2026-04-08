@@ -55,7 +55,7 @@ export default function StoreCheckoutPage() {
         righe: items.map(i => ({
           prodotto_id: i.id,
           quantita: i.quantita,
-          prezzo_unitario: i.prezzo_vendita || 0,
+          prezzo_unitario: i.prezzo_unitario ?? i.prezzo_vendita ?? 0,
         })),
       }
       const res = await storeAPI.checkout(payload)
@@ -317,7 +317,7 @@ export default function StoreCheckoutPage() {
                     </p>
                   </div>
                   <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text)', flexShrink: 0 }}>
-                    €{(Number(item.prezzo_vendita || 0) * item.quantita).toFixed(2)}
+                    €{(Number(item.prezzo_unitario ?? item.prezzo_vendita ?? 0) * item.quantita).toFixed(2)}
                   </span>
                 </div>
               ))}

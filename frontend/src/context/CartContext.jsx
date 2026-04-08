@@ -43,6 +43,7 @@ export function CartProvider({ children }) {
         nome: prodotto.nome,
         sku: prodotto.sku,
         prezzo_vendita: prodotto.prezzo_vendita,
+        prezzo_unitario: prodotto.prezzo_unitario ?? prodotto.prezzo_vendita,
         quantita: newQty,
         foto_url: prodotto.foto_url,
         quantita_disponibile: prodotto.quantita_disponibile ?? prodotto.quantita,
@@ -74,7 +75,7 @@ export function CartProvider({ children }) {
   }
 
   const totalItems = items.reduce((sum, i) => sum + i.quantita, 0)
-  const totalPrice = items.reduce((sum, i) => sum + (i.prezzo_vendita || 0) * i.quantita, 0)
+  const totalPrice = items.reduce((sum, i) => sum + (i.prezzo_unitario ?? i.prezzo_vendita ?? 0) * i.quantita, 0)
 
   function isInCart(id) {
     return items.some(i => i.id === id)

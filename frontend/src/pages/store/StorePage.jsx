@@ -60,7 +60,24 @@ export default function StorePage() {
   }, [search, categoriaId, disponibiliOnly])
 
   function handleAddToCart(prodotto) {
-    addItem({ ...prodotto, quantita_disponibile: prodotto.quantita }, 1)
+    const activePromos = flags.discounts_enabled !== false ? promozioni : []
+    const promo = activePromos.find(p =>
+      (p.prodotto_id != null && prodotto.id != null && Number(p.prodotto_id) === Number(prodotto.id)) ||
+      (p.categoria_id != null && prodotto.categoria_id != null && Number(p.categoria_id) === Number(prodotto.categoria_id))
+    ) || null
+
+    const prezzoBase = prodotto.prezzo_vendita != null ? Number(prodotto.prezzo_vendita) : null
+    const prezzoUnitario = promo && prezzoBase != null
+      ? Math.max(0, promo.tipo === 'percentage'
+          ? prezzoBase * (1 - promo.valore / 100)
+          : prezzoBase - promo.valore)
+      : prezzoBase
+
+    addItem({
+      ...prodotto,
+      quantita_disponibile: prodotto.quantita,
+      prezzo_unitario: prezzoUnitario,
+    }, 1)
   }
 
   // Se store_enabled è esplicitamente false, mostra pagina di indisponibilità
