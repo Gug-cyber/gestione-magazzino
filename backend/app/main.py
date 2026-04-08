@@ -28,12 +28,16 @@ from .models import tracking_update as _tracking_update_model  # noqa: F401 – 
 from .models import cardmarket_price as _cardmarket_price_model  # noqa: F401 – ensures cardmarket_prices table is created
 from .routers import activity_log as activity_log_router
 from .routers import store as store_router
+from .routers import control_panel as control_panel_router
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
 from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti table is created
 from .models import ordine as _ordine_model  # noqa: F401 – ensures ordini table is created
 from .models import fornitura as _fornitura_model  # noqa: F401 – ensures forniture table is created
 from .models import dati_azienda as _dati_azienda_model  # noqa: F401 – ensures dati_azienda table is created
+from .models import feature_flag as _feature_flag_model  # noqa: F401 – ensures feature_flags table is created
+from .models import promozione as _promozione_model  # noqa: F401 – ensures promozioni table is created
+from .models import warehouse_settings as _warehouse_settings_model  # noqa: F401 – ensures warehouse_settings table is created
 
 load_dotenv()
 
@@ -112,6 +116,7 @@ app.include_router(cms_contenuti.router, prefix="/api/cms", tags=["CMS - Contenu
 app.include_router(cms_banner.router, prefix="/api/cms", tags=["CMS - Banner"])
 app.include_router(cms_prodotti.router, prefix="/api/cms", tags=["CMS - Prodotti"])
 app.include_router(store_router.router, prefix="/api/store", tags=["Store Pubblico"])
+app.include_router(control_panel_router.router, prefix="/api/control-panel", tags=["Control Panel"])
 
 
 @app.on_event("startup")
@@ -148,6 +153,13 @@ def startup():
             )
     finally:
         db.close()
+
+    db2 = SessionLocal()
+    try:
+        from .crud.feature_flag import seed_default_flags
+        seed_default_flags(db2)
+    finally:
+        db2.close()
 
 
 @app.get("/health", tags=["Health"])

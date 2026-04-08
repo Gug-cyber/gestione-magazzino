@@ -10,9 +10,14 @@ from ..crud import prodotto as crud_prodotti
 from ..crud import cliente as crud_clienti
 from ..crud import ordine as crud_ordini
 from ..crud import categoria as crud_categorie
+from ..crud import banner as crud_banner
+from ..crud import promozione as crud_promozione
+from ..crud import feature_flag as crud_flags
 from ..schemas.ordine import OrdineCreate, RigaOrdineCreate, OrdineResponse, OrdineUpdate, StatoOrdineSchema
 from ..schemas.cliente import ClienteCreate
 from ..schemas.categoria import CategoriaResponse
+from ..schemas.banner import BannerResponse
+from ..schemas.promozione import PromozioneResponse
 from ..models.prodotto import Prodotto
 from ..models.cliente import Cliente
 from ..limiter import limiter
@@ -236,3 +241,46 @@ def store_checkout(
         ordine=OrdineResponse.model_validate(ordine),
         messaggio=f"Ordine confermato con successo! Numero ordine: {ordine.numero_ordine}",
     )
+
+
+# ---------------------------------------------------------------------------
+# Endpoint pubblici: banners, promozioni, feature-flags
+# ---------------------------------------------------------------------------
+
+PUBLIC_FLAGS = {"store_enabled", "checkout_enabled", "discounts_enabled", "banners_enabled"}
+
+
+@router.get("/banners", response_model=List[BannerResponse])
+def get_store_banners(db: Session = Depends(get_db)):
+    """Restituisce banner pubblici attivi e validi per data (no auth)."""
+    return crud_banner.get_banners_pubblici(db)
+
+
+@router.get("/promozioni", response_model=List[PromozioneResponse])
+def get_store_promozioni(db: Session = Depends(get_db)):
+    """Restituisce promozioni attive e valide per data (no auth)."""
+    promos = crud_promozione.get_promozioni(db, only_active=True)
+    result = []
+    for p in promos:
+        result.append(PromozioneResponse(
+            id=p.id,
+            nome=p.nome,
+            tipo=p.tipo,
+            valore=float(p.valore),
+            prodotto_id=p.prodotto_id,
+            categoria_id=p.categoria_id,
+            data_inizio=p.data_inizio,
+            data_fine=p.data_fine,
+            is_active=p.is_active,
+            created_at=p.created_at,
+            prodotto_nome=p.prodotto.nome if p.prodotto else None,
+            categoria_nome=p.categoria.nome if p.categoria else None,
+        ))
+    return result
+
+
+@router.get("/feature-flags")
+def get_store_feature_flags(db: Session = Depends(get_db)):
+    """Restituisce i flag pubblici: store_enabled, checkout_enabled, discounts_enabled, banners_enabled (no auth)."""
+    flags = crud_flags.get_all_flags(db)
+    return {f.key: f.enabled for f in flags if f.key in PUBLIC_FLAGS}
