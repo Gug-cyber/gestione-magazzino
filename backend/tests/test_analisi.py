@@ -157,7 +157,7 @@ def _crea_prodotto_analisi(client, auth_headers, sku="RICAVI-PROD-001"):
 
 
 def _crea_e_conferma_ordine(client, auth_headers, prodotto_id, quantita=1, prezzo=10.00):
-    """Crea un ordine, lo porta a confermato e poi a completato."""
+    """Crea un ordine e lo porta a confermato (pagamento avvenuto)."""
     resp = client.post(
         "/api/ordini/",
         json={
@@ -176,21 +176,13 @@ def _crea_e_conferma_ordine(client, auth_headers, prodotto_id, quantita=1, prezz
         headers=auth_headers,
     )
     assert resp_conf.status_code == 200
-
-    # confermato → completato via PATCH /stato (imposta data_completamento)
-    resp_comp = client.patch(
-        f"/api/ordini/{ordine_id}/stato",
-        json={"stato": "completato"},
-        headers=auth_headers,
-    )
-    assert resp_comp.status_code == 200
-    return resp_comp.json()
+    return resp_conf.json()
 
 
-def test_ricavi_attribuiti_al_mese_di_completamento(client, auth_headers):
+def test_ricavi_attribuiti_al_mese_di_conferma(client, auth_headers):
     """
-    REGRESSION TEST: i ricavi di un ordine completato devono essere contabilizzati
-    nel mese di completamento dell'ordine (data_completamento).
+    REGRESSION TEST: i ricavi di un ordine confermato devono essere contabilizzati
+    nel mese di conferma dell'ordine (data_ordine).
     """
     prodotto = _crea_prodotto_analisi(client, auth_headers, sku="CONF-002")
     anno = datetime.now(timezone.utc).year
@@ -199,7 +191,7 @@ def test_ricavi_attribuiti_al_mese_di_completamento(client, auth_headers):
     ordine = _crea_e_conferma_ordine(client, auth_headers, prodotto["id"], quantita=2, prezzo=10.0)
     totale_atteso = ordine["totale"]
 
-    # I ricavi devono apparire nel mese corrente (mese di completamento)
+    # I ricavi devono apparire nel mese corrente (mese di conferma)
     resp = client.get(f"/api/analisi/mensile?anno={anno}", headers=auth_headers)
     assert resp.status_code == 200
     dati = resp.json()
