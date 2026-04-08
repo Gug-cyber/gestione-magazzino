@@ -30,7 +30,7 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
   const [form, setForm] = useState({
     nome: '',
     barcode: barcode,
-    sku: '',
+    sku: barcode || '',
     categoria_id: '',
     prezzo_acquisto: '',
     prezzo_vendita: '',
