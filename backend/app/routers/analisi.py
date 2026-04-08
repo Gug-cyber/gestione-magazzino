@@ -13,6 +13,8 @@ from ..auth import get_current_active_user
 
 router = APIRouter()
 
+STATI_RICAVO = [StatoOrdine.confermato, StatoOrdine.spedito, StatoOrdine.completato]
+
 
 @router.get("/mensile")
 def get_analisi_mensile(
@@ -40,17 +42,17 @@ def get_analisi_mensile(
             for m, p in movimenti_carico
         )
 
-        # Ricavi da ordini completati: contabilizzati nel mese di completamento
-        ordini_completati = (
+        # Ricavi da ordini confermati/spediti/completati: contabilizzati nel mese di conferma
+        ordini_ricavo = (
             db.query(Ordine)
             .filter(
-                Ordine.stato == StatoOrdine.completato,
-                extract("year", Ordine.data_completamento) == anno,
-                extract("month", Ordine.data_completamento) == mese,
+                Ordine.stato.in_(STATI_RICAVO),
+                extract("year", Ordine.data_ordine) == anno,
+                extract("month", Ordine.data_ordine) == mese,
             )
             .all()
         )
-        ricavi = sum(float(o.totale or 0) for o in ordini_completati)
+        ricavi = sum(float(o.totale or 0) for o in ordini_ricavo)
 
         spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == anno,
@@ -113,10 +115,10 @@ def get_analisi_annuale(
     )
     storici_anni = {int(row.anno) for row in storici_anni_query if row.anno is not None}
 
-    # Also include years that only appear in completed orders
+    # Also include years that only appear in confirmed/shipped/completed orders
     ordini_anni_query = (
-        db.query(extract("year", Ordine.data_completamento).label("anno"))
-        .filter(Ordine.stato == StatoOrdine.completato)
+        db.query(extract("year", Ordine.data_ordine).label("anno"))
+        .filter(Ordine.stato.in_(STATI_RICAVO))
         .distinct()
         .all()
     )
@@ -153,16 +155,16 @@ def get_analisi_annuale(
             for m, p in movimenti_carico
         )
 
-        # Ricavi da ordini completati nell'anno: contabilizzati nell'anno di completamento
-        ordini_completati = (
+        # Ricavi da ordini confermati/spediti/completati nell'anno: contabilizzati nell'anno di conferma
+        ordini_ricavo = (
             db.query(Ordine)
             .filter(
-                Ordine.stato == StatoOrdine.completato,
-                extract("year", Ordine.data_completamento) == anno,
+                Ordine.stato.in_(STATI_RICAVO),
+                extract("year", Ordine.data_ordine) == anno,
             )
             .all()
         )
-        ricavi = sum(float(o.totale or 0) for o in ordini_completati)
+        ricavi = sum(float(o.totale or 0) for o in ordini_ricavo)
 
         spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == anno,
@@ -230,9 +232,9 @@ def get_top_prodotti_mensile(
         .join(RigaOrdine, RigaOrdine.prodotto_id == Prodotto.id)
         .join(Ordine, RigaOrdine.ordine_id == Ordine.id)
         .filter(
-            Ordine.stato == StatoOrdine.completato,
-            extract("year", Ordine.data_completamento) == anno,
-            extract("month", Ordine.data_completamento) == mese,
+            Ordine.stato.in_(STATI_RICAVO),
+            extract("year", Ordine.data_ordine) == anno,
+            extract("month", Ordine.data_ordine) == mese,
         )
         .group_by(Prodotto.id, Prodotto.nome, Prodotto.sku)
         .order_by(desc("quantita_venduta"))
@@ -286,16 +288,16 @@ def get_marginalita_confronto(
             for mov, prod in movimenti_carico
         )
 
-        ordini_completati = (
+        ordini_ricavo = (
             db.query(Ordine)
             .filter(
-                Ordine.stato == StatoOrdine.completato,
-                extract("year", Ordine.data_completamento) == a,
-                extract("month", Ordine.data_completamento) == m,
+                Ordine.stato.in_(STATI_RICAVO),
+                extract("year", Ordine.data_ordine) == a,
+                extract("month", Ordine.data_ordine) == m,
             )
             .all()
         )
-        ricavi = sum(float(o.totale or 0) for o in ordini_completati)
+        ricavi = sum(float(o.totale or 0) for o in ordini_ricavo)
 
         spese_generali_result = db.query(func.sum(SpesaGestione.importo)).filter(
             extract("year", SpesaGestione.data) == a,
