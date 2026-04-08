@@ -4,7 +4,7 @@ import StockBadge from './StockBadge'
 import PriceDisplay from './PriceDisplay'
 import QuantitySelector from './QuantitySelector'
 
-export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToCart }) {
+export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToCart, prezzoScontato = null }) {
   const [qty, setQty] = useState(1)
   const isEsaurito = prodotto.quantita === 0
 
@@ -60,7 +60,7 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
       {/* Price */}
       <PriceDisplay
         prezzoVendita={prodotto.prezzo_vendita}
-        prezzoScontato={prodotto.prezzo_scontato ?? null}
+        prezzoScontato={prezzoScontato}
       />
 
       {/* Divider */}

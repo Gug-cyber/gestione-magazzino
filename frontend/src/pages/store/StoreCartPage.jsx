@@ -71,7 +71,7 @@ export default function StoreCartPage() {
                     {item.nome}
                   </p>
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                    €{Number(item.prezzo_vendita || 0).toFixed(2)} × {item.quantita}
+                     €{Number(item.prezzo_unitario ?? item.prezzo_vendita ?? 0).toFixed(2)} × {item.quantita}
                   </p>
                 </div>
 
@@ -110,7 +110,7 @@ export default function StoreCartPage() {
 
                 {/* Subtotal */}
                 <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: 'var(--color-primary)', minWidth: '60px', textAlign: 'right', flexShrink: 0 }}>
-                  €{(Number(item.prezzo_vendita || 0) * item.quantita).toFixed(2)}
+                  €{(Number(item.prezzo_unitario ?? item.prezzo_vendita ?? 0) * item.quantita).toFixed(2)}
                 </p>
 
                 {/* Remove */}
