@@ -12,7 +12,7 @@ class BannerBase(BaseModel):
     attivo: bool = True
     data_inizio: Optional[datetime] = None
     data_fine: Optional[datetime] = None
-    posizione: str = "top"
+    posizione: Optional[str] = "top"
 
 
 class BannerCreate(BannerBase):
