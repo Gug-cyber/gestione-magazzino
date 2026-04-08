@@ -152,6 +152,21 @@ COLUMN_MIGRATIONS = [
         "column": "must_change_password",
         "definition": "BOOLEAN DEFAULT FALSE",
     },
+    {
+        "table": "banner",
+        "column": "posizione",
+        "definition": "VARCHAR(50) DEFAULT 'top'",
+    },
+    {
+        "table": "promozioni",
+        "column": "prodotto_id",
+        "definition": "INTEGER",
+    },
+    {
+        "table": "promozioni",
+        "column": "categoria_id",
+        "definition": "INTEGER",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)
@@ -173,7 +188,10 @@ POST_COLUMN_SQL = [
     "UPDATE righe_fornitura SET tipo_voce = 'prodotto' WHERE tipo_voce IS NULL",
     # Unique index for barcode (partial: only non-null values)
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_prodotti_barcode ON prodotti(barcode) WHERE barcode IS NOT NULL",
-]
+    # Backfill posizione for existing banners
+    "UPDATE banner SET posizione = 'top' WHERE posizione IS NULL",
+    "UPDATE banner SET posizione = 'top' WHERE posizione IS NULL",
+] 
 
 
 def _validate_identifier(value: str, kind: str) -> None:
