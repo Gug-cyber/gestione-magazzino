@@ -1,9 +1,35 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
+import { storeAPI } from '../../api/store'
 
 export default function StoreLayout({ children }) {
   const { totalItems } = useCart()
   const location = useLocation()
+  const [sideBanners, setSideBanners] = useState([])
+  const [isWide, setIsWide] = useState(() => window.innerWidth >= 1500)
+
+  useEffect(() => {
+    storeAPI.getBannersPublici()
+      .then(res => {
+        const all = res.data || []
+        setSideBanners(all.filter(b => b.posizione === 'sidebar_left' || b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both'))
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const MIN_WIDTH = 1500
+    function handleResize() {
+      setIsWide(window.innerWidth >= MIN_WIDTH)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const leftBanners = sideBanners.filter(b => b.posizione === 'sidebar_left' || b.posizione === 'sidebar_both')
+  const rightBanners = sideBanners.filter(b => b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both')
+  const showSidebars = isWide && (leftBanners.length > 0 || rightBanners.length > 0)
 
   const navLinkStyle = (path) => ({
     color: location.pathname === path ? 'var(--color-primary)' : 'var(--color-text-secondary)',
@@ -14,6 +40,18 @@ export default function StoreLayout({ children }) {
     borderRadius: '6px',
     transition: 'color 150ms ease',
   })
+
+  const sidebarStyle = {
+    width: '160px',
+    flexShrink: 0,
+    padding: '16px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    position: 'sticky',
+    top: '72px',
+    alignSelf: 'flex-start',
+  }
 
   return (
     <div style={{
@@ -72,10 +110,49 @@ export default function StoreLayout({ children }) {
         </div>
       </nav>
 
-      {/* Main content */}
-      <main style={{ padding: 'clamp(16px, 3vw, 32px)', maxWidth: '1200px', margin: '0 auto' }}>
-        {children}
-      </main>
+      {/* Body: sidebar sinistra + contenuto principale + sidebar destra */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        minHeight: 'calc(100vh - 56px)',
+      }}>
+        {/* Colonna banner sinistra */}
+        {showSidebars && leftBanners.length > 0 && (
+          <aside style={sidebarStyle}>
+            {leftBanners.map(b => (
+              <a key={b.id} href={b.link_url || '#'} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={b.immagine_url}
+                  alt={b.titolo}
+                  style={{ width: '100%', borderRadius: '8px', display: 'block' }}
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </a>
+            ))}
+          </aside>
+        )}
+
+        {/* Contenuto principale */}
+        <main style={{ flex: 1, minWidth: 0, padding: 'clamp(16px, 3vw, 32px)', maxWidth: '1200px', margin: showSidebars ? '0' : '0 auto' }}>
+          {children}
+        </main>
+
+        {/* Colonna banner destra */}
+        {showSidebars && rightBanners.length > 0 && (
+          <aside style={sidebarStyle}>
+            {rightBanners.map(b => (
+              <a key={b.id} href={b.link_url || '#'} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={b.immagine_url}
+                  alt={b.titolo}
+                  style={{ width: '100%', borderRadius: '8px', display: 'block' }}
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </a>
+            ))}
+          </aside>
+        )}
+      </div>
 
       {/* Footer */}
       <footer style={{
@@ -91,3 +168,4 @@ export default function StoreLayout({ children }) {
     </div>
   )
 }
+

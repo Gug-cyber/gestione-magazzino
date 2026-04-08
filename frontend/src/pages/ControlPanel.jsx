@@ -131,7 +131,7 @@ function TabFlags() {
 
 // ─── Tab: Banner ──────────────────────────────────────────────────────────────
 
-const EMPTY_BANNER = { titolo: '', immagine_url: '', link_url: '', ordine: 0, attivo: true, data_inizio: '', data_fine: '', descrizione: '' }
+const EMPTY_BANNER = { titolo: '', immagine_url: '', link_url: '', ordine: 0, attivo: true, data_inizio: '', data_fine: '', descrizione: '', posizione: 'top' }
 
 function TabBanner() {
   const [banners, setBanners] = useState([])
@@ -164,6 +164,7 @@ function TabBanner() {
       data_inizio: b.data_inizio ? b.data_inizio.slice(0, 16) : '',
       data_fine: b.data_fine ? b.data_fine.slice(0, 16) : '',
       descrizione: b.descrizione || '',
+      posizione: b.posizione || 'top',
     })
     setShowForm(true)
   }
@@ -181,6 +182,7 @@ function TabBanner() {
         data_inizio: form.data_inizio ? new Date(form.data_inizio).toISOString() : null,
         data_fine: form.data_fine ? new Date(form.data_fine).toISOString() : null,
         descrizione: form.descrizione || null,
+        posizione: form.posizione || 'top',
       }
       if (editId) {
         await controlPanelAPI.updateBanner(editId, payload)
@@ -243,6 +245,15 @@ function TabBanner() {
                 <input style={inputStyle} type="number" value={form.ordine} onChange={e => setForm(p => ({ ...p, ordine: e.target.value }))} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                Posizione
+                <select style={inputStyle} value={form.posizione} onChange={e => setForm(p => ({ ...p, posizione: e.target.value }))}>
+                  <option value="top">In cima (banner orizzontale)</option>
+                  <option value="sidebar_left">Colonna sinistra</option>
+                  <option value="sidebar_right">Colonna destra</option>
+                  <option value="sidebar_both">Entrambe le colonne</option>
+                </select>
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 Data inizio
                 <input style={inputStyle} type="datetime-local" value={form.data_inizio} onChange={e => setForm(p => ({ ...p, data_inizio: e.target.value }))} />
               </label>
@@ -277,6 +288,7 @@ function TabBanner() {
                 <th>Titolo</th>
                 <th>Immagine</th>
                 <th>Link</th>
+                <th>Posizione</th>
                 <th>Priorità</th>
                 <th>Attivo</th>
                 <th>Date</th>
@@ -285,7 +297,7 @@ function TabBanner() {
             </thead>
             <tbody>
               {banners.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '32px' }}>Nessun banner</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '32px' }}>Nessun banner</td></tr>
               ) : banners.map(b => (
                 <tr key={b.id}>
                   <td style={{ fontWeight: '500' }}>{b.titolo}</td>
@@ -296,6 +308,9 @@ function TabBanner() {
                   </td>
                   <td style={{ fontSize: '12px', color: 'var(--color-text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {b.link_url || '—'}
+                  </td>
+                  <td style={{ fontSize: '12px' }}>
+                    {{ top: 'In cima', sidebar_left: 'Col. sinistra', sidebar_right: 'Col. destra', sidebar_both: 'Entrambe' }[b.posizione] || b.posizione || 'In cima'}
                   </td>
                   <td>{b.ordine}</td>
                   <td>

@@ -27,7 +27,7 @@ export default function StorePage() {
           storeAPI.getPromozioniAttive(),
         ])
         if (flagsRes.status === 'fulfilled') setFlags(flagsRes.value.data)
-        if (bannersRes.status === 'fulfilled') setBanners(bannersRes.value.data)
+        if (bannersRes.status === 'fulfilled') setBanners((bannersRes.value.data || []).filter(b => !b.posizione || b.posizione === 'top'))
         if (promosRes.status === 'fulfilled') setPromozioni(promosRes.value.data)
       } catch {}
     }
