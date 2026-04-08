@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from typing import List, Optional
 from datetime import datetime, timezone
 from ..models.promozione import Promozione
@@ -51,20 +51,21 @@ def delete_promozione(db: Session, promozione_id: int) -> bool:
 
 
 def get_promozioni_attive_per_prodotto(db: Session, prodotto_id: int, categoria_id: Optional[int] = None) -> List[Promozione]:
-    """Restituisce promozioni attive che matchano prodotto_id O categoria_id."""
+    """Restituisce promozioni attive che matchano prodotto_id O categoria_id, incluse le promozioni globali."""
     now = datetime.now(timezone.utc)
     query = db.query(Promozione).filter(
         Promozione.is_active.is_(True),
         or_(Promozione.data_inizio.is_(None), Promozione.data_inizio <= now),
         or_(Promozione.data_fine.is_(None), Promozione.data_fine >= now),
     )
+    # Promozioni globali (senza prodotto e categoria) OPPURE specifiche per prodotto/categoria
+    filter_conditions = [
+        and_(Promozione.prodotto_id.is_(None), Promozione.categoria_id.is_(None))  # globale
+    ]
     if categoria_id is not None:
-        query = query.filter(
-            or_(
-                Promozione.prodotto_id == prodotto_id,
-                Promozione.categoria_id == categoria_id,
-            )
-        )
+        filter_conditions.append(Promozione.prodotto_id == prodotto_id)
+        filter_conditions.append(Promozione.categoria_id == categoria_id)
     else:
-        query = query.filter(Promozione.prodotto_id == prodotto_id)
+        filter_conditions.append(Promozione.prodotto_id == prodotto_id)
+    query = query.filter(or_(*filter_conditions))
     return query.all()
