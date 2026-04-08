@@ -129,7 +129,9 @@ def test_update_ordine_stato_confermato_genera_fattura(client, auth_headers):
         headers=auth_headers,
     )
     assert resp_fatture2.status_code == 200
-    assert len(resp_fatture2.json()) == 1  # ancora solo 1 fattura
+    fatture2 = resp_fatture2.json()
+    assert len(fatture2) == 1  # ancora solo 1 fattura, non duplicata
+    assert fatture2[0]["id"] == fatture[0]["id"]  # stessa fattura
 
 
 def test_spedito_a_completato_non_scala_stock(client, auth_headers):
