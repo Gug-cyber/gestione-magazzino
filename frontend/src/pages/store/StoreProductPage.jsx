@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
@@ -13,6 +13,7 @@ export default function StoreProductPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [added, setAdded] = useState(false)
+  const addedTimerRef = useRef(null)
 
   useEffect(() => {
     setLoading(true)
@@ -27,11 +28,16 @@ export default function StoreProductPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  useEffect(() => {
+    return () => { if (addedTimerRef.current) clearTimeout(addedTimerRef.current) }
+  }, [])
+
   function handleAddToCart(qty) {
     if (!prodotto) return
     addItem({ ...prodotto, quantita_disponibile: prodotto.quantita }, qty)
     setAdded(true)
-    setTimeout(() => setAdded(false), 2200)
+    if (addedTimerRef.current) clearTimeout(addedTimerRef.current)
+    addedTimerRef.current = setTimeout(() => setAdded(false), 2200)
   }
 
   if (loading) {

@@ -1,4 +1,4 @@
-export default function StockBadge({ quantita, soglia = 4 }) {
+export default function StockBadge({ quantita, soglia = 3 }) {
   if (quantita === 0) {
     return (
       <Badge bg="var(--color-danger-bg)" color="var(--color-danger)" border="var(--color-danger-border)">
