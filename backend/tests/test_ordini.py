@@ -89,8 +89,9 @@ def test_create_ordine_quantita_insufficiente(client, auth_headers):
     assert "insufficiente" in resp.json()["detail"].lower()
 
 
-def test_update_ordine_stato_completato_genera_fattura(client, auth_headers):
-    """Verifica che passare lo stato a 'completato' generi automaticamente una fattura."""
+def test_update_ordine_stato_confermato_genera_fattura(client, auth_headers):
+    """Verifica che passare lo stato a 'confermato' generi automaticamente una fattura
+    e che portare a 'completato' non la duplichi."""
     prodotto = _crea_prodotto(client, auth_headers, sku="TEST-003", quantita=10)
     prodotto_id = prodotto["id"]
 
@@ -98,15 +99,15 @@ def test_update_ordine_stato_completato_genera_fattura(client, auth_headers):
     assert resp.status_code == 201
     ordine_id = resp.json()["id"]
 
-    # Porta a completato
-    resp_update = client.put(
+    # Porta a confermato → deve generare la fattura
+    resp_conf = client.put(
         f"/api/ordini/{ordine_id}",
-        json={"stato": "completato"},
+        json={"stato": "confermato"},
         headers=auth_headers,
     )
-    assert resp_update.status_code == 200
+    assert resp_conf.status_code == 200
 
-    # Verifica che esista una fattura per questo ordine
+    # Verifica fattura già presente dopo la conferma
     resp_fatture = client.get(
         f"/api/fatture/?ordine_id={ordine_id}",
         headers=auth_headers,
@@ -115,6 +116,22 @@ def test_update_ordine_stato_completato_genera_fattura(client, auth_headers):
     fatture = resp_fatture.json()
     assert len(fatture) >= 1
     assert any(f.get("auto_generata") for f in fatture)
+
+    # Porta a completato: la fattura non deve essere duplicata
+    resp_comp = client.put(
+        f"/api/ordini/{ordine_id}",
+        json={"stato": "completato"},
+        headers=auth_headers,
+    )
+    assert resp_comp.status_code == 200
+    resp_fatture2 = client.get(
+        f"/api/fatture/?ordine_id={ordine_id}",
+        headers=auth_headers,
+    )
+    assert resp_fatture2.status_code == 200
+    fatture2 = resp_fatture2.json()
+    assert len(fatture2) == 1  # ancora solo 1 fattura, non duplicata
+    assert fatture2[0]["id"] == fatture[0]["id"]  # stessa fattura
 
 
 def test_spedito_a_completato_non_scala_stock(client, auth_headers):

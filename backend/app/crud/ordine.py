@@ -175,10 +175,11 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     Transizione → confermato:
       - Se stock non ancora scalato: lock pessimistico, verifica disponibilità,
         decrementa stock, registra movimenti, setta stock_scalato=True.
+      - Genera fattura automatica (anti-duplicazione via get_fattura_by_ordine).
 
     Transizione → completato:
       - Imposta data_completamento.
-      - Genera fattura automatica (anti-duplicazione via get_fattura_by_ordine).
+      - NON genera più fattura (già generata alla conferma).
       - NON scala lo stock (già scalato alla conferma).
 
     Transizione → annullato (se stock già scalato):
@@ -254,15 +255,15 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                 ordine.stock_scalato,
             )
 
+        # Genera fattura automatica alla conferma (pagamento già avvenuto)
+        if not get_fattura_by_ordine(db, ordine.id):
+            genera_fattura_da_ordine(db, ordine)
+
     # ------------------------------------------------------------------ #
     # Transizione → COMPLETATO                                            #
     # ------------------------------------------------------------------ #
     if nuovo_stato == StatoOrdine.completato and stato_precedente != StatoOrdine.completato:
         ordine.data_completamento = datetime.now(timezone.utc)
-
-        # Genera fattura automatica se non già presente (anti-duplicazione)
-        if not get_fattura_by_ordine(db, ordine.id):
-            genera_fattura_da_ordine(db, ordine)
 
     # ------------------------------------------------------------------ #
     # Transizione → ANNULLATO                                             #
