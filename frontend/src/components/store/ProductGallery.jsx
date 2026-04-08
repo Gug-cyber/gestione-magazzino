@@ -45,9 +45,14 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
           }} />
         )}
 
-        {/* Fallback */}
+        {/* Fallback SVG placeholder */}
         {(!current || imgError) && (
-          <span style={{ fontSize: '96px', opacity: 0.18 }}>🃏</span>
+          <svg width="72" height="72" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.18, color: 'var(--color-text-secondary)' }}>
+            <rect x="10" y="14" width="36" height="30" rx="3" stroke="currentColor" strokeWidth="1.8" />
+            <polyline points="10,22 28,30 46,22" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <line x1="28" y1="30" x2="28" y2="44" stroke="currentColor" strokeWidth="1.8" />
+            <polyline points="18,10 28,14 38,10" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          </svg>
         )}
 
         {/* Image */}

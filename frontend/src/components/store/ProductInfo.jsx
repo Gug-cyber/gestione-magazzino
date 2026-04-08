@@ -55,7 +55,7 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
       <div style={{ height: '1px', backgroundColor: 'var(--color-border)' }} />
 
       {/* Stock */}
-      <StockBadge quantita={prodotto.quantita} />
+      <StockBadge quantita={prodotto.quantita} in_esaurimento={!!prodotto.in_esaurimento} />
 
       {/* Price */}
       <PriceDisplay

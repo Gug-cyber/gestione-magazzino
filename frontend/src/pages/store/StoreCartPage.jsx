@@ -61,7 +61,11 @@ export default function StoreCartPage() {
                   {item.foto_url ? (
                     <img src={item.foto_url} alt={item.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontSize: '24px', opacity: 0.4 }}>🃏</span>
+                    <svg width="24" height="24" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.35, color: 'var(--color-text-muted)' }}>
+                      <rect x="10" y="14" width="36" height="30" rx="3" stroke="currentColor" strokeWidth="2" />
+                      <polyline points="10,22 28,30 46,22" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                      <line x1="28" y1="30" x2="28" y2="44" stroke="currentColor" strokeWidth="2" />
+                    </svg>
                   )}
                 </div>
 
