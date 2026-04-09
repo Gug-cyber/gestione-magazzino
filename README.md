@@ -125,6 +125,7 @@ Tutti gli endpoint supportano operazioni CRUD complete (GET, POST, PUT, DELETE).
 ### Health Check
 ```
 GET /health
+GET /health/db
 ```
 
 ## 🔧 Sviluppo Locale (senza Docker)
@@ -191,6 +192,33 @@ pytest
 | `UPLOAD_DIR` | `/app/uploads` | Directory per i file caricati |
 
 > ⚠️ In produzione il server **non si avvia** se `SECRET_KEY` è quella di default o ha meno di 32 caratteri.
+
+## ⏰ Keep-Alive (Render Free Plan)
+
+Render mette in sleep i servizi gratuiti dopo 15 minuti di inattività. Per mantenerli attivi è incluso un workflow GitHub Actions che pinga il backend e il database ogni 10 minuti.
+
+### Configurare il secret `RENDER_BACKEND_URL`
+
+1. Vai su **Settings → Secrets and variables → Actions** nel tuo repository GitHub
+2. Clicca su **New repository secret**
+3. Nome: `RENDER_BACKEND_URL`
+4. Valore: l'URL del tuo backend Render (es. `https://gestione-magazzino-backend.onrender.com`)
+5. Clicca **Add secret**
+
+Il workflow `.github/workflows/keep-alive.yml` verrà eseguito automaticamente ogni 10 minuti e:
+- Pinga `GET /health` per tenere attivo il **backend**
+- Pinga `GET /health/db` per tenere attiva la **connessione al database**
+- Fallisce (con notifica) se uno dei due endpoint non risponde con HTTP 200
+
+### Esecuzione manuale locale
+
+```bash
+# Pinga i servizi in locale
+python scripts/ping_services.py
+
+# Pinga i servizi in produzione
+BACKEND_URL=https://gestione-magazzino-backend.onrender.com python scripts/ping_services.py
+```
 
 ## 🤝 Come Contribuire
 

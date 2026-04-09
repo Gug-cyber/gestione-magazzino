@@ -1,0 +1,41 @@
+name: ⏰ Keep-Alive Ping
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Backend (/health)
+        run: |
+          echo "🔔 Pinging backend health endpoint..."
+          START=$(date +%s%3N)
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.RENDER_BACKEND_URL }}/health")
+          END=$(date +%s%3N)
+          LATENCY=$((END - START))
+          echo "Status: $RESPONSE | Latency: ${LATENCY}ms"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "❌ Backend health check failed with status $RESPONSE"
+            exit 1
+          fi
+          echo "✅ Backend is alive (HTTP $RESPONSE, ${LATENCY}ms)"
+
+      - name: Ping Database (/health/db)
+        run: |
+          echo "🔔 Pinging database health endpoint..."
+          START=$(date +%s%3N)
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.RENDER_BACKEND_URL }}/health/db")
+          END=$(date +%s%3N)
+          LATENCY=$((END - START))
+          echo "Status: $RESPONSE | Latency: ${LATENCY}ms"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "❌ Database health check failed with status $RESPONSE"
+            exit 1
+          fi
+          echo "✅ Database is reachable (HTTP $RESPONSE, ${LATENCY}ms)"
