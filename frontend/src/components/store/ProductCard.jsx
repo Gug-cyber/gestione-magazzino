@@ -53,7 +53,7 @@ function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
   return null
 }
 
-export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) {
+export default function ProductCard({ prodotto, onAddToCart, promozioni = [], index = 0 }) {
   const { isInCart, getItemQty } = useCart()
   const [hovered, setHovered] = useState(false)
 
@@ -72,13 +72,6 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) 
 
   return (
     <>
-      <style>{`
-        @keyframes shimmer {
-          0%   { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
-
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -108,6 +101,7 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [] }) 
             alt={prodotto.nome}
             aspectRatio="card"
             hovered={hovered}
+            priority={index === 0}
           />
           <OverlayBadge
             isEsaurito={isEsaurito}
