@@ -27,8 +27,9 @@ function PlaceholderSVG() {
  *   aspectRatio  – 'card' (4/3 ratio, no border) | 'detail' (1:1, border + shadow)
  *   className    – optional extra class
  *   hovered      – whether the parent card is hovered (for scale effect on card)
+ *   priority     – true for above-the-fold images (eager + high fetchpriority)
  */
-export default function ProductImage({ src, alt, aspectRatio = 'card', className, hovered = false }) {
+export default function ProductImage({ src, alt, aspectRatio = 'card', className, hovered = false, priority = false }) {
   const [loaded, setLoaded] = useState(false)
   const [errored, setErrored] = useState(false)
 
@@ -72,6 +73,11 @@ export default function ProductImage({ src, alt, aspectRatio = 'card', className
           alt={alt}
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
+          width="1"
+          height="1"
+          loading={priority ? 'eager' : 'lazy'}
+          decoding={priority ? undefined : 'async'}
+          fetchpriority={priority ? 'high' : undefined}
           style={{
             position: 'absolute', inset: 0,
             width: '100%', height: '100%',

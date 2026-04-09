@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import StoreLayout from '../../components/store/StoreLayout'
 import ProductCard from '../../components/store/ProductCard'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
+
+const PAGE_LIMIT = 40
 
 export default function StorePage() {
   const { addItem } = useCart()
   const [prodotti, setProdotti] = useState([])
   const [categorie, setCategorie] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
@@ -17,6 +20,20 @@ export default function StorePage() {
   const [banners, setBanners] = useState([])
   const [promozioni, setPromozioni] = useState([])
   const [bannerIdx, setBannerIdx] = useState(0)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+
+  // Reset pagination when filters change
+  const prevFilters = useRef({ search, categoriaId, disponibiliOnly })
+  useEffect(() => {
+    const prev = prevFilters.current
+    if (prev.search !== search || prev.categoriaId !== categoriaId || prev.disponibiliOnly !== disponibiliOnly) {
+      prevFilters.current = { search, categoriaId, disponibiliOnly }
+      setProdotti([])
+      setPage(1)
+      setHasMore(false)
+    }
+  }, [search, categoriaId, disponibiliOnly])
 
   useEffect(() => {
     async function fetchPublic() {
@@ -35,29 +52,44 @@ export default function StorePage() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
     async function fetchData() {
-      setLoading(true)
+      if (page === 1) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
       setError(null)
       try {
-        const [prodRes, catRes] = await Promise.all([
-          storeAPI.getProdotti({
-            search: search || undefined,
-            categoria_id: categoriaId || undefined,
-            disponibili_only: disponibiliOnly,
-            limit: 200,
-          }),
-          storeAPI.getCategorie(),
-        ])
-        setProdotti(prodRes.data)
-        setCategorie(catRes.data)
+        const skip = (page - 1) * PAGE_LIMIT
+        const prodRes = await storeAPI.getProdotti({
+          search: search || undefined,
+          categoria_id: categoriaId || undefined,
+          disponibili_only: disponibiliOnly,
+          limit: PAGE_LIMIT,
+          skip,
+        })
+        if (!cancelled) {
+          const newProdotti = prodRes.data
+          setProdotti(prev => page === 1 ? newProdotti : [...prev, ...newProdotti])
+          setHasMore(newProdotti.length >= PAGE_LIMIT)
+        }
+        if (page === 1) {
+          const catRes = await storeAPI.getCategorie()
+          if (!cancelled) setCategorie(catRes.data)
+        }
       } catch (err) {
-        setError('Errore nel caricamento dei prodotti.')
+        if (!cancelled) setError('Errore nel caricamento dei prodotti.')
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setLoadingMore(false)
+        }
       }
     }
     fetchData()
-  }, [search, categoriaId, disponibiliOnly])
+    return () => { cancelled = true }
+  }, [search, categoriaId, disponibiliOnly, page])
 
   function handleAddToCart(prodotto) {
     const activePromos = flags.discounts_enabled !== false ? promozioni : []
@@ -259,20 +291,36 @@ export default function StorePage() {
             )}
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: '24px',
-          }}>
-            {prodotti.map(p => (
-              <ProductCard
-                key={p.id}
-                prodotto={p}
-                onAddToCart={handleAddToCart}
-                promozioni={flags.discounts_enabled !== false ? promozioni : []}
-              />
-            ))}
-          </div>
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: '24px',
+            }}>
+              {prodotti.map((p, i) => (
+                <ProductCard
+                  key={p.id}
+                  prodotto={p}
+                  index={i}
+                  onAddToCart={handleAddToCart}
+                  promozioni={flags.discounts_enabled !== false ? promozioni : []}
+                />
+              ))}
+            </div>
+
+            {hasMore && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '32px' }}>
+                <button
+                  className="gm-btn gm-btn-ghost"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={loadingMore}
+                  style={{ minWidth: '200px' }}
+                >
+                  {loadingMore ? 'Caricamento…' : 'Carica altri prodotti'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </StoreLayout>

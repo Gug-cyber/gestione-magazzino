@@ -63,6 +63,10 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
             alt={nome}
             onLoad={() => { setImgLoaded(true); setImgError(false) }}
             onError={() => setImgError(true)}
+            width="1"
+            height="1"
+            loading="lazy"
+            decoding="async"
             style={{
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
@@ -74,12 +78,6 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
           />
         )}
 
-        <style>{`
-          @keyframes shimmer {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-        `}</style>
       </div>
 
       {/* Thumbnail strip — shown only if multiple images */}
@@ -105,6 +103,8 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
               <img
                 src={img}
                 alt={`${nome} ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             </button>

@@ -80,7 +80,8 @@ def _build_foto_url(prodotto: Prodotto, request: Request) -> Optional[str]:
     if prodotto.foto_path.startswith("http://") or prodotto.foto_path.startswith("https://"):
         return prodotto.foto_path
     if os.path.exists(prodotto.foto_path):
-        return f"/api/prodotti/{prodotto.id}/foto"
+        base = str(request.base_url).rstrip("/")
+        return f"{base}/api/prodotti/{prodotto.id}/foto"
     return None
 
 
