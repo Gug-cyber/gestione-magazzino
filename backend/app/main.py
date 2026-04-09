@@ -1,13 +1,16 @@
 import os
 import sys
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from .limiter import limiter
-from .database import engine, Base, SessionLocal
+from .database import engine, Base, SessionLocal, get_db
 from .routers import prodotti, categorie, movimenti, fornitori, ubicazioni
 from .routers import auth
 from .routers import spese_gestione, analisi, dati_storici, fatture, clienti
@@ -168,20 +171,20 @@ def health_check():
 
 
 @app.get("/health/db", tags=["Health"])
-def health_db():
-    from fastapi.responses import JSONResponse
-    from sqlalchemy import text
-    db = SessionLocal()
+def health_db(db: Session = Depends(get_db)):
+    """Check database connectivity by executing a simple SELECT 1 query.
+
+    Returns 200 with ``{"status": "ok", "database": "connected"}`` on success,
+    or 503 with an error payload if the database is unreachable.
+    """
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
-    except Exception as e:
+    except Exception:
         return JSONResponse(
             status_code=503,
-            content={"status": "error", "database": "unreachable", "detail": str(e)},
+            content={"status": "error", "database": "unreachable"},
         )
-    finally:
-        db.close()
 
 
 @app.get("/", tags=["Root"])
