@@ -167,6 +167,23 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/health/db", tags=["Health"])
+def health_db():
+    from fastapi.responses import JSONResponse
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "database": "unreachable", "detail": str(e)},
+        )
+    finally:
+        db.close()
+
+
 @app.get("/", tags=["Root"])
 def read_root():
     return {"message": "Gestione Magazzino API"}
