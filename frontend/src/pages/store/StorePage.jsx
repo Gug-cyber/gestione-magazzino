@@ -72,7 +72,7 @@ export default function StorePage() {
         if (!cancelled) {
           const newProdotti = prodRes.data
           setProdotti(prev => page === 1 ? newProdotti : [...prev, ...newProdotti])
-          setHasMore(newProdotti.length >= PAGE_LIMIT)
+          setHasMore(newProdotti.length === PAGE_LIMIT)
         }
         if (page === 1) {
           const catRes = await storeAPI.getCategorie()
