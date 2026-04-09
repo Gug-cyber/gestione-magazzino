@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 const STRAPI_URL = import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337';
 
@@ -24,17 +25,74 @@ export default function Banner({ banners }) {
       : `${STRAPI_URL}${imageUrl}`
     : null;
 
+  const BannerContent = () => (
+    <>
+      {image && (
+        <img 
+          src={image} 
+          alt={attrs.title} 
+          className="banner-image" 
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
+      )}
+      <div 
+        className="banner-content"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          minHeight: '300px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end'
+        }}
+      >
+        {attrs.subtitle && (
+          <span style={{ 
+            display: 'inline-block', 
+            padding: '6px 12px', 
+            background: 'var(--color-accent-subtle)', 
+            color: 'var(--color-accent)', 
+            borderRadius: 'var(--radius-full)', 
+            fontSize: '12px', 
+            fontWeight: 600,
+            marginBottom: 'var(--spacing-md)',
+            width: 'fit-content'
+          }}>
+            {attrs.subtitle}
+          </span>
+        )}
+        <h2 className="banner-title">{attrs.title}</h2>
+        {attrs.description && (
+          <p className="banner-subtitle">{attrs.description}</p>
+        )}
+        {attrs.link && (
+          <span className="banner-cta" style={{ width: 'fit-content' }}>
+            Scopri di piu
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </span>
+        )}
+      </div>
+    </>
+  );
+
   return (
-    <div className="banner-container">
+    <div className="banner-container" style={{ position: 'relative', overflow: 'hidden' }}>
       {attrs.link ? (
-        <a href={attrs.link} className="banner-link">
-          {image && <img src={image} alt={attrs.title} className="banner-image" />}
-          <div className="banner-title">{attrs.title}</div>
-        </a>
+        <Link to={attrs.link} className="banner-link" style={{ display: 'block', position: 'relative' }}>
+          <BannerContent />
+        </Link>
       ) : (
-        <div className="banner-static">
-          {image && <img src={image} alt={attrs.title} className="banner-image" />}
-          <div className="banner-title">{attrs.title}</div>
+        <div className="banner-static" style={{ position: 'relative' }}>
+          <BannerContent />
         </div>
       )}
 
