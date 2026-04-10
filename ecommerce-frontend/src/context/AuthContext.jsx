@@ -4,6 +4,7 @@ import { loginUser, registerUser, getCurrentUser } from '../api/auth';
 export const AuthContext = createContext(null);
 
 const STORAGE_KEY = 'tcg-store-auth-token';
+const DEFAULT_ERROR_MSG = 'Errore di connessione, riprova';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -47,7 +48,7 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       return data;
     } catch (err) {
-      setError(err.message || 'Errore di connessione, riprova');
+      setError(err.message || DEFAULT_ERROR_MSG);
       throw err;
     }
   }
@@ -61,7 +62,7 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       return data;
     } catch (err) {
-      setError(err.message || 'Errore di connessione, riprova');
+      setError(err.message || DEFAULT_ERROR_MSG);
       throw err;
     }
   }
