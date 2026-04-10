@@ -18,11 +18,57 @@ const SPEDIZIONE_OPTIONS = [
   { tipo: 'express', label: 'Spedizione express', costo: 9.90, icona: '⚡', dettaglio: '1-2 giorni lavorativi' },
 ]
 
+const PAGAMENTO_ICON_STYLE = {
+  width: '40px',
+  height: '40px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '8px',
+  backgroundColor: '#fff',
+  padding: '4px',
+  flexShrink: 0,
+}
+
 const PAGAMENTO_OPTIONS = [
-  { tipo: 'carta', label: 'Carta di credito/debito', icona: '💳' },
-  { tipo: 'paypal', label: 'PayPal', icona: '🅿️' },
-  { tipo: 'applepay', label: 'Apple Pay', icona: '🍎' },
-  { tipo: 'googlepay', label: 'Google Pay', icona: '🔵' },
+  {
+    tipo: 'carta',
+    label: 'Carta di credito/debito',
+    icona: (
+      <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="22" rx="3" fill="#1A1F71"/>
+        <rect y="5" width="32" height="5" fill="#F7B600"/>
+        <rect x="3" y="14" width="8" height="2" rx="1" fill="white" opacity="0.7"/>
+      </svg>
+    ),
+  },
+  {
+    tipo: 'paypal',
+    label: 'PayPal',
+    icona: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">
+        <path fill="#009cde" d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/>
+      </svg>
+    ),
+  },
+  {
+    tipo: 'applepay',
+    label: 'Apple Pay',
+    icona: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+      </svg>
+    ),
+  },
+  {
+    tipo: 'googlepay',
+    label: 'Google Pay',
+    icona: (
+      <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 10.8v2.6h3.6c-.2 1-1.3 3-3.6 3-2.2 0-4-1.8-4-4s1.8-4 4-4c1.2 0 2 .5 2.5 1l1.8-1.7C15 6.4 13.6 5.8 12 5.8c-3.4 0-6.2 2.8-6.2 6.2s2.8 6.2 6.2 6.2c3.6 0 5.9-2.5 5.9-6 0-.4 0-.7-.1-1H12z" fill="#4285F4"/>
+      </svg>
+    ),
+  },
   { tipo: 'negozio', label: 'Pagamento in negozio', icona: '🏪', dettaglio: 'Paga al momento del ritiro' },
 ]
 
@@ -482,7 +528,7 @@ export default function StoreCheckoutPage() {
                         transition: 'border-color 0.15s',
                       }}
                     >
-                      <span style={{ fontSize: '22px' }}>{opt.icona}</span>
+                      <div style={PAGAMENTO_ICON_STYLE}>{opt.icona}</div>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: 'var(--color-text)' }}>{opt.label}</p>
                         {opt.dettaglio && (
