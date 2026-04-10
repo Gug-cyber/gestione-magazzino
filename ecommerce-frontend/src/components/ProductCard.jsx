@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './ProductCard.css';
 import { useCart } from '../hooks/useCart';
+import { useToast } from '../context/ToastContext';
 
 const STRAPI_URL = import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337';
+const SUCCESS_STATE_DURATION = 2000;
 
 export default function ProductCard({ product }) {
   const { attributes } = product;
@@ -16,15 +18,24 @@ export default function ProductCard({ product }) {
   const discount = attributes.discount_percentage;
   const categoryName = attributes.category?.data?.attributes?.name;
   const { addToCart } = useCart();
+  const { showToast } = useToast();
   const [cartAdded, setCartAdded] = React.useState(false);
+  const [shake, setShake] = React.useState(false);
 
   const handleQuickAction = (e, action) => {
     e.preventDefault();
     e.stopPropagation();
     if (action === 'cart') {
+      if (attributes.quantity === 0) {
+        showToast('Prodotto non disponibile', 'error');
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+        return;
+      }
       addToCart(product, 1);
       setCartAdded(true);
-      setTimeout(() => setCartAdded(false), 1000);
+      showToast(`${attributes.title} aggiunto al carrello!`, 'success');
+      setTimeout(() => setCartAdded(false), SUCCESS_STATE_DURATION);
     } else {
       // Placeholder per future funzionalita
       console.log(`${action} clicked for product:`, attributes.title);
@@ -44,7 +55,7 @@ export default function ProductCard({ product }) {
   const stockStatus = getStockStatus();
 
   return (
-    <Link to={`/product/${attributes.slug}`} className="product-card">
+    <Link to={`/product/${attributes.slug}`} className={`product-card${shake ? ' shake' : ''}`}>
       <div className="product-image">
         {image ? (
           <img src={image} alt={attributes.title} loading="lazy" />
@@ -84,13 +95,21 @@ export default function ProductCard({ product }) {
             className="quick-action-btn" 
             onClick={(e) => handleQuickAction(e, 'cart')}
             aria-label="Aggiungi al carrello"
-            style={cartAdded ? { color: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : undefined}
+            style={cartAdded
+              ? { color: 'var(--color-success)', borderColor: 'var(--color-success)', background: 'rgba(34,197,94,0.1)' }
+              : undefined}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="9" cy="21" r="1"/>
-              <circle cx="20" cy="21" r="1"/>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-            </svg>
+            {cartAdded ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="9" cy="21" r="1"/>
+                <circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+            )}
           </button>
           <button 
             className="quick-action-btn" 

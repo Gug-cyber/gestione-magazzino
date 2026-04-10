@@ -3,30 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
 import { CartItem } from './CartItem';
+import EmptyCart from './EmptyCart';
+import CartSummary from './CartSummary';
+
+const SWIPE_CLOSE_THRESHOLD = 150;
 
 export function CartDrawer({ isOpen, onClose }) {
   const { items, totalItems, totalPrice, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [clearHover, setClearHover] = useState(false);
+  const [touchStart, setTouchStart] = useState(null);
+
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStart === null) return;
+    const delta = e.changedTouches[0].clientX - touchStart;
+    if (delta > SWIPE_CLOSE_THRESHOLD) onClose();
+    setTouchStart(null);
+  };
 
   return (
     <>
       {/* Overlay */}
-      {isOpen && (
-        <div
-          onClick={onClose}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            zIndex: 150,
-          }}
-        />
-      )}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.6)',
+          zIndex: 150,
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+      />
 
       {/* Drawer */}
       <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         style={{
           position: 'fixed',
           top: 0,
@@ -38,7 +57,7 @@ export function CartDrawer({ isOpen, onClose }) {
           border: '1px solid var(--color-border)',
           zIndex: 151,
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform var(--transition-normal)',
+          transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -105,28 +124,7 @@ export function CartDrawer({ isOpen, onClose }) {
         {/* Items list */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {items.length === 0 ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                gap: 'var(--spacing-md)',
-                color: 'var(--color-text-muted)',
-                padding: 'var(--spacing-xl)',
-              }}
-            >
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                <circle cx="9" cy="21" r="1"/>
-                <circle cx="20" cy="21" r="1"/>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-              </svg>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 500 }}>Il carrello è vuoto</p>
-              <p style={{ margin: 0, fontSize: 13, textAlign: 'center' }}>
-                Aggiungi prodotti dal catalogo per iniziare
-              </p>
-            </div>
+            <EmptyCart onClose={onClose} />
           ) : (
             items.map((item) => (
               <CartItem key={item.product.id} item={item} />
@@ -146,18 +144,7 @@ export function CartDrawer({ isOpen, onClose }) {
               gap: 'var(--spacing-md)',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Subtotale</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-accent)' }}>
-                {totalPrice.toFixed(2)} EUR
-              </span>
-            </div>
+            <CartSummary />
 
             <button
               onClick={() => {
@@ -167,7 +154,17 @@ export function CartDrawer({ isOpen, onClose }) {
               className="btn-primary"
               style={{ width: '100%' }}
             >
-              {isAuthenticated ? 'Vai al checkout' : 'Accedi per il checkout'}
+              {isAuthenticated ? (
+                <>Vai al checkout</>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Accedi per il checkout
+                </>
+              )}
             </button>
 
             <button
