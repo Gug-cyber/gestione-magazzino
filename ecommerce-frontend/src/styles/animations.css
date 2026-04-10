@@ -1,0 +1,98 @@
+/* ===== TCG STORE — ANIMATIONS ===== */
+
+/* Pulse — badge increment */
+@keyframes pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* Shake — error / out-of-stock */
+@keyframes shake {
+  0%,  100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-8px); }
+  30%, 70%  { transform: translateX(8px); }
+}
+
+/* Slide in from bottom — toast enter */
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Slide out to bottom — toast exit */
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* Bounce in — button success state */
+@keyframes bounceIn {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Float — empty state SVG */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Spin — loading indicator */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.pulse     { animation: pulse 0.35s ease; }
+.shake     { animation: shake 0.5s ease; }
+.bounce-in { animation: bounceIn 0.4s ease; }
+.float     { animation: float 3s ease-in-out infinite; }
+.fade-in   { animation: fadeIn 0.3s ease; }
+.spin      { animation: spin 0.8s linear infinite; }
+
+.toast-enter { animation: slideInUp 0.3s ease forwards; }
+.toast-exit  { animation: slideOutDown 0.35s ease forwards; }
+
+/* ===== FLOATING CART BUTTON (mobile only) ===== */
+.floating-cart-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gradient-gold);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  display: none;        /* hidden on desktop */
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border: none;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .floating-cart-button {
+    display: flex;
+  }
+}

@@ -5,6 +5,7 @@ import strapiAPI from '../api/strapi';
 import ProductGrid from '../components/ProductGrid.jsx';
 import Filters from '../components/Filters.jsx';
 import SearchBar from '../components/SearchBar.jsx';
+import FloatingCartButton from '../components/FloatingCartButton.jsx';
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -179,6 +180,9 @@ export default function Catalog() {
           onClick={() => setSortOpen(false)}
         />
       )}
+
+      {/* Mobile floating cart button */}
+      <FloatingCartButton />
     </div>
   );
 }
