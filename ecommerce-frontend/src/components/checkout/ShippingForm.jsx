@@ -7,7 +7,7 @@ const PROVINCES = [
   'LT','LE','LC','LI','LO','LU','MC','MN','MS','MT','ME','MI','MO','MB','NA',
   'NO','NU','OG','OT','OR','PD','PA','PR','PV','PG','PU','PE','PC','PI','PT',
   'PN','PZ','PO','RG','RA','RC','RE','RI','RN','RM','RO','SA','VS','SS','SV',
-  'SI','SR','SO','TA','TE','TR','TO','OT','TP','TN','TV','TS','UD','VA','VE',
+  'SI','SR','SO','TA','TE','TR','TO','TP','TN','TV','TS','UD','VA','VE',
   'VB','VC','VR','VV','VI','VT'
 ];
 

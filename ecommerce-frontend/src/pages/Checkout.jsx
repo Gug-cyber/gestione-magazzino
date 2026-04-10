@@ -223,12 +223,11 @@ export default function Checkout() {
                     <div
                       style={{ color: 'var(--color-text-muted)', marginTop: 4 }}
                     >
-                      Quantità: {item.quantity} ×{' '}
-                      {item.product.attributes.price.toFixed(2)} EUR
+                      Quantità: {item.quantity} × €{item.product.attributes.price.toFixed(2)}
                     </div>
                   </div>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>
-                    {(item.product.attributes.price * item.quantity).toFixed(2)} EUR
+                    €{(item.product.attributes.price * item.quantity).toFixed(2)}
                   </div>
                 </div>
               ))}
