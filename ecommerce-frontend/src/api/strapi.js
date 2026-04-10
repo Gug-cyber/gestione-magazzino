@@ -75,6 +75,45 @@ export const strapiAPI = {
       }
     });
     return response.data.data[0];
+  },
+
+  // Ordini
+  createOrder: async (orderData, token) => {
+    const response = await strapiClient.post('/orders', {
+      data: orderData
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  updateProductStock: async (productId, newQuantity, token) => {
+    const response = await strapiClient.put(`/products/${productId}`, {
+      data: { quantity: newQuantity }
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  getUserOrders: async (userId, token) => {
+    const response = await strapiClient.get('/orders', {
+      params: {
+        filters: { user: { id: { $eq: userId } } },
+        populate: '*',
+        sort: ['createdAt:desc']
+      },
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  },
+
+  getOrder: async (orderId, token) => {
+    const response = await strapiClient.get(`/orders/${orderId}`, {
+      params: { populate: '*' },
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
   }
 };
 
