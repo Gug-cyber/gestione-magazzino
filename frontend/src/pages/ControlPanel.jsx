@@ -659,6 +659,189 @@ function TabMagazzino() {
   )
 }
 
+// ─── Tab: Store ───────────────────────────────────────────────────────────────
+
+function TabStore() {
+  const [settings, setSettings] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    controlPanelAPI.getStoreSettings()
+      .then(res => setSettings(res.data))
+      .catch(err => { console.error('Errore caricamento store settings:', err) })
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const res = await controlPanelAPI.updateStoreSettings(settings)
+      setSettings(res.data)
+      setToast('Salvato ✓')
+    } catch (err) { console.error('Errore salvataggio:', err); setToast('Errore nel salvataggio') } finally { setSaving(false) }
+  }
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><div className="spinner" /></div>
+  if (!settings) return null
+
+  const rowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px 20px',
+    borderBottom: '1px solid var(--color-border-subtle)',
+  }
+
+  const labelStyle = {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: 'var(--color-text)',
+  }
+
+  const inputStyle = {
+    padding: '8px 12px',
+    backgroundColor: 'var(--color-bg)',
+    border: '1px solid var(--color-border)',
+    borderRadius: '6px',
+    color: 'var(--color-text)',
+    fontSize: '14px',
+  }
+
+  const sectionStyle = {
+    marginBottom: '24px',
+  }
+
+  const sectionTitleStyle = {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: 'var(--color-text)',
+    marginBottom: '12px',
+  }
+
+  return (
+    <div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <form onSubmit={handleSave}>
+
+        {/* Sezione A — Identità portale */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>🏪 Identità portale</h3>
+          <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={rowStyle}>
+              <div style={labelStyle}>Nome store</div>
+              <input
+                style={{ ...inputStyle, width: '220px' }}
+                type="text"
+                value={settings.store_nome}
+                onChange={e => setSettings(p => ({ ...p, store_nome: e.target.value }))}
+              />
+            </div>
+            <div style={{ ...rowStyle, borderBottom: 'none' }}>
+              <div style={labelStyle}>Logo URL</div>
+              <input
+                style={{ ...inputStyle, width: '320px' }}
+                type="url"
+                placeholder="https://..."
+                value={settings.store_logo_url || ''}
+                onChange={e => setSettings(p => ({ ...p, store_logo_url: e.target.value || null }))}
+              />
+            </div>
+            {settings.store_logo_url && (
+              <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Anteprima logo</div>
+                <img
+                  src={settings.store_logo_url}
+                  alt="Logo store"
+                  style={{ maxHeight: '60px', maxWidth: '200px', objectFit: 'contain', borderRadius: '4px' }}
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sezione B — Metodi di spedizione */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>📦 Metodi di spedizione</h3>
+          <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '0', alignItems: 'center' }}>
+              {/* Header */}
+              <div style={{ padding: '10px 20px', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Metodo</div>
+              <div style={{ padding: '10px 16px', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Costo (€)</div>
+              <div style={{ padding: '10px 16px', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tempi</div>
+              <div style={{ padding: '10px 20px', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Abilitato</div>
+
+              {/* Ritiro negozio */}
+              <div style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '500', color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-subtle)' }}>Ritiro in negozio</div>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
+                <input style={{ ...inputStyle, width: '80px', textAlign: 'right' }} type="number" min="0" step="0.01" value={settings.spedizione_ritiro_costo} onChange={e => setSettings(p => ({ ...p, spedizione_ritiro_costo: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
+                <input style={{ ...inputStyle, width: '160px' }} type="text" value={settings.spedizione_ritiro_giorni} onChange={e => setSettings(p => ({ ...p, spedizione_ritiro_giorni: e.target.value }))} />
+              </div>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', justifyContent: 'center' }}>
+                <Toggle checked={settings.spedizione_ritiro_abilitato} onChange={val => setSettings(p => ({ ...p, spedizione_ritiro_abilitato: val }))} />
+              </div>
+
+              {/* Spedizione standard */}
+              <div style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '500', color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-subtle)' }}>Spedizione standard</div>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
+                <input style={{ ...inputStyle, width: '80px', textAlign: 'right' }} type="number" min="0" step="0.01" value={settings.spedizione_standard_costo} onChange={e => setSettings(p => ({ ...p, spedizione_standard_costo: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
+                <input style={{ ...inputStyle, width: '160px' }} type="text" value={settings.spedizione_standard_giorni} onChange={e => setSettings(p => ({ ...p, spedizione_standard_giorni: e.target.value }))} />
+              </div>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', justifyContent: 'center' }}>
+                <Toggle checked={settings.spedizione_standard_abilitato} onChange={val => setSettings(p => ({ ...p, spedizione_standard_abilitato: val }))} />
+              </div>
+
+              {/* Spedizione express */}
+              <div style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '500', color: 'var(--color-text)' }}>Spedizione express</div>
+              <div style={{ padding: '14px 16px', textAlign: 'center' }}>
+                <input style={{ ...inputStyle, width: '80px', textAlign: 'right' }} type="number" min="0" step="0.01" value={settings.spedizione_express_costo} onChange={e => setSettings(p => ({ ...p, spedizione_express_costo: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div style={{ padding: '14px 16px', textAlign: 'center' }}>
+                <input style={{ ...inputStyle, width: '160px' }} type="text" value={settings.spedizione_express_giorni} onChange={e => setSettings(p => ({ ...p, spedizione_express_giorni: e.target.value }))} />
+              </div>
+              <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'center' }}>
+                <Toggle checked={settings.spedizione_express_abilitato} onChange={val => setSettings(p => ({ ...p, spedizione_express_abilitato: val }))} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sezione C — Metodi di pagamento */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>💳 Metodi di pagamento</h3>
+          <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+            {[
+              { label: 'Carta di credito/debito', key: 'pagamento_carta_abilitato' },
+              { label: 'PayPal', key: 'pagamento_paypal_abilitato' },
+              { label: 'Apple Pay', key: 'pagamento_apple_pay_abilitato' },
+              { label: 'Google Pay', key: 'pagamento_google_pay_abilitato' },
+              { label: 'Pagamento in negozio', key: 'pagamento_negozio_abilitato' },
+            ].map(({ label, key }, i, arr) => (
+              <div key={key} style={{ ...rowStyle, borderBottom: i < arr.length - 1 ? '1px solid var(--color-border-subtle)' : 'none' }}>
+                <div style={labelStyle}>{label}</div>
+                <Toggle checked={settings[key]} onChange={val => setSettings(p => ({ ...p, [key]: val }))} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: '20px' }}>
+          <button type="submit" className="gm-btn gm-btn-primary" disabled={saving}>
+            {saving ? 'Salvataggio...' : '💾 Salva Impostazioni'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // ─── Main ControlPanel Page ───────────────────────────────────────────────────
 
 const TABS = [
@@ -666,6 +849,7 @@ const TABS = [
   { key: 'banner', label: '🖼️ Banner' },
   { key: 'promozioni', label: '🏷️ Promozioni' },
   { key: 'magazzino', label: '🏭 Magazzino' },
+  { key: 'store', label: '🏪 Store' },
 ]
 
 export default function ControlPanel() {
@@ -714,6 +898,7 @@ export default function ControlPanel() {
       {activeTab === 'banner' && <TabBanner />}
       {activeTab === 'promozioni' && <TabPromozioni />}
       {activeTab === 'magazzino' && <TabMagazzino />}
+      {activeTab === 'store' && <TabStore />}
     </div>
   )
 }

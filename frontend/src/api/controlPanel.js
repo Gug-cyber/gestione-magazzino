@@ -22,4 +22,8 @@ export const controlPanelAPI = {
   // Warehouse settings
   getWarehouseSettings: () => apiClient.get('/api/control-panel/warehouse-settings'),
   updateWarehouseSettings: (data) => apiClient.put('/api/control-panel/warehouse-settings', data),
+
+  // Store settings
+  getStoreSettings: () => apiClient.get('/api/control-panel/store-settings'),
+  updateStoreSettings: (data) => apiClient.put('/api/control-panel/store-settings', data),
 }
