@@ -11,6 +11,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
+
   const checkAuth = useCallback(async (savedToken) => {
     try {
       const userData = await getCurrentUser(savedToken);
@@ -34,20 +40,30 @@ export function AuthProvider({ children }) {
 
   async function login(identifier, password) {
     setError(null);
-    const data = await loginUser(identifier, password);
-    localStorage.setItem(STORAGE_KEY, data.jwt);
-    setToken(data.jwt);
-    setUser(data.user);
-    return data;
+    try {
+      const data = await loginUser(identifier, password);
+      localStorage.setItem(STORAGE_KEY, data.jwt);
+      setToken(data.jwt);
+      setUser(data.user);
+      return data;
+    } catch (err) {
+      setError(err.message || 'Errore di connessione, riprova');
+      throw err;
+    }
   }
 
   async function register(username, email, password) {
     setError(null);
-    const data = await registerUser(username, email, password);
-    localStorage.setItem(STORAGE_KEY, data.jwt);
-    setToken(data.jwt);
-    setUser(data.user);
-    return data;
+    try {
+      const data = await registerUser(username, email, password);
+      localStorage.setItem(STORAGE_KEY, data.jwt);
+      setToken(data.jwt);
+      setUser(data.user);
+      return data;
+    } catch (err) {
+      setError(err.message || 'Errore di connessione, riprova');
+      throw err;
+    }
   }
 
   function logout() {
