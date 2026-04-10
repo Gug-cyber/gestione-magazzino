@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './ProductCard.css';
+import { useCart } from '../hooks/useCart';
 
 const STRAPI_URL = import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337';
 
@@ -14,12 +15,20 @@ export default function ProductCard({ product }) {
     : null;
   const discount = attributes.discount_percentage;
   const categoryName = attributes.category?.data?.attributes?.name;
+  const { addToCart } = useCart();
+  const [cartAdded, setCartAdded] = React.useState(false);
 
   const handleQuickAction = (e, action) => {
     e.preventDefault();
     e.stopPropagation();
-    // Placeholder per future funzionalita
-    console.log(`${action} clicked for product:`, attributes.title);
+    if (action === 'cart') {
+      addToCart(product, 1);
+      setCartAdded(true);
+      setTimeout(() => setCartAdded(false), 1000);
+    } else {
+      // Placeholder per future funzionalita
+      console.log(`${action} clicked for product:`, attributes.title);
+    }
   };
 
   const getStockStatus = () => {
@@ -75,6 +84,7 @@ export default function ProductCard({ product }) {
             className="quick-action-btn" 
             onClick={(e) => handleQuickAction(e, 'cart')}
             aria-label="Aggiungi al carrello"
+            style={cartAdded ? { color: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : undefined}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="9" cy="21" r="1"/>
