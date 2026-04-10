@@ -67,18 +67,54 @@ export default function StoreLayout({ children }) {
         zIndex: 100,
         backgroundColor: 'var(--color-bg-elevated)',
         borderBottom: '1px solid var(--color-border)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
         padding: '0 24px',
-        height: '56px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: '16px',
       }}>
-        <Link to="/store" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '20px' }}>🃏</span>
-          <span style={{ fontWeight: '700', fontSize: '16px', color: 'var(--color-text)' }}>TCG Store</span>
+        <Link to="/store" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <span style={{ fontSize: '22px' }}>🃏</span>
+          <span style={{ fontWeight: '800', fontSize: '18px', color: 'var(--color-text)' }}>TCG Store</span>
         </Link>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Quick search bar — clicks navigate to store and focus filter */}
+        <div style={{
+          flex: '1 1 0',
+          maxWidth: '420px',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+        }}>
+          <span style={{
+            position: 'absolute',
+            left: '12px',
+            fontSize: '14px',
+            color: 'var(--color-text-muted)',
+            pointerEvents: 'none',
+          }}>🔍</span>
+          <Link
+            to="/store"
+            style={{
+              width: '100%',
+              padding: '8px 12px 8px 36px',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '999px',
+              color: 'var(--color-text-muted)',
+              fontSize: '13px',
+              textDecoration: 'none',
+              display: 'block',
+              boxSizing: 'border-box',
+            }}
+          >
+            Cerca nel catalogo...
+          </Link>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <Link to="/store" style={navLinkStyle('/store')}>
             Prodotti
           </Link>
@@ -86,11 +122,10 @@ export default function StoreLayout({ children }) {
             ...navLinkStyle('/store/cart'),
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '4px',
             position: 'relative',
           }}>
-            <span style={{ fontSize: '16px' }}>🛒</span>
-            <span>Carrello</span>
+            <span style={{ fontSize: '18px' }}>🛒</span>
             {totalItems > 0 && (
               <span style={{
                 backgroundColor: 'var(--color-primary)',
@@ -114,7 +149,7 @@ export default function StoreLayout({ children }) {
       <div style={{
         display: 'flex',
         alignItems: 'flex-start',
-        minHeight: 'calc(100vh - 56px)',
+        minHeight: 'calc(100vh - 64px)',
       }}>
         {/* Colonna banner sinistra */}
         {showSidebars && leftBanners.length > 0 && (
