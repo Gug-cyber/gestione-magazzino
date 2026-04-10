@@ -525,7 +525,7 @@ export default function StoreCheckoutPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
-                      Nome sul titolare
+                      Nome del titolare
                     </label>
                     <input
                       type="text"
@@ -702,7 +702,7 @@ export default function StoreCheckoutPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Metodo pagamento</span>
                   <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
-                    {PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento)?.icona} {PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento)?.label}
+                    {(() => { const opt = PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento); return opt ? `${opt.icona} ${opt.label}` : pagamento })()} 
                   </span>
                 </div>
               </div>
