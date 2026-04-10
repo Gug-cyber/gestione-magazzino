@@ -15,7 +15,9 @@ import { Login } from './pages/Login.jsx';
 import { Register } from './pages/Register.jsx';
 import { Account } from './pages/Account.jsx';
 import { Orders } from './pages/Orders.jsx';
-import { CheckoutPlaceholder } from './pages/CheckoutPlaceholder.jsx';
+import Checkout from './pages/Checkout.jsx';
+import OrderSuccess from './pages/OrderSuccess.jsx';
+import OrderDetail from './pages/OrderDetail.jsx';
 
 export default function App() {
   return (
@@ -34,7 +36,9 @@ export default function App() {
                 <Route path="/registrati" element={<Register />} />
                 <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
                 <Route path="/ordini" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-                <Route path="/checkout" element={<ProtectedRoute><CheckoutPlaceholder /></ProtectedRoute>} />
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                <Route path="/ordine-confermato/:orderId" element={<ProtectedRoute><OrderSuccess /></ProtectedRoute>} />
+                <Route path="/ordine/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
               </Routes>
             </main>
             <Footer />
