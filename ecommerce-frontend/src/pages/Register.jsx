@@ -25,7 +25,7 @@ export function Register() {
     }
   }, [isAuthenticated, navigate]);
 
-  function validateField(field, value) {
+  function validateField(field, value, currentPassword = password) {
     switch (field) {
       case 'username':
         if (!value.trim()) return 'Username obbligatorio';
@@ -41,7 +41,7 @@ export function Register() {
         return '';
       case 'confirmPassword':
         if (!value) return 'Conferma password obbligatoria';
-        if (value !== password) return 'Le password non coincidono';
+        if (value !== currentPassword) return 'Le password non coincidono';
         return '';
       case 'acceptTerms':
         if (!value) return 'Devi accettare i termini e condizioni';
@@ -59,17 +59,17 @@ export function Register() {
       : field === 'password' ? password
       : confirmPassword;
 
-    const error = validateField(field, value);
+    const error = validateField(field, value, password);
     setErrors((prev) => ({ ...prev, [field]: error }));
   }
 
   function validate() {
     const newErrors = {
-      username: validateField('username', username),
-      email: validateField('email', email),
-      password: validateField('password', password),
-      confirmPassword: validateField('confirmPassword', confirmPassword),
-      acceptTerms: validateField('acceptTerms', acceptTerms),
+      username: validateField('username', username, password),
+      email: validateField('email', email, password),
+      password: validateField('password', password, password),
+      confirmPassword: validateField('confirmPassword', confirmPassword, password),
+      acceptTerms: validateField('acceptTerms', acceptTerms, password),
     };
     return newErrors;
   }
