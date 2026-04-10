@@ -160,10 +160,29 @@ export default function StoreCheckoutPage() {
   const [pagamento, setPagamento] = useState('negozio')
   const [datiCarta, setDatiCarta] = useState({ numero: '', titolare: '', scadenza: '', cvv: '' })
 
+  const [storeSettings, setStoreSettings] = useState(null)
+
   useEffect(() => {
     storeAPI.getFlagsPublici()
       .then(res => {
         if (res.data.checkout_enabled === false) setCheckoutEnabled(false)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    storeAPI.getStoreSettings()
+      .then(res => {
+        const s = res.data
+        setStoreSettings(s)
+        // Pick the first enabled shipping option as the default
+        const enabledOptions = [
+          s.spedizione_ritiro_abilitato && { tipo: 'negozio', costo: s.spedizione_ritiro_costo, label: 'Ritiro in negozio' },
+          s.spedizione_standard_abilitato && { tipo: 'standard', costo: s.spedizione_standard_costo, label: 'Spedizione standard' },
+          s.spedizione_express_abilitato && { tipo: 'express', costo: s.spedizione_express_costo, label: 'Spedizione express' },
+        ].filter(Boolean)
+        const first = enabledOptions[0] ?? { tipo: 'negozio', costo: 0, label: 'Ritiro in negozio' }
+        setSpedizione({ tipo: first.tipo, costo: first.costo, label: first.label })
       })
       .catch(() => {})
   }, [])
@@ -175,6 +194,48 @@ export default function StoreCheckoutPage() {
       setFormErrors(prev => ({ ...prev, [name]: null }))
     }
   }
+
+  // Derive shipping options dynamically from backend settings (with fallback to hardcoded)
+  const spedizioneOptions = storeSettings ? [
+    storeSettings.spedizione_ritiro_abilitato && {
+      tipo: 'negozio',
+      label: 'Ritiro in negozio',
+      costo: storeSettings.spedizione_ritiro_costo,
+      icona: '🏪',
+      dettaglio: storeSettings.spedizione_ritiro_giorni,
+    },
+    storeSettings.spedizione_standard_abilitato && {
+      tipo: 'standard',
+      label: 'Spedizione standard',
+      costo: storeSettings.spedizione_standard_costo,
+      icona: '📦',
+      dettaglio: storeSettings.spedizione_standard_giorni,
+    },
+    storeSettings.spedizione_express_abilitato && {
+      tipo: 'express',
+      label: 'Spedizione express',
+      costo: storeSettings.spedizione_express_costo,
+      icona: '⚡',
+      dettaglio: storeSettings.spedizione_express_giorni,
+    },
+  ].filter(Boolean) : SPEDIZIONE_OPTIONS
+
+  // Ensure at least one option is shown even if all are disabled
+  const spedizioneOptionsEffective = spedizioneOptions.length > 0
+    ? spedizioneOptions
+    : [{ tipo: 'negozio', label: 'Ritiro in negozio', costo: 0, icona: '🏪', dettaglio: 'Gratuito' }]
+
+  // Derive payment options dynamically from backend settings (with fallback to hardcoded)
+  const pagamentoOptions = storeSettings ? PAGAMENTO_OPTIONS.filter(opt => {
+    switch (opt.tipo) {
+      case 'carta': return storeSettings.pagamento_carta_abilitato
+      case 'paypal': return storeSettings.pagamento_paypal_abilitato
+      case 'applepay': return storeSettings.pagamento_apple_pay_abilitato
+      case 'googlepay': return storeSettings.pagamento_google_pay_abilitato
+      case 'negozio': return storeSettings.pagamento_negozio_abilitato
+      default: return true
+    }
+  }) : PAGAMENTO_OPTIONS
 
   function validateStep1() {
     const errors = {}
@@ -429,7 +490,7 @@ export default function StoreCheckoutPage() {
                 Scegli il metodo di spedizione
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {SPEDIZIONE_OPTIONS.map(opt => {
+                {spedizioneOptionsEffective.map(opt => {
                   const isSelected = spedizione.tipo === opt.tipo
                   return (
                     <div
@@ -510,7 +571,7 @@ export default function StoreCheckoutPage() {
                 Scegli il metodo di pagamento
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {PAGAMENTO_OPTIONS.map(opt => {
+                {pagamentoOptions.map(opt => {
                   const isSelected = pagamento === opt.tipo
                   return (
                     <div
@@ -629,7 +690,7 @@ export default function StoreCheckoutPage() {
                 }}>
                   <span style={{ fontSize: '16px' }}>ℹ️</span>
                   <span>
-                    Verrai reindirizzato a {PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento)?.label} per completare il pagamento dopo la conferma.
+                    Verrai reindirizzato a {pagamentoOptions.find(o => o.tipo === pagamento)?.label} per completare il pagamento dopo la conferma.
                   </span>
                 </div>
               )}
@@ -742,13 +803,13 @@ export default function StoreCheckoutPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Metodo spedizione</span>
                   <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
-                    {SPEDIZIONE_OPTIONS.find(o => o.tipo === spedizione.tipo)?.icona} {spedizione.label}
+                    {spedizioneOptionsEffective.find(o => o.tipo === spedizione.tipo)?.icona} {spedizione.label}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Metodo pagamento</span>
                   <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
-                    {(() => { const opt = PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento); return opt ? `${opt.icona} ${opt.label}` : pagamento })()} 
+                    {(() => { const opt = pagamentoOptions.find(o => o.tipo === pagamento); return opt ? `${opt.icona} ${opt.label}` : pagamento })()} 
                   </span>
                 </div>
               </div>

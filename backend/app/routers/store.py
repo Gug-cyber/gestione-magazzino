@@ -13,6 +13,8 @@ from ..crud import categoria as crud_categorie
 from ..crud import banner as crud_banner
 from ..crud import promozione as crud_promozione
 from ..crud import feature_flag as crud_flags
+from ..crud import store_settings as crud_store_settings
+from ..schemas.store_settings import StoreSettingsResponse
 from ..schemas.ordine import OrdineCreate, RigaOrdineCreate, OrdineResponse, OrdineUpdate, StatoOrdineSchema
 from ..schemas.cliente import ClienteCreate
 from ..schemas.categoria import CategoriaResponse
@@ -288,3 +290,9 @@ def get_store_feature_flags(db: Session = Depends(get_db)):
     """Restituisce i flag pubblici: store_enabled, checkout_enabled, discounts_enabled, banners_enabled (no auth)."""
     flags = crud_flags.get_all_flags(db)
     return {f.key: f.enabled for f in flags if f.key in PUBLIC_FLAGS}
+
+
+@router.get("/store-settings", response_model=StoreSettingsResponse)
+def get_store_settings_pubblici(db: Session = Depends(get_db)):
+    """Endpoint pubblico per leggere le impostazioni dello store (spedizione, pagamento, nome)."""
+    return crud_store_settings.get_settings(db)
