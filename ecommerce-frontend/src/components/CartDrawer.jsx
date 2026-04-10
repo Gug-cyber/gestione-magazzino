@@ -1,9 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
+import { useAuth } from '../hooks/useAuth';
 import { CartItem } from './CartItem';
 
 export function CartDrawer({ isOpen, onClose }) {
   const { items, totalItems, totalPrice, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -155,16 +159,14 @@ export function CartDrawer({ isOpen, onClose }) {
             </div>
 
             <button
-              disabled
-              title="Prossimamente"
-              className="btn-primary"
-              style={{
-                width: '100%',
-                opacity: 0.5,
-                cursor: 'not-allowed',
+              onClick={() => {
+                onClose();
+                navigate(isAuthenticated ? '/checkout' : '/login');
               }}
+              className="btn-primary"
+              style={{ width: '100%' }}
             >
-              Vai al checkout
+              {isAuthenticated ? 'Vai al checkout' : 'Accedi per il checkout'}
             </button>
 
             <button

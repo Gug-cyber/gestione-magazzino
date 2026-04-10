@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import SearchBar from './SearchBar.jsx';
 import { useCart } from '../hooks/useCart';
+import { useAuth } from '../hooks/useAuth';
 import { CartDrawer } from './CartDrawer';
 
 export default function Header() {
@@ -9,7 +10,29 @@ export default function Header() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const { totalItems } = useCart();
+  const { user, isAuthenticated, logout } = useAuth();
+  const accountRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (accountRef.current && !accountRef.current.contains(e.target)) {
+        setAccountOpen(false);
+      }
+    }
+    if (accountOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [accountOpen]);
+
+  function handleLogout() {
+    logout();
+    setAccountOpen(false);
+    setMobileMenuOpen(false);
+    navigate('/');
+  }
 
   const handleSearch = (value) => {
     navigate(`/catalogo?q=${encodeURIComponent(value)}`);
@@ -63,6 +86,175 @@ export default function Header() {
             <span className="header-cart-badge">{totalItems}</span>
           )}
         </button>
+
+        {/* Account Button */}
+        {isAuthenticated ? (
+          <div ref={accountRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setAccountOpen(!accountOpen)}
+              aria-label="Account"
+              aria-expanded={accountOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 40,
+                height: 40,
+                borderRadius: 'var(--radius-md)',
+                background: accountOpen ? 'var(--color-accent-subtle)' : 'var(--color-surface-elevated)',
+                border: `1px solid ${accountOpen ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                color: accountOpen ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                cursor: 'pointer',
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </button>
+
+            {/* Dropdown */}
+            {accountOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  width: 220,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 120,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* User info */}
+                <div
+                  style={{
+                    padding: 'var(--spacing-md)',
+                    borderBottom: '1px solid var(--color-border)',
+                    background: 'var(--color-surface-elevated)',
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {user.username}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.email}
+                  </p>
+                </div>
+
+                {/* Links */}
+                <div style={{ padding: 'var(--spacing-sm)' }}>
+                  <Link
+                    to="/account"
+                    onClick={() => setAccountOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-sm)',
+                      padding: '10px var(--spacing-sm)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 14,
+                      color: 'var(--color-text-secondary)',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; e.currentTarget.style.color = 'var(--color-text-primary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Il mio account
+                  </Link>
+                  <Link
+                    to="/ordini"
+                    onClick={() => setAccountOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-sm)',
+                      padding: '10px var(--spacing-sm)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 14,
+                      color: 'var(--color-text-secondary)',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; e.currentTarget.style.color = 'var(--color-text-primary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                      <line x1="3" y1="6" x2="21" y2="6" />
+                      <path d="M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                    I miei ordini
+                  </Link>
+
+                  <div style={{ margin: 'var(--spacing-xs) 0', borderTop: '1px solid var(--color-border)' }} />
+
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-sm)',
+                      width: '100%',
+                      padding: '10px var(--spacing-sm)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 14,
+                      color: 'var(--color-error)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Esci
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-xs)',
+              padding: '8px 14px',
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 14,
+              fontWeight: 500,
+              color: 'var(--color-text-secondary)',
+              transition: 'all var(--transition-fast)',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-accent)'; e.currentTarget.style.color = 'var(--color-accent)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Accedi
+          </Link>
+        )}
 
         {/* Mobile Menu Button */}
         <button 
@@ -181,6 +373,58 @@ export default function Header() {
           >
             Chi siamo
           </Link>
+
+          {/* Mobile account section */}
+          <div style={{ marginTop: 'var(--spacing-md)', paddingTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-border)' }}>
+            {isAuthenticated ? (
+              <>
+                <div style={{ padding: 'var(--spacing-sm) var(--spacing-md)', marginBottom: 'var(--spacing-xs)' }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{user.username}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{user.email}</p>
+                </div>
+                <Link
+                  to="/account"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ display: 'block', padding: 'var(--spacing-md)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)', fontWeight: 500 }}
+                >
+                  Il mio account
+                </Link>
+                <Link
+                  to="/ordini"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ display: 'block', padding: 'var(--spacing-md)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)', fontWeight: 500 }}
+                >
+                  I miei ordini
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: 'var(--spacing-md)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--color-error)',
+                    background: 'transparent',
+                    border: 'none',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    fontSize: 'inherit',
+                  }}
+                >
+                  Esci
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ display: 'block', padding: 'var(--spacing-md)', borderRadius: 'var(--radius-md)', color: 'var(--color-accent)', fontWeight: 500 }}
+              >
+                Accedi
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
