@@ -3,7 +3,7 @@ import { useCart } from '../hooks/useCart';
 
 const STRAPI_URL = import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337';
 
-export function CartItem({ item }) {
+export function CartItem({ item, compact = false }) {
   const { removeFromCart, updateQuantity } = useCart();
   const { product, quantity } = item;
   const { attributes } = product;
@@ -17,6 +17,8 @@ export function CartItem({ item }) {
 
   const maxQty = attributes.quantity ?? 99;
   const lineTotal = ((attributes.price ?? 0) * quantity).toFixed(2);
+  const categoryName = attributes.category?.data?.attributes?.name;
+  const imgSize = compact ? 50 : 60;
 
   return (
     <div
@@ -31,8 +33,8 @@ export function CartItem({ item }) {
       {/* Thumbnail */}
       <div
         style={{
-          width: 60,
-          height: 60,
+          width: imgSize,
+          height: imgSize,
           flexShrink: 0,
           borderRadius: 'var(--radius-md)',
           overflow: 'hidden',
@@ -60,10 +62,28 @@ export function CartItem({ item }) {
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
+        {!compact && categoryName && (
+          <span
+            style={{
+              display: 'inline-block',
+              fontSize: 10,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: 'var(--color-accent)',
+              background: 'var(--color-accent-subtle)',
+              padding: '2px 6px',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: 4,
+            }}
+          >
+            {categoryName}
+          </span>
+        )}
         <p
           style={{
             margin: '0 0 4px',
-            fontSize: 14,
+            fontSize: compact ? 13 : 14,
             fontWeight: 500,
             color: 'var(--color-text-primary)',
             overflow: 'hidden',
@@ -85,6 +105,7 @@ export function CartItem({ item }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginTop: 'var(--spacing-sm)' }}>
           <button
             onClick={() => updateQuantity(product.id, quantity - 1)}
+            disabled={quantity <= 1}
             aria-label="Diminuisci quantità"
             style={{
               width: 24,
@@ -95,8 +116,8 @@ export function CartItem({ item }) {
               background: 'var(--color-surface-elevated)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-sm)',
-              color: 'var(--color-text-secondary)',
-              cursor: 'pointer',
+              color: quantity <= 1 ? 'var(--color-text-muted)' : 'var(--color-text-secondary)',
+              cursor: quantity <= 1 ? 'not-allowed' : 'pointer',
               fontSize: 14,
               lineHeight: 1,
             }}
