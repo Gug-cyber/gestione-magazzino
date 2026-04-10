@@ -9,10 +9,12 @@ from ..schemas.feature_flag import FeatureFlagResponse, FeatureFlagUpdate, Featu
 from ..schemas.banner import BannerCreate, BannerUpdate, BannerResponse
 from ..schemas.promozione import PromozioneCreate, PromozioneUpdate, PromozioneResponse
 from ..schemas.warehouse_settings import WarehouseSettingsResponse, WarehouseSettingsUpdate
+from ..schemas.store_settings import StoreSettingsResponse, StoreSettingsUpdate
 from ..crud import feature_flag as crud_flags
 from ..crud import banner as crud_banner
 from ..crud import promozione as crud_promozione
 from ..crud import warehouse_settings as crud_ws
+from ..crud import store_settings as crud_store_settings
 
 router = APIRouter()
 
@@ -208,3 +210,26 @@ def update_warehouse_settings(
 ):
     _require_admin(current_user)
     return crud_ws.update_settings(db, data)
+
+
+# ---------------------------------------------------------------------------
+# STORE SETTINGS
+# ---------------------------------------------------------------------------
+
+@router.get("/store-settings", response_model=StoreSettingsResponse)
+def get_store_settings(
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    return crud_store_settings.get_settings(db)
+
+
+@router.put("/store-settings", response_model=StoreSettingsResponse)
+def update_store_settings(
+    data: StoreSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    return crud_store_settings.update_settings(db, data)
