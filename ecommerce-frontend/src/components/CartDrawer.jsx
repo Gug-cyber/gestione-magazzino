@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
@@ -8,6 +8,7 @@ export function CartDrawer({ isOpen, onClose }) {
   const { items, totalItems, totalPrice, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [clearHover, setClearHover] = useState(false);
 
   return (
     <>
@@ -194,6 +195,32 @@ export function CartDrawer({ isOpen, onClose }) {
             >
               Continua shopping
             </button>
+
+            {items.length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Sei sicuro di voler svuotare il carrello?')) {
+                    clearCart();
+                  }
+                }}
+                onMouseEnter={() => setClearHover(true)}
+                onMouseLeave={() => setClearHover(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: clearHover ? 'var(--color-error)' : 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  textDecoration: 'underline',
+                  textAlign: 'center',
+                  width: '100%',
+                  padding: 'var(--spacing-xs) 0',
+                  transition: 'color var(--transition-fast)',
+                }}
+              >
+                Svuota carrello
+              </button>
+            )}
           </div>
         )}
       </div>
