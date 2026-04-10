@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
-import ProductImage from './ProductImage'
-import PriceDisplay from './PriceDisplay'
 
 function cercaPromozioneAttiva(prodotto, promozioni) {
   if (!promozioni || promozioni.length === 0) return null
@@ -18,16 +16,16 @@ function cercaPromozioneAttiva(prodotto, promozioni) {
  */
 function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
   const base = {
-    position: 'absolute', top: '10px', left: '10px', zIndex: 2,
-    borderRadius: '6px', padding: '3px 9px',
-    fontSize: '11px', fontWeight: '700', letterSpacing: '0.02em',
+    position: 'absolute', top: '8px', left: '8px', zIndex: 2,
+    borderRadius: '999px', padding: '2px 8px',
+    fontSize: '10px', fontWeight: '700', letterSpacing: '0.02em',
     backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
     color: '#fff', pointerEvents: 'none',
   }
 
   if (isEsaurito) {
     return (
-      <span style={{ ...base, backgroundColor: 'rgba(239,68,68,0.85)', border: '1px solid rgba(239,68,68,0.45)' }}>
+      <span style={{ ...base, backgroundColor: 'rgba(239,68,68,0.85)' }}>
         Esaurito
       </span>
     )
@@ -37,15 +35,15 @@ function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
       ? `-${promo.valore}%`
       : `-€${Number(promo.valore).toFixed(2)}`
     return (
-      <span style={{ ...base, backgroundColor: 'rgba(34,197,94,0.85)', border: '1px solid rgba(34,197,94,0.45)' }}>
-        🏷️ {label}
+      <span style={{ ...base, backgroundColor: 'rgba(34,197,94,0.88)' }}>
+        {label}
       </span>
     )
   }
   if (inEsaurimento || soloN) {
-    const text = inEsaurimento ? '⚡ In esaurimento' : `Solo ${quantita} rimasti`
+    const text = inEsaurimento ? 'In esaurimento' : `Solo ${quantita} rimasti`
     return (
-      <span style={{ ...base, backgroundColor: 'rgba(245,158,11,0.85)', border: '1px solid rgba(245,158,11,0.45)' }}>
+      <span style={{ ...base, backgroundColor: 'rgba(245,158,11,0.88)' }}>
         {text}
       </span>
     )
@@ -70,134 +68,148 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
       : prezzoBase - promo.valore)
     : null
 
+  const prezzoMostrato = prezzoScontato ?? prezzoBase
+
   return (
-    <>
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          position: 'relative',
-          backgroundColor: 'var(--color-surface)',
-          border: hovered ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          cursor: 'default',
-          transition: 'transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease',
-          transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
-          boxShadow: hovered
-            ? '0 0 0 1px var(--color-primary), 0 8px 24px rgba(0,0,0,0.25)'
-            : '0 2px 8px rgba(0,0,0,0.20)',
-        }}
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative',
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: 'default',
+        transition: 'transform 200ms ease, box-shadow 200ms ease',
+        transform: hovered ? 'scale(1.01)' : 'scale(1)',
+        boxShadow: hovered
+          ? '0 6px 20px rgba(0,0,0,0.14)'
+          : '0 1px 4px rgba(0,0,0,0.08)',
+      }}
+    >
+      {/* Image — aspect ratio 4:5, rounded top only */}
+      <Link
+        to={`/store/product/${prodotto.id}`}
+        style={{ textDecoration: 'none', display: 'block', position: 'relative' }}
       >
-        {/* Image with overlay badge */}
-        <Link
-          to={`/store/product/${prodotto.id}`}
-          style={{ textDecoration: 'none', display: 'block', position: 'relative' }}
-        >
-          <ProductImage
-            src={prodotto.foto_url}
-            alt={prodotto.nome}
-            aspectRatio="card"
-            hovered={hovered}
-            priority={index === 0}
-          />
-          <OverlayBadge
-            isEsaurito={isEsaurito}
-            inEsaurimento={!!prodotto.in_esaurimento}
-            soloN={isSoloN}
-            quantita={prodotto.quantita}
-            promo={promo}
-          />
-        </Link>
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          aspectRatio: '4/5',
+          overflow: 'hidden',
+          backgroundColor: 'var(--color-surface-hover)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {prodotto.foto_url ? (
+            <img
+              src={prodotto.foto_url}
+              alt={prodotto.nome}
+              loading={index === 0 ? 'eager' : 'lazy'}
+              decoding={index === 0 ? undefined : 'async'}
+              style={{
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                transition: 'transform 350ms ease',
+                transform: hovered ? 'scale(1.04)' : 'scale(1)',
+              }}
+              onError={e => { e.target.style.display = 'none' }}
+            />
+          ) : (
+            <span style={{ fontSize: '36px', opacity: 0.25 }}>🃏</span>
+          )}
+        </div>
+        <OverlayBadge
+          isEsaurito={isEsaurito}
+          inEsaurimento={!!prodotto.in_esaurimento}
+          soloN={isSoloN}
+          quantita={prodotto.quantita}
+          promo={promo}
+        />
+      </Link>
 
-        {/* Card body */}
-        <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+      {/* Card body */}
+      <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
 
-          {/* Category badge */}
-          {prodotto.categoria_nome && (
-            <span style={{
-              alignSelf: 'flex-start',
-              fontSize: '11px', fontWeight: '500',
-              color: 'var(--color-text-muted)',
-              backgroundColor: 'var(--color-surface-hover)',
-              borderRadius: '4px',
-              padding: '2px 7px',
-              letterSpacing: '0.03em',
-            }}>
-              {prodotto.categoria_nome}
+        {/* Price — prominent, top */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+          {prezzoMostrato != null && (
+            <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--color-text)' }}>
+              €{prezzoMostrato.toFixed(2)}
             </span>
           )}
-
-          {/* Product title */}
-          <p style={{
-            margin: 0,
-            color: 'var(--color-text)',
-            fontWeight: '600',
-            fontSize: '14px',
-            lineHeight: '1.4',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}>
-            {prodotto.nome}
-          </p>
-
-          {/* SKU */}
-          {prodotto.sku && (
-            <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-muted)' }}>
-              SKU: #{prodotto.sku}
-            </p>
+          {prezzoScontato != null && prezzoBase != null && (
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
+              €{prezzoBase.toFixed(2)}
+            </span>
           )}
+        </div>
 
-          {/* Price */}
-          <PriceDisplay
-            prezzoBase={prezzoBase}
-            prezzoScontato={prezzoScontato}
-            size="card"
-          />
+        {/* Product title */}
+        <p style={{
+          margin: 0,
+          color: 'var(--color-text-secondary)',
+          fontWeight: '400',
+          fontSize: '13px',
+          lineHeight: '1.4',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}>
+          {prodotto.nome}
+        </p>
 
-          {/* Add to cart button — always at bottom */}
-          <button
-            onClick={() => !isEsaurito && onAddToCart(prodotto)}
-            disabled={isEsaurito}
-            style={{
-              marginTop: 'auto',
-              backgroundColor: isEsaurito
-                ? 'var(--color-surface-hover)'
-                : inCart
-                  ? 'var(--color-success-bg)'
-                  : 'var(--color-primary)',
-              color: isEsaurito
-                ? 'var(--color-text-muted)'
-                : inCart
-                  ? 'var(--color-success)'
-                  : '#fff',
-              border: inCart
-                ? '1px solid var(--color-success)'
-                : isEsaurito
-                  ? '1px solid var(--color-border)'
-                  : 'none',
-              borderRadius: '10px',
-              padding: '10px 0',
-              width: '100%',
-              fontWeight: '600',
-              fontSize: '13px',
-              cursor: isEsaurito ? 'not-allowed' : 'pointer',
-              opacity: isEsaurito ? 0.6 : 1,
-              transition: 'background-color 160ms ease',
-            }}
-          >
-            {isEsaurito
-              ? 'Esaurito'
-              : inCart
-                ? `✓ Nel carrello (${cartQty})`
-                : '🛒 Aggiungi al carrello'}
-          </button>
+        {/* Category tag */}
+        {prodotto.categoria_nome && (
+          <span style={{
+            alignSelf: 'flex-start',
+            fontSize: '11px',
+            fontWeight: '400',
+            color: 'var(--color-text-muted)',
+            backgroundColor: 'var(--color-surface-hover)',
+            borderRadius: '4px',
+            padding: '1px 6px',
+          }}>
+            {prodotto.categoria_nome}
+          </span>
+        )}
+
+        {/* Add to cart — discrete bottom link */}
+        <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+          {isEsaurito ? (
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+              Non disponibile
+            </span>
+          ) : inCart ? (
+            <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span>✓</span>
+              <span>Nel carrello ({cartQty})</span>
+            </span>
+          ) : (
+            <button
+              onClick={() => onAddToCart(prodotto)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                fontSize: '13px',
+                color: 'var(--color-primary)',
+                fontWeight: '500',
+                textDecoration: 'none',
+              }}
+            >
+              + Aggiungi
+            </button>
+          )}
         </div>
       </div>
-    </>
+    </div>
   )
 }
