@@ -257,13 +257,13 @@ export default function StoreCartPage() {
             </div>
 
             {/* CTA */}
-            <button
+            <Link
+              to="/store/checkout"
               className="gm-btn gm-btn-primary"
-              onClick={() => alert('Funzionalità in arrivo!')}
-              style={{ display: 'block', width: '100%', padding: '12px', marginBottom: '10px', cursor: 'pointer' }}
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none', width: '100%', padding: '12px', marginBottom: '10px' }}
             >
               Procedi all'ordine →
-            </button>
+            </Link>
 
             <button
               className="gm-btn gm-btn-secondary"
