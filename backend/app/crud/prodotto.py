@@ -27,6 +27,7 @@ def get_prodotti(
     categoria_id: Optional[int] = None,
     ubicazione_id: Optional[int] = None,
     stato_conservazione: Optional[str] = None,
+    disponibili_only: bool = False,
 ) -> List[Prodotto]:
     query = db.query(Prodotto)
     if search:
@@ -40,6 +41,8 @@ def get_prodotti(
         query = query.filter(Prodotto.ubicazione_id == ubicazione_id)
     if stato_conservazione:
         query = query.filter(Prodotto.stato_conservazione == stato_conservazione)
+    if disponibili_only:
+        query = query.filter(Prodotto.quantita > 0)
     return query.order_by(Prodotto.nome).offset(skip).limit(limit).all()
 
 
