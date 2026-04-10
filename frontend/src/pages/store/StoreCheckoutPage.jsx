@@ -6,8 +6,24 @@ import { useCart } from '../../context/CartContext'
 
 const STEPS = [
   { label: 'Dati personali' },
-  { label: 'Riepilogo ordine' },
+  { label: 'Spedizione' },
+  { label: 'Pagamento' },
+  { label: 'Riepilogo' },
   { label: 'Conferma' },
+]
+
+const SPEDIZIONE_OPTIONS = [
+  { tipo: 'negozio', label: 'Ritiro in negozio', costo: 0, icona: '🏪', dettaglio: 'Gratuito' },
+  { tipo: 'standard', label: 'Spedizione standard', costo: 4.90, icona: '📦', dettaglio: '3-5 giorni lavorativi' },
+  { tipo: 'express', label: 'Spedizione express', costo: 9.90, icona: '⚡', dettaglio: '1-2 giorni lavorativi' },
+]
+
+const PAGAMENTO_OPTIONS = [
+  { tipo: 'carta', label: 'Carta di credito/debito', icona: '💳' },
+  { tipo: 'paypal', label: 'PayPal', icona: '🅿️' },
+  { tipo: 'applepay', label: 'Apple Pay', icona: '🍎' },
+  { tipo: 'googlepay', label: 'Google Pay', icona: '🔵' },
+  { tipo: 'negozio', label: 'Pagamento in negozio', icona: '🏪', dettaglio: 'Paga al momento del ritiro' },
 ]
 
 function getStepTextColor(isActive, isCompleted) {
@@ -94,6 +110,10 @@ export default function StoreCheckoutPage() {
   const [success, setSuccess] = useState(null)
   const [submitError, setSubmitError] = useState(null)
 
+  const [spedizione, setSpedizione] = useState({ tipo: 'standard', costo: 4.90, label: 'Spedizione standard' })
+  const [pagamento, setPagamento] = useState('negozio')
+  const [datiCarta, setDatiCarta] = useState({ numero: '', titolare: '', scadenza: '', cvv: '' })
+
   useEffect(() => {
     storeAPI.getFlagsPublici()
       .then(res => {
@@ -134,6 +154,11 @@ export default function StoreCheckoutPage() {
     setLoading(true)
     setSubmitError(null)
     try {
+      const noteParts = [
+        form.note,
+        `Metodo pagamento: ${pagamento}`,
+        `Spedizione: ${spedizione.label} (€${spedizione.costo.toFixed(2)})`,
+      ].filter(Boolean)
       const payload = {
         nome: form.nome,
         email: form.email,
@@ -141,7 +166,7 @@ export default function StoreCheckoutPage() {
         indirizzo: form.indirizzo || undefined,
         citta: form.citta || undefined,
         cap: form.cap || undefined,
-        note: form.note || undefined,
+        note: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
         righe: items.map(i => ({
           prodotto_id: i.id,
           quantita: i.quantita,
@@ -151,11 +176,11 @@ export default function StoreCheckoutPage() {
       const res = await storeAPI.checkout(payload)
       clearCart()
       setSuccess(res.data)
-      setCurrentStep(3)
+      setCurrentStep(5)
     } catch (err) {
       const detail = err.response?.data?.detail
       setSubmitError(detail || 'Si è verificato un errore durante il checkout. Riprova.')
-      setCurrentStep(3)
+      setCurrentStep(5)
     } finally {
       setLoading(false)
     }
@@ -201,7 +226,7 @@ export default function StoreCheckoutPage() {
   }
 
   // Empty cart redirect prompt (guard all pre-confirmation steps)
-  if (items.length === 0 && currentStep !== 3) {
+  if (items.length === 0 && currentStep !== 5) {
     return (
       <StoreLayout>
         <div style={{ textAlign: 'center', padding: '80px 0' }} className="animate-fade-in">
@@ -345,25 +370,267 @@ export default function StoreCheckoutPage() {
           </div>
         )}
 
-        {/* Step 2 — Order summary */}
+        {/* Step 2 — Shipping method */}
         {currentStep === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Payment info banner */}
             <div style={{
-              padding: '12px 16px',
               backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-primary)',
-              borderRadius: '8px',
-              color: 'var(--color-text-secondary)',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '20px',
             }}>
-              <span style={{ fontSize: '16px' }}>ℹ️</span>
-              <span>Il pagamento verrà concordato separatamente. Nessun addebito immediato.</span>
+              <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
+                Scegli il metodo di spedizione
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {SPEDIZIONE_OPTIONS.map(opt => {
+                  const isSelected = spedizione.tipo === opt.tipo
+                  return (
+                    <div
+                      key={opt.tipo}
+                      onClick={() => setSpedizione({ tipo: opt.tipo, costo: opt.costo, label: opt.label })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        padding: '14px 16px',
+                        borderRadius: '8px',
+                        border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        backgroundColor: 'var(--color-surface)',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: '22px' }}>{opt.icona}</span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: 'var(--color-text)' }}>{opt.label}</p>
+                        {opt.dettaglio && (
+                          <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--color-text-secondary)' }}>{opt.dettaglio}</p>
+                        )}
+                      </div>
+                      <span style={{ fontWeight: '700', fontSize: '15px', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', flexShrink: 0 }}>
+                        {opt.costo === 0 ? 'Gratuito' : `€${opt.costo.toFixed(2)}`}
+                      </span>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {isSelected && <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#fff' }} />}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="gm-btn gm-btn-ghost"
+                style={{ padding: '12px 20px', fontSize: '14px' }}
+              >
+                ← Indietro
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                className="gm-btn gm-btn-primary"
+                style={{ padding: '12px 28px', fontSize: '15px', fontWeight: '600' }}
+              >
+                Avanti →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — Payment method */}
+        {currentStep === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '20px',
+            }}>
+              <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
+                Scegli il metodo di pagamento
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {PAGAMENTO_OPTIONS.map(opt => {
+                  const isSelected = pagamento === opt.tipo
+                  return (
+                    <div
+                      key={opt.tipo}
+                      onClick={() => setPagamento(opt.tipo)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        padding: '14px 16px',
+                        borderRadius: '8px',
+                        border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        backgroundColor: 'var(--color-surface)',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: '22px' }}>{opt.icona}</span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: 'var(--color-text)' }}>{opt.label}</p>
+                        {opt.dettaglio && (
+                          <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--color-text-secondary)' }}>{opt.dettaglio}</p>
+                        )}
+                      </div>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {isSelected && <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#fff' }} />}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Credit card form */}
+              {pagamento === 'carta' && (
+                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
+                      Numero carta
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={19}
+                      placeholder="**** **** **** ****"
+                      value={datiCarta.numero}
+                      onChange={e => setDatiCarta(prev => ({ ...prev, numero: e.target.value }))}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
+                      Nome sul titolare
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Mario Rossi"
+                      value={datiCarta.titolare}
+                      onChange={e => setDatiCarta(prev => ({ ...prev, titolare: e.target.value }))}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
+                        Data scadenza
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="MM/AA"
+                        value={datiCarta.scadenza}
+                        onChange={e => setDatiCarta(prev => ({ ...prev, scadenza: e.target.value }))}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
+                        CVV
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="***"
+                        value={datiCarta.cvv}
+                        onChange={e => setDatiCarta(prev => ({ ...prev, cvv: e.target.value }))}
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+                    I dati della carta non vengono memorizzati né elaborati.
+                  </p>
+                </div>
+              )}
+
+              {/* Info banners for other methods */}
+              {['paypal', 'applepay', 'googlepay'].includes(pagamento) && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-primary)',
+                  borderRadius: '8px',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
+                  <span style={{ fontSize: '16px' }}>ℹ️</span>
+                  <span>
+                    Verrai reindirizzato a {PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento)?.label} per completare il pagamento dopo la conferma.
+                  </span>
+                </div>
+              )}
+
+              {pagamento === 'negozio' && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-primary)',
+                  borderRadius: '8px',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
+                  <span style={{ fontSize: '16px' }}>ℹ️</span>
+                  <span>Potrai pagare direttamente in negozio al momento del ritiro. Nessun addebito online.</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="gm-btn gm-btn-ghost"
+                style={{ padding: '12px 20px', fontSize: '14px' }}
+              >
+                ← Indietro
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(4)}
+                className="gm-btn gm-btn-primary"
+                style={{ padding: '12px 28px', fontSize: '15px', fontWeight: '600' }}
+              >
+                Avanti →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4 — Order summary */}
+        {currentStep === 4 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Products list */}
             <div style={{
               backgroundColor: 'var(--color-surface)',
@@ -393,11 +660,51 @@ export default function StoreCheckoutPage() {
                 ))}
               </div>
 
-              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Totale ordine</span>
-                <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-primary)' }}>
-                  €{totalPrice.toFixed(2)}
-                </span>
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>Subtotale prodotti</span>
+                  <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>€{totalPrice.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>
+                    {spedizione.label}
+                  </span>
+                  <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>
+                    {spedizione.costo === 0 ? 'Gratuito' : `€${spedizione.costo.toFixed(2)}`}
+                  </span>
+                </div>
+                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Totale finale</span>
+                  <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-primary)' }}>
+                    €{(totalPrice + spedizione.costo).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Shipping & payment summary */}
+            <div style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '20px',
+            }}>
+              <h3 style={{ margin: '0 0 12px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
+                Spedizione &amp; pagamento
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Metodo spedizione</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
+                    {SPEDIZIONE_OPTIONS.find(o => o.tipo === spedizione.tipo)?.icona} {spedizione.label}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Metodo pagamento</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
+                    {PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento)?.icona} {PAGAMENTO_OPTIONS.find(o => o.tipo === pagamento)?.label}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -446,11 +753,11 @@ export default function StoreCheckoutPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
               <button
                 type="button"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => setCurrentStep(3)}
                 className="gm-btn gm-btn-ghost"
                 style={{ padding: '12px 20px', fontSize: '14px' }}
               >
-                ← Modifica dati
+                ← Modifica
               </button>
               <button
                 type="button"
@@ -471,8 +778,8 @@ export default function StoreCheckoutPage() {
           </div>
         )}
 
-        {/* Step 3 — Confirmation */}
-        {currentStep === 3 && (
+        {/* Step 5 — Confirmation */}
+        {currentStep === 5 && (
           <div className="animate-fade-in">
             {success ? (
               <div style={{ textAlign: 'center', padding: '40px 0', maxWidth: '480px', margin: '0 auto' }}>
@@ -518,7 +825,7 @@ export default function StoreCheckoutPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setSubmitError(null); setCurrentStep(2) }}
+                  onClick={() => { setSubmitError(null); setCurrentStep(4) }}
                   className="gm-btn gm-btn-secondary"
                   style={{ marginRight: '12px' }}
                 >
