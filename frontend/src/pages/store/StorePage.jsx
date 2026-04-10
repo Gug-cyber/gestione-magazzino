@@ -6,6 +6,104 @@ import { useCart } from '../../context/CartContext'
 
 const PAGE_LIMIT = 40
 
+function CategoryDropdown({ value, onChange, options }) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleOutsideClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [open])
+
+  const selectedLabel = (options.find(o => o.value === value) || options[0])?.label || 'Tutte le categorie'
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', flex: '1 1 160px' }}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Seleziona categoria"
+        onClick={() => setOpen(prev => !prev)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 14px',
+          backgroundColor: 'var(--color-bg)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '8px',
+          color: 'var(--color-text)',
+          fontSize: '14px',
+          cursor: 'pointer',
+          outline: 'none',
+          textAlign: 'left',
+        }}
+      >
+        <span>{selectedLabel}</span>
+        <span style={{ marginLeft: '8px', opacity: 0.6, fontSize: '12px' }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Categorie"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            backgroundColor: 'var(--color-bg)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            overflow: 'hidden',
+          }}
+        >
+          {options.map(opt => {
+            const isSelected = opt.value === value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '10px 14px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)' }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+              >
+                <span style={{ width: '14px', flexShrink: 0 }}>{isSelected ? '✓' : ''}</span>
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function StorePage() {
   const { addItem } = useCart()
   const [prodotti, setProdotti] = useState([])
@@ -228,25 +326,11 @@ export default function StorePage() {
             }}
           />
 
-          <select
+          <CategoryDropdown
             value={categoriaId}
-            onChange={e => setCategoriaId(e.target.value)}
-            style={{
-              flex: '1 1 160px',
-              padding: '10px 14px',
-              backgroundColor: 'var(--color-bg)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              color: 'var(--color-text)',
-              fontSize: '14px',
-              outline: 'none',
-            }}
-          >
-            <option value="">Tutte le categorie</option>
-            {categorie.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.nome}</option>
-            ))}
-          </select>
+            onChange={val => setCategoriaId(val)}
+            options={[{ value: '', label: 'Tutte le categorie' }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
+          />
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
             <input
