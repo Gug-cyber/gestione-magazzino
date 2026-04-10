@@ -15,7 +15,7 @@ export default function StorePage() {
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
-  const [disponibiliOnly, setDisponibiliOnly] = useState(true)
+  const [disponibiliOnly, setDisponibiliOnly] = useState(false)
   const [flags, setFlags] = useState({})
   const [banners, setBanners] = useState([])
   const [promozioni, setPromozioni] = useState([])
@@ -249,12 +249,12 @@ export default function StorePage() {
             ))}
           </select>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
             <input
               type="checkbox"
               checked={disponibiliOnly}
               onChange={e => setDisponibiliOnly(e.target.checked)}
-              style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }}
+              style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
             />
             Solo disponibili
           </label>

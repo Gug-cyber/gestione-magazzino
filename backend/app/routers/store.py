@@ -142,13 +142,9 @@ def get_store_prodotti(
         limit=limit,
         search=search,
         categoria_id=categoria_id,
+        disponibili_only=disponibili_only,
     )
-    result = []
-    for p in prodotti:
-        if disponibili_only and p.quantita <= 0:
-            continue
-        result.append(_to_public(p, request))
-    return result
+    return [_to_public(p, request) for p in prodotti]
 
 
 @router.get("/prodotti/{prodotto_id}", response_model=StoreProdottoPublic)
