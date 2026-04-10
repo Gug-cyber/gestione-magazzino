@@ -15,4 +15,5 @@ export const storeAPI = {
   getFlagsPublici: () => storeClient.get('/api/store/feature-flags'),
   getBannersPublici: () => storeClient.get('/api/store/banners'),
   getPromozioniAttive: () => storeClient.get('/api/store/promozioni'),
+  getStoreSettings: () => storeClient.get('/api/store/store-settings'),
 }
