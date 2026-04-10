@@ -19,10 +19,40 @@ const SPEDIZIONE_OPTIONS = [
 ]
 
 const PAGAMENTO_OPTIONS = [
-  { tipo: 'carta', label: 'Carta di credito/debito', icona: '💳' },
-  { tipo: 'paypal', label: 'PayPal', icona: '🅿️' },
-  { tipo: 'applepay', label: 'Apple Pay', icona: '🍎' },
-  { tipo: 'googlepay', label: 'Google Pay', icona: '🔵' },
+  {
+    tipo: 'carta',
+    label: 'Carta di credito/debito',
+    icona: (
+      <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="22" rx="3" fill="#1A1F71"/>
+        <rect y="5" width="32" height="5" fill="#F7B600"/>
+        <rect x="3" y="14" width="8" height="2" rx="1" fill="white" opacity="0.7"/>
+      </svg>
+    ),
+  },
+  {
+    tipo: 'paypal',
+    label: 'PayPal',
+    icona: <img src="https://www.paypalobjects.com/webstatic/icon/pp258.png" alt="PayPal" width="28" height="28" style={{ borderRadius: '4px' }} />,
+  },
+  {
+    tipo: 'applepay',
+    label: 'Apple Pay',
+    icona: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+      </svg>
+    ),
+  },
+  {
+    tipo: 'googlepay',
+    label: 'Google Pay',
+    icona: (
+      <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 10.8v2.6h3.6c-.2 1-1.3 3-3.6 3-2.2 0-4-1.8-4-4s1.8-4 4-4c1.2 0 2 .5 2.5 1l1.8-1.7C15 6.4 13.6 5.8 12 5.8c-3.4 0-6.2 2.8-6.2 6.2s2.8 6.2 6.2 6.2c3.6 0 5.9-2.5 5.9-6 0-.4 0-.7-.1-1H12z" fill="#4285F4"/>
+      </svg>
+    ),
+  },
   { tipo: 'negozio', label: 'Pagamento in negozio', icona: '🏪', dettaglio: 'Paga al momento del ritiro' },
 ]
 
@@ -482,7 +512,7 @@ export default function StoreCheckoutPage() {
                         transition: 'border-color 0.15s',
                       }}
                     >
-                      <span style={{ fontSize: '22px' }}>{opt.icona}</span>
+                      <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', backgroundColor: '#fff', padding: '4px', flexShrink: 0 }}>{opt.icona}</div>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: 'var(--color-text)' }}>{opt.label}</p>
                         {opt.dettaglio && (
