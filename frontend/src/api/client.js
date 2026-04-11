@@ -57,6 +57,8 @@ export const prodottiAPI = {
   lookupByBarcode: (barcodeValue) => client.get(`/api/prodotti/barcode/${encodeURIComponent(barcodeValue)}`),
   bulkGenerateBarcodes: (data) => client.post('/api/prodotti/barcodes/bulk-generate', data),
   getBarcodeImageUrl: (id) => `${API_BASE_URL}/api/prodotti/${id}/barcode/image`,
+  createDriveFolder: (id) => client.post(`/api/prodotti/${id}/drive-folder/crea`, {}),
+  getDriveImmagini: (id) => client.get(`/api/store/prodotti/${id}`),
 }
 
 export const categorieAPI = {
