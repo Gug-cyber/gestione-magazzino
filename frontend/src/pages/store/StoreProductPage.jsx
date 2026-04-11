@@ -116,8 +116,8 @@ export default function StoreProductPage() {
           className="product-detail-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'min(520px, 52%) 1fr',
-            gap: '40px',
+            gridTemplateColumns: 'min(620px, 62%) 1fr',
+            gap: '32px',
             alignItems: 'start',
           }}
         >
@@ -144,10 +144,10 @@ export default function StoreProductPage() {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
           }
-          @media (max-width: 768px) {
+          @media (max-width: 640px) {
             .product-detail-grid {
-              grid-template-columns: 1fr !important;
-              gap: 24px !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
             }
           }
         `}</style>
