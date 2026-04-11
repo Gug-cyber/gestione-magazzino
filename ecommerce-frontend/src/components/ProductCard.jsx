@@ -70,7 +70,7 @@ export default function ProductCard({ product }) {
 
   const stockStatus = getStockStatus();
 
-  // Prezzo (solo modalità Strapi ha il campo price nel modo attuale)
+  // Prezzo: entrambe le modalità lo supportano, con nomi campo diversi
   const price = USE_BACKEND_STORE
     ? product.prezzo_vendita
     : product.attributes?.price;
