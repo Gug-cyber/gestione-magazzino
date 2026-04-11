@@ -599,3 +599,94 @@ async def import_prodotti_csv(file: UploadFile = File(...), db: Session = Depend
         importati += 1
 
     return {"importati": importati, "saltati": saltati, "errori": errori}
+
+
+# ---------------------------------------------------------------------------
+# Google Drive endpoints
+# ---------------------------------------------------------------------------
+
+from pydantic import BaseModel as _BaseModel
+from ..services.google_drive_service import drive_service
+
+
+class _DriveFolderBody(_BaseModel):
+    folder_id: Optional[str] = None
+
+
+class _DriveCreateBody(_BaseModel):
+    nome: Optional[str] = None
+
+
+@router.put("/{prodotto_id}/drive-folder")
+def set_drive_folder(
+    prodotto_id: int,
+    body: _DriveFolderBody,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Associa (o dissocia) una cartella Google Drive al prodotto."""
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+
+    db_prodotto.google_drive_folder_id = body.folder_id
+    db.commit()
+
+    if body.folder_id:
+        drive_service.share_folder_publicly(body.folder_id)
+
+    return {"folder_id": body.folder_id}
+
+
+@router.post("/{prodotto_id}/drive-folder/crea")
+def crea_drive_folder(
+    prodotto_id: int,
+    body: _DriveCreateBody = _DriveCreateBody(),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Crea una nuova cartella Google Drive per il prodotto e la associa."""
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+
+    folder_name = body.nome or db_prodotto.nome
+    parent_folder_id = os.getenv("GOOGLE_DRIVE_ROOT_FOLDER_ID")
+
+    try:
+        folder_id = drive_service.create_folder(folder_name, parent_folder_id=parent_folder_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    drive_service.share_folder_publicly(folder_id)
+
+    db_prodotto.google_drive_folder_id = folder_id
+    db.commit()
+
+    return {
+        "folder_id": folder_id,
+        "folder_url": f"https://drive.google.com/drive/folders/{folder_id}",
+    }
+
+
+@router.get("/{prodotto_id}/immagini")
+def get_immagini_prodotto(
+    prodotto_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Restituisce le immagini Drive associate al prodotto."""
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+
+    folder_id = db_prodotto.google_drive_folder_id
+    if not folder_id:
+        return {"immagini": [], "folder_id": None, "folder_url": None}
+
+    immagini = drive_service.list_images_in_folder(folder_id)
+    return {
+        "immagini": immagini,
+        "folder_id": folder_id,
+        "folder_url": f"https://drive.google.com/drive/folders/{folder_id}",
+    }

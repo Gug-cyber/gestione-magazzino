@@ -5,18 +5,35 @@ import { useCart } from '../hooks/useCart';
 import { useToast } from '../context/ToastContext';
 
 const STRAPI_URL = import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337';
+const USE_BACKEND_STORE = import.meta.env.VITE_USE_BACKEND_STORE === 'true';
 const SUCCESS_STATE_DURATION = 2000;
 
 export default function ProductCard({ product }) {
-  const { attributes } = product;
-  const imageUrl = attributes.images?.data?.[0]?.attributes?.url;
-  const image = imageUrl
-    ? imageUrl.startsWith('http')
-      ? imageUrl
-      : `${STRAPI_URL}${imageUrl}`
-    : null;
-  const discount = attributes.discount_percentage;
-  const categoryName = attributes.category?.data?.attributes?.name;
+  // Modalità ibrida: backend Python (prodotto flat) o Strapi (prodotto con attributes)
+  let imageUrl, title, quantity, discount, categoryName, productLink;
+
+  if (USE_BACKEND_STORE) {
+    imageUrl = product.immagini?.[0] || product.foto_url || null;
+    title = product.nome;
+    quantity = product.quantita;
+    discount = null;
+    categoryName = product.categoria_nome;
+    productLink = `/product/${product.id}`;
+  } else {
+    const { attributes } = product;
+    const rawUrl = attributes.images?.data?.[0]?.attributes?.url;
+    imageUrl = rawUrl
+      ? rawUrl.startsWith('http')
+        ? rawUrl
+        : `${STRAPI_URL}${rawUrl}`
+      : null;
+    title = attributes.title;
+    quantity = attributes.quantity;
+    discount = attributes.discount_percentage;
+    categoryName = attributes.category?.data?.attributes?.name;
+    productLink = `/product/${attributes.slug}`;
+  }
+
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [cartAdded, setCartAdded] = React.useState(false);
@@ -26,7 +43,7 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
     if (action === 'cart') {
-      if (attributes.quantity === 0) {
+      if (quantity === 0) {
         showToast('Prodotto non disponibile', 'error');
         setShake(true);
         setTimeout(() => setShake(false), 500);
@@ -34,31 +51,36 @@ export default function ProductCard({ product }) {
       }
       addToCart(product, 1);
       setCartAdded(true);
-      showToast(`${attributes.title} aggiunto al carrello!`, 'success');
+      showToast(`${title} aggiunto al carrello!`, 'success');
       setTimeout(() => setCartAdded(false), SUCCESS_STATE_DURATION);
     } else {
-      // Placeholder per future funzionalita
-      console.log(`${action} clicked for product:`, attributes.title);
+      console.log(`${action} clicked for product:`, title);
     }
   };
 
   const getStockStatus = () => {
-    if (attributes.quantity === 0) {
+    if (quantity === 0) {
       return { text: 'Esaurito', className: 'out-of-stock' };
     }
-    if (attributes.quantity < 5) {
-      return { text: `Solo ${attributes.quantity}`, className: 'low-stock' };
+    if (quantity < 5) {
+      return { text: `Solo ${quantity}`, className: 'low-stock' };
     }
     return { text: 'Disponibile', className: 'in-stock' };
   };
 
   const stockStatus = getStockStatus();
 
+  // Prezzo (solo modalità Strapi ha il campo price nel modo attuale)
+  const price = USE_BACKEND_STORE
+    ? product.prezzo_vendita
+    : product.attributes?.price;
+  const originalPrice = USE_BACKEND_STORE ? null : product.attributes?.original_price;
+
   return (
-    <Link to={`/product/${attributes.slug}`} className={`product-card${shake ? ' shake' : ''}`}>
+    <Link to={productLink} className={`product-card${shake ? ' shake' : ''}`}>
       <div className="product-image">
-        {image ? (
-          <img src={image} alt={attributes.title} loading="lazy" />
+        {imageUrl ? (
+          <img src={imageUrl} alt={title} loading="lazy" />
         ) : (
           <div className="product-image-placeholder">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -76,8 +98,8 @@ export default function ProductCard({ product }) {
               <span className="discount-badge">-{discount}%</span>
             )}
           </div>
-          {attributes.condition && (
-            <span className="condition-badge">{attributes.condition}</span>
+          {!USE_BACKEND_STORE && product.attributes?.condition && (
+            <span className="condition-badge">{product.attributes.condition}</span>
           )}
         </div>
 
@@ -129,14 +151,16 @@ export default function ProductCard({ product }) {
           <span className="product-category">{categoryName}</span>
         )}
         
-        <h3 className="product-title">{attributes.title}</h3>
+        <h3 className="product-title">{title}</h3>
 
         <div className="product-meta">
           <div className="product-price">
-            {discount > 0 && (
-              <span className="original-price">{attributes.original_price?.toFixed(2)} EUR</span>
+            {discount > 0 && originalPrice && (
+              <span className="original-price">{originalPrice?.toFixed(2)} EUR</span>
             )}
-            <span className="current-price">{attributes.price?.toFixed(2)} EUR</span>
+            {price != null && (
+              <span className="current-price">{price?.toFixed(2)} EUR</span>
+            )}
           </div>
 
           <span className={`product-stock ${stockStatus.className}`}>
