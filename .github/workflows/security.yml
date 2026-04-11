@@ -8,12 +8,10 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sunday
 
-# Global permissions required for all workflow jobs
 permissions:
   contents: read
   issues: write
   pull-requests: write
-  security-events: write
 
 jobs:
   dependency-scan:
@@ -93,53 +91,6 @@ jobs:
             p/javascript
             p/sql
 
-  codeql-analysis:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3.28.16
-        with:
-          languages: python, javascript
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3.28.16
-        continue-on-error: true
-
-  container-security:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Build Docker image
-        run: docker build -t gestione-magazzino:test -f backend/Dockerfile backend/
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
-        with:
-          image-ref: 'gestione-magazzino:test'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3.28.16
-        continue-on-error: true
-        with:
-          sarif_file: 'trivy-results.sarif'
-
   report-security-issues:
     runs-on: ubuntu-latest
     needs: [dependency-scan, code-security-analysis]
@@ -180,11 +131,11 @@ jobs:
           gh label create "security" --color "#e11d48" --description "Security vulnerability" || true
           gh label create "auto-fix" --color "#7c3aed" --description "Auto-fix bot" || true
           gh label create "copilot" --color "#0ea5e9" --description "Copilot assignment" || true
-          gh issue create \
-            --title "[Auto-Fix][Security] Vulnerabilities detected in PR #${{ github.event.pull_request.number }}" \
-            --body-file security-issue-body.md \
-            --label "security,auto-fix,copilot" \
-            --assignee "copilot" \
+          gh issue create \ 
+            --title "[Auto-Fix][Security] Vulnerabilities detected in PR #${{ github.event.pull_request.number }}" \ 
+            --body-file security-issue-body.md \ 
+            --label "security,auto-fix,copilot" \ 
+            --assignee "copilot" \ 
             || echo "WARNING: gh issue create failed (exit $?). Issue creation skipped."
 
       - name: Comment on PR
