@@ -104,18 +104,7 @@ jobs:
             }
 
             // Open the PR with the specified title and body
-            const prBody = `## Test End-to-End Auto-Fix Bot Flow
-
-Questa PR introduce un errore intenzionale in \`test_create_prodotto\` per verificare che il flusso automatico di fix funzioni correttamente:
-
-1. ❌ I test falliscono (assert 999 invece di 201)
-2. 💬 Il workflow commenta sulla PR con il report degli errori
-3. 🎫 Viene creata un'issue assegnata a @copilot
-4. 🔧 Copilot analizza e fixa l'errore committando sul branch
-5. 🔄 Il push attiva il re-test automatico
-6. ✅ I test passano → merge automatico
-
-**Nota**: Questo è un test intenzionale del sistema di automazione CI/CD.`;
+            const prBody = "## Test End-to-End Auto-Fix Bot Flow\n\nQuesta PR introduce un errore intenzionale in `test_create_prodotto` per verificare che il flusso automatico di fix funzioni correttamente:\n\n1. ❌ I test falliscono (assert 999 invece di 201)\n2. 💬 Il workflow commenta sulla PR con il report degli errori\n3. 🎫 Viene creata un'issue assegnata a @copilot\n4. 🔧 Copilot analizza e fixa l'errore committando sul branch\n5. 🔄 Il push attiva il re-test automatico\n6. ✅ I test passano → merge automatico\n\n**Nota**: Questo è un test intenzionale del sistema di automazione CI/CD.";
 
             const { data: pr } = await github.rest.pulls.create({
               owner: context.repo.owner,
