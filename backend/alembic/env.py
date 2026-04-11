@@ -40,6 +40,9 @@ target_metadata = Base.metadata
 
 # Usa DATABASE_URL da variabile d'ambiente se disponibile
 database_url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+# Render fornisce postgres:// ma SQLAlchemy 2.x richiede postgresql://
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 config.set_main_option("sqlalchemy.url", database_url)
 
 
