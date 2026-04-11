@@ -24,6 +24,7 @@ from ..models.prodotto import Prodotto
 from ..models.cliente import Cliente
 from ..limiter import limiter
 from ..services.notification_service import notification_service
+from ..services.google_drive_service import drive_service
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,8 @@ class StoreProdottoPublic(BaseModel):
     categoria_nome: Optional[str] = None
     foto_url: Optional[str] = None
     in_esaurimento: bool
+    immagini: List[str] = []
+    google_drive_folder_id: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -99,6 +102,16 @@ def _to_public(prodotto: Prodotto, request: Request) -> StoreProdottoPublic:
     )
 
     prezzo_vendita = float(prodotto.prezzo_vendita) if prodotto.prezzo_vendita is not None else None
+    foto_url = _build_foto_url(prodotto, request)
+
+    # Recupera immagini da Google Drive se disponibile
+    immagini: List[str] = []
+    if prodotto.google_drive_folder_id:
+        immagini = drive_service.list_images_in_folder(prodotto.google_drive_folder_id)
+
+    # Fallback retrocompatibile: se nessuna immagine Drive ma esiste foto_url, usala
+    if not immagini and foto_url:
+        immagini = [foto_url]
 
     return StoreProdottoPublic(
         id=prodotto.id,
@@ -109,8 +122,10 @@ def _to_public(prodotto: Prodotto, request: Request) -> StoreProdottoPublic:
         quantita=prodotto.quantita,
         categoria_id=prodotto.categoria_id,
         categoria_nome=categoria_nome,
-        foto_url=_build_foto_url(prodotto, request),
+        foto_url=foto_url,
         in_esaurimento=in_esaurimento,
+        immagini=immagini,
+        google_drive_folder_id=prodotto.google_drive_folder_id,
     )
 
 

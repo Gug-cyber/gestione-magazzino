@@ -3,17 +3,23 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
 import strapiAPI from '../api/strapi';
+import storeAPI from '../api/store';
 
 const STRAPI_URL = import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337';
+const USE_BACKEND_STORE = import.meta.env.VITE_USE_BACKEND_STORE === 'true';
 
 export default function ProductDetail() {
   const { slug } = useParams();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
+  // In modalità backend, slug è un id numerico; in Strapi è uno slug stringa
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
-    queryFn: () => strapiAPI.getProduct(slug),
+    queryFn: () =>
+      USE_BACKEND_STORE
+        ? storeAPI.getStoreProdotto(slug)
+        : strapiAPI.getProduct(slug),
   });
 
   if (isLoading) {
@@ -44,17 +50,44 @@ export default function ProductDetail() {
     );
   }
 
-  const attrs = product.attributes;
-  const images = attrs.images?.data || [];
-  const discount = attrs.discount_percentage;
-  const categoryName = attrs.category?.data?.attributes?.name;
+  // Normalizza i dati del prodotto in base alla sorgente
+  let title, description, price, originalPrice, discount, stockQuantity, sku, categoryName, categorySlug, images;
+
+  if (USE_BACKEND_STORE) {
+    title = product.nome;
+    description = product.descrizione;
+    price = product.prezzo_vendita;
+    originalPrice = null;
+    discount = null;
+    stockQuantity = product.quantita;
+    sku = product.sku;
+    categoryName = product.categoria_nome;
+    categorySlug = null;
+    // images è già un array di URL Drive (o foto_url come fallback)
+    images = product.immagini || [];
+  } else {
+    const attrs = product.attributes;
+    title = attrs.title;
+    description = attrs.description;
+    price = attrs.price;
+    originalPrice = attrs.original_price;
+    discount = attrs.discount_percentage;
+    stockQuantity = attrs.quantity;
+    sku = attrs.sku;
+    categoryName = attrs.category?.data?.attributes?.name;
+    categorySlug = attrs.category?.data?.attributes?.slug;
+    // Converti gli oggetti Strapi in URL semplici
+    images = (attrs.images?.data || []).map(
+      (img) => `${STRAPI_URL}${img.attributes.url}`
+    );
+  }
 
   const getStockStatus = () => {
-    if (attrs.quantity === 0) {
+    if (stockQuantity === 0) {
       return { text: 'Esaurito', className: 'out-of-stock', available: false };
     }
-    if (attrs.quantity < 5) {
-      return { text: `Solo ${attrs.quantity} disponibili`, className: 'low-stock', available: true };
+    if (stockQuantity < 5) {
+      return { text: `Solo ${stockQuantity} disponibili`, className: 'low-stock', available: true };
     }
     return { text: 'Disponibile', className: 'in-stock', available: true };
   };
@@ -62,11 +95,11 @@ export default function ProductDetail() {
   const stockStatus = getStockStatus();
 
   const handleAddToCart = () => {
-    console.log('Add to cart:', { product: attrs.title, quantity });
+    console.log('Add to cart:', { product: title, quantity });
   };
 
   const handleAddToWishlist = () => {
-    console.log('Add to wishlist:', attrs.title);
+    console.log('Add to wishlist:', title);
   };
 
   return (
@@ -76,8 +109,8 @@ export default function ProductDetail() {
         <div className="product-detail-main-image">
           {images.length > 0 ? (
             <img
-              src={`${STRAPI_URL}${images[selectedImage].attributes.url}`}
-              alt={attrs.title}
+              src={images[selectedImage]}
+              alt={title}
             />
           ) : (
             <div className="product-detail-no-image">
@@ -94,9 +127,9 @@ export default function ProductDetail() {
         {/* Thumbnails */}
         {images.length > 1 && (
           <div style={{ display: 'flex', gap: 'var(--spacing-sm)', overflowX: 'auto' }}>
-            {images.map((img, index) => (
+            {images.map((imgUrl, index) => (
               <button
-                key={img.id}
+                key={index}
                 onClick={() => setSelectedImage(index)}
                 style={{
                   width: '80px',
@@ -113,8 +146,8 @@ export default function ProductDetail() {
                 }}
               >
                 <img
-                  src={`${STRAPI_URL}${img.attributes.url}`}
-                  alt={`${attrs.title} - ${index + 1}`}
+                  src={imgUrl}
+                  alt={`${title} - ${index + 1}`}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </button>
@@ -133,7 +166,7 @@ export default function ProductDetail() {
           {categoryName && (
             <>
               <span>/</span>
-              <Link to={`/catalogo?categoria=${attrs.category?.data?.attributes?.slug}`} style={{ color: 'inherit' }}>
+              <Link to={`/catalogo?categoria=${categorySlug || categoryName}`} style={{ color: 'inherit' }}>
                 {categoryName}
               </Link>
             </>
@@ -156,14 +189,16 @@ export default function ProductDetail() {
           </span>
         )}
 
-        <h1>{attrs.title}</h1>
+        <h1>{title}</h1>
 
         {/* Price */}
         <div className="product-detail-price">
           {discount > 0 && (
-            <span className="original-price">{attrs.original_price?.toFixed(2)} EUR</span>
+            <span className="original-price">{originalPrice?.toFixed(2)} EUR</span>
           )}
-          <span className="current-price">{attrs.price?.toFixed(2)} EUR</span>
+          {price != null && (
+            <span className="current-price">{price?.toFixed(2)} EUR</span>
+          )}
           {discount > 0 && (
             <span className="discount-badge" style={{ marginLeft: 'var(--spacing-sm)' }}>
               -{discount}%
@@ -179,8 +214,8 @@ export default function ProductDetail() {
         </div>
 
         {/* SKU */}
-        {attrs.sku && (
-          <p className="product-sku">SKU: {attrs.sku}</p>
+        {sku && (
+          <p className="product-sku">SKU: {sku}</p>
         )}
 
         {/* Quantity & Actions */}
@@ -217,7 +252,7 @@ export default function ProductDetail() {
                 {quantity}
               </span>
               <button
-                onClick={() => setQuantity(Math.min(attrs.quantity, quantity + 1))}
+                onClick={() => setQuantity(Math.min(stockQuantity, quantity + 1))}
                 style={{
                   width: '40px',
                   height: '40px',
@@ -255,12 +290,12 @@ export default function ProductDetail() {
         )}
 
         {/* Description */}
-        {attrs.description && (
+        {description && (
           <div style={{ marginTop: 'var(--spacing-xl)', paddingTop: 'var(--spacing-xl)', borderTop: '1px solid var(--color-border)' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Descrizione</h3>
             <div
               className="product-description"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(attrs.description) }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
             />
           </div>
         )}

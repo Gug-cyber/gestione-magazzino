@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime
 
@@ -19,6 +19,7 @@ class ProdottoBase(BaseModel):
     foto_path: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
+    google_drive_folder_id: Optional[str] = None
 
     @field_validator("quantita", "quantita_minima")
     @classmethod
@@ -53,6 +54,7 @@ class ProdottoUpdate(BaseModel):
     lingua: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
+    google_drive_folder_id: Optional[str] = None
 
 
 class ProdottoResponse(ProdottoBase):
@@ -61,6 +63,7 @@ class ProdottoResponse(ProdottoBase):
     updated_at: Optional[datetime] = None
     foto_url: Optional[str] = None
     barcode_generated_at: Optional[datetime] = None
+    immagini_drive: Optional[List[str]] = None
 
     class Config:
         from_attributes = True
