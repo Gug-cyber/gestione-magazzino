@@ -105,9 +105,9 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          {prodotto.foto_url ? (
+          {(prodotto.immagini?.[0] || prodotto.foto_url) ? (
             <img
-              src={prodotto.foto_url}
+              src={prodotto.immagini?.[0] || prodotto.foto_url}
               alt={prodotto.nome}
               loading={index === 0 ? 'eager' : 'lazy'}
               decoding={index === 0 ? undefined : 'async'}
