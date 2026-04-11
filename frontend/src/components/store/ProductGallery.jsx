@@ -18,49 +18,16 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
   const current = images[selected]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'row', gap: '12px', alignItems: 'flex-start' }}>
-
-      {/* Vertical thumbnails on the left (Vinted style) — only if more than 1 image */}
-      {images.length > 1 && (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          flexShrink: 0,
-          width: '72px',
-        }}>
-          {images.map((img, idx) => (
-            <button
-              key={idx}
-              onClick={() => { setSelected(idx); setImgLoaded(false); setImgError(false) }}
-              style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                padding: 0,
-                border: idx === selected
-                  ? '2px solid var(--color-primary)'
-                  : '2px solid transparent',
-                cursor: 'pointer',
-                backgroundColor: 'var(--color-surface)',
-                outline: 'none',
-                transition: 'border-color 150ms ease',
-                opacity: idx === selected ? 1 : 0.7,
-              }}
-            >
-              <img
-                src={img}
-                alt={`${nome} ${idx + 1}`}
-                loading="lazy"
-                decoding="async"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={e => { e.currentTarget.style.opacity = '0.2' }}
-              />
-            </button>
-          ))}
-        </div>
-      )}
+    <>
+      <style>{`
+        .product-gallery-wrap { display: flex; flex-direction: row; gap: 12px; align-items: flex-start; }
+        .product-gallery-thumbs { width: 120px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-shrink: 0; }
+        @media (max-width: 640px) {
+          .product-gallery-wrap { flex-direction: column; }
+          .product-gallery-thumbs { width: 100%; grid-template-columns: repeat(4, 1fr); }
+        }
+      `}</style>
+      <div className="product-gallery-wrap">
 
       {/* Main image */}
       <div style={{
@@ -192,7 +159,45 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
           </div>
         )}
       </div>
+
+      {/* Thumbnail grid on the right (eBay / Cardmarket style) — only if more than 1 image */}
+      {images.length > 1 && (
+        <div className="product-gallery-thumbs">
+          {images.map((img, idx) => (
+            <button
+              key={idx}
+              onClick={() => { setSelected(idx); setImgLoaded(false); setImgError(false) }}
+              style={{
+                aspectRatio: '1',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                padding: 0,
+                border: idx === selected
+                  ? '2px solid var(--color-primary)'
+                  : '2px solid transparent',
+                cursor: 'pointer',
+                backgroundColor: 'var(--color-surface)',
+                outline: 'none',
+                transition: 'border-color 150ms ease',
+                opacity: idx === selected ? 1 : 0.7,
+                display: 'block',
+                width: '100%',
+              }}
+            >
+              <img
+                src={img}
+                alt={`${nome} ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={e => { e.currentTarget.style.opacity = '0.2' }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
+    </>
   )
 }
 
