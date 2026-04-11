@@ -116,8 +116,8 @@ export default function StoreProductPage() {
           className="product-detail-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'min(480px, 45%) 1fr',
-            gap: '48px',
+            gridTemplateColumns: 'min(520px, 52%) 1fr',
+            gap: '40px',
             alignItems: 'start',
           }}
         >
@@ -127,17 +127,23 @@ export default function StoreProductPage() {
             extraImages={prodotto.immagini || []}
           />
 
-          <ProductInfo
-            prodotto={prodotto}
-            inCart={isInCart(prodotto.id)}
-            cartQty={getItemQty(prodotto.id)}
-            added={added}
-            onAddToCart={handleAddToCart}
-            prezzoScontato={prezzoScontato}
-          />
+          <div style={{ position: 'sticky', top: '24px' }}>
+            <ProductInfo
+              prodotto={prodotto}
+              inCart={isInCart(prodotto.id)}
+              cartQty={getItemQty(prodotto.id)}
+              added={added}
+              onAddToCart={handleAddToCart}
+              prezzoScontato={prezzoScontato}
+            />
+          </div>
         </div>
 
         <style>{`
+          @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
           @media (max-width: 768px) {
             .product-detail-grid {
               grid-template-columns: 1fr !important;

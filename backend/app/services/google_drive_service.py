@@ -77,7 +77,7 @@ class GoogleDriveService:
             )
             files = result.get("files", [])
             urls = [
-                f"https://drive.google.com/uc?export=view&id={f['id']}"
+                f"https://drive.google.com/thumbnail?id={f['id']}&sz=w800"
                 for f in files
             ]
             _image_cache[folder_id] = (urls, now)
