@@ -612,6 +612,19 @@ export default function StoreCheckoutPage() {
                     </div>
                   )
                 })}
+                {pagamentoOptions.length === 0 && (
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-warning, var(--color-border))',
+                    borderRadius: '8px',
+                    color: 'var(--color-text-secondary)',
+                    fontSize: '14px',
+                    textAlign: 'center',
+                  }}>
+                    ⚠️ Nessun metodo di pagamento disponibile al momento. Riprova più tardi.
+                  </div>
+                )}
               </div>
 
               {/* Credit card form */}
@@ -726,8 +739,15 @@ export default function StoreCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setCurrentStep(4)}
+                disabled={pagamentoOptions.length === 0}
                 className="gm-btn gm-btn-primary"
-                style={{ padding: '12px 28px', fontSize: '15px', fontWeight: '600' }}
+                style={{ 
+                  padding: '12px 28px', 
+                  fontSize: '15px', 
+                  fontWeight: '600',
+                  opacity: pagamentoOptions.length === 0 ? 0.5 : 1,
+                  cursor: pagamentoOptions.length === 0 ? 'not-allowed' : 'pointer',
+                }}
               >
                 Avanti →
               </button>
