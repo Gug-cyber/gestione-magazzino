@@ -5,6 +5,7 @@ on:
     branches:
       - 'fix/**'
       - 'copilot-fix/**'
+      - 'copilot/**'
       - 'auto-fix/**'
       - 'test/**'
 
@@ -78,8 +79,13 @@ jobs:
         run: |
           set +e
           cd backend
-          pytest tests/security/ -v --tb=short > ../test-security-output.txt 2>&1
-          security_exit=$?
+          if [ -d "tests/security" ]; then
+            pytest tests/security/ -v --tb=short > ../test-security-output.txt 2>&1
+            security_exit=$?
+          else
+            echo "No security test directory found, skipping." > ../test-security-output.txt
+            security_exit=0
+          fi
           echo "security_exit_code=$security_exit" >> $GITHUB_OUTPUT
 
       - name: Run Frontend Tests

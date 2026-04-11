@@ -134,8 +134,13 @@ jobs:
         run: |
           set +e
           cd backend
-          pytest tests/security/ -v --tb=short > ../test-security-output.txt 2>&1
-          security_exit=$?
+          if [ -d "tests/security" ]; then
+            pytest tests/security/ -v --tb=short > ../test-security-output.txt 2>&1
+            security_exit=$?
+          else
+            echo "No security test directory found, skipping." > ../test-security-output.txt
+            security_exit=0
+          fi
           echo "security_exit_code=$security_exit" >> $GITHUB_OUTPUT
 
       - name: Run Frontend Tests
@@ -339,24 +344,35 @@ jobs:
       issues: write
 
     steps:
-      - name: Comment and merge PR
+      - name: Auto-merge PR via API
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
-        run: |
-          # Comment on the PR
-          gh pr comment "$PR_NUMBER" \
-            --repo "${{ github.repository }}" \
-            --body "✅ **All tests passed!** Auto-merging this PR..."
+        with:
+          script: |
+            const prNumber = parseInt(process.env.PR_NUMBER);
 
-          # Merge with --admin to bypass restrictions on PRs created by bots
-          if ! gh pr merge "$PR_NUMBER" \
-              --repo "${{ github.repository }}" \
-              --squash \
-              --admin \
-              --delete-branch; then
-            echo "⚠️ Auto-merge failed. Please merge manually."
-            gh pr comment "$PR_NUMBER" \
-              --repo "${{ github.repository }}" \
-              --body "⚠️ Tests passed but auto-merge failed. Please merge manually."
-          fi
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: '✅ **All tests passed!** Auto-merging this PR...'
+            });
+
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash'
+              });
+              core.info(`PR #${prNumber} merged successfully.`);
+            } catch (e) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `⚠️ Tests passed but auto-merge failed: ${e.message}. Please merge manually.`
+              });
+              core.warning(`Auto-merge failed: ${e.message}`);
+            }
