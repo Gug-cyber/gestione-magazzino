@@ -144,10 +144,10 @@ export default function StoreProductPage() {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
           }
-          @media (max-width: 640px) {
+          @media (max-width: 768px) {
             .product-detail-grid {
-              grid-template-columns: 1fr 1fr !important;
-              gap: 12px !important;
+              grid-template-columns: 1fr !important;
+              gap: 20px !important;
             }
           }
         `}</style>

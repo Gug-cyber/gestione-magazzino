@@ -32,11 +32,10 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
   return (
     <>
       <style>{`
-        .product-gallery-wrap { display: flex; flex-direction: row; gap: 12px; align-items: flex-start; }
+        .product-gallery-wrap { display: flex; flex-direction: row; gap: 8px; align-items: flex-start; }
         .product-gallery-thumbs { width: 120px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-shrink: 0; }
         @media (max-width: 640px) {
-          .product-gallery-wrap { flex-direction: column; }
-          .product-gallery-thumbs { width: 100%; grid-template-columns: repeat(4, 1fr); }
+          .product-gallery-thumbs { width: 72px; grid-template-columns: 1fr 1fr; gap: 4px; }
         }
       `}</style>
       <div className="product-gallery-wrap">
