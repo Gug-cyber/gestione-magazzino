@@ -2,13 +2,15 @@ name: Create E2E Test PR (Manual Fix Test)
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
     branches:
-      - 'copilot/teste2e-manual-fix-test'
+      - main
 
 jobs:
   create-test-branch:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'copilot/teste2e-manual-fix-test'
     permissions:
       contents: write
       pull-requests: write
