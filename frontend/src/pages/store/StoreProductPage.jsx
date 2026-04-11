@@ -121,7 +121,11 @@ export default function StoreProductPage() {
             alignItems: 'start',
           }}
         >
-          <ProductGallery fotoUrl={prodotto.foto_url} nome={prodotto.nome} />
+          <ProductGallery
+            fotoUrl={prodotto.foto_url}
+            nome={prodotto.nome}
+            extraImages={prodotto.immagini || []}
+          />
 
           <ProductInfo
             prodotto={prodotto}
