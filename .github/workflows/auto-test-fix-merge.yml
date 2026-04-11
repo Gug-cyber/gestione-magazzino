@@ -177,43 +177,43 @@ jobs:
           else
             echo "passed=false" >> $GITHUB_OUTPUT
 
-            echo "## 🔴 Test Failures Detected" > error-report.md
+            echo "## Test Failures Detected" > error-report.md
             echo "" >> error-report.md
 
             if [ "$backend_code" != "0" ]; then
               echo "### Backend Tests Failed" >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_START" >> error-report.md
               tail -50 test-backend-output.txt >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_END" >> error-report.md
               echo "" >> error-report.md
             fi
 
             if [ "$security_code" != "0" ]; then
               echo "### Security Tests Failed" >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_START" >> error-report.md
               tail -50 test-security-output.txt >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_END" >> error-report.md
               echo "" >> error-report.md
             fi
 
             if [ "$frontend_code" != "0" ]; then
               echo "### Frontend Tests Failed" >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_START" >> error-report.md
               tail -50 test-frontend-output.txt >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_END" >> error-report.md
               echo "" >> error-report.md
             fi
 
             if [ "$bandit_code" != "0" ]; then
               echo "### Bandit Security Scan Failed" >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_START" >> error-report.md
               tail -50 test-bandit-output.txt >> error-report.md
-              echo '```' >> error-report.md
+              echo "FAILED_OUTPUT_END" >> error-report.md
             fi
 
-            echo "report<<EOF" >> $GITHUB_OUTPUT
-            cat error-report.md >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            # Store report as plain base64 to avoid backtick/special-char injection in downstream JS
+            report_b64=$(base64 -w 0 error-report.md)
+            echo "report=${report_b64}" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload Test Outputs
@@ -235,104 +235,54 @@ jobs:
       issues: write
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          ref: ${{ needs.find-pr.outputs.head-ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Bootstrap Labels
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
         with:
           script: |
-            try {
-              await github.rest.issues.createLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: 'auto-fix',
-                color: 'e11d48',
-                description: 'Automated fix requested'
-              });
-            } catch (e) {
-              if (e.status !== 422) throw e;
+            for (const label of [
+              { name: 'auto-fix', color: 'e11d48', description: 'Automated fix requested' },
+              { name: 'copilot', color: '6366f1', description: 'Assigned to GitHub Copilot for auto-fix' },
+            ]) {
+              try {
+                await github.rest.issues.createLabel({ owner: context.repo.owner, repo: context.repo.repo, ...label });
+              } catch (e) {
+                if (e.status !== 422) throw e;
+              }
             }
 
-            try {
-              await github.rest.issues.createLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: 'copilot',
-                color: '6366f1',
-                description: 'Assigned to GitHub Copilot for auto-fix'
-              });
-            } catch (e) {
-              if (e.status !== 422) throw e;
-            }
-
-      - name: Comment on PR with errors
+      - name: Comment and create issue for Copilot
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
         env:
-          ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
-          PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
-        with:
-          script: |
-            const errorReport = process.env.ERROR_REPORT;
-            const prNumber = parseInt(process.env.PR_NUMBER);
-
-            const comment = `
-            ${errorReport}
-
-            ---
-
-            🤖 **Copilot is now analyzing these failures and will attempt to fix them automatically.**
-
-            Please wait for the automated fix to be committed to this PR.
-            `;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: comment
-            });
-
-      - name: Create Issue for Copilot
-        id: create-issue
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
-        env:
-          ERROR_REPORT: ${{ needs.run-tests.outputs.error-report }}
+          ERROR_REPORT_B64: ${{ needs.run-tests.outputs.error-report }}
           PR_NUMBER: ${{ needs.find-pr.outputs.pr-number }}
           HEAD_REF: ${{ needs.find-pr.outputs.head-ref }}
           HEAD_SHA: ${{ needs.find-pr.outputs.head-sha }}
         with:
           script: |
-            const errorReport = process.env.ERROR_REPORT;
             const prNumber = parseInt(process.env.PR_NUMBER);
             const headRef = process.env.HEAD_REF;
             const headSha = process.env.HEAD_SHA;
 
-            const issue = await github.rest.issues.create({
+            // Decode the base64-encoded report to avoid backtick/special-char injection
+            const errorReport = Buffer.from(process.env.ERROR_REPORT_B64 || '', 'base64').toString('utf8')
+              || '_(No error details available)_';
+
+            // Comment on the PR
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `## Test Failures\n\n${errorReport}\n\n---\n\n🤖 **Copilot is now analyzing these failures and will attempt to fix them automatically.**\n\nPlease wait for the automated fix to be committed to this PR.`
+            });
+
+            // Create issue for Copilot
+            await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `[Auto-Fix] Test failures in PR #${prNumber}`,
-              body: `
-            ## Test Failures Report
-
-            ${errorReport}
-
-            ---
-
-            **PR:** #${prNumber}
-            **Branch:** ${headRef}
-            **Commit:** ${headSha}
-
-            @copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch \\`${headRef}\`.
-
-            The workflow will automatically re-run tests after your fix.
-            `,
+              body: `## Test Failures Report\n\n${errorReport}\n\n---\n\n**PR:** #${prNumber}\n**Branch:** ${headRef}\n**Commit:** ${headSha}\n\n@copilot Please analyze these test failures and fix them. Once fixed, commit the changes to the branch \`${headRef}\`.\n\nThe workflow will automatically re-run tests after your fix.`,
               labels: ['auto-fix', 'copilot']
             });
-
-            return issue.data.number;
 
   auto-merge:
     needs: [find-pr, run-tests]
@@ -372,7 +322,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: `⚠️ Tests passed but auto-merge failed: ${e.message}. Please merge manually.`
+                body: `Tests passed but auto-merge failed: ${e.message}. Please merge manually.`
               });
               core.warning(`Auto-merge failed: ${e.message}`);
             }
