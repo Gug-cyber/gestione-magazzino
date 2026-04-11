@@ -233,7 +233,7 @@ export default function DashboardAlerts({ products, orders, invoices }) {
             gap: '16px',
           }}
         >
-          {alerts.map((alert) => (
+          {alerts.filter(a => a.count > 0).map((alert) => (
             <AlertCard
               key={alert.key}
               title={alert.title}
