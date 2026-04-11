@@ -2,6 +2,11 @@ name: Create E2E Test Branch
 
 on:
   workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch name to create (default: auto-generated with timestamp)'
+        required: false
+        default: ''
 
 jobs:
   create-test-branch:
@@ -22,7 +27,8 @@ jobs:
             // toISOString gives e.g. "2026-04-07T07:44:58.255Z"; after replacing ':' and '.'
             // with '-', slice(0,19) keeps "2026-04-07T07-44-58" (drops milliseconds and 'Z')
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const branch = `test/e2e-auto-fix-${timestamp}`;
+            const inputBranch = context.payload.inputs && context.payload.inputs.branch_name;
+            const branch = inputBranch || `test/e2e-auto-fix-${timestamp}`;
             const filePath = 'backend/tests/test_prodotti.py';
 
             core.info(`Branch name: ${branch}`);
@@ -97,11 +103,17 @@ jobs:
             core.info(`Committed intentional error to ${branch}`);
 
             // Create a new PR (branch is always unique, no existing PR to worry about)
+            const prTitle = inputBranch
+              ? 'test: verifica flusso end-to-end auto-fix bot [manuale]'
+              : `test: verifica flusso end-to-end auto-fix bot [${timestamp}]`;
+            const prBody = inputBranch
+              ? "## Test End-to-End Auto-Fix Bot Flow\n\nQuesta PR introduce un errore intenzionale in `test_create_prodotto` per verificare che il flusso automatico di fix funzioni correttamente:\n\n1. ❌ I test falliscono (assert 999 invece di 201)\n2. 💬 Il workflow commenta sulla PR con il report degli errori\n3. 🎫 Viene creata un'issue assegnata a @copilot\n4. 🔧 Copilot analizza e fixa l'errore committando sul branch\n5. 🔄 Il push attiva il re-test automatico\n6. ✅ I test passano → merge automatico\n\n**Nota**: Questo è un test intenzionale del sistema di automazione CI/CD."
+              : `## Test End-to-End Auto-Fix Bot Flow\n\n**Branch**: \`${branch}\`\n**Timestamp**: \`${timestamp}\`\n\nQuesta PR introduce un errore intenzionale in \`test_create_prodotto\` per verificare che il flusso automatico di fix funzioni correttamente:\n\n1. ❌ I test falliscono (assert 999 invece di 201)\n2. 💬 Il workflow commenta sulla PR con il report degli errori\n3. 🎫 Viene creata un'issue assegnata a @copilot\n4. 🔧 Copilot analizza e fixa l'errore committando sul branch\n5. 🔄 Il push attiva il re-test automatico\n6. ✅ I test passano → merge automatico\n\n**Nota**: Questo è un test intenzionale del sistema di automazione CI/CD.`;
             const { data: newPr } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `test: verifica flusso end-to-end auto-fix bot [${timestamp}]`,
-              body: `## Test End-to-End Auto-Fix Bot Flow\n\n**Branch**: \`${branch}\`\n**Timestamp**: \`${timestamp}\`\n\nQuesta PR introduce un errore intenzionale in \`test_create_prodotto\` per verificare che il flusso automatico di fix funzioni correttamente:\n\n1. ❌ I test falliscono (assert 999 invece di 201)\n2. 💬 Il workflow commenta sulla PR con il report degli errori\n3. 🎫 Viene creata un'issue assegnata a @copilot\n4. 🔧 Copilot analizza e fixa l'errore committando sul branch\n5. 🔄 Il push attiva il re-test automatico\n6. ✅ I test passano → merge automatico\n\n**Nota**: Questo è un test intenzionale del sistema di automazione CI/CD.`,
+              title: prTitle,
+              body: prBody,
               head: branch,
               base: 'main'
             });
