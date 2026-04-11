@@ -375,7 +375,15 @@ export default function StorePage() {
           </div>
         ) : (
           <>
-            <div style={{
+            <style>{`
+              @media (max-width: 640px) {
+                .store-product-grid {
+                  grid-template-columns: repeat(2, 1fr) !important;
+                  gap: 12px !important;
+                }
+              }
+            `}</style>
+            <div className="store-product-grid" style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
               gap: '24px',

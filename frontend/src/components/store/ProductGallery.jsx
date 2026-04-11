@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
   // Deduplication: Drive images already include foto_url as first photo.
@@ -14,8 +14,20 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
   const [imgError, setImgError] = useState(false)
   const [hoverLeft, setHoverLeft] = useState(false)
   const [hoverRight, setHoverRight] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const current = images[selected]
+
+  useEffect(() => {
+    if (!lightboxOpen) return
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setLightboxOpen(false)
+      if (e.key === 'ArrowLeft') setSelected(prev => (prev - 1 + images.length) % images.length)
+      if (e.key === 'ArrowRight') setSelected(prev => (prev + 1) % images.length)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [lightboxOpen, images.length, setSelected])
 
   return (
     <>
@@ -69,6 +81,7 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
             alt={nome}
             onLoad={() => { setImgLoaded(true); setImgError(false) }}
             onError={() => { setImgError(true); setImgLoaded(false) }}
+            onClick={() => setLightboxOpen(true)}
             style={{
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
@@ -76,6 +89,7 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
               opacity: imgLoaded ? 1 : 0,
               transition: 'opacity 250ms ease',
               padding: '8px',
+              cursor: 'zoom-in',
             }}
           />
         )}
@@ -197,6 +211,117 @@ export default function ProductGallery({ fotoUrl, nome, extraImages = [] }) {
         </div>
       )}
     </div>
+
+    {/* Lightbox */}
+    {lightboxOpen && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={nome}
+        onClick={() => setLightboxOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          backgroundColor: 'rgba(0,0,0,0.92)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        {/* Close button */}
+        <button
+          aria-label="Chiudi"
+          onClick={e => { e.stopPropagation(); setLightboxOpen(false) }}
+          style={{
+            position: 'absolute', top: 16, right: 16,
+            width: 44, height: 44,
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white',
+            fontSize: '22px',
+            zIndex: 1001,
+          }}
+        >
+          ✕
+        </button>
+
+        {/* Counter */}
+        {images.length > 1 && (
+          <div style={{
+            position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            color: 'white',
+            fontSize: '13px',
+            fontWeight: '600',
+            borderRadius: '20px',
+            padding: '4px 12px',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1001,
+          }}>
+            {selected + 1} / {images.length}
+          </div>
+        )}
+
+        {/* Image */}
+        <img
+          src={images[selected]}
+          alt={nome}
+          onClick={e => e.stopPropagation()}
+          style={{
+            maxWidth: '90vw', maxHeight: '90vh',
+            objectFit: 'contain',
+            borderRadius: '8px',
+            userSelect: 'none',
+          }}
+        />
+
+        {/* Left arrow */}
+        {images.length > 1 && (
+          <button
+            aria-label="Foto precedente"
+            onClick={e => { e.stopPropagation(); setSelected(prev => (prev - 1 + images.length) % images.length) }}
+            style={{
+              position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+              width: 48, height: 48,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(0,0,0,0.55)',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white',
+              zIndex: 1001,
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
+
+        {/* Right arrow */}
+        {images.length > 1 && (
+          <button
+            aria-label="Foto successiva"
+            onClick={e => { e.stopPropagation(); setSelected(prev => (prev + 1) % images.length) }}
+            style={{
+              position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+              width: 48, height: 48,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(0,0,0,0.55)',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white',
+              zIndex: 1001,
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
+      </div>
+    )}
     </>
   )
 }
