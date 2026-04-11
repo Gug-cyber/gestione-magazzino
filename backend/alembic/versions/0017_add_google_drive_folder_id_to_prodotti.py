@@ -7,6 +7,7 @@ Create Date: 2026-04-11 00:00:00.000000
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 
 
 revision: str = "0017"
@@ -16,7 +17,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("prodotti", sa.Column("google_drive_folder_id", sa.String(255), nullable=True))
+    bind = op.get_bind()
+    inspector = Inspector.from_engine(bind)
+    if "prodotti" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("prodotti")]
+        if "google_drive_folder_id" not in columns:
+            op.add_column("prodotti", sa.Column("google_drive_folder_id", sa.String(255), nullable=True))
 
 
 def downgrade() -> None:
