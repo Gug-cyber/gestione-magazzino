@@ -14,13 +14,13 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
       {/* Name + meta */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <h1 style={{
           margin: 0,
-          fontSize: 'clamp(22px, 3.5vw, 34px)',
+          fontSize: 'clamp(18px, 2.8vw, 28px)',
           fontWeight: '800',
           color: 'var(--color-text)',
           lineHeight: '1.2',
@@ -83,12 +83,12 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
           disabled={isEsaurito}
           style={{
             width: '100%',
-            padding: '16px 24px',
+            padding: '13px 20px',
             borderRadius: '14px',
             border: 'none',
             cursor: isEsaurito ? 'not-allowed' : 'pointer',
             fontWeight: '700',
-            fontSize: '16px',
+            fontSize: '15px',
             letterSpacing: '0.01em',
             transition: 'background-color 180ms ease, transform 120ms ease, box-shadow 180ms ease',
             backgroundColor: added
