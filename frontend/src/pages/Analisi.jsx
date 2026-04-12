@@ -546,16 +546,25 @@ function TabSpese() {
 // Tab Storico
 function TabStorico() {
   const [anni, setAnni] = useState([])
+  const [mensile, setMensile] = useState([])
+  const [anno, setAnno] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [errore, setErrore] = useState(null)
   const isMobile = useIsMobile()
+
+  const MESI_NOMI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
+  const fmtEur = (v) => v != null ? `€${Number(v).toFixed(2)}` : '—'
 
   useEffect(() => {
     const caricaDati = async () => {
       setLoading(true)
       try {
-        const res = await analisiAPI.getAnnuale()
-        setAnni(res.data)
+        const [resAnnuale, resMensile] = await Promise.all([
+          analisiAPI.getAnnuale(),
+          analisiAPI.getMensile(anno),
+        ])
+        setAnni(resAnnuale.data)
+        setMensile(resMensile.data)
       } catch {
         setErrore('Errore nel caricamento dei dati storici.')
       } finally {
@@ -563,106 +572,200 @@ function TabStorico() {
       }
     }
     caricaDati()
-  }, [])
+  }, [anno])
 
   if (loading) return <p className="text-muted">Caricamento...</p>
   if (errore) return <div className="error-banner">{errore}</div>
-  if (anni.length === 0) return <p className="text-muted">Nessun dato storico disponibile.</p>
 
   return (
-    <div className="card">
-      <h3 className="section-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 3v18h18" />
-          <path d="M18 17l-5-5-4 4-5-5" />
-        </svg>
-        Storico Annuale
-      </h3>
-      
-      {isMobile ? (
-        /* Mobile: Cards */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {anni.map((a) => {
-            const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
-            return (
-              <div key={a.anno} style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: '10px',
-                padding: '16px',
-              }}>
-                <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--primary)', marginBottom: '12px' }}>
-                  {a.anno}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.875rem' }}>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Ricavi</div>
-                    <div style={{ fontWeight: 600, color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Costi</div>
-                    <div style={{ fontWeight: 600, color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Spese</div>
-                    <div style={{ fontWeight: 600, color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Margine</div>
-                    <div style={{ fontWeight: 700, color: margine >= 0 ? 'var(--success)' : 'var(--danger)' }}>€{margine.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Marginalità %</div>
-                    <div style={{ fontWeight: 700, color: (a.marginalita_percentuale ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                      {a.marginalita_percentuale !== null && a.marginalita_percentuale !== undefined
-                        ? `${a.marginalita_percentuale.toFixed(1)}%`
-                        : 'N/A'}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+      {/* Monthly history */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+          <h3 className="section-title" style={{ margin: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            📅 Storico Mensile
+          </h3>
+          <select
+            value={anno}
+            onChange={(e) => setAnno(Number(e.target.value))}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.875rem' }}
+          >
+            {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        {mensile && mensile.length > 0 ? (
+          isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {mensile.map((m) => {
+                const margine = (m.ricavi || 0) - (m.costi || 0) - (m.totale_spese || 0)
+                return (
+                  <div key={m.mese} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: '10px', padding: '16px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', marginBottom: '10px' }}>
+                      {MESI_NOMI[m.mese - 1] || m.mese} {anno}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.875rem' }}>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Ricavi</div>
+                        <div style={{ fontWeight: 600, color: 'var(--success)' }}>{fmtEur(m.ricavi)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Costi</div>
+                        <div style={{ fontWeight: 600, color: 'var(--danger)' }}>{fmtEur(m.costi)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Spese</div>
+                        <div style={{ fontWeight: 600, color: 'var(--warning)' }}>{fmtEur(m.totale_spese)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Margine</div>
+                        <div style={{ fontWeight: 700, color: margine >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtEur(margine)}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        /* Desktop: Table */
-        <div className="table-wrapper">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Anno</th>
-                <th>Costi</th>
-                <th>Ricavi</th>
-                <th>Spese</th>
-                <th>Margine</th>
-                <th>Marginalità %</th>
-              </tr>
-            </thead>
-            <tbody>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Mese</th>
+                    <th style={{ textAlign: 'right' }}>Ricavi</th>
+                    <th style={{ textAlign: 'right' }}>Costi</th>
+                    <th style={{ textAlign: 'right' }}>Spese</th>
+                    <th style={{ textAlign: 'right' }}>Margine</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mensile.map((m) => {
+                    const margine = (m.ricavi || 0) - (m.costi || 0) - (m.totale_spese || 0)
+                    return (
+                      <tr key={m.mese}>
+                        <td className="text-bold">{MESI_NOMI[m.mese - 1] || m.mese}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>{fmtEur(m.ricavi)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmtEur(m.costi)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--warning)' }}>{fmtEur(m.totale_spese)}</td>
+                        <td style={{ textAlign: 'right', color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
+                          {margine >= 0 ? '+' : ''}{fmtEur(margine)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          <p className="text-muted">Nessun dato disponibile per l&apos;anno selezionato.</p>
+        )}
+      </div>
+
+      {/* Annual history */}
+      {anni.length > 0 && (
+        <div className="card">
+          <h3 className="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 3v18h18" />
+              <path d="M18 17l-5-5-4 4-5-5" />
+            </svg>
+            📆 Storico Annuale
+          </h3>
+
+          {isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {anni.map((a) => {
                 const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
                 return (
-                  <tr key={a.anno}>
-                    <td className="text-bold">{a.anno}</td>
-                    <td style={{ color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</td>
-                    <td style={{ color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</td>
-                    <td style={{ color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</td>
-                    <td style={{ color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
-                      €{margine.toFixed(2)}
-                    </td>
-                    <td style={{
-                      color: (a.marginalita_percentuale ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)',
-                      fontWeight: '700'
-                    }}>
-                      {a.marginalita_percentuale !== null && a.marginalita_percentuale !== undefined
-                        ? `${a.marginalita_percentuale.toFixed(1)}%`
-                        : 'N/A'}
-                    </td>
-                  </tr>
+                  <div key={a.anno} style={{
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '10px',
+                    padding: '16px',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--primary)', marginBottom: '12px' }}>
+                      {a.anno}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.875rem' }}>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Ricavi</div>
+                        <div style={{ fontWeight: 600, color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Costi</div>
+                        <div style={{ fontWeight: 600, color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Spese</div>
+                        <div style={{ fontWeight: 600, color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Margine</div>
+                        <div style={{ fontWeight: 700, color: margine >= 0 ? 'var(--success)' : 'var(--danger)' }}>€{margine.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Marginalità %</div>
+                        <div style={{ fontWeight: 700, color: (a.marginalita_percentuale ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                          {a.marginalita_percentuale !== null && a.marginalita_percentuale !== undefined
+                            ? `${a.marginalita_percentuale.toFixed(1)}%`
+                            : 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Anno</th>
+                    <th>Costi</th>
+                    <th>Ricavi</th>
+                    <th>Spese</th>
+                    <th>Margine</th>
+                    <th>Marginalità %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {anni.map((a) => {
+                    const margine = (a.ricavi || 0) - (a.costi || 0) - (a.spese || 0) - (a.packaging || 0)
+                    return (
+                      <tr key={a.anno}>
+                        <td className="text-bold">{a.anno}</td>
+                        <td style={{ color: 'var(--danger)' }}>€{(a.costi || 0).toFixed(2)}</td>
+                        <td style={{ color: 'var(--success)' }}>€{(a.ricavi || 0).toFixed(2)}</td>
+                        <td style={{ color: 'var(--warning)' }}>€{((a.spese || 0) + (a.packaging || 0)).toFixed(2)}</td>
+                        <td style={{ color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: '700' }}>
+                          €{margine.toFixed(2)}
+                        </td>
+                        <td style={{
+                          color: (a.marginalita_percentuale ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)',
+                          fontWeight: '700'
+                        }}>
+                          {a.marginalita_percentuale !== null && a.marginalita_percentuale !== undefined
+                            ? `${a.marginalita_percentuale.toFixed(1)}%`
+                            : 'N/A'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

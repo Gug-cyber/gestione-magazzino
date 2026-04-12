@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { analyticsAPI, analisiAPI } from '../api/client'
+import { analyticsAPI } from '../api/client'
 import '../styles/shared.css'
 
 // ---------------------------------------------------------------------------
@@ -499,135 +499,6 @@ function TabUtenti({ devices, loadingD }) {
 }
 
 // ---------------------------------------------------------------------------
-// Storico Tab (monthly + annual history from analisiAPI)
-// ---------------------------------------------------------------------------
-function TabStorico() {
-  const [mensile, setMensile] = useState(null)
-  const [annuale, setAnnuale] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [anno, setAnno] = useState(new Date().getFullYear())
-
-  useEffect(() => {
-    setLoading(true)
-    setError(null)
-    Promise.all([
-      analisiAPI.getMensile(anno),
-      analisiAPI.getAnnuale(),
-    ])
-      .then(([m, a]) => {
-        setMensile(m.data)
-        setAnnuale(a.data)
-      })
-      .catch((err) => {
-        console.error('Errore caricamento storico:', err)
-        setError('Errore nel caricamento dei dati storici.')
-      })
-      .finally(() => setLoading(false))
-  }, [anno])
-
-  const fmtEur = (v) => v != null ? `€${Number(v).toFixed(2)}` : '—'
-  const mesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-
-  if (loading) return <div style={{ color: 'var(--text-secondary)', padding: '32px 0', textAlign: 'center' }}>Caricamento…</div>
-  if (error) return <div style={{ color: 'var(--danger, #ef4444)', padding: '16px', textAlign: 'center' }}>{error}</div>
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-
-      {/* Monthly history */}
-      <div className="card">
-        <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <h3 className="card-title">📅 Storico Mensile</h3>
-          <select
-            value={anno}
-            onChange={(e) => setAnno(Number(e.target.value))}
-            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.875rem' }}
-          >
-            {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
-        {mensile && mensile.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Mese</th>
-                  <th style={{ textAlign: 'right' }}>Ricavi</th>
-                  <th style={{ textAlign: 'right' }}>Costi</th>
-                  <th style={{ textAlign: 'right' }}>Spese</th>
-                  <th style={{ textAlign: 'right' }}>Margine</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mensile.map((m) => {
-                  const margine = (m.ricavi || 0) - (m.costi || 0) - (m.totale_spese || 0)
-                  return (
-                    <tr key={m.mese}>
-                      <td style={{ fontWeight: 500 }}>{mesi[m.mese - 1] || m.mese}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--success, #10b981)', fontWeight: 600 }}>{fmtEur(m.ricavi)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtEur(m.costi)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtEur(m.totale_spese)}</td>
-                      <td style={{ textAlign: 'right', color: margine >= 0 ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)', fontWeight: 700 }}>
-                        {margine >= 0 ? '+' : ''}{fmtEur(margine)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nessun dato disponibile per l&apos;anno selezionato.</p>
-        )}
-      </div>
-
-      {/* Annual history */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">📆 Storico Annuale</h3>
-        </div>
-        {annuale && annuale.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Anno</th>
-                  <th style={{ textAlign: 'right' }}>Ricavi</th>
-                  <th style={{ textAlign: 'right' }}>Costi</th>
-                  <th style={{ textAlign: 'right' }}>Spese</th>
-                  <th style={{ textAlign: 'right' }}>Margine</th>
-                </tr>
-              </thead>
-              <tbody>
-                {annuale.map((a) => {
-                  const margine = (a.ricavi || 0) - (a.costi || 0) - ((a.spese || 0) + (a.packaging || 0))
-                  return (
-                    <tr key={a.anno}>
-                      <td style={{ fontWeight: 700 }}>{a.anno}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--success, #10b981)', fontWeight: 600 }}>{fmtEur(a.ricavi)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtEur(a.costi)}</td>
-                      <td style={{ textAlign: 'right' }}>{fmtEur((a.spese || 0) + (a.packaging || 0))}</td>
-                      <td style={{ textAlign: 'right', color: margine >= 0 ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)', fontWeight: 700 }}>
-                        {margine >= 0 ? '+' : ''}{fmtEur(margine)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nessun dato storico disponibile.</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 export default function Statistiche() {
@@ -723,16 +594,6 @@ export default function Statistiche() {
         </svg>
       ),
     },
-    {
-      key: 'storico',
-      label: 'Storico',
-      icon: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 3v18h18" />
-          <path d="M18 17l-5-5-4 4-5-5" />
-        </svg>
-      ),
-    },
   ]
 
   return (
@@ -791,7 +652,6 @@ export default function Statistiche() {
       {tab === 'conversioni' && <TabConversioni summary={summary} loadingS={loadingS} />}
       {tab === 'prodotti' && <TabProdotti topProducts={topProducts} loadingP={loadingP} />}
       {tab === 'utenti' && <TabUtenti devices={devices} loadingD={loadingD} />}
-      {tab === 'storico' && <TabStorico />}
     </div>
   )
 }

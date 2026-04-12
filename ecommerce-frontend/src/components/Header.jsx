@@ -94,7 +94,7 @@ export default function Header() {
 
         {/* Account Button */}
         {isAuthenticated ? (
-          <div ref={accountRef} style={{ position: 'relative' }}>
+          <div ref={accountRef} style={{ position: 'relative' }} className="header-account">
             <button
               onClick={() => setAccountOpen(!accountOpen)}
               aria-label="Account"
@@ -235,6 +235,7 @@ export default function Header() {
         ) : (
           <Link
             to="/login"
+            className="header-account"
             style={{
               display: 'flex',
               alignItems: 'center',
