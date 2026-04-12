@@ -233,6 +233,12 @@ export const cardmarketScraperAPI = {
 
 export { trackingAPI } from './tracking'
 
+export const analyticsAPI = {
+  getSummary: (period = '30d') => client.get('/api/analytics/summary', { params: { period } }),
+  getTopProducts: (period = '30d') => client.get('/api/analytics/top-products', { params: { period } }),
+  getDevices: (period = '30d') => client.get('/api/analytics/devices', { params: { period } }),
+}
+
 /**
  * Restituisce l'URL completo per mostrare la foto di un prodotto.
  * - Se foto_url è già un URL assoluto (Cloudinary), lo restituisce direttamente.

@@ -4,6 +4,7 @@ import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { trackPageView, trackCheckoutStart, trackPurchase } from '../../utils/analytics'
 
 const STEP_KEYS = ['step_personal', 'step_shipping', 'step_payment', 'step_summary', 'step_confirm']
 
@@ -159,6 +160,11 @@ export default function StoreCheckoutPage() {
   const [storeSettings, setStoreSettings] = useState(null)
 
   useEffect(() => {
+    trackPageView('/store/checkout')
+    trackCheckoutStart()
+  }, [])
+
+  useEffect(() => {
     storeAPI.getFlagsPublici()
       .then(res => {
         if (res.data.checkout_enabled === false) setCheckoutEnabled(false)
@@ -305,6 +311,11 @@ export default function StoreCheckoutPage() {
       const res = await storeAPI.checkout(payload)
       clearCart()
       setSuccess(res.data)
+      trackPurchase(
+        res.data?.ordine?.numero_ordine || payload.righe?.length,
+        payload.righe?.reduce((sum, r) => sum + r.prezzo_unitario * r.quantita, 0) || 0,
+        payload.righe?.map(r => ({ id: String(r.prodotto_id), quantity: r.quantita, price: r.prezzo_unitario })) || []
+      )
       setCurrentStep(5)
     } catch (err) {
       const detail = err.response?.data?.detail

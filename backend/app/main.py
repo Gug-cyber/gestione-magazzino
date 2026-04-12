@@ -32,6 +32,7 @@ from .models import cardmarket_price as _cardmarket_price_model  # noqa: F401 �
 from .routers import activity_log as activity_log_router
 from .routers import store as store_router
 from .routers import control_panel as control_panel_router
+from .routers import analytics as analytics_router
 from .models import dato_storico  # noqa: F401 – ensures dati_storici table is created
 from .models import fattura as _fattura_model  # noqa: F401 – ensures fatture table is created
 from .models import cliente as _cliente_model  # noqa: F401 – ensures clienti table is created
@@ -41,6 +42,7 @@ from .models import dati_azienda as _dati_azienda_model  # noqa: F401 – ensure
 from .models import feature_flag as _feature_flag_model  # noqa: F401 – ensures feature_flags table is created
 from .models import promozione as _promozione_model  # noqa: F401 – ensures promozioni table is created
 from .models import warehouse_settings as _warehouse_settings_model  # noqa: F401 – ensures warehouse_settings table is created
+from .models import analytics as _analytics_model  # noqa: F401 – ensures analytics_events table is created
 
 load_dotenv()
 
@@ -120,6 +122,7 @@ app.include_router(cms_banner.router, prefix="/api/cms", tags=["CMS - Banner"])
 app.include_router(cms_prodotti.router, prefix="/api/cms", tags=["CMS - Prodotti"])
 app.include_router(store_router.router, prefix="/api/store", tags=["Store Pubblico"])
 app.include_router(control_panel_router.router, prefix="/api/control-panel", tags=["Control Panel"])
+app.include_router(analytics_router.router, prefix="/api/analytics", tags=["Analytics"])
 
 
 @app.on_event("startup")
