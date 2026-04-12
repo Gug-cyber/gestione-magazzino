@@ -127,29 +127,8 @@ function TabGrafici() {
   const totaleSpese = datiCorrente.reduce((s, d) => s + (d.totale_spese || (d.spese || 0) + (d.packaging || 0)), 0)
   const margine = totRicavi - totCosti - totSpese - totPackaging
 
-  const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth() + 1
-
   return (
     <div>
-      {/* Selettori rapidi periodo */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => { setVista('mensile'); setAnno(currentYear); setMeseSelezionato(currentMonth) }}
-          className={vista === 'mensile' && anno === currentYear && meseSelezionato === currentMonth ? 'btn-primary' : 'btn-secondary'}
-          style={{ fontSize: '0.8125rem' }}
-        >
-          Questo mese
-        </button>
-        <button
-          onClick={() => { setVista('annuale'); setAnno(currentYear) }}
-          className={vista === 'annuale' && anno === currentYear ? 'btn-primary' : 'btn-secondary'}
-          style={{ fontSize: '0.8125rem' }}
-        >
-          Quest&#39;anno
-        </button>
-      </div>
-
       {/* Selettori */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -566,10 +545,9 @@ function TabSpese() {
 
 // Tab Storico
 function TabStorico() {
-  const currentYear = new Date().getFullYear()
   const [anni, setAnni] = useState([])
   const [mensile, setMensile] = useState([])
-  const [anno, setAnno] = useState(currentYear)
+  const [anno, setAnno] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [errore, setErrore] = useState(null)
   const isMobile = useIsMobile()
@@ -615,26 +593,12 @@ function TabStorico() {
             📅 Storico Mensile
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setAnno(currentYear)}
-              className={anno === currentYear ? 'btn-primary' : 'btn-secondary'}
-              style={{ fontSize: '0.8125rem' }}
-            >
-              Anno corrente
-            </button>
-            <button
-              onClick={() => setAnno(currentYear - 1)}
-              className={anno === currentYear - 1 ? 'btn-primary' : 'btn-secondary'}
-              style={{ fontSize: '0.8125rem' }}
-            >
-              Anno precedente
-            </button>
             <select
               value={anno}
               onChange={(e) => setAnno(Number(e.target.value))}
               style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.875rem' }}
             >
-              {Array.from({ length: 6 }, (_, i) => currentYear - i).map((y) => (
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
