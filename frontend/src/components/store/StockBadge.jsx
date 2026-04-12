@@ -1,3 +1,5 @@
+import { useLanguage } from '../../context/LanguageContext'
+
 /**
  * StockBadge — dot + text availability indicator
  * Props:
@@ -6,16 +8,17 @@
  *   soglia         – threshold below which "Solo N disponibili" is shown (default 3)
  */
 export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
+  const { t } = useLanguage()
   if (quantita === 0) {
-    return <DotBadge dotColor="var(--color-danger)">Esaurito</DotBadge>
+    return <DotBadge dotColor="var(--color-danger)">{t('stock_out')}</DotBadge>
   }
   if (in_esaurimento && quantita > 0) {
-    return <DotBadge dotColor="var(--color-warning)">In esaurimento</DotBadge>
+    return <DotBadge dotColor="var(--color-warning)">{t('stock_low')}</DotBadge>
   }
   if (quantita > 0 && quantita <= soglia) {
-    return <DotBadge dotColor="var(--color-info)">Solo {quantita} disponibili</DotBadge>
+    return <DotBadge dotColor="var(--color-info)">{t('stock_only_n', quantita)}</DotBadge>
   }
-  return <DotBadge dotColor="var(--color-success)">Disponibile</DotBadge>
+  return <DotBadge dotColor="var(--color-success)">{t('stock_available')}</DotBadge>
 }
 
 function DotBadge({ dotColor, children }) {

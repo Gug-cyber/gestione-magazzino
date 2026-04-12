@@ -3,12 +3,14 @@ import { useParams, Link } from 'react-router-dom'
 import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
+import { useLanguage } from '../../context/LanguageContext'
 import ProductGallery from '../../components/store/ProductGallery'
 import ProductInfo from '../../components/store/ProductInfo'
 
 export default function StoreProductPage() {
   const { id } = useParams()
   const { addItem, isInCart, getItemQty } = useCart()
+  const { t } = useLanguage()
   const [prodotto, setProdotto] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -24,8 +26,8 @@ export default function StoreProductPage() {
       .then(res => setProdotto(res.data))
       .catch(err => {
         setError(err.response?.status === 404
-          ? 'Prodotto non trovato o non disponibile.'
-          : 'Errore nel caricamento del prodotto.')
+          ? 'error_product_not_found'
+          : 'error_loading_product')
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -85,9 +87,9 @@ export default function StoreProductPage() {
         <div style={{ textAlign: 'center', padding: '80px 20px' }}>
           <p style={{ fontSize: '48px', margin: '0 0 12px' }}>😕</p>
           <p style={{ color: 'var(--color-danger)', marginBottom: '20px', fontSize: '15px' }}>
-            {error || 'Prodotto non trovato'}
+            {error ? t(error) : t('error_product_not_found')}
           </p>
-          <Link to="/store" className="gm-btn gm-btn-secondary">← Torna allo store</Link>
+          <Link to="/store" className="gm-btn gm-btn-secondary">{t('back_to_store')}</Link>
         </div>
       </StoreLayout>
     )
@@ -98,7 +100,7 @@ export default function StoreProductPage() {
       <div className="animate-fade-in">
         {/* Breadcrumb */}
         <nav style={{ marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-          <Link to="/store" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>Store</Link>
+          <Link to="/store" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>{t('store_breadcrumb')}</Link>
           <span style={{ color: 'var(--color-border-hover)' }}>›</span>
           <span style={{
             color: 'var(--color-text-secondary)',

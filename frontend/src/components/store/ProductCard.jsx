@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
+import { useLanguage } from '../../context/LanguageContext'
 
 function cercaPromozioneAttiva(prodotto, promozioni) {
   if (!promozioni || promozioni.length === 0) return null
@@ -14,7 +15,7 @@ function cercaPromozioneAttiva(prodotto, promozioni) {
  * Single overlay badge — shows the highest-priority status:
  * Esaurito > promo > in_esaurimento / scarsità
  */
-function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
+function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo, t }) {
   const base = {
     position: 'absolute', top: '8px', left: '8px', zIndex: 2,
     borderRadius: '999px', padding: '2px 8px',
@@ -26,7 +27,7 @@ function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
   if (isEsaurito) {
     return (
       <span style={{ ...base, backgroundColor: 'rgba(239,68,68,0.85)' }}>
-        Esaurito
+        {t('badge_out_of_stock')}
       </span>
     )
   }
@@ -41,7 +42,7 @@ function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
     )
   }
   if (inEsaurimento || soloN) {
-    const text = inEsaurimento ? 'In esaurimento' : `Solo ${quantita} rimasti`
+    const text = inEsaurimento ? t('badge_low_stock') : t('badge_only_n', quantita)
     return (
       <span style={{ ...base, backgroundColor: 'rgba(245,158,11,0.88)' }}>
         {text}
@@ -53,6 +54,7 @@ function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo }) {
 
 export default function ProductCard({ prodotto, onAddToCart, promozioni = [], index = 0 }) {
   const { isInCart, getItemQty } = useCart()
+  const { t } = useLanguage()
   const [hovered, setHovered] = useState(false)
 
   const inCart = isInCart(prodotto.id)
@@ -130,6 +132,7 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
           soloN={isSoloN}
           quantita={prodotto.quantita}
           promo={promo}
+          t={t}
         />
       </Link>
 
@@ -184,12 +187,12 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
         <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
           {isEsaurito ? (
             <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-              Non disponibile
+              {t('card_not_available')}
             </span>
           ) : inCart ? (
             <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>✓</span>
-              <span>Nel carrello ({cartQty})</span>
+              <span>{t('card_in_cart', cartQty)}</span>
             </span>
           ) : (
             <button
@@ -205,7 +208,7 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
                 textDecoration: 'none',
               }}
             >
-              + Aggiungi
+              {t('card_add')}
             </button>
           )}
         </div>
