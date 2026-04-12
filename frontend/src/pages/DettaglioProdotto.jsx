@@ -535,8 +535,8 @@ function DettaglioProdotto() {
             </label>
           </div>
 
-          {/* CardTrader Blueprint ID - SOLO INPUT */}
-          <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+          {/* CardTrader Blueprint ID — nascosto */}
+          <div style={{ display: 'none', gridColumn: '1 / -1', marginTop: 8 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>🃏 CardTrader Blueprint ID</span>
               <input
@@ -854,87 +854,8 @@ function DettaglioProdotto() {
         </div>
       </div>
 
-      {/* Chart - DISABILITATO */}
-      {/* 
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Quantita nel tempo</h2>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <QuantitaChart storico={storico_quantita} />
-        </div>
-      </div>
-      */}
-
-      {/* Movements table */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
-          Storico Movimenti
-          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--color-text-secondary)', marginLeft: 8 }}>({movimenti.length} totali)</span>
-        </h2>
-        {movimenti.length === 0 ? (
-          <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>Nessun movimento registrato</p>
-        ) : (
-          <>
-            <div style={{ overflowX: 'auto', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-border)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: 'var(--color-surface-hover)' }}>
-                    {['Data', 'Tipo', 'Quantita', 'Fornitore', 'Note'].map(h => (
-                      <th key={h} style={{ 
-                        padding: '12px 16px', 
-                        textAlign: 'left', 
-                        fontWeight: 600, 
-                        color: 'var(--color-text)',
-                        borderBottom: '1px solid var(--color-border)',
-                        fontSize: '0.8rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {movimentiPagina.map((m, i) => (
-                    <tr key={m.id} style={{ 
-                      borderBottom: i < movimentiPagina.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <td style={{ padding: '12px 16px', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{fmtDate(m.data_movimento)}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          backgroundColor: m.tipo === 'carico' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
-                          color: m.tipo === 'carico' ? 'var(--color-success)' : 'var(--color-danger)',
-                          padding: '4px 12px', borderRadius: '12px', fontWeight: 600, fontSize: '0.75rem',
-                          textTransform: 'capitalize',
-                        }}>{m.tipo}</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text)' }}>{m.quantita}</td>
-                      <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>{m.fornitore_nome || '—'}</td>
-                      <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontStyle: m.note ? 'normal' : 'italic', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.note || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
-                <button onClick={() => setMovPage(p => Math.max(0, p - 1))} disabled={movPage === 0}
-                  style={btnSmall(movPage === 0 ? 'var(--color-surface-hover)' : 'var(--color-primary)')}>Prec</button>
-                <span style={{ padding: '4px 10px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-                  {movPage + 1} / {totalPages}
-                </span>
-                <button onClick={() => setMovPage(p => Math.min(totalPages - 1, p + 1))} disabled={movPage === totalPages - 1}
-                  style={btnSmall(movPage === totalPages - 1 ? 'var(--color-surface-hover)' : 'var(--color-primary)')}>Succ</button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Sezione Codici & Etichette */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
+      {/* Sezione Codici & Etichette — nascosta */}
+      <div style={{ display: 'none' }}>
         <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>Codici e Etichette</h2>
         {barcodeError && <div style={{ color: 'var(--color-danger)', marginBottom: 12, fontSize: '0.9rem' }}>{barcodeError}</div>}
         <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1169,6 +1090,75 @@ function DettaglioProdotto() {
           onClose={() => setShowPrintModal(false)}
         />
       )}
+
+      {/* Storico Movimenti — in fondo */}
+      <div style={{ ...cardStyle, marginTop: 24, marginBottom: 24 }}>
+        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
+          Storico Movimenti
+          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--color-text-secondary)', marginLeft: 8 }}>({movimenti.length} totali)</span>
+        </h2>
+        {movimenti.length === 0 ? (
+          <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>Nessun movimento registrato</p>
+        ) : (
+          <>
+            <div style={{ overflowX: 'auto', borderRadius: 'var(--border-radius)', border: '1px solid var(--color-border)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--color-surface-hover)' }}>
+                    {['Data', 'Tipo', 'Quantita', 'Fornitore', 'Note'].map(h => (
+                      <th key={h} style={{ 
+                        padding: '12px 16px', 
+                        textAlign: 'left', 
+                        fontWeight: 600, 
+                        color: 'var(--color-text)',
+                        borderBottom: '1px solid var(--color-border)',
+                        fontSize: '0.8rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimentiPagina.map((m, i) => (
+                    <tr key={m.id} style={{ 
+                      borderBottom: i < movimentiPagina.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{fmtDate(m.data_movimento)}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          backgroundColor: m.tipo === 'carico' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+                          color: m.tipo === 'carico' ? 'var(--color-success)' : 'var(--color-danger)',
+                          padding: '4px 12px', borderRadius: '12px', fontWeight: 600, fontSize: '0.75rem',
+                          textTransform: 'capitalize',
+                        }}>{m.tipo}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text)' }}>{m.quantita}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>{m.fornitore_nome || '—'}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontStyle: m.note ? 'normal' : 'italic', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.note || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+                <button onClick={() => setMovPage(p => Math.max(0, p - 1))} disabled={movPage === 0}
+                  style={btnSmall(movPage === 0 ? 'var(--color-surface-hover)' : 'var(--color-primary)')}>Prec</button>
+                <span style={{ padding: '4px 10px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+                  {movPage + 1} / {totalPages}
+                </span>
+                <button onClick={() => setMovPage(p => Math.min(totalPages - 1, p + 1))} disabled={movPage === totalPages - 1}
+                  style={btnSmall(movPage === totalPages - 1 ? 'var(--color-surface-hover)' : 'var(--color-primary)')}>Succ</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

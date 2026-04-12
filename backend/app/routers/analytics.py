@@ -14,7 +14,7 @@ from ..limiter import limiter
 
 router = APIRouter()
 
-VALID_SOURCES = {"instagram", "facebook", "tiktok", "google", "bing", "yahoo", "direct", "other"}
+VALID_SOURCES = {"instagram", "facebook", "tiktok", "google", "bing", "yahoo", "direct", "ebay", "other"}
 VALID_EVENT_TYPES = {"page_view", "purchase", "add_to_cart", "checkout_start"}
 VALID_DEVICES = {"mobile", "desktop"}
 

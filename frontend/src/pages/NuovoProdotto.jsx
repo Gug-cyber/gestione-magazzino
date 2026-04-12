@@ -504,7 +504,15 @@ function NuovoProdotto() {
 
       {showScanner && (
         <BarcodeScanner
-          onScan={(value) => { setSkuManuale(true); setForm(f => ({ ...f, sku: normalizeSkuForCode39(value), barcode: value })); setShowScanner(false) }}
+          onScan={(value) => {
+            const normalizedBarcode = normalizeSkuForCode39(value)
+            setForm(f => ({
+              ...f,
+              barcode: value,
+              sku: skuManuale ? f.sku : normalizedBarcode,
+            }))
+            setShowScanner(false)
+          }}
           onClose={() => setShowScanner(false)}
         />
       )}
