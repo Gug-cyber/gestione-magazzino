@@ -34,9 +34,11 @@ const CHANNEL_LABELS = {
 // ---------------------------------------------------------------------------
 function PeriodSelector({ value, onChange }) {
   const options = [
-    { key: 'today', label: 'Oggi' },
-    { key: '7d', label: 'Ultimi 7 giorni' },
-    { key: '30d', label: 'Ultimi 30 giorni' },
+    { key: 'today',         label: 'Oggi' },
+    { key: '7d',           label: 'Ultimi 7 giorni' },
+    { key: '30d',          label: 'Ultimi 30 giorni' },
+    { key: 'current_month', label: 'Mese corrente' },
+    { key: 'current_year',  label: 'Anno' },
   ]
   return (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
