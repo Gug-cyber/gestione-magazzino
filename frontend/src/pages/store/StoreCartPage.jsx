@@ -44,7 +44,7 @@ export default function StoreCartPage() {
 
       <div className="animate-fade-in">
         <h1 style={{ margin: '0 0 24px', color: 'var(--color-text)', fontSize: '24px', fontWeight: '700' }}>
-          {t('cart_title')}
+          🛒 {t('cart_title')}
           <span style={{
             marginLeft: '10px',
             fontSize: '14px',
@@ -272,7 +272,7 @@ export default function StoreCartPage() {
               onClick={handleClearCart}
               style={{ display: 'block', width: '100%', padding: '10px', marginBottom: '10px', cursor: 'pointer' }}
             >
-              {t('clear_cart')}
+              🗑 {t('clear_cart')}
             </button>
 
             <Link
