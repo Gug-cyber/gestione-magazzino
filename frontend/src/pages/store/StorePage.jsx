@@ -4,6 +4,7 @@ import ProductCard from '../../components/store/ProductCard'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { trackPageView } from '../../utils/analytics'
 
 const PAGE_LIMIT = 40
 
@@ -134,6 +135,10 @@ export default function StorePage() {
       setHasMore(false)
     }
   }, [search, categoriaId, disponibiliOnly])
+
+  useEffect(() => {
+    trackPageView('/store')
+  }, [])
 
   useEffect(() => {
     async function fetchPublic() {

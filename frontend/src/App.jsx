@@ -18,6 +18,7 @@ import Ubicazioni from './pages/Ubicazioni.jsx'
 import Categorie from './pages/Categorie.jsx'
 import Profilo from './pages/Profilo.jsx'
 import Analisi from './pages/Analisi.jsx'
+import Statistiche from './pages/Statistiche.jsx'
 import NuovoProdotto from './pages/NuovoProdotto.jsx'
 import NuovoMovimento from './pages/NuovoMovimento.jsx'
 import Fatture from './pages/Fatture.jsx'
@@ -135,6 +136,11 @@ function App() {
           <Route path="/analisi" element={
             <ProtectedRoute>
               <AppLayout><Analisi /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/statistiche" element={
+            <ProtectedRoute>
+              <AppLayout><Statistiche /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/fatture" element={

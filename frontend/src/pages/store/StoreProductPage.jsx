@@ -6,6 +6,7 @@ import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
 import ProductGallery from '../../components/store/ProductGallery'
 import ProductInfo from '../../components/store/ProductInfo'
+import { trackPageView, trackAddToCart } from '../../utils/analytics'
 
 export default function StoreProductPage() {
   const { id } = useParams()
@@ -18,6 +19,10 @@ export default function StoreProductPage() {
   const [promozioni, setPromozioni] = useState([])
   const [flags, setFlags] = useState({})
   const addedTimerRef = useRef(null)
+
+  useEffect(() => {
+    trackPageView(`/store/product/${id}`)
+  }, [id])
 
   useEffect(() => {
     setLoading(true)
@@ -68,6 +73,7 @@ export default function StoreProductPage() {
     if (!prodotto) return
     const prezzoUnitario = prezzoScontato !== null ? prezzoScontato : prezzoBase
     addItem({ ...prodotto, quantita_disponibile: prodotto.quantita, prezzo_unitario: prezzoUnitario }, qty)
+    trackAddToCart(prodotto.id, prodotto.nome)
     setAdded(true)
     if (addedTimerRef.current) clearTimeout(addedTimerRef.current)
     addedTimerRef.current = setTimeout(() => setAdded(false), 2200)
