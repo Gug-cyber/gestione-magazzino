@@ -505,10 +505,12 @@ function TabStorico() {
   const [mensile, setMensile] = useState(null)
   const [annuale, setAnnuale] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [anno, setAnno] = useState(new Date().getFullYear())
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     Promise.all([
       analisiAPI.getMensile(anno),
       analisiAPI.getAnnuale(),
@@ -517,7 +519,10 @@ function TabStorico() {
         setMensile(m.data)
         setAnnuale(a.data)
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Errore caricamento storico:', err)
+        setError('Errore nel caricamento dei dati storici.')
+      })
       .finally(() => setLoading(false))
   }, [anno])
 
@@ -525,6 +530,7 @@ function TabStorico() {
   const mesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
 
   if (loading) return <div style={{ color: 'var(--text-secondary)', padding: '32px 0', textAlign: 'center' }}>Caricamento…</div>
+  if (error) return <div style={{ color: 'var(--danger, #ef4444)', padding: '16px', textAlign: 'center' }}>{error}</div>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>

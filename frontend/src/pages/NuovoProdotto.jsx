@@ -511,7 +511,6 @@ function NuovoProdotto() {
               barcode: value,
               sku: skuManuale ? f.sku : normalizedBarcode,
             }))
-            if (!skuManuale) setSkuManuale(false)
             setShowScanner(false)
           }}
           onClose={() => setShowScanner(false)}
