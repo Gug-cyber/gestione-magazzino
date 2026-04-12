@@ -43,6 +43,10 @@ def _date_range(period: str):
         start = now - timedelta(days=7)
     elif period == "30d":
         start = now - timedelta(days=30)
+    elif period == "current_month":
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif period == "current_year":
+        start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
     else:
         start = now - timedelta(days=30)
     return start, now
@@ -107,7 +111,7 @@ async def track_event(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/summary")
 def get_summary(
-    period: str = Query(default="30d", pattern="^(today|7d|30d)$"),
+    period: str = Query(default="30d", pattern="^(today|7d|30d|current_month|current_year)$"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -216,7 +220,7 @@ def _daily_trend(db: Session, start: datetime, end: datetime):
 
 @router.get("/top-products")
 def get_top_products(
-    period: str = Query(default="30d", pattern="^(today|7d|30d)$"),
+    period: str = Query(default="30d", pattern="^(today|7d|30d|current_month|current_year)$"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -286,7 +290,7 @@ def get_top_products(
 
 @router.get("/devices")
 def get_devices(
-    period: str = Query(default="30d", pattern="^(today|7d|30d)$"),
+    period: str = Query(default="30d", pattern="^(today|7d|30d|current_month|current_year)$"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
