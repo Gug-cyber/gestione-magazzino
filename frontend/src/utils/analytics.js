@@ -16,8 +16,8 @@ const REFERRER_SOURCE_MAP = [
   [/facebook\.com|fb\.com/i, 'facebook'],
   [/tiktok\.com/i, 'tiktok'],
   [/google\./i, 'google'],
-  [/bing\.com/i, 'google'],
-  [/yahoo\.com/i, 'google'],
+  [/bing\.com/i, 'bing'],
+  [/yahoo\.com/i, 'yahoo'],
 ]
 
 function detectSourceFromReferrer(referrer) {
@@ -74,7 +74,9 @@ function getOrCreateSessionId() {
   try {
     let sid = sessionStorage.getItem(key)
     if (!sid) {
-      sid = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      sid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`
       sessionStorage.setItem(key, sid)
     }
     return sid

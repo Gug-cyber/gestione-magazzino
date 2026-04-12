@@ -10,6 +10,8 @@ const CHANNEL_COLORS = {
   facebook: '#1877f2',
   tiktok: '#010101',
   google: '#4285f4',
+  bing: '#00809d',
+  yahoo: '#720e9e',
   direct: '#6366f1',
   other: '#8b5cf6',
 }
@@ -19,6 +21,8 @@ const CHANNEL_LABELS = {
   facebook: 'Facebook',
   tiktok: 'TikTok',
   google: 'Google',
+  bing: 'Bing',
+  yahoo: 'Yahoo',
   direct: 'Diretto',
   other: 'Altro',
 }

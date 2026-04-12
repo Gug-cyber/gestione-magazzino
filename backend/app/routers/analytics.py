@@ -14,7 +14,7 @@ from ..limiter import limiter
 
 router = APIRouter()
 
-VALID_SOURCES = {"instagram", "facebook", "tiktok", "google", "direct", "other"}
+VALID_SOURCES = {"instagram", "facebook", "tiktok", "google", "bing", "yahoo", "direct", "other"}
 VALID_EVENT_TYPES = {"page_view", "purchase", "add_to_cart", "checkout_start"}
 VALID_DEVICES = {"mobile", "desktop"}
 
@@ -107,7 +107,7 @@ async def track_event(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/summary")
 def get_summary(
-    period: str = Query(default="30d", regex="^(today|7d|30d)$"),
+    period: str = Query(default="30d", pattern="^(today|7d|30d)$"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -216,7 +216,7 @@ def _daily_trend(db: Session, start: datetime, end: datetime):
 
 @router.get("/top-products")
 def get_top_products(
-    period: str = Query(default="30d", regex="^(today|7d|30d)$"),
+    period: str = Query(default="30d", pattern="^(today|7d|30d)$"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -286,7 +286,7 @@ def get_top_products(
 
 @router.get("/devices")
 def get_devices(
-    period: str = Query(default="30d", regex="^(today|7d|30d)$"),
+    period: str = Query(default="30d", pattern="^(today|7d|30d)$"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
