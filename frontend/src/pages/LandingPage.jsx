@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+const GITHUB_URL = 'https://github.com/Gug-cyber/gestione-magazzino'
+const CONTACT_EMAIL = 'info@gestione-magazzino.it'
 /* --------------------------------------------------------------------------
  * Icons (inline SVG – nessuna dipendenza aggiuntiva)
  * -------------------------------------------------------------------------- */
@@ -204,7 +206,7 @@ function HeroSection() {
             🛍️ Vedi lo store demo
           </a>
           <a
-            href="https://github.com/Gug-cyber/gestione-magazzino"
+            href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -554,7 +556,7 @@ const PLANS = [
     desc: 'Scarica, installa e gestisci il tuo magazzino sul tuo server. Nessun costo, nessun limite artificiale.',
     highlight: false,
     cta: 'Scarica gratis',
-    ctaHref: 'https://github.com/Gug-cyber/gestione-magazzino',
+    ctaHref: GITHUB_URL,
     ctaExternal: true,
     features: [
       { text: 'Tutte le funzionalità', ok: true },
@@ -597,7 +599,7 @@ const PLANS = [
     desc: 'Per aziende con più sedi, team grandi e necessità di integrazioni avanzate o white-label.',
     highlight: false,
     cta: 'Contatta le vendite',
-    ctaHref: 'mailto:info@gestione-magazzino.it',
+    ctaHref: `mailto:${CONTACT_EMAIL}`,
     ctaExternal: true,
     features: [
       { text: 'Tutte le funzionalità Pro', ok: true },
@@ -845,7 +847,7 @@ function CTASection() {
             🚀 Accedi / Registrati
           </Link>
           <a
-            href="https://github.com/Gug-cyber/gestione-magazzino"
+            href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -915,7 +917,7 @@ function LandingNavbar() {
           Prezzi
         </a>
         <a
-          href="https://github.com/Gug-cyber/gestione-magazzino"
+          href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '14px', padding: '6px 12px', borderRadius: '6px', transition: 'color 150ms ease', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -1022,9 +1024,9 @@ function LandingFooter() {
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
-                { label: 'GitHub', href: 'https://github.com/Gug-cyber/gestione-magazzino' },
-                { label: 'Documentazione', href: 'https://github.com/Gug-cyber/gestione-magazzino#readme' },
-                { label: 'Licenza MIT', href: 'https://github.com/Gug-cyber/gestione-magazzino/blob/main/README.md' },
+                { label: 'GitHub', href: GITHUB_URL },
+                { label: 'Documentazione', href: `${GITHUB_URL}#readme` },
+                { label: 'Licenza MIT', href: `${GITHUB_URL}/blob/main/README.md` },
               ].map(l => (
                 <li key={l.label}>
                   <a href={l.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 150ms ease' }}
@@ -1052,7 +1054,7 @@ function LandingFooter() {
             © {new Date().getFullYear()} Gestione Magazzino. Rilasciato sotto licenza MIT.
           </p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <a href="https://github.com/Gug-cyber/gestione-magazzino" target="_blank" rel="noopener noreferrer"
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer"
               style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '12px', transition: 'color 150ms ease' }}
               onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}
