@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { FeatureFlagsProvider } from './context/FeatureFlagsContext'
 import { LanguageProvider } from './context/LanguageContext'
@@ -46,6 +47,20 @@ import StoreProductPage from './pages/store/StoreProductPage'
 import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import ControlPanel from './pages/ControlPanel'
+import LandingPage from './pages/LandingPage.jsx'
+
+function RootRedirect() {
+  const { isAuthenticated, isLoading } = useAuth()
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#6366f1' }}>
+        <span>⏳ Caricamento...</span>
+      </div>
+    )
+  }
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  return <LandingPage />
+}
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -82,7 +97,8 @@ function App() {
             <Route path="/store/checkout" element={<StoreCheckoutPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/landing" element={<LandingPage />} />
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <AppLayout><Dashboard /></AppLayout>
