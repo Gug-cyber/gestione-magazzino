@@ -267,7 +267,6 @@ export default function Header() {
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label="Menu"
           style={{
-            display: 'none',
             alignItems: 'center',
             justifyContent: 'center',
             width: '40px',

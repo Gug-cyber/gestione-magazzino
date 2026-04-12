@@ -180,14 +180,12 @@ const BASE_SECTIONS = [
     links: [
       { to: '/fornitori', label: 'Fornitori', icon: 'Building' },
       { to: '/forniture', label: 'Forniture', icon: 'Truck' },
-      { to: '/forniture/nuova', label: 'Nuova Fornitura', icon: 'Plus' },
     ],
   },
   {
     label: 'Magazzino',
     links: [
       { to: '/movimenti', label: 'Movimenti', icon: 'Refresh' },
-      { to: '/scanner', label: 'Scanner Barcode', icon: 'Camera' },
     ],
   },
   {
