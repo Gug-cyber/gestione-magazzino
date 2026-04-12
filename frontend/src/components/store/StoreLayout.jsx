@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { storeAPI } from '../../api/store'
 
 export default function StoreLayout({ children }) {
   const { totalItems } = useCart()
+  const { lang, setLanguage, t } = useLanguage()
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => window.innerWidth >= 1500)
@@ -80,43 +82,48 @@ export default function StoreLayout({ children }) {
           <span style={{ fontWeight: '800', fontSize: '18px', color: 'var(--color-text)' }}>TCG Store</span>
         </Link>
 
-        {/* Quick search bar — clicks navigate to store and focus filter */}
-        <div style={{
-          flex: '1 1 0',
-          maxWidth: '420px',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-        }}>
-          <span style={{
-            position: 'absolute',
-            left: '12px',
-            fontSize: '14px',
-            color: 'var(--color-text-muted)',
-            pointerEvents: 'none',
-          }}>🔍</span>
-          <Link
-            to="/store"
-            style={{
-              width: '100%',
-              padding: '8px 12px 8px 36px',
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '999px',
-              color: 'var(--color-text-muted)',
-              fontSize: '13px',
-              textDecoration: 'none',
-              display: 'block',
-              boxSizing: 'border-box',
-            }}
-          >
-            Cerca nel catalogo...
-          </Link>
-        </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          {/* Language switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '8px' }}>
+            <button
+              onClick={() => setLanguage('it')}
+              title="Italiano"
+              style={{
+                background: 'none',
+                border: lang === 'it' ? '1px solid var(--color-primary)' : '1px solid transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                fontSize: '13px',
+                fontWeight: lang === 'it' ? '700' : '400',
+                color: lang === 'it' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                transition: 'all 150ms ease',
+              }}
+            >
+              🇮🇹 IT
+            </button>
+            <span style={{ color: 'var(--color-border)', fontSize: '12px' }}>|</span>
+            <button
+              onClick={() => setLanguage('en')}
+              title="English"
+              style={{
+                background: 'none',
+                border: lang === 'en' ? '1px solid var(--color-primary)' : '1px solid transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                fontSize: '13px',
+                fontWeight: lang === 'en' ? '700' : '400',
+                color: lang === 'en' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                transition: 'all 150ms ease',
+              }}
+            >
+              🇬🇧 EN
+            </button>
+          </div>
+
           <Link to="/store" style={navLinkStyle('/store')}>
-            Prodotti
+            {t('nav_products')}
           </Link>
           <Link to="/store/cart" style={{
             ...navLinkStyle('/store/cart'),

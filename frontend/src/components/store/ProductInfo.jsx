@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useLanguage } from '../../context/LanguageContext'
 import StockBadge from './StockBadge'
 import PriceDisplay from './PriceDisplay'
 import QuantitySelector from './QuantitySelector'
 
 export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToCart, prezzoScontato = null }) {
   const [qty, setQty] = useState(1)
+  const { t } = useLanguage()
   const isEsaurito = prodotto.quantita === 0
 
   function handleAdd() {
@@ -105,12 +107,12 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
           onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
         >
           {isEsaurito
-            ? '✕ Prodotto esaurito'
+            ? t('out_of_stock_btn')
             : added
-              ? '✓ Aggiunto al carrello!'
+              ? t('added_to_cart_btn')
               : inCart
-                ? `🛒 Aggiungi ancora (${cartQty} nel carrello)`
-                : '🛒 Aggiungi al carrello'}
+                ? t('add_again_btn', cartQty)
+                : t('add_to_cart_btn')}
         </button>
 
         {inCart && (
@@ -127,7 +129,7 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
               fontWeight: '600',
             }}
           >
-            Vai al carrello →
+            {t('go_to_cart')}
           </Link>
         )}
       </div>
@@ -139,6 +141,7 @@ export default function ProductInfo({ prodotto, inCart, cartQty, added, onAddToC
 }
 
 function DescriptionBlock({ descrizione }) {
+  const { t } = useLanguage()
   return (
     <div style={{
       backgroundColor: 'var(--color-surface)',
@@ -156,7 +159,7 @@ function DescriptionBlock({ descrizione }) {
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
       }}>
-        Descrizione
+        {t('description_title')}
       </h3>
       {descrizione ? (
         <p style={{
@@ -170,7 +173,7 @@ function DescriptionBlock({ descrizione }) {
         </p>
       ) : (
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-          Nessuna descrizione disponibile.
+          {t('no_description')}
         </p>
       )}
     </div>

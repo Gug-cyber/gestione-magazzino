@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { FeatureFlagsProvider } from './context/FeatureFlagsContext'
+import { LanguageProvider } from './context/LanguageContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -68,6 +69,7 @@ function AppLayout({ children }) {
 
 function App() {
   return (
+    <LanguageProvider>
     <CartProvider>
       <AuthProvider>
         <FeatureFlagsProvider>
@@ -255,6 +257,7 @@ function App() {
         </FeatureFlagsProvider>
       </AuthProvider>
     </CartProvider>
+    </LanguageProvider>
   )
 }
 

@@ -3,6 +3,7 @@ import StoreLayout from '../../components/store/StoreLayout'
 import ProductCard from '../../components/store/ProductCard'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
+import { useLanguage } from '../../context/LanguageContext'
 
 const PAGE_LIMIT = 40
 
@@ -106,6 +107,7 @@ function CategoryDropdown({ value, onChange, options }) {
 
 export default function StorePage() {
   const { addItem } = useCart()
+  const { t } = useLanguage()
   const [prodotti, setProdotti] = useState([])
   const [categorie, setCategorie] = useState([])
   const [loading, setLoading] = useState(true)
@@ -177,7 +179,7 @@ export default function StorePage() {
           if (!cancelled) setCategorie(catRes.data)
         }
       } catch (err) {
-        if (!cancelled) setError('Errore nel caricamento dei prodotti.')
+        if (!cancelled) setError('error_loading_products')
       } finally {
         if (!cancelled) {
           setLoading(false)
@@ -216,8 +218,8 @@ export default function StorePage() {
       <StoreLayout>
         <div style={{ textAlign: 'center', padding: '80px 20px' }}>
           <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔒</p>
-          <h2 style={{ color: 'var(--color-text)', margin: '0 0 8px' }}>Store temporaneamente non disponibile</h2>
-          <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Torneremo presto. Grazie per la pazienza.</p>
+          <h2 style={{ color: 'var(--color-text)', margin: '0 0 8px' }}>{t('store_unavailable_title')}</h2>
+          <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>{t('store_unavailable_msg')}</p>
         </div>
       </StoreLayout>
     )
@@ -234,11 +236,11 @@ export default function StorePage() {
             🃏 TCG Store
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '13px' }}>
-            Scopri la nostra selezione di carte, giochi e collezioni
+            {t('store_subtitle')}
           </p>
           {!loading && prodotti.length > 0 && (
             <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '12px' }}>
-              {prodotti.length} prodott{prodotti.length === 1 ? 'o' : 'i'}
+              {prodotti.length} {prodotti.length === 1 ? t('store_product_count_one') : t('store_product_count_many')}
             </p>
           )}
         </div>
@@ -269,7 +271,7 @@ export default function StorePage() {
                     </div>
                     {b.link_url && (
                       <a href={b.link_url} className="gm-btn gm-btn-primary gm-btn-sm" target="_blank" rel="noopener noreferrer">
-                        Scopri →
+                        {t('banner_discover')}
                       </a>
                     )}
                   </div>
@@ -311,7 +313,7 @@ export default function StorePage() {
         }}>
           <input
             type="text"
-            placeholder="Cerca prodotti..."
+            placeholder={t('filter_search_placeholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
@@ -329,7 +331,7 @@ export default function StorePage() {
           <CategoryDropdown
             value={categoriaId}
             onChange={val => setCategoriaId(val)}
-            options={[{ value: '', label: 'Tutte le categorie' }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
+            options={[{ value: '', label: t('filter_all_categories') }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
           />
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
@@ -339,7 +341,7 @@ export default function StorePage() {
               onChange={e => setDisponibiliOnly(e.target.checked)}
               style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
             />
-            Solo disponibili
+            {t('filter_available_only')}
           </label>
         </div>
 
@@ -357,19 +359,19 @@ export default function StorePage() {
             color: 'var(--color-danger)',
             textAlign: 'center',
           }}>
-            {error}
+            {t(error)}
           </div>
         ) : prodotti.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--color-text-muted)' }}>
             <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔍</p>
-            <p style={{ fontSize: '16px', margin: 0 }}>Nessun prodotto trovato</p>
+            <p style={{ fontSize: '16px', margin: 0 }}>{t('no_products_found')}</p>
             {(search || categoriaId) && (
               <button
                 className="gm-btn gm-btn-ghost"
                 onClick={() => { setSearch(''); setCategoriaId('') }}
                 style={{ marginTop: '16px' }}
               >
-                Rimuovi filtri
+                {t('remove_filters')}
               </button>
             )}
           </div>
@@ -407,7 +409,7 @@ export default function StorePage() {
                   disabled={loadingMore}
                   style={{ minWidth: '200px' }}
                 >
-                  {loadingMore ? 'Caricamento…' : 'Carica altri prodotti'}
+                  {loadingMore ? t('loading') : t('load_more')}
                 </button>
               </div>
             )}

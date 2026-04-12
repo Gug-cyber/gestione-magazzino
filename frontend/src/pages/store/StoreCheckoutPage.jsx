@@ -3,14 +3,9 @@ import { Link } from 'react-router-dom'
 import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
+import { useLanguage } from '../../context/LanguageContext'
 
-const STEPS = [
-  { label: 'Dati personali' },
-  { label: 'Spedizione' },
-  { label: 'Pagamento' },
-  { label: 'Riepilogo' },
-  { label: 'Conferma' },
-]
+const STEP_KEYS = ['step_personal', 'step_shipping', 'step_payment', 'step_summary', 'step_confirm']
 
 const SPEDIZIONE_OPTIONS = [
   { tipo: 'negozio', label: 'Ritiro in negozio', costo: 0, icona: '🏪', dettaglio: 'Gratuito' },
@@ -78,7 +73,7 @@ function getStepTextColor(isActive, isCompleted) {
   return 'var(--color-text-muted, var(--color-text-secondary))'
 }
 
-function ProgressStepper({ currentStep }) {
+function ProgressStepper({ currentStep, t }) {
   return (
     <div style={{
       display: 'flex',
@@ -87,7 +82,7 @@ function ProgressStepper({ currentStep }) {
       gap: '0',
       marginBottom: '36px',
     }}>
-      {STEPS.map((step, idx) => {
+      {STEP_KEYS.map((key, idx) => {
         const stepNum = idx + 1
         const isCompleted = stepNum < currentStep
         const isActive = stepNum === currentStep
@@ -118,10 +113,10 @@ function ProgressStepper({ currentStep }) {
                 color: textColor,
                 whiteSpace: 'nowrap',
               }}>
-                {step.label}
+                {t(key)}
               </span>
             </div>
-            {idx < STEPS.length - 1 && (
+            {idx < STEP_KEYS.length - 1 && (
               <div style={{
                 width: '60px',
                 height: '2px',
@@ -139,6 +134,7 @@ function ProgressStepper({ currentStep }) {
 
 export default function StoreCheckoutPage() {
   const { items, totalPrice, clearCart } = useCart()
+  const { t } = useLanguage()
   const [checkoutEnabled, setCheckoutEnabled] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -221,9 +217,28 @@ export default function StoreCheckoutPage() {
   ].filter(Boolean) : SPEDIZIONE_OPTIONS
 
   // Ensure at least one option is shown even if all are disabled
-  const spedizioneOptionsEffective = spedizioneOptions.length > 0
+  const spedizioneOptionsEffectiveRaw = spedizioneOptions.length > 0
     ? spedizioneOptions
     : [{ tipo: 'negozio', label: 'Ritiro in negozio', costo: 0, icona: '🏪', dettaglio: 'Gratuito' }]
+
+  // Translate shipping option labels
+  const spedizioneOptionsEffective = spedizioneOptionsEffectiveRaw.map(opt => {
+    const labelMap = {
+      'negozio': t('shipping_pickup'),
+      'standard': t('shipping_standard'),
+      'express': t('shipping_express'),
+    }
+    const dettaglioMap = {
+      'Gratuito': t('shipping_free'),
+      '3-5 giorni lavorativi': t('shipping_standard_days'),
+      '1-2 giorni lavorativi': t('shipping_express_days'),
+    }
+    return {
+      ...opt,
+      label: labelMap[opt.tipo] || opt.label,
+      dettaglio: opt.dettaglio ? (dettaglioMap[opt.dettaglio] || opt.dettaglio) : opt.dettaglio,
+    }
+  })
 
   // Derive payment options dynamically from backend settings (with fallback to hardcoded)
   const pagamentoOptions = storeSettings ? PAGAMENTO_OPTIONS.filter(opt => {
@@ -237,13 +252,20 @@ export default function StoreCheckoutPage() {
     }
   }) : PAGAMENTO_OPTIONS
 
+  // Translate labels for payment options that have localizable labels
+  const pagamentoOptionsTranslated = pagamentoOptions.map(opt => {
+    if (opt.tipo === 'carta') return { ...opt, label: t('payment_card') }
+    if (opt.tipo === 'negozio') return { ...opt, label: t('payment_store'), dettaglio: t('payment_store_detail') }
+    return opt
+  })
+
   function validateStep1() {
     const errors = {}
-    if (!form.nome.trim()) errors.nome = 'Il nome è obbligatorio.'
+    if (!form.nome.trim()) errors.nome = t('validation_name_required')
     if (!form.email.trim()) {
-      errors.email = "L'email è obbligatoria."
+      errors.email = t('validation_email_required')
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      errors.email = "Inserisci un indirizzo email valido."
+      errors.email = t('validation_email_invalid')
     }
     return errors
   }
@@ -324,9 +346,9 @@ export default function StoreCheckoutPage() {
       <StoreLayout>
         <div style={{ textAlign: 'center', padding: '80px 0' }} className="animate-fade-in">
           <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔒</p>
-          <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>Checkout non disponibile al momento</h2>
-          <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>Il servizio di acquisto è temporaneamente sospeso.</p>
-          <Link to="/store" className="gm-btn gm-btn-secondary">Torna allo store</Link>
+          <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>{t('checkout_unavailable_title')}</h2>
+          <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>{t('checkout_unavailable_msg')}</p>
+          <Link to="/store" className="gm-btn gm-btn-secondary">{t('back_to_store_plain')}</Link>
         </div>
       </StoreLayout>
     )
@@ -338,9 +360,9 @@ export default function StoreCheckoutPage() {
       <StoreLayout>
         <div style={{ textAlign: 'center', padding: '80px 0' }} className="animate-fade-in">
           <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🛒</p>
-          <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>Il carrello è vuoto</h2>
+          <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>{t('cart_empty_checkout')}</h2>
           <Link to="/store" className="gm-btn gm-btn-primary" style={{ marginTop: '16px' }}>
-            Torna allo store
+            {t('back_to_store_plain')}
           </Link>
         </div>
       </StoreLayout>
@@ -354,14 +376,14 @@ export default function StoreCheckoutPage() {
           to="/store/cart"
           style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '24px' }}
         >
-          ← Torna al carrello
+          {t('back_to_cart')}
         </Link>
 
         <h1 style={{ margin: '0 0 28px', color: 'var(--color-text)', fontSize: '24px', fontWeight: '700' }}>
-          Checkout
+          {t('checkout_title')}
         </h1>
 
-        <ProgressStepper currentStep={currentStep} />
+        <ProgressStepper currentStep={currentStep} t={t} />
 
         {/* Step 1 — Personal data & shipping */}
         {currentStep === 1 && (
@@ -373,12 +395,12 @@ export default function StoreCheckoutPage() {
               padding: '20px',
             }}>
               <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
-                Dati personali &amp; spedizione
+                {t('personal_and_shipping')}
               </h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Nome e Cognome *</label>
+                  <label style={labelStyle}>{t('field_full_name')}</label>
                   <input
                     name="nome"
                     value={form.nome}
@@ -392,7 +414,7 @@ export default function StoreCheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Email *</label>
+                  <label style={labelStyle}>{t('field_email')}</label>
                   <input
                     name="email"
                     type="email"
@@ -407,7 +429,7 @@ export default function StoreCheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Telefono</label>
+                  <label style={labelStyle}>{t('field_phone')}</label>
                   <input
                     name="telefono"
                     value={form.telefono}
@@ -418,7 +440,7 @@ export default function StoreCheckoutPage() {
                 </div>
 
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Indirizzo</label>
+                  <label style={labelStyle}>{t('field_address')}</label>
                   <input
                     name="indirizzo"
                     value={form.indirizzo}
@@ -429,7 +451,7 @@ export default function StoreCheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Città</label>
+                  <label style={labelStyle}>{t('field_city')}</label>
                   <input
                     name="citta"
                     value={form.citta}
@@ -440,7 +462,7 @@ export default function StoreCheckoutPage() {
                 </div>
 
                 <div>
-                  <label style={labelStyle}>CAP</label>
+                  <label style={labelStyle}>{t('field_zip')}</label>
                   <input
                     name="cap"
                     value={form.cap}
@@ -451,12 +473,12 @@ export default function StoreCheckoutPage() {
                 </div>
 
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Note sull&apos;ordine</label>
+                  <label style={labelStyle}>{t('field_notes')}</label>
                   <textarea
                     name="note"
                     value={form.note}
                     onChange={handleChange}
-                    placeholder="Eventuali note o istruzioni..."
+                    placeholder={t('field_notes_placeholder')}
                     rows={3}
                     style={{ ...inputStyle, resize: 'vertical' }}
                   />
@@ -471,7 +493,7 @@ export default function StoreCheckoutPage() {
                 className="gm-btn gm-btn-primary"
                 style={{ padding: '12px 28px', fontSize: '15px', fontWeight: '600' }}
               >
-                Avanti →
+                {t('next_btn')}
               </button>
             </div>
           </div>
@@ -487,7 +509,7 @@ export default function StoreCheckoutPage() {
               padding: '20px',
             }}>
               <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
-                Scegli il metodo di spedizione
+                {t('choose_shipping')}
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {spedizioneOptionsEffective.map(opt => {
@@ -516,7 +538,7 @@ export default function StoreCheckoutPage() {
                         )}
                       </div>
                       <span style={{ fontWeight: '700', fontSize: '15px', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', flexShrink: 0 }}>
-                        {opt.costo === 0 ? 'Gratuito' : `€${opt.costo.toFixed(2)}`}
+                        {opt.costo === 0 ? t('shipping_free') : `€${opt.costo.toFixed(2)}`}
                       </span>
                       <div style={{
                         width: '18px',
@@ -544,7 +566,7 @@ export default function StoreCheckoutPage() {
                 className="gm-btn gm-btn-ghost"
                 style={{ padding: '12px 20px', fontSize: '14px' }}
               >
-                ← Indietro
+                {t('back_btn')}
               </button>
               <button
                 type="button"
@@ -552,7 +574,7 @@ export default function StoreCheckoutPage() {
                 className="gm-btn gm-btn-primary"
                 style={{ padding: '12px 28px', fontSize: '15px', fontWeight: '600' }}
               >
-                Avanti →
+                {t('next_btn')}
               </button>
             </div>
           </div>
@@ -568,10 +590,10 @@ export default function StoreCheckoutPage() {
               padding: '20px',
             }}>
               <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
-                Scegli il metodo di pagamento
+                {t('choose_payment')}
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {pagamentoOptions.map(opt => {
+                {pagamentoOptionsTranslated.map(opt => {
                   const isSelected = pagamento === opt.tipo
                   return (
                     <div
@@ -622,7 +644,7 @@ export default function StoreCheckoutPage() {
                     fontSize: '14px',
                     textAlign: 'center',
                   }}>
-                    ⚠️ Nessun metodo di pagamento disponibile al momento. Riprova più tardi.
+                    ⚠️ {t('no_payment_methods')}
                   </div>
                 )}
               </div>
@@ -632,7 +654,7 @@ export default function StoreCheckoutPage() {
                 <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
-                      Numero carta
+                      {t('card_number')}
                     </label>
                     <input
                       type="text"
@@ -645,7 +667,7 @@ export default function StoreCheckoutPage() {
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
-                      Nome del titolare
+                      {t('card_holder')}
                     </label>
                     <input
                       type="text"
@@ -658,7 +680,7 @@ export default function StoreCheckoutPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500', color: 'var(--color-text-secondary)' }}>
-                        Data scadenza
+                        {t('card_expiry')}
                       </label>
                       <input
                         type="text"
@@ -682,7 +704,7 @@ export default function StoreCheckoutPage() {
                     </div>
                   </div>
                   <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
-                    I dati della carta non vengono memorizzati né elaborati.
+                    {t('card_data_notice')}
                   </p>
                 </div>
               )}
@@ -703,7 +725,7 @@ export default function StoreCheckoutPage() {
                 }}>
                   <span style={{ fontSize: '16px' }}>ℹ️</span>
                   <span>
-                    Verrai reindirizzato a {pagamentoOptions.find(o => o.tipo === pagamento)?.label} per completare il pagamento dopo la conferma.
+                    {t('redirect_notice', pagamentoOptionsTranslated.find(o => o.tipo === pagamento)?.label)}
                   </span>
                 </div>
               )}
@@ -722,7 +744,7 @@ export default function StoreCheckoutPage() {
                   gap: '8px',
                 }}>
                   <span style={{ fontSize: '16px' }}>ℹ️</span>
-                  <span>Potrai pagare direttamente in negozio al momento del ritiro. Nessun addebito online.</span>
+                  <span>{t('negozio_payment_notice')}</span>
                 </div>
               )}
             </div>
@@ -734,7 +756,7 @@ export default function StoreCheckoutPage() {
                 className="gm-btn gm-btn-ghost"
                 style={{ padding: '12px 20px', fontSize: '14px' }}
               >
-                ← Indietro
+                {t('back_btn')}
               </button>
               <button
                 type="button"
@@ -749,7 +771,7 @@ export default function StoreCheckoutPage() {
                   cursor: pagamentoOptions.length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
-                Avanti →
+                {t('next_btn')}
               </button>
             </div>
           </div>
@@ -766,7 +788,7 @@ export default function StoreCheckoutPage() {
               padding: '20px',
             }}>
               <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
-                Prodotti ({items.length} {items.length === 1 ? 'articolo' : 'articoli'})
+                {t('summary_products', items.length, t('cart_item_one'), t('cart_item_many'))}
               </h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
@@ -789,19 +811,19 @@ export default function StoreCheckoutPage() {
 
               <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>Subtotale prodotti</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>{t('subtotal_products')}</span>
                   <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>€{totalPrice.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>
-                    {spedizione.label}
+                    {spedizioneOptionsEffective.find(o => o.tipo === spedizione.tipo)?.label || spedizione.label}
                   </span>
                   <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>
-                    {spedizione.costo === 0 ? 'Gratuito' : `€${spedizione.costo.toFixed(2)}`}
+                    {spedizione.costo === 0 ? t('shipping_free') : `€${spedizione.costo.toFixed(2)}`}
                   </span>
                 </div>
                 <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>Totale finale</span>
+                  <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>{t('final_total')}</span>
                   <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-primary)' }}>
                     €{(totalPrice + spedizione.costo).toFixed(2)}
                   </span>
@@ -817,19 +839,19 @@ export default function StoreCheckoutPage() {
               padding: '20px',
             }}>
               <h3 style={{ margin: '0 0 12px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
-                Spedizione &amp; pagamento
+                {t('shipping_label_row')}
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Metodo spedizione</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>{t('shipping_method_label')}</span>
                   <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
-                    {spedizioneOptionsEffective.find(o => o.tipo === spedizione.tipo)?.icona} {spedizione.label}
+                    {spedizioneOptionsEffective.find(o => o.tipo === spedizione.tipo)?.icona} {spedizioneOptionsEffective.find(o => o.tipo === spedizione.tipo)?.label || spedizione.label}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Metodo pagamento</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>{t('payment_method_label')}</span>
                   <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
-                    {(() => { const opt = pagamentoOptions.find(o => o.tipo === pagamento); return opt ? `${opt.icona} ${opt.label}` : pagamento })()} 
+                    {(() => { const opt = pagamentoOptionsTranslated.find(o => o.tipo === pagamento); return opt ? `${opt.icona} ${opt.label}` : pagamento })()} 
                   </span>
                 </div>
               </div>
@@ -843,26 +865,26 @@ export default function StoreCheckoutPage() {
               padding: '20px',
             }}>
               <h3 style={{ margin: '0 0 12px', color: 'var(--color-text)', fontSize: '15px', fontWeight: '600' }}>
-                Dati di spedizione
+                {t('shipping_details')}
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: '14px' }}>
                 <div>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>Nome</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>{t('field_name_label')}</span>
                   <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontWeight: '500' }}>{form.nome}</p>
                 </div>
                 <div>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>Email</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>{t('field_email_label')}</span>
                   <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontWeight: '500' }}>{form.email}</p>
                 </div>
                 {form.telefono && (
                   <div>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>Telefono</span>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>{t('field_phone_label')}</span>
                     <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontWeight: '500' }}>{form.telefono}</p>
                   </div>
                 )}
                 {form.indirizzo && (
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>Indirizzo</span>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>{t('field_address_label')}</span>
                     <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontWeight: '500' }}>
                       {form.indirizzo}{form.citta ? `, ${form.citta}` : ''}{form.cap ? ` ${form.cap}` : ''}
                     </p>
@@ -870,7 +892,7 @@ export default function StoreCheckoutPage() {
                 )}
                 {form.note && (
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>Note</span>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>{t('field_notes_label')}</span>
                     <p style={{ margin: '2px 0 0', color: 'var(--color-text)', fontWeight: '500' }}>{form.note}</p>
                   </div>
                 )}
@@ -884,7 +906,7 @@ export default function StoreCheckoutPage() {
                 className="gm-btn gm-btn-ghost"
                 style={{ padding: '12px 20px', fontSize: '14px' }}
               >
-                ← Modifica
+                {t('edit_btn')}
               </button>
               <button
                 type="button"
@@ -899,7 +921,7 @@ export default function StoreCheckoutPage() {
                   cursor: loading ? 'wait' : 'pointer',
                 }}
               >
-                {loading ? 'Invio in corso...' : 'Conferma ordine ✓'}
+                {loading ? t('sending') : t('confirm_order')}
               </button>
             </div>
           </div>
@@ -912,7 +934,7 @@ export default function StoreCheckoutPage() {
               <div style={{ textAlign: 'center', padding: '40px 0', maxWidth: '480px', margin: '0 auto' }}>
                 <p style={{ fontSize: '56px', margin: '0 0 16px' }}>✅</p>
                 <h2 style={{ margin: '0 0 12px', color: 'var(--color-success)', fontSize: '24px', fontWeight: '700' }}>
-                  Ordine confermato!
+                  {t('order_confirmed')}
                 </h2>
                 <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', fontSize: '15px' }}>
                   {success.messaggio}
@@ -927,17 +949,17 @@ export default function StoreCheckoutPage() {
                   fontSize: '18px',
                   marginBottom: '24px',
                 }}>
-                  Numero ordine: {success.ordine.numero_ordine}
+                  {t('order_number', success.ordine.numero_ordine)}
                 </p>
                 <Link to="/store" className="gm-btn gm-btn-primary">
-                  ← Torna allo store
+                  {t('back_to_store')}
                 </Link>
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 0', maxWidth: '480px', margin: '0 auto' }}>
                 <p style={{ fontSize: '56px', margin: '0 0 16px' }}>❌</p>
                 <h2 style={{ margin: '0 0 12px', color: 'var(--color-danger)', fontSize: '22px', fontWeight: '700' }}>
-                  Errore nell&apos;ordine
+                  {t('order_error_title')}
                 </h2>
                 <div style={{
                   padding: '12px 16px',
@@ -956,10 +978,10 @@ export default function StoreCheckoutPage() {
                   className="gm-btn gm-btn-secondary"
                   style={{ marginRight: '12px' }}
                 >
-                  ← Riprova
+                  {t('retry_btn')}
                 </button>
                 <Link to="/store" className="gm-btn gm-btn-ghost">
-                  Torna allo store
+                  {t('store_back_btn')}
                 </Link>
               </div>
             )}

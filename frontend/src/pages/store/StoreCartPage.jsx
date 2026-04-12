@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import StoreLayout from '../../components/store/StoreLayout'
 import { useCart } from '../../context/CartContext'
+import { useLanguage } from '../../context/LanguageContext'
 import ProductImage from '../../components/store/ProductImage'
 
 export default function StoreCartPage() {
   const { items, removeItem, updateQuantity, clearCart, totalItems, totalPrice } = useCart()
+  const { t } = useLanguage()
 
   if (items.length === 0) {
     return (
@@ -12,13 +14,13 @@ export default function StoreCartPage() {
         <div style={{ textAlign: 'center', padding: '80px 20px' }} className="animate-fade-in">
           <p style={{ fontSize: '64px', margin: '0 0 16px', lineHeight: 1 }}>🛒</p>
           <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)', fontSize: '22px', fontWeight: '700' }}>
-            Il tuo carrello è vuoto
+            {t('cart_empty_title')}
           </h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '0 0 28px', fontSize: '15px' }}>
-            Sfoglia il nostro catalogo e aggiungi i prodotti che preferisci.
+            {t('cart_empty_msg')}
           </p>
           <Link to="/store" className="gm-btn gm-btn-primary">
-            Continua lo shopping
+            {t('continue_shopping')}
           </Link>
         </div>
       </StoreLayout>
@@ -26,7 +28,7 @@ export default function StoreCartPage() {
   }
 
   function handleClearCart() {
-    if (window.confirm('Sei sicuro di voler svuotare il carrello?')) {
+    if (window.confirm(t('cart_confirm_clear'))) {
       clearCart()
     }
   }
@@ -42,7 +44,7 @@ export default function StoreCartPage() {
 
       <div className="animate-fade-in">
         <h1 style={{ margin: '0 0 24px', color: 'var(--color-text)', fontSize: '24px', fontWeight: '700' }}>
-          🛒 Carrello
+          {t('cart_title')}
           <span style={{
             marginLeft: '10px',
             fontSize: '14px',
@@ -50,7 +52,7 @@ export default function StoreCartPage() {
             color: 'var(--color-text-muted)',
             verticalAlign: 'middle',
           }}>
-            ({totalItems} {totalItems === 1 ? 'articolo' : 'articoli'})
+            ({totalItems} {totalItems === 1 ? t('cart_item_one') : t('cart_item_many')})
           </span>
         </h1>
 
@@ -143,7 +145,7 @@ export default function StoreCartPage() {
                         lineHeight: '1',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
-                      title="Diminuisci quantità"
+                      title={t('decrease_quantity')}
                     >
                       −
                     </button>
@@ -171,7 +173,7 @@ export default function StoreCartPage() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         opacity: item.quantita >= item.quantita_disponibile ? 0.4 : 1,
                       }}
-                      title="Aumenta quantità"
+                      title={t('increase_quantity')}
                     >
                       +
                     </button>
@@ -205,7 +207,7 @@ export default function StoreCartPage() {
                       borderRadius: '6px',
                       transition: 'background-color 150ms ease',
                     }}
-                    title="Rimuovi dal carrello"
+                    title={t('remove_from_cart')}
                   >
                     ×
                   </button>
@@ -229,14 +231,14 @@ export default function StoreCartPage() {
             }}
           >
             <h3 style={{ margin: '0 0 16px', color: 'var(--color-text)', fontSize: '16px', fontWeight: '700' }}>
-              Riepilogo ordine
+              {t('order_summary')}
             </h3>
 
             {/* Totals */}
             <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
-                  Articoli
+                  {t('items_label')}
                 </span>
                 <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: '500' }}>
                   {totalItems}
@@ -248,7 +250,7 @@ export default function StoreCartPage() {
                 borderTop: '1px solid var(--color-border)',
               }}>
                 <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--color-text)' }}>
-                  Totale
+                  {t('total_label')}
                 </span>
                 <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-primary)', letterSpacing: '-0.5px' }}>
                   €{totalPrice.toFixed(2)}
@@ -262,7 +264,7 @@ export default function StoreCartPage() {
               className="gm-btn gm-btn-primary"
               style={{ display: 'block', textAlign: 'center', textDecoration: 'none', width: '100%', padding: '12px', marginBottom: '10px' }}
             >
-              Procedi all'ordine →
+              {t('proceed_to_order')}
             </Link>
 
             <button
@@ -270,7 +272,7 @@ export default function StoreCartPage() {
               onClick={handleClearCart}
               style={{ display: 'block', width: '100%', padding: '10px', marginBottom: '10px', cursor: 'pointer' }}
             >
-              🗑 Svuota carrello
+              {t('clear_cart')}
             </button>
 
             <Link
@@ -278,7 +280,7 @@ export default function StoreCartPage() {
               className="gm-btn gm-btn-ghost"
               style={{ display: 'block', textAlign: 'center', textDecoration: 'none', width: '100%', padding: '10px' }}
             >
-              ← Continua lo shopping
+              {t('continue_shopping_back')}
             </Link>
           </div>
         </div>
