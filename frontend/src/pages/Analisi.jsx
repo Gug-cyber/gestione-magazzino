@@ -632,6 +632,14 @@ function TabStorico() {
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Margine</div>
                         <div style={{ fontWeight: 700, color: margine >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtEur(margine)}</div>
                       </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Marginalità %</div>
+                        <div style={{ fontWeight: 700, color: m.marginalita_percentuale == null ? 'var(--text-muted)' : (m.marginalita_percentuale >= 0 ? 'var(--success)' : 'var(--danger)') }}>
+                          {m.marginalita_percentuale !== null && m.marginalita_percentuale !== undefined
+                            ? `${m.marginalita_percentuale.toFixed(1)}%`
+                            : 'N/A'}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )
@@ -647,6 +655,7 @@ function TabStorico() {
                     <th style={{ textAlign: 'right' }}>Costi</th>
                     <th style={{ textAlign: 'right' }}>Spese</th>
                     <th style={{ textAlign: 'right' }}>Margine</th>
+                    <th style={{ textAlign: 'right' }}>Marginalità %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -660,6 +669,15 @@ function TabStorico() {
                         <td style={{ textAlign: 'right', color: 'var(--warning)' }}>{fmtEur(m.totale_spese)}</td>
                         <td style={{ textAlign: 'right', color: margine >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
                           {margine >= 0 ? '+' : ''}{fmtEur(margine)}
+                        </td>
+                        <td style={{
+                          textAlign: 'right',
+                          color: m.marginalita_percentuale == null ? 'var(--text-muted)' : (m.marginalita_percentuale >= 0 ? 'var(--success)' : 'var(--danger)'),
+                          fontWeight: 700
+                        }}>
+                          {m.marginalita_percentuale !== null && m.marginalita_percentuale !== undefined
+                            ? `${m.marginalita_percentuale.toFixed(1)}%`
+                            : 'N/A'}
                         </td>
                       </tr>
                     )
