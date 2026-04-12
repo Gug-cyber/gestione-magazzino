@@ -1288,7 +1288,7 @@ button {
     flex-wrap: nowrap;
     padding: var(--spacing-sm) var(--spacing-md);
     gap: var(--spacing-sm);
-    justify-content: space-between;
+    overflow: hidden;
   }
   
   .header-logo {
