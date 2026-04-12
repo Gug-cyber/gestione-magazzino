@@ -25,8 +25,11 @@ def get_analisi_mensile(
     if anno is None:
         anno = datetime.now().year
 
+    now = datetime.now()
+    mese_max = now.month if anno == now.year else 12
+
     risultati = []
-    for mese in range(1, 13):
+    for mese in range(1, mese_max + 1):
         movimenti_carico = (
             db.query(Movimento, Prodotto)
             .join(Prodotto, Movimento.prodotto_id == Prodotto.id)
@@ -82,6 +85,9 @@ def get_analisi_mensile(
         ).scalar()
         ricavi += float(storici_ricavi or 0)
 
+        margine = ricavi - costi - spese - packaging
+        marginalita_percentuale = round((margine / ricavi) * 100, 2) if ricavi > 0 else None
+
         risultati.append({
             "mese": mese,
             "costi": round(costi, 2),
@@ -89,6 +95,7 @@ def get_analisi_mensile(
             "spese": round(spese, 2),
             "packaging": round(packaging, 2),
             "totale_spese": round(spese + packaging, 2),
+            "marginalita_percentuale": marginalita_percentuale,
         })
 
     return risultati
