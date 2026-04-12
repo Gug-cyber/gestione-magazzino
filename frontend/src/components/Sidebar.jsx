@@ -198,7 +198,6 @@ const BASE_SECTIONS = [
 
 const SISTEMA_LINKS_BASE = [
   { to: '/profilo', label: 'Profilo', icon: 'User' },
-  { to: '/cardtrader', label: 'CardTrader', icon: 'CreditCard' },
 ]
 
 function NavLinks({ onLinkClick }) {
