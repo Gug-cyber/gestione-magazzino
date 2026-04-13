@@ -2,3 +2,39 @@
 /* This file is kept for backwards compatibility but styles are defined globally */
 
 /* Additional card-specific overrides can be added here if needed */
+
+.product-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
+  letter-spacing: 0.1px;
+}
+
+.product-add-btn:hover:not(:disabled) {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  border-top-color: var(--color-border-accent);
+}
+
+.product-add-btn.added {
+  background: rgba(40, 168, 112, 0.08);
+  color: var(--color-success);
+  border-top-color: rgba(40, 168, 112, 0.25);
+}
+
+.product-add-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
