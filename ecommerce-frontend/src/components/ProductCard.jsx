@@ -153,13 +153,13 @@ export default function ProductCard({ product }) {
         
         <h3 className="product-title">{title}</h3>
 
-        <div className="product-meta">
+        <div className="product-price-row">
           <div className="product-price">
             {discount > 0 && originalPrice && (
-              <span className="original-price">{originalPrice?.toFixed(2)} EUR</span>
+              <span className="original-price">€{originalPrice?.toFixed(2)}</span>
             )}
             {price != null && (
-              <span className="current-price">{price?.toFixed(2)} EUR</span>
+              <span className="current-price">€{price?.toFixed(2)}</span>
             )}
           </div>
 
@@ -168,6 +168,32 @@ export default function ProductCard({ product }) {
           </span>
         </div>
       </div>
+
+      <button
+        className={`product-add-btn${cartAdded ? ' added' : ''}`}
+        onClick={(e) => handleQuickAction(e, 'cart')}
+        disabled={quantity === 0}
+        aria-label="Aggiungi al carrello"
+      >
+        {cartAdded ? (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Aggiunto
+          </>
+        ) : quantity === 0 ? (
+          'Non disponibile'
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            Aggiungi
+          </>
+        )}
+      </button>
     </Link>
   );
 }

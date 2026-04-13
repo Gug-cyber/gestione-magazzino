@@ -32,31 +32,16 @@ export default function Banner({ banners }) {
           src={image} 
           alt={attrs.title} 
           className="banner-image" 
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover'
-          }}
         />
       )}
-      <div 
-        className="banner-content"
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          minHeight: '300px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-end'
-        }}
-      >
+      <div className="banner-overlay" />
+      <div className="banner-content">
         {attrs.subtitle && (
           <span style={{ 
             display: 'inline-block', 
-            padding: '6px 12px', 
-            background: 'var(--color-accent-subtle)', 
+            padding: '6px 14px', 
+            background: 'rgba(201,168,76,0.15)',
+            border: '1px solid rgba(201,168,76,0.3)',
             color: 'var(--color-accent)', 
             borderRadius: 'var(--radius-full)', 
             fontSize: '12px', 
@@ -85,7 +70,7 @@ export default function Banner({ banners }) {
   );
 
   return (
-    <div className="banner-container" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className="banner-container" style={{ minHeight: '340px', position: 'relative' }}>
       {attrs.link ? (
         <Link to={attrs.link} className="banner-link" style={{ display: 'block', position: 'relative' }}>
           <BannerContent />
