@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -84,22 +84,20 @@ function StoreFooter() {
     { key: 'ebay', url: storeSettings?.social_ebay_url, label: 'eBay', Icon: IconEbay },
   ].filter(s => s.url)
 
-  const footerBg = '#0f2e3d'
-  const footerText = 'rgba(255,255,255,0.85)'
-  const footerMuted = 'rgba(255,255,255,0.5)'
-  const footerLink = 'rgba(255,255,255,0.75)'
-  const footerLinkHover = '#fff'
   const colTitleStyle = {
     fontSize: '13px',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
-    color: '#fff',
+    color: 'var(--color-primary)',
     marginBottom: '16px',
+    borderBottom: '2px solid var(--color-primary)',
+    paddingBottom: '6px',
+    display: 'inline-block',
   }
   const linkStyle = {
     display: 'block',
-    color: footerLink,
+    color: 'var(--color-text-secondary)',
     textDecoration: 'none',
     fontSize: '13px',
     lineHeight: '1.6',
@@ -110,7 +108,7 @@ function StoreFooter() {
   const servizioPages = bySection('servizio')
 
   return (
-    <footer style={{ backgroundColor: footerBg, color: footerText, marginTop: '48px' }}>
+    <footer style={{ backgroundColor: 'var(--color-bg-elevated)', borderTop: '2px solid var(--color-border)', color: 'var(--color-text)', marginTop: '48px' }}>
       {/* Main 4-column area */}
       <div style={{
         maxWidth: '1200px',
@@ -126,8 +124,8 @@ function StoreFooter() {
           <div style={colTitleStyle}>Informative</div>
           {bySection('informative').map(p => (
             <Link key={p.slug} to={`/store/pagina/${p.slug}`} style={linkStyle}
-              onMouseEnter={e => { e.target.style.color = footerLinkHover }}
-              onMouseLeave={e => { e.target.style.color = footerLink }}>
+              onMouseEnter={e => { e.target.style.color = 'var(--color-primary)' }}
+              onMouseLeave={e => { e.target.style.color = 'var(--color-text-secondary)' }}>
               {p.titolo}
             </Link>
           ))}
@@ -138,8 +136,8 @@ function StoreFooter() {
           <div style={colTitleStyle}>Scopri Fantasia</div>
           {bySection('scopri').map(p => (
             <Link key={p.slug} to={`/store/pagina/${p.slug}`} style={linkStyle}
-              onMouseEnter={e => { e.target.style.color = footerLinkHover }}
-              onMouseLeave={e => { e.target.style.color = footerLink }}>
+              onMouseEnter={e => { e.target.style.color = 'var(--color-primary)' }}
+              onMouseLeave={e => { e.target.style.color = 'var(--color-text-secondary)' }}>
               {p.titolo}
             </Link>
           ))}
@@ -161,14 +159,14 @@ function StoreFooter() {
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(255,255,255,0.15)',
-                    color: '#fff',
+                    backgroundColor: 'var(--color-border)',
+                    color: 'var(--color-text)',
                     textDecoration: 'none',
-                    transition: 'background-color 150ms ease',
+                    transition: 'background-color 150ms ease, color 150ms ease',
                     flexShrink: 0,
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.30)' }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-primary)'; e.currentTarget.style.color = '#fff' }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text)' }}
                 >
                   <Icon />
                 </a>
@@ -182,8 +180,8 @@ function StoreFooter() {
           <div style={colTitleStyle}>Il Tuo Account</div>
           {bySection('account').map(p => (
             <Link key={p.slug} to={`/store/pagina/${p.slug}`} style={linkStyle}
-              onMouseEnter={e => { e.target.style.color = footerLinkHover }}
-              onMouseLeave={e => { e.target.style.color = footerLink }}>
+              onMouseEnter={e => { e.target.style.color = 'var(--color-primary)' }}
+              onMouseLeave={e => { e.target.style.color = 'var(--color-text-secondary)' }}>
               {p.titolo}
             </Link>
           ))}
@@ -192,31 +190,27 @@ function StoreFooter() {
         {/* Col 4 — Servizio Clienti */}
         <div>
           <div style={colTitleStyle}>Servizio Clienti</div>
-          <p style={{ fontSize: '13px', color: footerMuted, lineHeight: '1.6', marginBottom: '10px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: '1.6', marginBottom: '10px' }}>
             Da Lunedì a Venerdì<br />09:00–12:00 // 13:00–17:00
           </p>
           {servizioPages.map(p => (
             <Link key={p.slug} to={`/store/pagina/${p.slug}`} style={linkStyle}
-              onMouseEnter={e => { e.target.style.color = footerLinkHover }}
-              onMouseLeave={e => { e.target.style.color = footerLink }}>
+              onMouseEnter={e => { e.target.style.color = 'var(--color-primary)' }}
+              onMouseLeave={e => { e.target.style.color = 'var(--color-text-secondary)' }}>
               {p.titolo}
             </Link>
           ))}
-          <a href="mailto:servizioclienti@fantasiastore.it" style={{ ...linkStyle, marginTop: '6px' }}
-            onMouseEnter={e => { e.target.style.color = footerLinkHover }}
-            onMouseLeave={e => { e.target.style.color = footerLink }}>
-            servizioclienti@fantasiastore.it
-          </a>
         </div>
       </div>
 
       {/* Bottom bar */}
       <div style={{
-        borderTop: '1px solid rgba(255,255,255,0.1)',
+        borderTop: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-bg)',
         padding: '16px 24px',
         textAlign: 'center',
         fontSize: '12px',
-        color: footerMuted,
+        color: 'var(--color-text-secondary)',
       }}>
         © {new Date().getFullYear()} {storeSettings?.store_nome || 'TCG Store'} — Tutti i diritti riservati
       </div>
@@ -232,6 +226,15 @@ export default function StoreLayout({ children }) {
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => window.innerWidth >= 1500)
+  const [storeSettings, setStoreSettings] = useState(null)
+  const [langMenuOpen, setLangMenuOpen] = useState(false)
+  const langMenuRef = useRef(null)
+
+  useEffect(() => {
+    storeAPI.getStoreSettings()
+      .then(res => setStoreSettings(res.data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     storeAPI.getBannersPublici()
@@ -250,6 +253,18 @@ export default function StoreLayout({ children }) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target)) {
+        setLangMenuOpen(false)
+      }
+    }
+    if (langMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [langMenuOpen])
 
   const leftBanners = sideBanners.filter(b => b.posizione === 'sidebar_left' || b.posizione === 'sidebar_both')
   const rightBanners = sideBanners.filter(b => b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both')
@@ -300,48 +315,68 @@ export default function StoreLayout({ children }) {
         gap: '16px',
       }}>
         <Link to="/store" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          <span style={{ fontSize: '22px' }}>🃏</span>
-          <span style={{ fontWeight: '800', fontSize: '18px', color: 'var(--color-text)' }}>TCG Store</span>
+          {storeSettings?.store_logo_url ? (
+            <img
+              src={storeSettings.store_logo_url}
+              alt={storeSettings.store_nome || 'Store'}
+              style={{ height: '36px', maxWidth: '120px', objectFit: 'contain', borderRadius: '4px' }}
+              onError={e => { e.target.style.display = 'none' }}
+            />
+          ) : (
+            <span style={{ fontSize: '22px' }}>🃏</span>
+          )}
+          <span style={{ fontWeight: '800', fontSize: '18px', color: 'var(--color-text)' }}>
+            {storeSettings?.store_nome || 'TCG Store'}
+          </span>
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {/* Language switcher */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '8px' }}>
+          {/* Language dropdown */}
+          <div ref={langMenuRef} style={{ position: 'relative', marginRight: '8px' }}>
             <button
-              onClick={() => setLanguage('it')}
-              title="Italiano"
+              onClick={() => setLangMenuOpen(p => !p)}
               style={{
-                background: 'none',
-                border: lang === 'it' ? '1px solid var(--color-primary)' : '1px solid transparent',
-                borderRadius: '6px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: 'var(--color-bg-elevated)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '6px 10px',
                 cursor: 'pointer',
-                padding: '4px 8px',
                 fontSize: '13px',
-                fontWeight: lang === 'it' ? '700' : '400',
-                color: lang === 'it' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                transition: 'all 150ms ease',
+                color: 'var(--color-text)',
               }}
             >
-              🇮🇹 IT
+              <span>{lang === 'it' ? '🇮🇹' : '🇬🇧'}</span>
+              <span style={{ fontWeight: '600' }}>{lang.toUpperCase()}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
             </button>
-            <span style={{ color: 'var(--color-border)', fontSize: '12px' }}>|</span>
-            <button
-              onClick={() => setLanguage('en')}
-              title="English"
-              style={{
-                background: 'none',
-                border: lang === 'en' ? '1px solid var(--color-primary)' : '1px solid transparent',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                fontSize: '13px',
-                fontWeight: lang === 'en' ? '700' : '400',
-                color: lang === 'en' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                transition: 'all 150ms ease',
-              }}
-            >
-              🇬🇧 EN
-            </button>
+            {langMenuOpen && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: '4px',
+                background: 'var(--color-bg-elevated)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                zIndex: 200,
+                overflow: 'hidden', minWidth: '120px',
+              }}>
+                {[{code:'it', label:'Italiano', flag:'🇮🇹'}, {code:'en', label:'English', flag:'🇬🇧'}].map(l => (
+                  <button key={l.code} onClick={() => { setLanguage(l.code); setLangMenuOpen(false) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      width: '100%', padding: '10px 14px', background: 'none',
+                      border: 'none', cursor: 'pointer', fontSize: '13px',
+                      color: lang === l.code ? 'var(--color-primary)' : 'var(--color-text)',
+                      fontWeight: lang === l.code ? '700' : '400',
+                    }}
+                  >
+                    <span>{l.flag}</span> <span>{l.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <Link to="/store" style={navLinkStyle('/store')}>
@@ -354,22 +389,31 @@ export default function StoreLayout({ children }) {
             gap: '4px',
             position: 'relative',
           }}>
-            <span style={{ fontSize: '18px' }}>🛒</span>
-            {totalItems > 0 && (
-              <span style={{
-                backgroundColor: 'var(--color-primary)',
-                color: '#fff',
-                borderRadius: '999px',
-                padding: '1px 6px',
-                fontSize: '11px',
-                fontWeight: '700',
-                lineHeight: '1.4',
-                minWidth: '18px',
-                textAlign: 'center',
-              }}>
-                {totalItems}
-              </span>
-            )}
+            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1"/>
+                <circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+              {totalItems > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  backgroundColor: 'var(--color-primary)',
+                  color: '#fff',
+                  borderRadius: '999px',
+                  padding: '1px 5px',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  lineHeight: '1.4',
+                  minWidth: '16px',
+                  textAlign: 'center',
+                }}>
+                  {totalItems}
+                </span>
+              )}
+            </span>
           </Link>
         </div>
       </nav>

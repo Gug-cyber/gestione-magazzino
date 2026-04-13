@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { analyticsAPI } from '../api/client'
+import { controlPanelAPI } from '../api/controlPanel'
 import '../styles/shared.css'
 
 // ---------------------------------------------------------------------------
@@ -241,11 +242,14 @@ function TabPanoramica({ summary, loadingS }) {
 // ---------------------------------------------------------------------------
 // Canali Tab
 // ---------------------------------------------------------------------------
-function TabCanali({ summary, loadingS }) {
+function TabCanali({ summary, loadingS, channelFlags }) {
   if (loadingS) return <div style={{ color: 'var(--text-secondary)', padding: '32px 0', textAlign: 'center' }}>Caricamento…</div>
   if (!summary) return null
 
-  const channels = summary.channels || []
+  const allChannels = summary.channels || []
+  const channels = Object.keys(channelFlags).length > 0
+    ? allChannels.filter(c => channelFlags[c.source] !== false)
+    : allChannels
   const pieItems = channels.map((c) => ({
     label: CHANNEL_LABELS[c.source] || c.source,
     value: c.visits,
@@ -328,11 +332,14 @@ function TabCanali({ summary, loadingS }) {
 // ---------------------------------------------------------------------------
 // Conversioni Tab
 // ---------------------------------------------------------------------------
-function TabConversioni({ summary, loadingS }) {
+function TabConversioni({ summary, loadingS, channelFlags }) {
   if (loadingS) return <div style={{ color: 'var(--text-secondary)', padding: '32px 0', textAlign: 'center' }}>Caricamento…</div>
   if (!summary) return null
 
-  const channels = summary.channels || []
+  const allChannels = summary.channels || []
+  const channels = Object.keys(channelFlags).length > 0
+    ? allChannels.filter(c => channelFlags[c.source] !== false)
+    : allChannels
   const maxRevenue = Math.max(...channels.map((c) => c.revenue), 1)
   const bestChannel = channels.reduce((best, c) => (!best || c.orders > best.orders ? c : best), null)
 
@@ -513,6 +520,23 @@ export default function Statistiche() {
   const [loadingP, setLoadingP] = useState(false)
   const [devices, setDevices] = useState(null)
   const [loadingD, setLoadingD] = useState(false)
+  const [channelFlags, setChannelFlags] = useState({})
+
+  useEffect(() => {
+    controlPanelAPI.getFlags()
+      .then(res => {
+        const flags = res.data || {}
+        const channelFlagsMap = {}
+        Object.entries(flags).forEach(([key, enabled]) => {
+          if (key.startsWith('analytics_channel_')) {
+            const channel = key.replace('analytics_channel_', '')
+            channelFlagsMap[channel] = enabled
+          }
+        })
+        setChannelFlags(channelFlagsMap)
+      })
+      .catch(err => { console.error('Errore caricamento flag canali:', err) })
+  }, [])
 
   const fetchData = useCallback(async (p) => {
     setLoadingS(true)
@@ -650,8 +674,8 @@ export default function Statistiche() {
 
       {/* Tab content */}
       {tab === 'panoramica' && <TabPanoramica summary={summary} loadingS={loadingS} />}
-      {tab === 'canali' && <TabCanali summary={summary} loadingS={loadingS} />}
-      {tab === 'conversioni' && <TabConversioni summary={summary} loadingS={loadingS} />}
+      {tab === 'canali' && <TabCanali summary={summary} loadingS={loadingS} channelFlags={channelFlags} />}
+      {tab === 'conversioni' && <TabConversioni summary={summary} loadingS={loadingS} channelFlags={channelFlags} />}
       {tab === 'prodotti' && <TabProdotti topProducts={topProducts} loadingP={loadingP} />}
       {tab === 'utenti' && <TabUtenti devices={devices} loadingD={loadingD} />}
     </div>

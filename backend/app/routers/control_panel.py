@@ -1,4 +1,5 @@
 from typing import List, Dict
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,8 @@ from ..crud import store_settings as crud_store_settings
 from ..crud import footer_page as crud_footer
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _require_admin(current_user: Utente):
@@ -92,7 +95,11 @@ def create_banner(
     current_user: Utente = Depends(get_current_active_user),
 ):
     _require_admin(current_user)
-    return crud_banner.create_banner(db, data)
+    try:
+        return crud_banner.create_banner(db, data)
+    except Exception as exc:
+        logger.error("Errore creazione banner: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Errore nel salvataggio del banner")
 
 
 @router.put("/banners/{banner_id}", response_model=BannerResponse)
@@ -103,10 +110,16 @@ def update_banner(
     current_user: Utente = Depends(get_current_active_user),
 ):
     _require_admin(current_user)
-    banner = crud_banner.update_banner(db, banner_id, data)
-    if not banner:
-        raise HTTPException(status_code=404, detail="Banner non trovato")
-    return banner
+    try:
+        banner = crud_banner.update_banner(db, banner_id, data)
+        if not banner:
+            raise HTTPException(status_code=404, detail="Banner non trovato")
+        return banner
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Errore aggiornamento banner %s: %s", banner_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Errore nell'aggiornamento del banner")
 
 
 @router.delete("/banners/{banner_id}")

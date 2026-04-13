@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional
 from datetime import datetime
 
@@ -13,6 +13,18 @@ class BannerBase(BaseModel):
     data_inizio: Optional[datetime] = None
     data_fine: Optional[datetime] = None
     posizione: Optional[str] = "top"
+
+    @validator('data_inizio', 'data_fine', pre=True)
+    def empty_string_to_none(cls, v):
+        if v == '' or v is None:
+            return None
+        return v
+
+    @validator('link_url', 'descrizione', pre=True)
+    def empty_link_to_none(cls, v):
+        if v == '':
+            return None
+        return v
 
 
 class BannerCreate(BannerBase):
@@ -29,6 +41,18 @@ class BannerUpdate(BaseModel):
     data_inizio: Optional[datetime] = None
     data_fine: Optional[datetime] = None
     posizione: Optional[str] = None
+
+    @validator('data_inizio', 'data_fine', pre=True)
+    def empty_string_to_none(cls, v):
+        if v == '' or v is None:
+            return None
+        return v
+
+    @validator('link_url', 'descrizione', pre=True)
+    def empty_link_to_none(cls, v):
+        if v == '':
+            return None
+        return v
 
 
 class BannerResponse(BannerBase):
