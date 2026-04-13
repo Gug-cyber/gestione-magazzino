@@ -24,6 +24,7 @@ def upgrade() -> None:
             "banner",
             sa.Column("posizione", sa.String(50), nullable=True, server_default="top"),
         )
+        op.execute("UPDATE banner SET posizione = 'top' WHERE posizione IS NULL")
 
 
 def downgrade() -> None:
