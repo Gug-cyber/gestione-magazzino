@@ -322,9 +322,7 @@ export default function StoreLayout({ children }) {
               style={{ height: '36px', maxWidth: '120px', objectFit: 'contain', borderRadius: '4px' }}
               onError={e => { e.target.style.display = 'none' }}
             />
-          ) : (
-            <span style={{ fontSize: '22px' }}>🃏</span>
-          )}
+          ) : null}
           <span style={{ fontWeight: '800', fontSize: '18px', color: 'var(--color-text)' }}>
             {storeSettings?.store_nome || 'TCG Store'}
           </span>
