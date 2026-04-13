@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.analytics import AnalyticsEvent
-from ..models.prodotto import Prodotto
+from ..crud import feature_flag as crud_flags
 from ..auth import get_current_active_user
 from ..limiter import limiter
 
@@ -147,10 +147,22 @@ def get_summary(
     avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
     conversion_rate = (total_orders / total_sessions * 100) if total_sessions > 0 else 0
 
-    # Per-channel breakdown
-    all_sources = ["instagram", "facebook", "tiktok", "twitch", "youtube", "google", "bing", "yahoo", "ebay", "direct", "other"]
+    # Per-channel breakdown — only include channels that are enabled via feature flags
+    channel_flags = {
+        f.key: f.enabled
+        for f in crud_flags.get_all_flags(db)
+        if f.key.startswith('analytics_channel_')
+    }
+    all_sources_config = [
+        "instagram", "facebook", "tiktok", "twitch", "youtube",
+        "google", "bing", "yahoo", "ebay", "direct", "other"
+    ]
+    active_sources = [
+        s for s in all_sources_config
+        if channel_flags.get(f'analytics_channel_{s}', True)
+    ]
     channels = []
-    for source in all_sources:
+    for source in active_sources:
         visits = (
             q_base.filter(
                 AnalyticsEvent.event_type == "page_view",

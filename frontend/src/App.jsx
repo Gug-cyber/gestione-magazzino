@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { FeatureFlagsProvider } from './context/FeatureFlagsContext'
@@ -47,6 +47,7 @@ import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import StoreFooterPage from './pages/store/StoreFooterPage'
 import ControlPanel from './pages/ControlPanel'
+import { storeAPI } from './api/store'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -70,6 +71,26 @@ function AppLayout({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    storeAPI.getStoreSettings()
+      .then(res => {
+        const { store_nome, store_logo_url } = res.data
+        if (store_nome) {
+          document.title = store_nome
+        }
+        if (store_logo_url) {
+          let link = document.querySelector("link[rel~='icon']")
+          if (!link) {
+            link = document.createElement('link')
+            link.rel = 'icon'
+            document.head.appendChild(link)
+          }
+          link.href = store_logo_url
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <LanguageProvider>
     <CartProvider>

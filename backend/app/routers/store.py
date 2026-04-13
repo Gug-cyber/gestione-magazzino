@@ -270,7 +270,13 @@ def store_checkout(
 # Endpoint pubblici: banners, promozioni, feature-flags
 # ---------------------------------------------------------------------------
 
-PUBLIC_FLAGS = {"store_enabled", "checkout_enabled", "discounts_enabled", "banners_enabled"}
+PUBLIC_FLAGS = {
+    "store_enabled", "checkout_enabled", "discounts_enabled", "banners_enabled",
+    "analytics_channel_instagram", "analytics_channel_facebook", "analytics_channel_tiktok",
+    "analytics_channel_twitch", "analytics_channel_youtube", "analytics_channel_google",
+    "analytics_channel_bing", "analytics_channel_yahoo", "analytics_channel_ebay",
+    "analytics_channel_direct", "analytics_channel_other",
+}
 
 
 @router.get("/banners", response_model=List[BannerResponse])

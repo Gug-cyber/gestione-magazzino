@@ -89,10 +89,30 @@ function TabFlags() {
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><div className="spinner" /></div>
 
+  const channelFlags = flags.filter(f => f.key.startsWith('analytics_channel_'))
+  const otherFlags = flags.filter(f => !f.key.startsWith('analytics_channel_'))
+
+  const channelLabel = (key) => {
+    const map = {
+      analytics_channel_instagram: 'Instagram',
+      analytics_channel_facebook: 'Facebook',
+      analytics_channel_tiktok: 'TikTok',
+      analytics_channel_twitch: 'Twitch',
+      analytics_channel_youtube: 'YouTube',
+      analytics_channel_google: 'Google',
+      analytics_channel_bing: 'Bing',
+      analytics_channel_yahoo: 'Yahoo',
+      analytics_channel_ebay: 'eBay',
+      analytics_channel_direct: 'Traffico diretto',
+      analytics_channel_other: 'Altri canali',
+    }
+    return map[key] || key
+  }
+
   return (
     <div>
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-      <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="gm-card" style={{ padding: 0, overflow: 'hidden', marginBottom: '24px' }}>
         <table className="gm-table" style={{ width: '100%' }}>
           <thead>
             <tr>
@@ -103,7 +123,7 @@ function TabFlags() {
             </tr>
           </thead>
           <tbody>
-            {flags.map(flag => (
+            {otherFlags.map(flag => (
               <tr key={flag.key}>
                 <td style={{ fontWeight: '500', fontFamily: 'monospace', fontSize: '13px' }}>{flag.key}</td>
                 <td style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>
@@ -125,6 +145,35 @@ function TabFlags() {
           </tbody>
         </table>
       </div>
+
+      {channelFlags.length > 0 && (
+        <div>
+          <h4 style={{ margin: '0 0 12px', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            📊 Canali Analytics
+          </h4>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
+            Abilita o disabilita i canali che appaiono nelle Report &amp; Statistiche.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+            {channelFlags.map(flag => (
+              <div key={flag.key} className="gm-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div>
+                  <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--color-text)' }}>{channelLabel(flag.key)}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                    <span className="gm-badge" style={{
+                      backgroundColor: flag.enabled ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+                      color: flag.enabled ? 'var(--color-success)' : 'var(--color-danger)',
+                    }}>
+                      {flag.enabled ? 'Attivo' : 'Disattivo'}
+                    </span>
+                  </div>
+                </div>
+                <Toggle checked={flag.enabled} onChange={(val) => handleToggle(flag.key, val)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -171,17 +220,25 @@ function TabBanner() {
 
   async function handleSave(e) {
     e.preventDefault()
+    if (!form.titolo || !form.titolo.trim()) {
+      setToast('Il titolo è obbligatorio')
+      return
+    }
+    if (!form.immagine_url || !form.immagine_url.trim()) {
+      setToast("L'URL immagine è obbligatorio")
+      return
+    }
     setSaving(true)
     try {
       const payload = {
-        titolo: form.titolo,
-        immagine_url: form.immagine_url,
-        link_url: form.link_url || null,
+        titolo: form.titolo.trim(),
+        immagine_url: form.immagine_url.trim(),
+        link_url: form.link_url?.trim() || null,
         ordine: Number(form.ordine) || 0,
         attivo: form.attivo,
         data_inizio: form.data_inizio ? new Date(form.data_inizio).toISOString() : null,
         data_fine: form.data_fine ? new Date(form.data_fine).toISOString() : null,
-        descrizione: form.descrizione || null,
+        descrizione: form.descrizione?.trim() || null,
         posizione: form.posizione || 'top',
       }
       if (editId) {
@@ -192,7 +249,11 @@ function TabBanner() {
       setToast('Salvato ✓')
       setShowForm(false)
       fetchBanners()
-    } catch (err) { console.error('Errore salvataggio:', err); setToast('Errore nel salvataggio') } finally { setSaving(false) }
+    } catch (err) {
+      console.error('Errore salvataggio banner:', err)
+      const detail = err?.response?.data?.detail
+      setToast(typeof detail === 'string' ? detail : 'Errore nel salvataggio')
+    } finally { setSaving(false) }
   }
 
   async function handleDelete(id) {

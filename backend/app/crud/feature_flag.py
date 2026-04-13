@@ -12,6 +12,17 @@ DEFAULT_FLAGS = [
     {"key": "invoices_enabled", "enabled": True, "description": "Abilita la gestione fatture"},
     {"key": "suppliers_enabled", "enabled": True, "description": "Abilita la gestione fornitori"},
     {"key": "warehouse_alerts_enabled", "enabled": True, "description": "Abilita gli alert di magazzino"},
+    {"key": "analytics_channel_instagram", "enabled": True, "description": "Canale Instagram nelle statistiche"},
+    {"key": "analytics_channel_facebook", "enabled": True, "description": "Canale Facebook nelle statistiche"},
+    {"key": "analytics_channel_tiktok", "enabled": True, "description": "Canale TikTok nelle statistiche"},
+    {"key": "analytics_channel_twitch", "enabled": True, "description": "Canale Twitch nelle statistiche"},
+    {"key": "analytics_channel_youtube", "enabled": True, "description": "Canale YouTube nelle statistiche"},
+    {"key": "analytics_channel_google", "enabled": True, "description": "Canale Google nelle statistiche"},
+    {"key": "analytics_channel_bing", "enabled": True, "description": "Canale Bing nelle statistiche"},
+    {"key": "analytics_channel_yahoo", "enabled": True, "description": "Canale Yahoo nelle statistiche"},
+    {"key": "analytics_channel_ebay", "enabled": True, "description": "Canale eBay nelle statistiche"},
+    {"key": "analytics_channel_direct", "enabled": True, "description": "Traffico diretto nelle statistiche"},
+    {"key": "analytics_channel_other", "enabled": True, "description": "Canali altri nelle statistiche"},
 ]
 
 
