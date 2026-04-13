@@ -12,6 +12,13 @@ export const controlPanelAPI = {
   createBanner: (data) => apiClient.post('/api/control-panel/banners', data),
   updateBanner: (id, data) => apiClient.put(`/api/control-panel/banners/${id}`, data),
   deleteBanner: (id) => apiClient.delete(`/api/control-panel/banners/${id}`),
+  uploadBannerImage: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient.post('/api/control-panel/banners/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 
   // Promozioni
   getPromozioni: () => apiClient.get('/api/control-panel/promozioni'),

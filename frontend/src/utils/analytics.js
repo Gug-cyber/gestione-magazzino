@@ -46,7 +46,7 @@ function getAttribution() {
   } else if (params.get('fbclid')) {
     source = 'facebook'
     medium = medium || 'social'
-  } else if (params.get('igshid') || params.get('ig_source')) {
+  } else if (params.get('igshid') || params.get('ig_source') || params.get('ig_sid')) {
     source = 'instagram'
     medium = medium || 'social'
   } else if (params.get('ttclid')) {
@@ -74,7 +74,7 @@ function getOrCreateAttribution() {
   }
 
   // Social click ID params override sessionStorage (handle in-app browsers)
-  if (params.get('fbclid') || params.get('igshid') || params.get('ig_source') || params.get('ttclid')) {
+  if (params.get('fbclid') || params.get('igshid') || params.get('ig_source') || params.get('ig_sid') || params.get('ttclid')) {
     const attribution = getAttribution()
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution)) } catch (_) {}
     return attribution

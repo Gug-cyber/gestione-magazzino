@@ -62,7 +62,7 @@ const translations = {
     badge_only_n: (n) => `Solo ${n} rimasti`,
     card_not_available: 'Non disponibile',
     card_in_cart: (qty) => `Nel carrello (${qty})`,
-    card_add: '+ Aggiungi',
+    card_add: 'Aggiungi al carrello',
 
     // StockBadge
     stock_out: 'Esaurito',
@@ -205,7 +205,7 @@ const translations = {
     badge_only_n: (n) => `Only ${n} left`,
     card_not_available: 'Not available',
     card_in_cart: (qty) => `In cart (${qty})`,
-    card_add: '+ Add',
+    card_add: 'Add to cart',
 
     // StockBadge
     stock_out: 'Out of stock',

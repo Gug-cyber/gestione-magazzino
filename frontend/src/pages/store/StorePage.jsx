@@ -26,7 +26,7 @@ function CategoryDropdown({ value, onChange, options }) {
   const selectedLabel = (options.find(o => o.value === value) || options[0])?.label || 'Tutte le categorie'
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', flex: '1 1 160px' }}>
+    <div ref={containerRef} className="store-category-dropdown" style={{ position: 'relative', flex: '1 1 160px' }}>
       <button
         type="button"
         aria-haspopup="listbox"
@@ -57,6 +57,7 @@ function CategoryDropdown({ value, onChange, options }) {
         <div
           role="listbox"
           aria-label="Categorie"
+          className="store-category-dropdown-menu"
           style={{
             position: 'absolute',
             top: 'calc(100% + 4px)',
@@ -126,17 +127,17 @@ export default function StorePage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
 
-  // Reset pagination when filters change
-  const prevFilters = useRef({ search, categoriaId, disponibiliOnly, offerteSolo })
+  // Reset pagination when API-affecting filters change (offerteSolo is client-side only)
+  const prevFilters = useRef({ search, categoriaId, disponibiliOnly })
   useEffect(() => {
     const prev = prevFilters.current
-    if (prev.search !== search || prev.categoriaId !== categoriaId || prev.disponibiliOnly !== disponibiliOnly || prev.offerteSolo !== offerteSolo) {
-      prevFilters.current = { search, categoriaId, disponibiliOnly, offerteSolo }
+    if (prev.search !== search || prev.categoriaId !== categoriaId || prev.disponibiliOnly !== disponibiliOnly) {
+      prevFilters.current = { search, categoriaId, disponibiliOnly }
       setProdotti([])
       setPage(1)
       setHasMore(false)
     }
-  }, [search, categoriaId, disponibiliOnly, offerteSolo])
+  }, [search, categoriaId, disponibiliOnly])
 
   useEffect(() => {
     trackPageView('/store')
@@ -320,6 +321,7 @@ export default function StorePage() {
             }
             .store-filters {
               flex-direction: column !important;
+              gap: 6px !important;
             }
             .store-filters input[type="text"] {
               flex: none !important;
@@ -328,11 +330,22 @@ export default function StorePage() {
             .store-filters .store-filter-checks {
               display: flex;
               flex-wrap: wrap;
-              gap: 12px;
+              gap: 8px;
+              margin-top: 2px;
             }
             .store-filters label {
               font-size: 14px !important;
-              padding: 8px 0;
+              padding: 4px 0;
+            }
+            .store-category-dropdown {
+              width: 100% !important;
+              flex: none !important;
+            }
+            .store-category-dropdown-menu {
+              left: 0 !important;
+              right: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
             }
           }
         `}</style>

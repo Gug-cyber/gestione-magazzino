@@ -77,7 +77,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,https://gestione-magazzino-blush.vercel.app")
 allowed_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
 
 # When CORS_ALLOW_LAN=true, allow all origins so phones/tablets on the same

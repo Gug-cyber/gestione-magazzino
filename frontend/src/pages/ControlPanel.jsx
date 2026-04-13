@@ -190,6 +190,7 @@ function TabBanner() {
   const [form, setForm] = useState(EMPTY_BANNER)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => { fetchBanners() }, [])
 
@@ -222,10 +223,6 @@ function TabBanner() {
     e.preventDefault()
     if (!form.titolo || !form.titolo.trim()) {
       setToast('Il titolo è obbligatorio')
-      return
-    }
-    if (!form.immagine_url || !form.immagine_url.trim()) {
-      setToast("L'URL immagine è obbligatorio")
       return
     }
     setSaving(true)
@@ -293,10 +290,45 @@ function TabBanner() {
                 Titolo *
                 <input style={inputStyle} required value={form.titolo} onChange={e => setForm(p => ({ ...p, titolo: e.target.value }))} />
               </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                URL Immagine *
-                <input style={inputStyle} required value={form.immagine_url} onChange={e => setForm(p => ({ ...p, immagine_url: e.target.value }))} />
-              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                Immagine Banner
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <label style={{ cursor: 'pointer' }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setUploadingImage(true)
+                        try {
+                          const res = await controlPanelAPI.uploadBannerImage(file)
+                          setForm(p => ({ ...p, immagine_url: res.data.immagine_url }))
+                          setToast('Immagine caricata ✓')
+                        } catch {
+                          setToast('Errore upload immagine')
+                        } finally {
+                          setUploadingImage(false)
+                        }
+                      }}
+                    />
+                    <span className="gm-btn gm-btn-secondary gm-btn-sm">
+                      {uploadingImage ? 'Caricamento...' : '📁 Carica immagine'}
+                    </span>
+                  </label>
+                  {form.immagine_url && (
+                    <img src={form.immagine_url} alt="Preview" style={{ height: '40px', maxWidth: '120px', objectFit: 'cover', borderRadius: '4px' }} onError={e => { e.target.style.display = 'none' }} />
+                  )}
+                </div>
+                <input
+                  style={{ ...inputStyle, marginTop: '4px' }}
+                  type="text"
+                  placeholder="Oppure inserisci URL immagine..."
+                  value={form.immagine_url}
+                  onChange={e => setForm(p => ({ ...p, immagine_url: e.target.value }))}
+                />
+              </div>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 URL Link (CTA)
                 <input style={inputStyle} value={form.link_url} onChange={e => setForm(p => ({ ...p, link_url: e.target.value }))} />
@@ -304,15 +336,6 @@ function TabBanner() {
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 Priorità
                 <input style={inputStyle} type="number" value={form.ordine} onChange={e => setForm(p => ({ ...p, ordine: e.target.value }))} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                Posizione
-                <select style={inputStyle} value={form.posizione} onChange={e => setForm(p => ({ ...p, posizione: e.target.value }))}>
-                  <option value="top">In cima (banner orizzontale)</option>
-                  <option value="sidebar_left">Colonna sinistra</option>
-                  <option value="sidebar_right">Colonna destra</option>
-                  <option value="sidebar_both">Entrambe le colonne</option>
-                </select>
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 Data inizio
@@ -923,6 +946,69 @@ function TabStore() {
                 <Toggle checked={settings[key]} onChange={val => setSettings(p => ({ ...p, [key]: val }))} />
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Sezione D — Tipografia Footer */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>🔤 Stile Footer</h3>
+          <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={rowStyle}>
+              <div>
+                <div style={labelStyle}>Font</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Famiglia di caratteri del footer</div>
+              </div>
+              <select
+                style={{ ...inputStyle, width: '220px' }}
+                value={settings.footer_font_family || 'Inter, sans-serif'}
+                onChange={e => setSettings(p => ({ ...p, footer_font_family: e.target.value }))}
+              >
+                <option value="Inter, sans-serif">Inter (default)</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Playfair Display', serif">Playfair Display</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="Arial, sans-serif">Arial</option>
+              </select>
+            </div>
+            <div style={rowStyle}>
+              <div>
+                <div style={labelStyle}>Dimensione testo — {settings.footer_font_size || 14}px</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Grandezza del testo nel footer</div>
+              </div>
+              <input
+                style={{ width: '160px' }}
+                type="range"
+                min="12"
+                max="20"
+                step="1"
+                value={settings.footer_font_size || 14}
+                onChange={e => setSettings(p => ({ ...p, footer_font_size: parseInt(e.target.value) }))}
+              />
+            </div>
+            <div style={rowStyle}>
+              <div>
+                <div style={labelStyle}>Colore testo</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Colore del testo nel footer</div>
+              </div>
+              <input
+                type="color"
+                value={settings.footer_text_color || '#a0aec0'}
+                onChange={e => setSettings(p => ({ ...p, footer_text_color: e.target.value }))}
+                style={{ width: '48px', height: '36px', padding: '2px', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'transparent' }}
+              />
+            </div>
+            <div style={{ ...rowStyle, borderBottom: 'none' }}>
+              <div>
+                <div style={labelStyle}>Colore sfondo footer</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Colore di sfondo del footer</div>
+              </div>
+              <input
+                type="color"
+                value={settings.footer_bg_color || '#1a202c'}
+                onChange={e => setSettings(p => ({ ...p, footer_bg_color: e.target.value }))}
+                style={{ width: '48px', height: '36px', padding: '2px', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'transparent' }}
+              />
+            </div>
           </div>
         </div>
 

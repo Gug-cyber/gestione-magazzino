@@ -316,6 +316,25 @@ async def upload_store_sfondo(
     return settings
 
 
+@router.post("/banners/upload-image")
+async def upload_banner_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    _configure_cloudinary()
+    contents = await _read_validated_image(file)
+    result = cloudinary.uploader.upload(
+        contents,
+        folder="store/banners",
+        overwrite=False,
+        resource_type="image",
+        transformation=[{"width": 1200, "height": 400, "crop": "limit", "quality": "auto"}],
+    )
+    return {"immagine_url": result["secure_url"]}
+
+
 # ---------------------------------------------------------------------------
 # FOOTER PAGES
 # ---------------------------------------------------------------------------

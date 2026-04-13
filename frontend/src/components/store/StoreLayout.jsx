@@ -120,7 +120,14 @@ function StoreFooter() {
   const servizioPages = bySection('servizio')
 
   return (
-    <footer style={{ backgroundColor: 'var(--color-bg-elevated)', borderTop: '2px solid var(--color-border)', color: 'var(--color-text)', marginTop: '48px' }}>
+    <footer style={{
+      backgroundColor: storeSettings?.footer_bg_color || 'var(--color-bg-elevated)',
+      borderTop: '2px solid var(--color-border)',
+      color: storeSettings?.footer_text_color || 'var(--color-text)',
+      fontFamily: storeSettings?.footer_font_family || undefined,
+      fontSize: storeSettings?.footer_font_size ? `${storeSettings.footer_font_size}px` : undefined,
+      marginTop: '48px',
+    }}>
       {/* Main 4-column area */}
       <div style={{
         maxWidth: '1200px',
