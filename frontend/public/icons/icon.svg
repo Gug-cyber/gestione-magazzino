@@ -1,4 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="80" fill="#1a237e"/>
-  <text x="256" y="320" font-size="280" text-anchor="middle" fill="white">🏭</text>
+  <!-- Scaffale/magazzino stilizzato -->
+  <rect x="80" y="160" width="352" height="24" rx="8" fill="#ffffff" opacity="0.9"/>
+  <rect x="80" y="244" width="352" height="24" rx="8" fill="#ffffff" opacity="0.9"/>
+  <rect x="80" y="328" width="352" height="24" rx="8" fill="#ffffff" opacity="0.9"/>
+  <rect x="80" y="140" width="20" height="232" rx="6" fill="#ffffff"/>
+  <rect x="412" y="140" width="20" height="232" rx="6" fill="#ffffff"/>
+  <!-- Scatolette sui ripiani -->
+  <rect x="110" y="120" width="56" height="40" rx="6" fill="#7986cb"/>
+  <rect x="178" y="120" width="56" height="40" rx="6" fill="#5c6bc0"/>
+  <rect x="246" y="120" width="56" height="40" rx="6" fill="#7986cb"/>
+  <rect x="314" y="120" width="56" height="40" rx="6" fill="#5c6bc0"/>
+  <rect x="110" y="204" width="80" height="40" rx="6" fill="#5c6bc0"/>
+  <rect x="202" y="204" width="56" height="40" rx="6" fill="#7986cb"/>
+  <rect x="270" y="204" width="80" height="40" rx="6" fill="#5c6bc0"/>
+  <rect x="362" y="204" width="50" height="40" rx="6" fill="#7986cb"/>
 </svg>

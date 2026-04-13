@@ -20,6 +20,12 @@ class BannerBase(BaseModel):
             return None
         return v
 
+    @validator('immagine_url', pre=True)
+    def immagine_url_not_empty(cls, v):
+        if v is None or v == '':
+            raise ValueError('immagine_url è obbligatorio e non può essere vuoto')
+        return v
+
     @validator('link_url', 'descrizione', pre=True)
     def empty_link_to_none(cls, v):
         if v == '':
