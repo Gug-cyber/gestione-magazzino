@@ -34,6 +34,20 @@ from app.models import (  # noqa: E402, F401
     dato_storico,
     spesa_gestione,
     reset_token,
+    banner,
+    promozione,
+    feature_flag,
+    contenuto,
+    prodotto_pubblico,
+    footer_page,
+    store_settings,
+    dati_azienda,
+    activity_log,
+    analytics,
+    warehouse_settings,
+    fornitura,
+    tracking_update,
+    cardmarket_price,
 )
 
 target_metadata = Base.metadata
