@@ -236,13 +236,6 @@ export default function StorePage() {
   return (
     <StoreLayout>
       <div className="animate-fade-in">
-        {/* Header */}
-        <div style={{ marginBottom: '24px', textAlign: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '20px' }}>
-          <h1 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: '700', margin: '0 0 4px', color: 'var(--color-text)' }}>
-            🃏 TCG Store
-          </h1>
-        </div>
-
         {/* Banners */}
         {showBanners && (
           <div style={{ marginBottom: '28px', position: 'relative' }}>
@@ -253,7 +246,7 @@ export default function StorePage() {
               backgroundColor: 'var(--color-surface)',
             }}>
               {banners.map((b, idx) => idx === bannerIdx && (
-                <div key={b.id} style={{ position: 'relative' }}>
+                <div key={b.id} style={{ position: 'relative', minHeight: '120px' }}>
                   {b.immagine_url && (
                     <img
                       src={b.immagine_url}
@@ -262,7 +255,7 @@ export default function StorePage() {
                       onError={e => { e.target.style.display = 'none' }}
                     />
                   )}
-                  {(b.link_url || b.descrizione) && (
+                  {(b.titolo || b.descrizione || b.link_url) && (
                     <div style={{
                       position: b.immagine_url ? 'absolute' : 'relative',
                       bottom: b.immagine_url ? 0 : undefined,
@@ -272,8 +265,11 @@ export default function StorePage() {
                       display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
                     }}>
                       <div>
+                        {b.titolo && (
+                          <div style={{ fontWeight: '600', color: b.immagine_url ? 'rgba(255,255,255,0.95)' : 'var(--color-text)', fontSize: '16px' }}>{b.titolo}</div>
+                        )}
                         {b.descrizione && (
-                          <div style={{ color: b.immagine_url ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)', fontSize: '13px' }}>
+                          <div style={{ color: b.immagine_url ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
                             {b.descrizione}
                           </div>
                         )}
@@ -283,12 +279,6 @@ export default function StorePage() {
                           {t('banner_discover')}
                         </a>
                       )}
-                    </div>
-                  )}
-                  {!b.immagine_url && (
-                    <div style={{ padding: '16px 20px' }}>
-                      <div style={{ fontWeight: '600', color: 'var(--color-text)', fontSize: '16px' }}>{b.titolo}</div>
-                      {b.descrizione && <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>{b.descrizione}</div>}
                     </div>
                   )}
                 </div>
