@@ -4,6 +4,10 @@ import DOMPurify from 'dompurify'
 import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 
+function isHTML(str) {
+  return /<[a-zA-Z][\s\S]*>/i.test(str)
+}
+
 export default function StoreFooterPage() {
   const { slug } = useParams()
   const [page, setPage] = useState(null)
@@ -52,16 +56,26 @@ export default function StoreFooterPage() {
             </h1>
 
             {page.contenuto ? (
-              <div
-                style={{
-                  color: 'var(--color-text)',
-                  lineHeight: '1.7',
-                  fontSize: '15px',
-                }}
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(page.contenuto),
-                }}
-              />
+              isHTML(page.contenuto) ? (
+                <div
+                  className="footer-page-content"
+                  style={{ color: 'var(--color-text)', lineHeight: '1.7', fontSize: '15px' }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.contenuto) }}
+                />
+              ) : (
+                <div
+                  className="footer-page-content"
+                  style={{
+                    color: 'var(--color-text)',
+                    lineHeight: '1.7',
+                    fontSize: '15px',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {page.contenuto}
+                </div>
+              )
             ) : (
               <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
                 Contenuto non ancora disponibile.

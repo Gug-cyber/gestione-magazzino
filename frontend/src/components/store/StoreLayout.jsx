@@ -266,8 +266,8 @@ export default function StoreLayout({ children }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [langMenuOpen])
 
-  const leftBanners = sideBanners.filter(b => b.posizione === 'sidebar_left' || b.posizione === 'sidebar_both')
-  const rightBanners = sideBanners.filter(b => b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both')
+  const leftBanners = sideBanners.filter(b => (b.posizione === 'sidebar_left' || b.posizione === 'sidebar_both') && b.immagine_url)
+  const rightBanners = sideBanners.filter(b => (b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both') && b.immagine_url)
   const showSidebars = isWide && (leftBanners.length > 0 || rightBanners.length > 0)
 
   const navLinkStyle = (path) => ({
@@ -281,7 +281,7 @@ export default function StoreLayout({ children }) {
   })
 
   const sidebarStyle = {
-    width: '160px',
+    width: '180px',
     flexShrink: 0,
     padding: '16px 8px',
     display: 'flex',
@@ -432,8 +432,8 @@ export default function StoreLayout({ children }) {
                 <img
                   src={b.immagine_url}
                   alt={b.titolo}
-                  style={{ width: '100%', borderRadius: '8px', display: 'block' }}
-                  onError={e => { e.target.style.display = 'none' }}
+                  style={{ width: '100%', borderRadius: '8px', display: 'block', minHeight: '100px', objectFit: 'cover' }}
+                  onError={e => { e.target.closest('a').style.display = 'none' }}
                 />
               </a>
             ))}
@@ -453,8 +453,8 @@ export default function StoreLayout({ children }) {
                 <img
                   src={b.immagine_url}
                   alt={b.titolo}
-                  style={{ width: '100%', borderRadius: '8px', display: 'block' }}
-                  onError={e => { e.target.style.display = 'none' }}
+                  style={{ width: '100%', borderRadius: '8px', display: 'block', minHeight: '100px', objectFit: 'cover' }}
+                  onError={e => { e.target.closest('a').style.display = 'none' }}
                 />
               </a>
             ))}
