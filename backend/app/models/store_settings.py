@@ -41,4 +41,10 @@ class StoreSettings(Base):
     social_youtube_url = Column(String(500), nullable=True)
     social_ebay_url = Column(String(500), nullable=True)
 
+    # Footer typography
+    footer_font_family = Column(String(200), nullable=True)
+    footer_font_size = Column(Integer, nullable=True)
+    footer_text_color = Column(String(20), nullable=True)
+    footer_bg_color = Column(String(20), nullable=True)
+
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

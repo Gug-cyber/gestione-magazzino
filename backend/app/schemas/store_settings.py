@@ -27,6 +27,10 @@ class StoreSettingsResponse(BaseModel):
     social_twitch_url: Optional[str] = None
     social_youtube_url: Optional[str] = None
     social_ebay_url: Optional[str] = None
+    footer_font_family: Optional[str] = None
+    footer_font_size: Optional[int] = None
+    footer_text_color: Optional[str] = None
+    footer_bg_color: Optional[str] = None
     updated_at: Optional[datetime] = None
 
     class Config:
@@ -58,6 +62,10 @@ class StoreSettingsPublicResponse(BaseModel):
     social_twitch_url: Optional[str] = None
     social_youtube_url: Optional[str] = None
     social_ebay_url: Optional[str] = None
+    footer_font_family: Optional[str] = None
+    footer_font_size: Optional[int] = None
+    footer_text_color: Optional[str] = None
+    footer_bg_color: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -87,3 +95,7 @@ class StoreSettingsUpdate(BaseModel):
     social_twitch_url: Optional[str] = None
     social_youtube_url: Optional[str] = None
     social_ebay_url: Optional[str] = None
+    footer_font_family: Optional[str] = None
+    footer_font_size: Optional[int] = None
+    footer_text_color: Optional[str] = None
+    footer_bg_color: Optional[str] = None
