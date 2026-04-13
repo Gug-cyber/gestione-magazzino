@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import strapiAPI from '../api/strapi';
 import Banner from '../components/Banner.jsx';
 import ProductGrid from '../components/ProductGrid.jsx';
+import ValuationProcess from '../components/ValuationProcess.jsx';
 
 // Icone per categorie TCG
 const categoryIcons = {
@@ -157,6 +158,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <ValuationProcess />
 
       {/* CTA Banner */}
       <section style={{
