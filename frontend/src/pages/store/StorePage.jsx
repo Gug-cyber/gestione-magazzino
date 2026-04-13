@@ -312,30 +312,46 @@ export default function StorePage() {
         )}
 
         {/* Filters */}
-        <div style={{
+        <style>{`
+          @media (max-width: 640px) {
+            .store-product-grid {
+              grid-template-columns: repeat(2, 1fr) !important;
+              gap: 12px !important;
+            }
+            .store-filters {
+              flex-direction: column !important;
+            }
+            .store-filters input[type="text"] {
+              flex: none !important;
+              width: 100% !important;
+            }
+            .store-filters .store-filter-checks {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 12px;
+            }
+            .store-filters label {
+              font-size: 14px !important;
+              padding: 8px 0;
+            }
+          }
+        `}</style>
+        <div className="store-filters" style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
+          flexWrap: 'wrap',
+          gap: '12px',
           marginBottom: '20px',
           padding: '10px 0 12px',
+          backgroundColor: 'transparent',
           borderBottom: '1px solid var(--color-border)',
         }}>
-          <style>{`
-            @media (max-width: 640px) {
-              .store-filter-row label {
-                font-size: 13px !important;
-                opacity: 1 !important;
-              }
-            }
-          `}</style>
           <input
             type="text"
             placeholder={t('filter_search_placeholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              width: '100%',
-              boxSizing: 'border-box',
+              flex: '1 1 200px',
               padding: '10px 14px',
               backgroundColor: 'var(--color-bg)',
               border: '1px solid var(--color-border)',
@@ -346,29 +362,29 @@ export default function StorePage() {
             }}
           />
 
-          <div className="store-filter-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-            <CategoryDropdown
-              value={categoriaId}
-              onChange={val => setCategoriaId(val)}
-              options={[{ value: '', label: t('filter_all_categories') }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
-            />
+          <CategoryDropdown
+            value={categoriaId}
+            onChange={val => setCategoriaId(val)}
+            options={[{ value: '', label: t('filter_all_categories') }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
+          />
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
+          <div className="store-filter-checks" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
               <input
                 type="checkbox"
                 checked={disponibiliOnly}
                 onChange={e => setDisponibiliOnly(e.target.checked)}
-                style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
+                style={{ accentColor: 'var(--color-primary)', width: '14px', height: '14px' }}
               />
               {t('filter_available_only')}
             </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
               <input
                 type="checkbox"
                 checked={offerteSolo}
                 onChange={e => setOfferteSolo(e.target.checked)}
-                style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
+                style={{ accentColor: 'var(--color-primary)', width: '14px', height: '14px' }}
               />
               {t('filter_offers_only')}
             </label>
@@ -407,14 +423,6 @@ export default function StorePage() {
           </div>
         ) : (
           <>
-            <style>{`
-              @media (max-width: 640px) {
-                .store-product-grid {
-                  grid-template-columns: repeat(2, 1fr) !important;
-                  gap: 12px !important;
-                }
-              }
-            `}</style>
             {(() => {
               const activePromos = flags.discounts_enabled !== false ? promozioni : []
               const prodottiFiltrati = offerteSolo

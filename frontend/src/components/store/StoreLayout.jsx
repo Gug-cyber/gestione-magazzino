@@ -145,7 +145,7 @@ function StoreFooter() {
 
         {/* Col 2 — Scopri + Social */}
         <div>
-          <div style={colTitleStyle}>Scopri Fantasia</div>
+          <div style={colTitleStyle}>Scopri</div>
           {bySection('scopri').map(p => (
             <Link key={p.slug} to={`/store/pagina/${p.slug}`} style={linkStyle}
               onMouseEnter={e => { e.target.style.color = 'var(--color-primary)' }}
@@ -237,7 +237,9 @@ export default function StoreLayout({ children }) {
   const { lang, setLanguage, t } = useLanguage()
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
-  const [isWide, setIsWide] = useState(() => window.innerWidth >= 1500)
+  const [isWide, setIsWide] = useState(() => {
+    try { return window.innerWidth >= 1200 } catch { return false }
+  })
   const [storeSettings, setStoreSettings] = useState(() => {
     try {
       const cached = localStorage.getItem('store_settings_cache')
@@ -261,17 +263,34 @@ export default function StoreLayout({ children }) {
   }, [])
 
   useEffect(() => {
-    if (storeSettings?.store_logo_url) {
-      let link = document.querySelector("link[rel~='icon']")
-      if (!link) {
-        link = document.createElement('link')
-        link.rel = 'icon'
-        document.head.appendChild(link)
-      }
-      link.href = storeSettings.store_logo_url
-    }
-    if (storeSettings?.store_nome) {
+    if (!storeSettings) return
+
+    // Aggiorna title
+    if (storeSettings.store_nome) {
       document.title = storeSettings.store_nome
+    }
+
+    // Aggiorna favicon: rimuovi tutti i link icon esistenti e aggiungine uno nuovo
+    if (storeSettings.store_logo_url) {
+      const existingLinks = document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon']")
+      existingLinks.forEach(l => l.parentNode?.removeChild(l))
+
+      const link = document.createElement('link')
+      link.rel = 'icon'
+      link.type = 'image/png'
+      try {
+        const iconUrl = new URL(storeSettings.store_logo_url)
+        iconUrl.searchParams.set('v', Date.now())
+        link.href = iconUrl.toString()
+      } catch {
+        link.href = storeSettings.store_logo_url + '?v=' + Date.now()
+      }
+      document.head.appendChild(link)
+
+      const appleLink = document.createElement('link')
+      appleLink.rel = 'apple-touch-icon'
+      appleLink.href = storeSettings.store_logo_url
+      document.head.appendChild(appleLink)
     }
   }, [storeSettings])
 
@@ -285,7 +304,7 @@ export default function StoreLayout({ children }) {
   }, [])
 
   useEffect(() => {
-    const MIN_WIDTH = 1500
+    const MIN_WIDTH = 1200
     function handleResize() {
       setIsWide(window.innerWidth >= MIN_WIDTH)
     }
@@ -320,7 +339,7 @@ export default function StoreLayout({ children }) {
   })
 
   const sidebarStyle = {
-    width: '180px',
+    width: '160px',
     flexShrink: 0,
     padding: '16px 8px',
     display: 'flex',
@@ -334,7 +353,6 @@ export default function StoreLayout({ children }) {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: 'var(--color-bg)',
       color: 'var(--color-text)',
       fontFamily: 'var(--font-family)',
       ...(storeSettings?.store_sfondo_url ? {
@@ -342,7 +360,10 @@ export default function StoreLayout({ children }) {
         backgroundSize: 'cover',
         backgroundAttachment: 'fixed',
         backgroundPosition: 'center',
-      } : {}),
+        backgroundColor: 'transparent',
+      } : {
+        backgroundColor: 'var(--color-bg)',
+      }),
     }}>
       {/* Navbar */}
       <nav style={{

@@ -26,6 +26,20 @@ export const controlPanelAPI = {
   // Store settings
   getStoreSettings: () => apiClient.get('/api/control-panel/store-settings'),
   updateStoreSettings: (data) => apiClient.put('/api/control-panel/store-settings', data),
+  uploadStoreLogo: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient.post('/api/control-panel/store-settings/upload-logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  uploadStoreSfondo: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient.post('/api/control-panel/store-settings/upload-sfondo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 
   // Footer pages
   getFooterPages: () => apiClient.get('/api/control-panel/footer-pages'),
