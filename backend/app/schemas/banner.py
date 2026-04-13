@@ -6,7 +6,7 @@ from datetime import datetime
 class BannerBase(BaseModel):
     titolo: str = Field(..., max_length=200)
     descrizione: Optional[str] = Field(None, max_length=500)
-    immagine_url: str = Field(..., max_length=500)
+    immagine_url: Optional[str] = Field(None, max_length=500)
     link_url: Optional[str] = Field(None, max_length=500)
     ordine: int = 0
     attivo: bool = True
@@ -23,7 +23,7 @@ class BannerBase(BaseModel):
     @validator('immagine_url', pre=True)
     def immagine_url_not_empty(cls, v):
         if v is None or v == '':
-            raise ValueError('immagine_url è obbligatorio e non può essere vuoto')
+            return None
         return v
 
     @validator('link_url', 'descrizione', pre=True)
@@ -51,6 +51,12 @@ class BannerUpdate(BaseModel):
     @validator('data_inizio', 'data_fine', pre=True)
     def empty_string_to_none(cls, v):
         if v == '' or v is None:
+            return None
+        return v
+
+    @validator('immagine_url', pre=True)
+    def immagine_url_not_empty(cls, v):
+        if v is None or v == '':
             return None
         return v
 
