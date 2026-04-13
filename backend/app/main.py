@@ -43,6 +43,7 @@ from .models import feature_flag as _feature_flag_model  # noqa: F401 – ensure
 from .models import promozione as _promozione_model  # noqa: F401 – ensures promozioni table is created
 from .models import warehouse_settings as _warehouse_settings_model  # noqa: F401 – ensures warehouse_settings table is created
 from .models import analytics as _analytics_model  # noqa: F401 – ensures analytics_events table is created
+from .models import footer_page as _footer_page_model  # noqa: F401 – ensures footer_pages table is created
 
 load_dotenv()
 
@@ -166,6 +167,13 @@ def startup():
         seed_default_flags(db2)
     finally:
         db2.close()
+
+    db3 = SessionLocal()
+    try:
+        from .crud.footer_page import seed_default_pages
+        seed_default_pages(db3)
+    finally:
+        db3.close()
 
 
 @app.get("/health", tags=["Health"])

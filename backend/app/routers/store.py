@@ -14,7 +14,9 @@ from ..crud import banner as crud_banner
 from ..crud import promozione as crud_promozione
 from ..crud import feature_flag as crud_flags
 from ..crud import store_settings as crud_store_settings
+from ..crud import footer_page as crud_footer
 from ..schemas.store_settings import StoreSettingsResponse, StoreSettingsPublicResponse
+from ..schemas.footer_page import FooterPageResponse
 from ..schemas.ordine import OrdineCreate, RigaOrdineCreate, OrdineResponse, OrdineUpdate, StatoOrdineSchema
 from ..schemas.cliente import ClienteCreate
 from ..schemas.categoria import CategoriaResponse
@@ -311,3 +313,18 @@ def get_store_feature_flags(db: Session = Depends(get_db)):
 def get_store_settings_pubblici(db: Session = Depends(get_db)):
     """Endpoint pubblico per leggere le impostazioni dello store (spedizione, pagamento, nome)."""
     return crud_store_settings.get_settings(db)
+
+
+@router.get("/footer-pages", response_model=List[FooterPageResponse])
+def get_footer_pages_pubblici(db: Session = Depends(get_db)):
+    """Endpoint pubblico: restituisce solo le pagine footer abilitate."""
+    return crud_footer.get_enabled_pages(db)
+
+
+@router.get("/footer-pages/{slug}", response_model=FooterPageResponse)
+def get_footer_page_by_slug(slug: str, db: Session = Depends(get_db)):
+    """Endpoint pubblico: restituisce una singola pagina footer abilitata."""
+    page = crud_footer.get_page_by_slug(db, slug)
+    if not page or not page.abilitato:
+        raise HTTPException(status_code=404, detail="Pagina non trovata")
+    return page

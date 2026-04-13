@@ -13,8 +13,11 @@ const STORAGE_KEY = 'utm_attribution'
 
 const REFERRER_SOURCE_MAP = [
   [/instagram\.com/i, 'instagram'],
-  [/facebook\.com|fb\.com/i, 'facebook'],
+  [/facebook\.com|fb\.com|m\.facebook\.com/i, 'facebook'],
   [/tiktok\.com/i, 'tiktok'],
+  [/twitch\.tv/i, 'twitch'],
+  [/youtube\.com|youtu\.be/i, 'youtube'],
+  [/ebay\.it|ebay\.com/i, 'ebay'],
   [/google\./i, 'google'],
   [/bing\.com/i, 'bing'],
   [/yahoo\.com/i, 'yahoo'],
@@ -36,36 +39,64 @@ function getAttribution() {
   const referrer = document.referrer || ''
 
   let source = 'direct'
+  let medium = utmMedium
+
   if (utmSource) {
     source = utmSource.toLowerCase()
+  } else if (params.get('fbclid')) {
+    source = 'facebook'
+    medium = medium || 'social'
+  } else if (params.get('igshid') || params.get('ig_source')) {
+    source = 'instagram'
+    medium = medium || 'social'
+  } else if (params.get('ttclid')) {
+    source = 'tiktok'
+    medium = medium || 'social'
   } else if (referrer) {
     source = detectSourceFromReferrer(referrer)
+    if (source !== 'direct' && source !== 'other') {
+      medium = medium || 'social'
+    }
   }
 
-  return { source, medium: utmMedium, campaign: utmCampaign, referrer }
+  return { source, medium, campaign: utmCampaign, referrer }
 }
 
 function getOrCreateAttribution() {
-  // If UTM params are present, always refresh
   const params = new URLSearchParams(window.location.search)
-  if (params.get('utm_source')) {
+  const utmSource = params.get('utm_source')
+
+  // UTM params have absolute priority
+  if (utmSource) {
     const attribution = getAttribution()
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution))
-    } catch (_) {}
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution)) } catch (_) {}
     return attribution
   }
 
-  // Otherwise read from sessionStorage (same session, same source)
+  // Social click ID params override sessionStorage (handle in-app browsers)
+  if (params.get('fbclid') || params.get('igshid') || params.get('ig_source') || params.get('ttclid')) {
+    const attribution = getAttribution()
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution)) } catch (_) {}
+    return attribution
+  }
+
+  // Check if the current referrer is a known social source — override sessionStorage
+  const currentReferrer = document.referrer || ''
+  const sourceFromReferrer = detectSourceFromReferrer(currentReferrer)
+  if (sourceFromReferrer !== 'direct' && sourceFromReferrer !== 'other') {
+    const attribution = { source: sourceFromReferrer, medium: 'social', campaign: '', referrer: currentReferrer }
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution)) } catch (_) {}
+    return attribution
+  }
+
+  // Fall back to sessionStorage for direct/other traffic
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY)
     if (stored) return JSON.parse(stored)
   } catch (_) {}
 
   const attribution = getAttribution()
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution))
-  } catch (_) {}
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution)) } catch (_) {}
   return attribution
 }
 

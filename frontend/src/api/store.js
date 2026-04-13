@@ -16,4 +16,6 @@ export const storeAPI = {
   getBannersPublici: () => storeClient.get('/api/store/banners'),
   getPromozioniAttive: () => storeClient.get('/api/store/promozioni'),
   getStoreSettings: () => storeClient.get('/api/store/store-settings'),
+  getFooterPages: () => storeClient.get('/api/store/footer-pages'),
+  getFooterPage: (slug) => storeClient.get(`/api/store/footer-pages/${slug}`),
 }

@@ -10,11 +10,13 @@ from ..schemas.banner import BannerCreate, BannerUpdate, BannerResponse
 from ..schemas.promozione import PromozioneCreate, PromozioneUpdate, PromozioneResponse
 from ..schemas.warehouse_settings import WarehouseSettingsResponse, WarehouseSettingsUpdate
 from ..schemas.store_settings import StoreSettingsResponse, StoreSettingsUpdate
+from ..schemas.footer_page import FooterPageResponse, FooterPageCreate, FooterPageUpdate
 from ..crud import feature_flag as crud_flags
 from ..crud import banner as crud_banner
 from ..crud import promozione as crud_promozione
 from ..crud import warehouse_settings as crud_ws
 from ..crud import store_settings as crud_store_settings
+from ..crud import footer_page as crud_footer
 
 router = APIRouter()
 
@@ -233,3 +235,55 @@ def update_store_settings(
 ):
     _require_admin(current_user)
     return crud_store_settings.update_settings(db, data)
+
+
+# ---------------------------------------------------------------------------
+# FOOTER PAGES
+# ---------------------------------------------------------------------------
+
+@router.get("/footer-pages", response_model=List[FooterPageResponse])
+def get_footer_pages(
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    return crud_footer.get_all_pages(db)
+
+
+@router.post("/footer-pages", response_model=FooterPageResponse, status_code=201)
+def create_footer_page(
+    data: FooterPageCreate,
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    existing = crud_footer.get_page_by_slug(db, data.slug)
+    if existing:
+        raise HTTPException(status_code=409, detail="Slug già esistente")
+    return crud_footer.create_page(db, data)
+
+
+@router.put("/footer-pages/{slug}", response_model=FooterPageResponse)
+def update_footer_page(
+    slug: str,
+    data: FooterPageUpdate,
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    page = crud_footer.upsert_page(db, slug, data)
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina non trovata")
+    return page
+
+
+@router.delete("/footer-pages/{slug}")
+def delete_footer_page(
+    slug: str,
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    if not crud_footer.delete_page(db, slug):
+        raise HTTPException(status_code=404, detail="Pagina non trovata")
+    return {"ok": True}
