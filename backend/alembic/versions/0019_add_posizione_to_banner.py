@@ -27,4 +27,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("banner", "posizione")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_columns = [col["name"] for col in inspector.get_columns("banner")]
+
+    if "posizione" in existing_columns:
+        op.drop_column("banner", "posizione")
