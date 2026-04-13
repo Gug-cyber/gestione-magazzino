@@ -121,6 +121,7 @@ export default function StorePage() {
   const [flags, setFlags] = useState({})
   const [banners, setBanners] = useState([])
   const [promozioni, setPromozioni] = useState([])
+  const [promozioniLoaded, setPromozioniLoaded] = useState(false)
   const [bannerIdx, setBannerIdx] = useState(0)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -152,7 +153,10 @@ export default function StorePage() {
         if (flagsRes.status === 'fulfilled') setFlags(flagsRes.value.data)
         if (bannersRes.status === 'fulfilled') setBanners((bannersRes.value.data || []).filter(b => !b.posizione || b.posizione === 'top'))
         if (promosRes.status === 'fulfilled') setPromozioni(promosRes.value.data)
-      } catch {}
+        setPromozioniLoaded(true)
+      } catch {
+        setPromozioniLoaded(true)
+      }
     }
     fetchPublic()
   }, [])
@@ -310,20 +314,28 @@ export default function StorePage() {
         {/* Filters */}
         <div style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px',
+          flexDirection: 'column',
+          gap: '10px',
           marginBottom: '20px',
           padding: '10px 0 12px',
-          backgroundColor: 'transparent',
           borderBottom: '1px solid var(--color-border)',
         }}>
+          <style>{`
+            @media (max-width: 640px) {
+              .store-filter-row label {
+                font-size: 13px !important;
+                opacity: 1 !important;
+              }
+            }
+          `}</style>
           <input
             type="text"
             placeholder={t('filter_search_placeholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              flex: '1 1 200px',
+              width: '100%',
+              boxSizing: 'border-box',
               padding: '10px 14px',
               backgroundColor: 'var(--color-bg)',
               border: '1px solid var(--color-border)',
@@ -334,35 +346,37 @@ export default function StorePage() {
             }}
           />
 
-          <CategoryDropdown
-            value={categoriaId}
-            onChange={val => setCategoriaId(val)}
-            options={[{ value: '', label: t('filter_all_categories') }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
-          />
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
-            <input
-              type="checkbox"
-              checked={disponibiliOnly}
-              onChange={e => setDisponibiliOnly(e.target.checked)}
-              style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
+          <div className="store-filter-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+            <CategoryDropdown
+              value={categoriaId}
+              onChange={val => setCategoriaId(val)}
+              options={[{ value: '', label: t('filter_all_categories') }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
             />
-            {t('filter_available_only')}
-          </label>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
-            <input
-              type="checkbox"
-              checked={offerteSolo}
-              onChange={e => setOfferteSolo(e.target.checked)}
-              style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
-            />
-            {t('filter_offers_only')}
-          </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
+              <input
+                type="checkbox"
+                checked={disponibiliOnly}
+                onChange={e => setDisponibiliOnly(e.target.checked)}
+                style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
+              />
+              {t('filter_available_only')}
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
+              <input
+                type="checkbox"
+                checked={offerteSolo}
+                onChange={e => setOfferteSolo(e.target.checked)}
+                style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
+              />
+              {t('filter_offers_only')}
+            </label>
+          </div>
         </div>
 
         {/* Content */}
-        {loading ? (
+        {loading || (offerteSolo && !promozioniLoaded) ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
             <div className="spinner" />
           </div>

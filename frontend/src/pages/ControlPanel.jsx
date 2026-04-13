@@ -821,6 +821,27 @@ function TabStore() {
                 />
               </div>
             )}
+            <div style={{ ...rowStyle, borderTop: '1px solid var(--color-border-subtle)', borderBottom: 'none' }}>
+              <div style={labelStyle}>Sfondo URL</div>
+              <input
+                style={{ ...inputStyle, width: '320px' }}
+                type="url"
+                placeholder="https://..."
+                value={settings.store_sfondo_url || ''}
+                onChange={e => setSettings(p => ({ ...p, store_sfondo_url: e.target.value || null }))}
+              />
+            </div>
+            {settings.store_sfondo_url && (
+              <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Anteprima sfondo</div>
+                <img
+                  src={settings.store_sfondo_url}
+                  alt="Sfondo store"
+                  style={{ maxHeight: '80px', maxWidth: '240px', objectFit: 'cover', borderRadius: '4px' }}
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </div>
+            )}
           </div>
         </div>
 

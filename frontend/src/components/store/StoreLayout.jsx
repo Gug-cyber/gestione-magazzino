@@ -61,14 +61,26 @@ function IconEbay() {
 
 function StoreFooter() {
   const [footerPages, setFooterPages] = useState([])
-  const [storeSettings, setStoreSettings] = useState(null)
+  const [storeSettings, setStoreSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('store_settings_cache')
+      return cached ? JSON.parse(cached) : null
+    } catch {
+      return null
+    }
+  })
 
   useEffect(() => {
     storeAPI.getFooterPages()
       .then(res => setFooterPages(res.data || []))
       .catch(() => {})
     storeAPI.getStoreSettings()
-      .then(res => setStoreSettings(res.data))
+      .then(res => {
+        setStoreSettings(res.data)
+        try {
+          localStorage.setItem('store_settings_cache', JSON.stringify(res.data))
+        } catch {}
+      })
       .catch(() => {})
   }, [])
 
@@ -226,15 +238,42 @@ export default function StoreLayout({ children }) {
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => window.innerWidth >= 1500)
-  const [storeSettings, setStoreSettings] = useState(null)
+  const [storeSettings, setStoreSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('store_settings_cache')
+      return cached ? JSON.parse(cached) : null
+    } catch {
+      return null
+    }
+  })
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const langMenuRef = useRef(null)
 
   useEffect(() => {
     storeAPI.getStoreSettings()
-      .then(res => setStoreSettings(res.data))
+      .then(res => {
+        setStoreSettings(res.data)
+        try {
+          localStorage.setItem('store_settings_cache', JSON.stringify(res.data))
+        } catch {}
+      })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (storeSettings?.store_logo_url) {
+      let link = document.querySelector("link[rel~='icon']")
+      if (!link) {
+        link = document.createElement('link')
+        link.rel = 'icon'
+        document.head.appendChild(link)
+      }
+      link.href = storeSettings.store_logo_url
+    }
+    if (storeSettings?.store_nome) {
+      document.title = storeSettings.store_nome
+    }
+  }, [storeSettings])
 
   useEffect(() => {
     storeAPI.getBannersPublici()
@@ -298,6 +337,12 @@ export default function StoreLayout({ children }) {
       backgroundColor: 'var(--color-bg)',
       color: 'var(--color-text)',
       fontFamily: 'var(--font-family)',
+      ...(storeSettings?.store_sfondo_url ? {
+        backgroundImage: `url(${storeSettings.store_sfondo_url})`,
+        backgroundSize: 'cover',
+        backgroundAttachment: 'fixed',
+        backgroundPosition: 'center',
+      } : {}),
     }}>
       {/* Navbar */}
       <nav style={{
