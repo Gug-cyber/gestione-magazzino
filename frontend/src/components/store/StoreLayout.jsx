@@ -278,7 +278,13 @@ export default function StoreLayout({ children }) {
       const link = document.createElement('link')
       link.rel = 'icon'
       link.type = 'image/png'
-      link.href = storeSettings.store_logo_url + '?v=' + Date.now()
+      try {
+        const iconUrl = new URL(storeSettings.store_logo_url)
+        iconUrl.searchParams.set('v', Date.now())
+        link.href = iconUrl.toString()
+      } catch {
+        link.href = storeSettings.store_logo_url + '?v=' + Date.now()
+      }
       document.head.appendChild(link)
 
       const appleLink = document.createElement('link')

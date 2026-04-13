@@ -256,13 +256,24 @@ def update_store_settings(
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
 
-def _get_cloudinary_config():
+def _configure_cloudinary():
+    """Configure Cloudinary from env vars, raising 503 if not set."""
     cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
     api_key = os.getenv("CLOUDINARY_API_KEY")
     api_secret = os.getenv("CLOUDINARY_API_SECRET")
     if not cloud_name or not api_key or not api_secret:
-        raise HTTPException(status_code=503, detail="Cloudinary non configurato")
+        raise HTTPException(status_code=503, detail="Upload service temporarily unavailable")
     cloudinary.config(cloud_name=cloud_name, api_key=api_key, api_secret=api_secret)
+
+
+async def _read_validated_image(file: UploadFile) -> bytes:
+    """Read upload file, validating content-type and size."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Il file supera 10 MB")
+    return contents
 
 
 @router.post("/store-settings/upload-logo", response_model=StoreSettingsResponse)
@@ -272,12 +283,8 @@ async def upload_store_logo(
     current_user: Utente = Depends(get_current_active_user),
 ):
     _require_admin(current_user)
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
-    _get_cloudinary_config()
-    contents = await file.read()
-    if len(contents) > MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=413, detail="Il file supera 10 MB")
+    _configure_cloudinary()
+    contents = await _read_validated_image(file)
     result = cloudinary.uploader.upload(
         contents,
         public_id="store/logo",
@@ -296,12 +303,8 @@ async def upload_store_sfondo(
     current_user: Utente = Depends(get_current_active_user),
 ):
     _require_admin(current_user)
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
-    _get_cloudinary_config()
-    contents = await file.read()
-    if len(contents) > MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=413, detail="Il file supera 10 MB")
+    _configure_cloudinary()
+    contents = await _read_validated_image(file)
     result = cloudinary.uploader.upload(
         contents,
         public_id="store/sfondo",
