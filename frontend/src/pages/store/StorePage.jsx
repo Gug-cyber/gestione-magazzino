@@ -255,30 +255,32 @@ export default function StorePage() {
                       onError={e => { e.target.style.display = 'none' }}
                     />
                   )}
-                  <div style={{
-                    position: b.immagine_url ? 'absolute' : 'relative',
-                    bottom: b.immagine_url ? 0 : undefined,
-                    left: 0, right: 0,
-                    background: b.immagine_url ? 'linear-gradient(transparent, rgba(0,0,0,0.65))' : 'transparent',
-                    padding: '20px 20px 16px',
-                    display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
-                  }}>
-                    <div>
-                      {b.titolo && (
-                        <div style={{ fontWeight: '600', color: b.immagine_url ? 'rgba(255,255,255,0.95)' : 'var(--color-text)', fontSize: '16px' }}>{b.titolo}</div>
-                      )}
-                      {b.descrizione && (
-                        <div style={{ color: b.immagine_url ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-                          {b.descrizione}
-                        </div>
+                  {(b.titolo || b.descrizione || b.link_url) && (
+                    <div style={{
+                      position: b.immagine_url ? 'absolute' : 'relative',
+                      bottom: b.immagine_url ? 0 : undefined,
+                      left: 0, right: 0,
+                      background: b.immagine_url ? 'linear-gradient(transparent, rgba(0,0,0,0.65))' : 'transparent',
+                      padding: '20px 20px 16px',
+                      display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+                    }}>
+                      <div>
+                        {b.titolo && (
+                          <div style={{ fontWeight: '600', color: b.immagine_url ? 'rgba(255,255,255,0.95)' : 'var(--color-text)', fontSize: '16px' }}>{b.titolo}</div>
+                        )}
+                        {b.descrizione && (
+                          <div style={{ color: b.immagine_url ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
+                            {b.descrizione}
+                          </div>
+                        )}
+                      </div>
+                      {b.link_url && (
+                        <a href={b.link_url} className="gm-btn gm-btn-primary gm-btn-sm" target="_blank" rel="noopener noreferrer">
+                          {t('banner_discover')}
+                        </a>
                       )}
                     </div>
-                    {b.link_url && (
-                      <a href={b.link_url} className="gm-btn gm-btn-primary gm-btn-sm" target="_blank" rel="noopener noreferrer">
-                        {t('banner_discover')}
-                      </a>
-                    )}
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
