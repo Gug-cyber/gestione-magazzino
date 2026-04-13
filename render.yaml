@@ -33,6 +33,14 @@ services:
         sync: false          # inserire manualmente nella dashboard Render
       - key: EBAY_DELETION_ENDPOINT_URL
         sync: false          # es. https://your-backend.onrender.com/ebay/account-deletion
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false          # JSON completo del Service Account Google (su una riga)
+      - key: GOOGLE_DRIVE_ROOT_FOLDER_ID
+        sync: false          # ID cartella radice Drive per foto prodotti
+      - key: BACKUP_GOOGLE_DRIVE_FOLDER_ID
+        sync: false          # ID cartella Drive per backup DB
+      - key: BACKUP_RETENTION_DAYS
+        value: "30"          # Giorni di retention backup
     disk:
       name: uploads
       mountPath: /app/uploads
