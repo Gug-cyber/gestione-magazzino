@@ -117,6 +117,7 @@ export default function StorePage() {
   const [search, setSearch] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
   const [disponibiliOnly, setDisponibiliOnly] = useState(false)
+  const [offerteSolo, setOfferteSolo] = useState(false)
   const [flags, setFlags] = useState({})
   const [banners, setBanners] = useState([])
   const [promozioni, setPromozioni] = useState([])
@@ -125,16 +126,16 @@ export default function StorePage() {
   const [hasMore, setHasMore] = useState(false)
 
   // Reset pagination when filters change
-  const prevFilters = useRef({ search, categoriaId, disponibiliOnly })
+  const prevFilters = useRef({ search, categoriaId, disponibiliOnly, offerteSolo })
   useEffect(() => {
     const prev = prevFilters.current
-    if (prev.search !== search || prev.categoriaId !== categoriaId || prev.disponibiliOnly !== disponibiliOnly) {
-      prevFilters.current = { search, categoriaId, disponibiliOnly }
+    if (prev.search !== search || prev.categoriaId !== categoriaId || prev.disponibiliOnly !== disponibiliOnly || prev.offerteSolo !== offerteSolo) {
+      prevFilters.current = { search, categoriaId, disponibiliOnly, offerteSolo }
       setProdotti([])
       setPage(1)
       setHasMore(false)
     }
-  }, [search, categoriaId, disponibiliOnly])
+  }, [search, categoriaId, disponibiliOnly, offerteSolo])
 
   useEffect(() => {
     trackPageView('/store')
@@ -240,9 +241,6 @@ export default function StorePage() {
           <h1 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: '700', margin: '0 0 4px', color: 'var(--color-text)' }}>
             🃏 TCG Store
           </h1>
-          <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '13px' }}>
-            {t('store_subtitle')}
-          </p>
           {!loading && prodotti.length > 0 && (
             <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '12px' }}>
               {prodotti.length} {prodotti.length === 1 ? t('store_product_count_one') : t('store_product_count_many')}
@@ -265,21 +263,39 @@ export default function StorePage() {
                     <img
                       src={b.immagine_url}
                       alt={b.titolo}
-                      style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }}
+                      style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', display: 'block' }}
                       onError={e => { e.target.style.display = 'none' }}
                     />
                   )}
-                  <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                    <div>
+                  {(b.link_url || b.descrizione) && (
+                    <div style={{
+                      position: b.immagine_url ? 'absolute' : 'relative',
+                      bottom: b.immagine_url ? 0 : undefined,
+                      left: 0, right: 0,
+                      background: b.immagine_url ? 'linear-gradient(transparent, rgba(0,0,0,0.65))' : 'transparent',
+                      padding: '20px 20px 16px',
+                      display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+                    }}>
+                      <div>
+                        {b.descrizione && (
+                          <div style={{ color: b.immagine_url ? 'rgba(255,255,255,0.85)' : 'var(--color-text-secondary)', fontSize: '13px' }}>
+                            {b.descrizione}
+                          </div>
+                        )}
+                      </div>
+                      {b.link_url && (
+                        <a href={b.link_url} className="gm-btn gm-btn-primary gm-btn-sm" target="_blank" rel="noopener noreferrer">
+                          {t('banner_discover')}
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  {!b.immagine_url && (
+                    <div style={{ padding: '16px 20px' }}>
                       <div style={{ fontWeight: '600', color: 'var(--color-text)', fontSize: '16px' }}>{b.titolo}</div>
                       {b.descrizione && <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>{b.descrizione}</div>}
                     </div>
-                    {b.link_url && (
-                      <a href={b.link_url} className="gm-btn gm-btn-primary gm-btn-sm" target="_blank" rel="noopener noreferrer">
-                        {t('banner_discover')}
-                      </a>
-                    )}
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -348,6 +364,16 @@ export default function StorePage() {
             />
             {t('filter_available_only')}
           </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', opacity: 0.75 }}>
+            <input
+              type="checkbox"
+              checked={offerteSolo}
+              onChange={e => setOfferteSolo(e.target.checked)}
+              style={{ accentColor: 'var(--color-primary)', width: '13px', height: '13px' }}
+            />
+            {t('filter_offers_only')}
+          </label>
         </div>
 
         {/* Content */}
@@ -390,21 +416,39 @@ export default function StorePage() {
                 }
               }
             `}</style>
-            <div className="store-product-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-              gap: '24px',
-            }}>
-              {prodotti.map((p, i) => (
-                <ProductCard
-                  key={p.id}
-                  prodotto={p}
-                  index={i}
-                  onAddToCart={handleAddToCart}
-                  promozioni={flags.discounts_enabled !== false ? promozioni : []}
-                />
-              ))}
-            </div>
+            {(() => {
+              const activePromos = flags.discounts_enabled !== false ? promozioni : []
+              const prodottiFiltrati = offerteSolo
+                ? prodotti.filter(p =>
+                    activePromos.some(promo =>
+                      (promo.prodotto_id != null && p.id != null && Number(promo.prodotto_id) === Number(p.id)) ||
+                      (promo.categoria_id != null && p.categoria_id != null && Number(promo.categoria_id) === Number(p.categoria_id))
+                    )
+                  )
+                : prodotti
+              return prodottiFiltrati.length === 0 && offerteSolo ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--color-text-muted)' }}>
+                  <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🏷️</p>
+                  <p style={{ fontSize: '16px', margin: 0 }}>{t('no_products_found')}</p>
+                </div>
+              ) : (
+                <div className="store-product-grid" style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                  gap: '24px',
+                }}>
+                  {prodottiFiltrati.map((p, i) => (
+                    <ProductCard
+                      key={p.id}
+                      prodotto={p}
+                      index={i}
+                      onAddToCart={handleAddToCart}
+                      promozioni={activePromos}
+                    />
+                  ))}
+                </div>
+              )
+            })()}
 
             {hasMore && (
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: '32px' }}>
