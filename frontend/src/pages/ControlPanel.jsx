@@ -1138,7 +1138,7 @@ function TabUtm() {
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
               <option value="twitch">Twitch</option>
-              <option value="other">WhatsApp</option>
+              <option value="whatsapp">WhatsApp</option>
               <option value="custom">Altro (campo libero)</option>
             </select>
           </div>

@@ -95,7 +95,9 @@ function getOrCreateAttribution() {
     if (stored) return JSON.parse(stored)
   } catch (_) {}
 
-  return getAttribution()
+  const attribution = getAttribution()
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(attribution)) } catch (_) {}
+  return attribution
 }
 
 function getOrCreateSessionId() {
