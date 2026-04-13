@@ -11,6 +11,7 @@ class StoreSettings(Base):
     # Identità portale
     store_nome = Column(String(100), default="TCG Store")
     store_logo_url = Column(String(500), nullable=True)
+    store_sfondo_url = Column(String(500), nullable=True)
 
     # Metodi di spedizione
     spedizione_ritiro_abilitato = Column(Boolean, default=True)

@@ -6,6 +6,7 @@ from datetime import datetime
 class StoreSettingsResponse(BaseModel):
     store_nome: str
     store_logo_url: Optional[str] = None
+    store_sfondo_url: Optional[str] = None
     spedizione_ritiro_abilitato: bool
     spedizione_ritiro_costo: float
     spedizione_ritiro_giorni: str
@@ -36,6 +37,7 @@ class StoreSettingsPublicResponse(BaseModel):
     """Schema per l'endpoint pubblico: omette updated_at per non esporre timing admin."""
     store_nome: str
     store_logo_url: Optional[str] = None
+    store_sfondo_url: Optional[str] = None
     spedizione_ritiro_abilitato: bool
     spedizione_ritiro_costo: float
     spedizione_ritiro_giorni: str
@@ -64,6 +66,7 @@ class StoreSettingsPublicResponse(BaseModel):
 class StoreSettingsUpdate(BaseModel):
     store_nome: Optional[str] = None
     store_logo_url: Optional[str] = None
+    store_sfondo_url: Optional[str] = None
     spedizione_ritiro_abilitato: Optional[bool] = None
     spedizione_ritiro_costo: Optional[float] = None
     spedizione_ritiro_giorni: Optional[str] = None
