@@ -801,47 +801,59 @@ function TabStore() {
               />
             </div>
             <div style={{ ...rowStyle, borderBottom: 'none' }}>
-              <div style={labelStyle}>Logo URL</div>
-              <input
-                style={{ ...inputStyle, width: '320px' }}
-                type="url"
-                placeholder="https://..."
-                value={settings.store_logo_url || ''}
-                onChange={e => setSettings(p => ({ ...p, store_logo_url: e.target.value || null }))}
-              />
-            </div>
-            {settings.store_logo_url && (
-              <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Anteprima logo</div>
-                <img
-                  src={settings.store_logo_url}
-                  alt="Logo store"
-                  style={{ maxHeight: '60px', maxWidth: '200px', objectFit: 'contain', borderRadius: '4px' }}
-                  onError={e => { e.target.style.display = 'none' }}
-                />
+              <div style={labelStyle}>Logo store</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ cursor: 'pointer' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const res = await controlPanelAPI.uploadStoreLogo(file)
+                        setSettings(p => ({ ...p, store_logo_url: res.data.store_logo_url }))
+                        setToast('Logo caricato ✓')
+                      } catch {
+                        setToast('Errore upload logo')
+                      }
+                    }}
+                  />
+                  <span className="gm-btn gm-btn-secondary gm-btn-sm">📁 Carica logo</span>
+                </label>
+                {settings.store_logo_url && (
+                  <img src={settings.store_logo_url} alt="Logo" style={{ height: '36px', maxWidth: '120px', objectFit: 'contain', borderRadius: '4px' }} onError={e => { e.target.style.display = 'none' }} />
+                )}
               </div>
-            )}
+            </div>
             <div style={{ ...rowStyle, borderTop: '1px solid var(--color-border-subtle)', borderBottom: 'none' }}>
-              <div style={labelStyle}>Sfondo URL</div>
-              <input
-                style={{ ...inputStyle, width: '320px' }}
-                type="url"
-                placeholder="https://..."
-                value={settings.store_sfondo_url || ''}
-                onChange={e => setSettings(p => ({ ...p, store_sfondo_url: e.target.value || null }))}
-              />
-            </div>
-            {settings.store_sfondo_url && (
-              <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Anteprima sfondo</div>
-                <img
-                  src={settings.store_sfondo_url}
-                  alt="Sfondo store"
-                  style={{ maxHeight: '80px', maxWidth: '240px', objectFit: 'cover', borderRadius: '4px' }}
-                  onError={e => { e.target.style.display = 'none' }}
-                />
+              <div style={labelStyle}>Sfondo store</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ cursor: 'pointer' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const res = await controlPanelAPI.uploadStoreSfondo(file)
+                        setSettings(p => ({ ...p, store_sfondo_url: res.data.store_sfondo_url }))
+                        setToast('Sfondo caricato ✓')
+                      } catch {
+                        setToast('Errore upload sfondo')
+                      }
+                    }}
+                  />
+                  <span className="gm-btn gm-btn-secondary gm-btn-sm">📁 Carica sfondo</span>
+                </label>
+                {settings.store_sfondo_url && (
+                  <img src={settings.store_sfondo_url} alt="Sfondo" style={{ height: '36px', maxWidth: '120px', objectFit: 'cover', borderRadius: '4px' }} onError={e => { e.target.style.display = 'none' }} />
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -909,32 +921,6 @@ function TabStore() {
               <div key={key} style={{ ...rowStyle, borderBottom: i < arr.length - 1 ? '1px solid var(--color-border-subtle)' : 'none' }}>
                 <div style={labelStyle}>{label}</div>
                 <Toggle checked={settings[key]} onChange={val => setSettings(p => ({ ...p, [key]: val }))} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Sezione D — Link Social */}
-        <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>🌐 Link Social</h3>
-          <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
-            {[
-              { label: 'Facebook', key: 'social_facebook_url' },
-              { label: 'Instagram', key: 'social_instagram_url' },
-              { label: 'TikTok', key: 'social_tiktok_url' },
-              { label: 'Twitch', key: 'social_twitch_url' },
-              { label: 'YouTube', key: 'social_youtube_url' },
-              { label: 'eBay', key: 'social_ebay_url' },
-            ].map(({ label, key }, i, arr) => (
-              <div key={key} style={{ ...rowStyle, borderBottom: i < arr.length - 1 ? '1px solid var(--color-border-subtle)' : 'none' }}>
-                <div style={labelStyle}>{label}</div>
-                <input
-                  style={{ ...inputStyle, width: '320px' }}
-                  type="url"
-                  placeholder="https://..."
-                  value={settings[key] || ''}
-                  onChange={e => setSettings(p => ({ ...p, [key]: e.target.value || null }))}
-                />
               </div>
             ))}
           </div>

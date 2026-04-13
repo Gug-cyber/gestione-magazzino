@@ -127,17 +127,15 @@ function getDevice() {
 function sendEvent(payload) {
   try {
     const body = JSON.stringify(payload)
-    if (navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'application/json' })
-      navigator.sendBeacon(ANALYTICS_ENDPOINT, blob)
-    } else {
-      fetch(ANALYTICS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        keepalive: true,
-      }).catch(() => {})
-    }
+    // sendBeacon non garantisce Content-Type: application/json su tutti i browser
+    // Usiamo fetch con keepalive che è equivalente e più affidabile
+    fetch(ANALYTICS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+      mode: 'cors',
+    }).catch(() => {})
   } catch (_) {}
 }
 

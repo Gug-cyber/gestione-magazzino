@@ -1,7 +1,10 @@
 from typing import List, Dict
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
+import cloudinary
+import cloudinary.uploader
+import os
 
 from ..database import get_db
 from ..auth import get_current_active_user
@@ -248,6 +251,66 @@ def update_store_settings(
 ):
     _require_admin(current_user)
     return crud_store_settings.update_settings(db, data)
+
+
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+def _get_cloudinary_config():
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+    if not cloud_name or not api_key or not api_secret:
+        raise HTTPException(status_code=503, detail="Cloudinary non configurato")
+    cloudinary.config(cloud_name=cloud_name, api_key=api_key, api_secret=api_secret)
+
+
+@router.post("/store-settings/upload-logo", response_model=StoreSettingsResponse)
+async def upload_store_logo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
+    _get_cloudinary_config()
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Il file supera 10 MB")
+    result = cloudinary.uploader.upload(
+        contents,
+        public_id="store/logo",
+        overwrite=True,
+        resource_type="image",
+        transformation=[{"width": 400, "height": 200, "crop": "limit", "quality": "auto"}],
+    )
+    settings = crud_store_settings.update_settings(db, StoreSettingsUpdate(store_logo_url=result["secure_url"]))
+    return settings
+
+
+@router.post("/store-settings/upload-sfondo", response_model=StoreSettingsResponse)
+async def upload_store_sfondo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Utente = Depends(get_current_active_user),
+):
+    _require_admin(current_user)
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
+    _get_cloudinary_config()
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Il file supera 10 MB")
+    result = cloudinary.uploader.upload(
+        contents,
+        public_id="store/sfondo",
+        overwrite=True,
+        resource_type="image",
+        transformation=[{"width": 1920, "height": 1080, "crop": "limit", "quality": "auto"}],
+    )
+    settings = crud_store_settings.update_settings(db, StoreSettingsUpdate(store_sfondo_url=result["secure_url"]))
+    return settings
 
 
 # ---------------------------------------------------------------------------
