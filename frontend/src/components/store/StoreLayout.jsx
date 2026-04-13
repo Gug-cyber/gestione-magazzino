@@ -52,7 +52,7 @@ function IconYouTube() {
 function IconEbay() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <text x="2" y="18" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="18">e</text>
+      <path d="M3 9.5C3 7 5 5.5 8.5 5.5c3.2 0 5.5 1.3 5.5 4.5v.5H6c0 2 1.3 3 3.5 3 1.5 0 2.8-.5 3.5-1.5l2 1.5C13.8 15 11.8 16 9 16c-4 0-6-2-6-6.5zm3-1h5.5c0-1.5-1-2.5-2.8-2.5C7 6 6 7 6 8.5zm7.5 1C13.5 7 15.5 5.5 19 5.5c1.5 0 2.5.3 2.5.3v2.2S20.5 7.5 19 7.5c-2 0-3 1-3 2.5v.5h5v2H16v.5c0 1.5 1 2.5 3 2.5 1.5 0 2.5-.5 2.5-.5V17s-1 .5-2.5.5c-3.5 0-5.5-1.5-5.5-4.5V9.5z" />
     </svg>
   )
 }
