@@ -832,12 +832,310 @@ function TabStore() {
           </div>
         </div>
 
+        {/* Sezione D — Link Social */}
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>🌐 Link Social</h3>
+          <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+            {[
+              { label: 'Facebook', key: 'social_facebook_url' },
+              { label: 'Instagram', key: 'social_instagram_url' },
+              { label: 'TikTok', key: 'social_tiktok_url' },
+              { label: 'Twitch', key: 'social_twitch_url' },
+              { label: 'YouTube', key: 'social_youtube_url' },
+              { label: 'eBay', key: 'social_ebay_url' },
+            ].map(({ label, key }, i, arr) => (
+              <div key={key} style={{ ...rowStyle, borderBottom: i < arr.length - 1 ? '1px solid var(--color-border-subtle)' : 'none' }}>
+                <div style={labelStyle}>{label}</div>
+                <input
+                  style={{ ...inputStyle, width: '320px' }}
+                  type="url"
+                  placeholder="https://..."
+                  value={settings[key] || ''}
+                  onChange={e => setSettings(p => ({ ...p, [key]: e.target.value || null }))}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div style={{ marginTop: '20px' }}>
           <button type="submit" className="gm-btn gm-btn-primary" disabled={saving}>
             {saving ? 'Salvataggio...' : '💾 Salva Impostazioni'}
           </button>
         </div>
       </form>
+    </div>
+  )
+}
+
+// ─── Tab: Footer ─────────────────────────────────────────────────────────────
+
+function TabFooter() {
+  const [pages, setPages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState(null)
+  const [editing, setEditing] = useState(null)
+  const [creating, setCreating] = useState(false)
+  const [newPage, setNewPage] = useState({ slug: '', titolo: '', sezione: 'informative', contenuto: '', ordine: 0 })
+  const [saving, setSaving] = useState(false)
+
+  function loadPages() {
+    setLoading(true)
+    controlPanelAPI.getFooterPages()
+      .then(res => setPages(res.data || []))
+      .catch(err => { console.error('Errore caricamento footer pages:', err) })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { loadPages() }, [])
+
+  async function handleToggle(slug, abilitato) {
+    try {
+      const res = await controlPanelAPI.updateFooterPage(slug, { abilitato })
+      setPages(prev => prev.map(p => p.slug === slug ? res.data : p))
+      setToast('Salvato ✓')
+    } catch (err) {
+      console.error('Errore toggle:', err)
+      setToast('Errore nel salvataggio')
+    }
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const { slug, ...data } = editing
+      const res = await controlPanelAPI.updateFooterPage(slug, data)
+      setPages(prev => prev.map(p => p.slug === slug ? res.data : p))
+      setEditing(null)
+      setToast('Salvato ✓')
+    } catch (err) {
+      console.error('Errore salvataggio:', err)
+      setToast('Errore nel salvataggio')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const res = await controlPanelAPI.createFooterPage(newPage)
+      setPages(prev => [...prev, res.data])
+      setCreating(false)
+      setNewPage({ slug: '', titolo: '', sezione: 'informative', contenuto: '', ordine: 0 })
+      setToast('Pagina creata ✓')
+    } catch (err) {
+      console.error('Errore creazione:', err)
+      setToast('Errore nella creazione')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(slug) {
+    if (!window.confirm(`Eliminare la pagina "${slug}"?`)) return
+    try {
+      await controlPanelAPI.deleteFooterPage(slug)
+      setPages(prev => prev.filter(p => p.slug !== slug))
+      setToast('Eliminato ✓')
+    } catch (err) {
+      console.error('Errore eliminazione:', err)
+      setToast('Errore eliminazione')
+    }
+  }
+
+  const sezioneLabel = { informative: 'Informative', scopri: 'Scopri Fantasia', account: 'Il Tuo Account', servizio: 'Servizio Clienti' }
+
+  const inputStyle = {
+    padding: '8px 12px',
+    backgroundColor: 'var(--color-bg)',
+    border: '1px solid var(--color-border)',
+    borderRadius: '6px',
+    color: 'var(--color-text)',
+    fontSize: '14px',
+    width: '100%',
+    boxSizing: 'border-box',
+  }
+
+  const modalOverlayStyle = {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 1000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+  }
+
+  const modalStyle = {
+    backgroundColor: 'var(--color-bg-elevated)',
+    border: '1px solid var(--color-border)',
+    borderRadius: '12px',
+    padding: '28px',
+    width: '100%',
+    maxWidth: '600px',
+    maxHeight: '80vh',
+    overflowY: 'auto',
+  }
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><div className="spinner" /></div>
+
+  return (
+    <div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', margin: 0 }}>
+          Gestisci le voci del footer dello store e il loro contenuto.
+        </p>
+        <button className="gm-btn gm-btn-primary" onClick={() => setCreating(true)}>
+          + Nuova Pagina
+        </button>
+      </div>
+
+      <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table className="gm-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Slug</th>
+              <th>Titolo</th>
+              <th>Sezione</th>
+              <th style={{ textAlign: 'center' }}>Ordine</th>
+              <th style={{ textAlign: 'center' }}>Abilitato</th>
+              <th style={{ textAlign: 'center' }}>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pages.map(page => (
+              <tr key={page.slug}>
+                <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{page.slug}</td>
+                <td style={{ fontWeight: '500' }}>{page.titolo}</td>
+                <td>
+                  <span className="gm-badge">{sezioneLabel[page.sezione] || page.sezione}</span>
+                </td>
+                <td style={{ textAlign: 'center' }}>{page.ordine}</td>
+                <td style={{ textAlign: 'center' }}>
+                  <Toggle checked={page.abilitato} onChange={val => handleToggle(page.slug, val)} />
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button
+                      className="gm-btn"
+                      style={{ padding: '4px 12px', fontSize: '13px' }}
+                      onClick={() => setEditing({ ...page })}
+                    >
+                      ✏️ Modifica
+                    </button>
+                    <button
+                      className="gm-btn"
+                      style={{ padding: '4px 12px', fontSize: '13px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}
+                      onClick={() => handleDelete(page.slug)}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {pages.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '32px' }}>
+                  Nessuna pagina footer configurata.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Edit modal */}
+      {editing && (
+        <div style={modalOverlayStyle} onClick={e => { if (e.target === e.currentTarget) setEditing(null) }}>
+          <div style={modalStyle}>
+            <h3 style={{ margin: '0 0 20px', color: 'var(--color-text)' }}>✏️ Modifica — {editing.slug}</h3>
+            <form onSubmit={handleSaveEdit}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Titolo</label>
+                <input style={inputStyle} type="text" value={editing.titolo} onChange={e => setEditing(p => ({ ...p, titolo: e.target.value }))} required />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Sezione</label>
+                <select style={inputStyle} value={editing.sezione} onChange={e => setEditing(p => ({ ...p, sezione: e.target.value }))}>
+                  <option value="informative">Informative</option>
+                  <option value="scopri">Scopri Fantasia</option>
+                  <option value="account">Il Tuo Account</option>
+                  <option value="servizio">Servizio Clienti</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Ordine</label>
+                <input style={{ ...inputStyle, width: '100px' }} type="number" value={editing.ordine} onChange={e => setEditing(p => ({ ...p, ordine: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Contenuto (HTML o testo)</label>
+                <textarea
+                  style={{ ...inputStyle, minHeight: '200px', resize: 'vertical', fontFamily: 'monospace' }}
+                  value={editing.contenuto || ''}
+                  onChange={e => setEditing(p => ({ ...p, contenuto: e.target.value }))}
+                  placeholder="Inserisci il contenuto della pagina..."
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" className="gm-btn" onClick={() => setEditing(null)}>Annulla</button>
+                <button type="submit" className="gm-btn gm-btn-primary" disabled={saving}>{saving ? 'Salvataggio...' : '💾 Salva'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create modal */}
+      {creating && (
+        <div style={modalOverlayStyle} onClick={e => { if (e.target === e.currentTarget) setCreating(false) }}>
+          <div style={modalStyle}>
+            <h3 style={{ margin: '0 0 20px', color: 'var(--color-text)' }}>+ Nuova Pagina Footer</h3>
+            <form onSubmit={handleCreate}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Slug (univoco, es. "mia-pagina")</label>
+                <input style={inputStyle} type="text" value={newPage.slug} onChange={e => setNewPage(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))} required placeholder="es. termini-e-condizioni" />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Titolo</label>
+                <input style={inputStyle} type="text" value={newPage.titolo} onChange={e => setNewPage(p => ({ ...p, titolo: e.target.value }))} required />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Sezione</label>
+                <select style={inputStyle} value={newPage.sezione} onChange={e => setNewPage(p => ({ ...p, sezione: e.target.value }))}>
+                  <option value="informative">Informative</option>
+                  <option value="scopri">Scopri Fantasia</option>
+                  <option value="account">Il Tuo Account</option>
+                  <option value="servizio">Servizio Clienti</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Ordine</label>
+                <input style={{ ...inputStyle, width: '100px' }} type="number" value={newPage.ordine} onChange={e => setNewPage(p => ({ ...p, ordine: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--color-text-secondary)' }}>Contenuto (HTML o testo)</label>
+                <textarea
+                  style={{ ...inputStyle, minHeight: '160px', resize: 'vertical', fontFamily: 'monospace' }}
+                  value={newPage.contenuto}
+                  onChange={e => setNewPage(p => ({ ...p, contenuto: e.target.value }))}
+                  placeholder="Inserisci il contenuto della pagina..."
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" className="gm-btn" onClick={() => setCreating(false)}>Annulla</button>
+                <button type="submit" className="gm-btn gm-btn-primary" disabled={saving}>{saving ? 'Creazione...' : '✅ Crea'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -850,6 +1148,7 @@ const TABS = [
   { key: 'promozioni', label: '🏷️ Promozioni' },
   { key: 'magazzino', label: '🏭 Magazzino' },
   { key: 'store', label: '🏪 Store' },
+  { key: 'footer', label: '📄 Footer' },
 ]
 
 export default function ControlPanel() {
@@ -899,6 +1198,7 @@ export default function ControlPanel() {
       {activeTab === 'promozioni' && <TabPromozioni />}
       {activeTab === 'magazzino' && <TabMagazzino />}
       {activeTab === 'store' && <TabStore />}
+      {activeTab === 'footer' && <TabFooter />}
     </div>
   )
 }

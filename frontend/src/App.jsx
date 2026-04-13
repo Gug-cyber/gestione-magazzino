@@ -45,6 +45,7 @@ import StorePage from './pages/store/StorePage'
 import StoreProductPage from './pages/store/StoreProductPage'
 import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
+import StoreFooterPage from './pages/store/StoreFooterPage'
 import ControlPanel from './pages/ControlPanel'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -80,6 +81,7 @@ function App() {
             <Route path="/store/product/:id" element={<StoreProductPage />} />
             <Route path="/store/cart" element={<StoreCartPage />} />
             <Route path="/store/checkout" element={<StoreCheckoutPage />} />
+            <Route path="/store/pagina/:slug" element={<StoreFooterPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

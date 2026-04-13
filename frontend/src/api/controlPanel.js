@@ -26,4 +26,10 @@ export const controlPanelAPI = {
   // Store settings
   getStoreSettings: () => apiClient.get('/api/control-panel/store-settings'),
   updateStoreSettings: (data) => apiClient.put('/api/control-panel/store-settings', data),
+
+  // Footer pages
+  getFooterPages: () => apiClient.get('/api/control-panel/footer-pages'),
+  updateFooterPage: (slug, data) => apiClient.put(`/api/control-panel/footer-pages/${slug}`, data),
+  createFooterPage: (data) => apiClient.post('/api/control-panel/footer-pages', data),
+  deleteFooterPage: (slug) => apiClient.delete(`/api/control-panel/footer-pages/${slug}`),
 }

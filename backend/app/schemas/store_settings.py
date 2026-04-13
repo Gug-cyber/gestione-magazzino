@@ -20,6 +20,12 @@ class StoreSettingsResponse(BaseModel):
     pagamento_apple_pay_abilitato: bool
     pagamento_google_pay_abilitato: bool
     pagamento_negozio_abilitato: bool
+    social_facebook_url: Optional[str] = None
+    social_instagram_url: Optional[str] = None
+    social_tiktok_url: Optional[str] = None
+    social_twitch_url: Optional[str] = None
+    social_youtube_url: Optional[str] = None
+    social_ebay_url: Optional[str] = None
     updated_at: Optional[datetime] = None
 
     class Config:
@@ -44,6 +50,12 @@ class StoreSettingsPublicResponse(BaseModel):
     pagamento_apple_pay_abilitato: bool
     pagamento_google_pay_abilitato: bool
     pagamento_negozio_abilitato: bool
+    social_facebook_url: Optional[str] = None
+    social_instagram_url: Optional[str] = None
+    social_tiktok_url: Optional[str] = None
+    social_twitch_url: Optional[str] = None
+    social_youtube_url: Optional[str] = None
+    social_ebay_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -66,3 +78,9 @@ class StoreSettingsUpdate(BaseModel):
     pagamento_apple_pay_abilitato: Optional[bool] = None
     pagamento_google_pay_abilitato: Optional[bool] = None
     pagamento_negozio_abilitato: Optional[bool] = None
+    social_facebook_url: Optional[str] = None
+    social_instagram_url: Optional[str] = None
+    social_tiktok_url: Optional[str] = None
+    social_twitch_url: Optional[str] = None
+    social_youtube_url: Optional[str] = None
+    social_ebay_url: Optional[str] = None

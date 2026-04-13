@@ -32,4 +32,12 @@ class StoreSettings(Base):
     pagamento_google_pay_abilitato = Column(Boolean, default=True)
     pagamento_negozio_abilitato = Column(Boolean, default=True)
 
+    # Social links
+    social_facebook_url = Column(String(500), nullable=True)
+    social_instagram_url = Column(String(500), nullable=True)
+    social_tiktok_url = Column(String(500), nullable=True)
+    social_twitch_url = Column(String(500), nullable=True)
+    social_youtube_url = Column(String(500), nullable=True)
+    social_ebay_url = Column(String(500), nullable=True)
+
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -14,7 +14,7 @@ from ..limiter import limiter
 
 router = APIRouter()
 
-VALID_SOURCES = {"instagram", "facebook", "tiktok", "google", "bing", "yahoo", "direct", "ebay", "other"}
+VALID_SOURCES = {"instagram", "facebook", "tiktok", "twitch", "youtube", "google", "bing", "yahoo", "direct", "ebay", "other"}
 VALID_EVENT_TYPES = {"page_view", "purchase", "add_to_cart", "checkout_start"}
 VALID_DEVICES = {"mobile", "desktop"}
 
@@ -148,7 +148,7 @@ def get_summary(
     conversion_rate = (total_orders / total_sessions * 100) if total_sessions > 0 else 0
 
     # Per-channel breakdown
-    all_sources = ["instagram", "facebook", "tiktok", "google", "direct", "other"]
+    all_sources = ["instagram", "facebook", "tiktok", "twitch", "youtube", "google", "bing", "yahoo", "ebay", "direct", "other"]
     channels = []
     for source in all_sources:
         visits = (
