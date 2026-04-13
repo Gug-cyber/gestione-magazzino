@@ -241,11 +241,6 @@ export default function StorePage() {
           <h1 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: '700', margin: '0 0 4px', color: 'var(--color-text)' }}>
             🃏 TCG Store
           </h1>
-          {!loading && prodotti.length > 0 && (
-            <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '12px' }}>
-              {prodotti.length} {prodotti.length === 1 ? t('store_product_count_one') : t('store_product_count_many')}
-            </p>
-          )}
         </div>
 
         {/* Banners */}
