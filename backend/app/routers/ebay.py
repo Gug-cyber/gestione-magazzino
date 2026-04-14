@@ -336,6 +336,12 @@ def _listing_to_response(listing: EbayListing) -> EbayListingResponse:
     )
 
 
+def _normalize_bearer_token(token: str) -> str:
+    if token.startswith("Bearer "):
+        return token.split(" ", 1)[1]
+    return token
+
+
 @router.get("/connect")
 def ebay_connect(
     jwt_token: Optional[str] = Query(None),
@@ -344,6 +350,7 @@ def ebay_connect(
 ):
     if not jwt_token:
         raise HTTPException(status_code=400, detail="jwt_token mancante")
+    jwt_token = _normalize_bearer_token(jwt_token)
     return EbayAuthService.get_authorization_url(jwt_token=jwt_token, state=state or "")
 
 
@@ -357,9 +364,11 @@ def ebay_callback(
     jwt_token = cache.get("jwt_token")
     if not jwt_token:
         raise HTTPException(status_code=401, detail="Token non valido o scaduto")
+    jwt_token = _normalize_bearer_token(jwt_token)
     try:
         current_user = get_current_user(token=jwt_token, db=db)
-    except HTTPException:
+    except HTTPException as exc:
+        logger.warning("Autenticazione callback eBay fallita: %s", exc.detail)
         raise HTTPException(status_code=401, detail="Token non valido o scaduto")
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Utente non attivo")

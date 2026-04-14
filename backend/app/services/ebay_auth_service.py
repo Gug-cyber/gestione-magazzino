@@ -5,7 +5,7 @@ import os
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -88,7 +88,7 @@ class EbayAuthService:
         raise HTTPException(status_code=429, detail="Rate limit eBay raggiunto")
 
     @staticmethod
-    def get_authorization_url(jwt_token: str = "", state: str = "") -> dict[str, str]:
+    def get_authorization_url(jwt_token: Optional[str] = None, state: str = "") -> dict[str, str]:
         client_id, _ = EbayAuthService._credentials()
         redirect_uri = EbayAuthService._redirect_uri()
         authorize_url, _, _ = EbayAuthService._base_urls()
