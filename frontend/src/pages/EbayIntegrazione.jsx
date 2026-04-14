@@ -47,7 +47,7 @@ function EbayIntegrazione() {
         setMessage('Errore: URL di autorizzazione eBay non ricevuto.')
       }
     } catch (e) {
-      setMessage(e.response?.data?.detail || 'Errore durante la connessione a eBay')
+      setMessage(e?.response?.data?.detail || 'Errore durante la connessione a eBay')
     }
   }
 
