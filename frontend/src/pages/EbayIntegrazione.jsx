@@ -40,7 +40,8 @@ function EbayIntegrazione() {
 
   const handleConnect = async () => {
     try {
-      const res = await ebayApi.getConnectUrl()
+      const token = localStorage.getItem('token')
+      const res = await ebayApi.getConnectUrl(token)
       if (res.data?.auth_url) {
         window.location.href = res.data.auth_url
       } else {

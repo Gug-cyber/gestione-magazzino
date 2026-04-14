@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 
-from ..auth import get_current_active_user
+from ..auth import get_current_active_user, get_current_user
 from ..database import get_db
 from ..models.ebay_connection import EbayConnection
 from ..models.ebay_listing import EbayListing
@@ -338,10 +338,13 @@ def _listing_to_response(listing: EbayListing) -> EbayListingResponse:
 
 @router.get("/connect")
 def ebay_connect(
+    jwt_token: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
     current_user=Depends(get_current_active_user),
 ):
-    return EbayAuthService.get_authorization_url(state or "")
+    if not jwt_token:
+        raise HTTPException(status_code=400, detail="jwt_token mancante")
+    return EbayAuthService.get_authorization_url(jwt_token=jwt_token, state=state or "")
 
 
 @router.get("/callback")
@@ -349,8 +352,18 @@ def ebay_callback(
     code: str = Query(...),
     state: str = Query(...),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
 ):
+    cache = EbayAuthService.get_cached_state_data(state)
+    jwt_token = cache.get("jwt_token")
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Token non valido o scaduto")
+    try:
+        current_user = get_current_user(token=jwt_token, db=db)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Token non valido o scaduto")
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Utente non attivo")
+
     connection = EbayAuthService.exchange_code_for_tokens(code, state, db)
     return {
         "connected": True,

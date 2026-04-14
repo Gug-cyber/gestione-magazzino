@@ -2,7 +2,7 @@ import api from './client'
 
 export const ebayApi = {
   getConnectionStatus: () => api.get('/api/ebay/connection'),
-  getConnectUrl: () => api.get('/api/ebay/connect'),
+  getConnectUrl: (jwtToken) => api.get('/api/ebay/connect', { params: { jwt_token: jwtToken } }),
   disconnect: () => api.delete('/api/ebay/connection'),
   updateSettings: (data) => api.patch('/api/ebay/connection/settings', data),
   getListings: () => api.get('/api/ebay/listings'),
