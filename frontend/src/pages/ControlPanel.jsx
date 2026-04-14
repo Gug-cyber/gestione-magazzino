@@ -1022,6 +1022,213 @@ function TabStore() {
   )
 }
 
+// ─── Tab: Link UTM ───────────────────────────────────────────────────────────
+
+function buildUtmLink(targetUrl, { source, medium, campaign, content }) {
+  try {
+    const url = new URL(targetUrl)
+    if (source) url.searchParams.set('utm_source', source)
+    if (medium) url.searchParams.set('utm_medium', medium)
+    if (campaign) url.searchParams.set('utm_campaign', campaign)
+    if (content) url.searchParams.set('utm_content', content)
+    return url.toString()
+  } catch (_) {
+    return ''
+  }
+}
+
+function TabUtm() {
+  const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/store` : ''
+  const [destinationUrl, setDestinationUrl] = useState(storeUrl)
+  const [sourcePreset, setSourcePreset] = useState('instagram')
+  const [customSource, setCustomSource] = useState('')
+  const [medium, setMedium] = useState('social')
+  const [campaign, setCampaign] = useState('')
+  const [content, setContent] = useState('')
+  const [copiedKey, setCopiedKey] = useState('')
+
+  const selectedSource = sourcePreset === 'custom' ? customSource.trim().toLowerCase() : sourcePreset
+  const generatedLink = buildUtmLink(destinationUrl.trim(), {
+    source: selectedSource,
+    medium: medium.trim(),
+    campaign: campaign.trim(),
+    content: content.trim(),
+  })
+
+  const quickExamples = [
+    {
+      key: 'instagram',
+      label: 'Instagram',
+      link: buildUtmLink(storeUrl, { source: 'instagram', medium: 'social', campaign: 'post_instagram', content: 'bio' }),
+    },
+    {
+      key: 'facebook',
+      label: 'Facebook',
+      link: buildUtmLink(storeUrl, { source: 'facebook', medium: 'social', campaign: 'post_facebook', content: 'post' }),
+    },
+    {
+      key: 'tiktok',
+      label: 'TikTok',
+      link: buildUtmLink(storeUrl, { source: 'tiktok', medium: 'social', campaign: 'post_tiktok', content: 'bio' }),
+    },
+  ]
+
+  async function copyToClipboard(value, key) {
+    if (!value) return
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = value
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'absolute'
+        textarea.style.left = '-9999px'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(''), 2000)
+    } catch (err) {
+      console.error('Errore copia link UTM:', err)
+    }
+  }
+
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    border: '1px solid var(--color-border)',
+    borderRadius: '8px',
+    backgroundColor: 'var(--color-bg)',
+    color: 'var(--color-text)',
+    fontSize: '14px',
+  }
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: 'var(--color-text-secondary)',
+    marginBottom: '6px',
+  }
+
+  return (
+    <div>
+      <div className="gm-card" style={{ marginBottom: '20px' }}>
+        <h3 style={{ margin: '0 0 14px', color: 'var(--color-text)' }}>🔗 Generatore Link UTM</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={labelStyle}>URL di destinazione</label>
+            <input
+              type="text"
+              style={inputStyle}
+              value={destinationUrl}
+              onChange={e => setDestinationUrl(e.target.value)}
+              placeholder="https://tuosito.com/store"
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Sorgente (utm_source)</label>
+            <select style={inputStyle} value={sourcePreset} onChange={e => setSourcePreset(e.target.value)}>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="tiktok">TikTok</option>
+              <option value="youtube">YouTube</option>
+              <option value="twitch">Twitch</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="custom">Altro (campo libero)</option>
+            </select>
+          </div>
+
+          {sourcePreset === 'custom' && (
+            <div>
+              <label style={labelStyle}>Sorgente personalizzata</label>
+              <input
+                type="text"
+                style={inputStyle}
+                value={customSource}
+                onChange={e => setCustomSource(e.target.value)}
+                placeholder="es. newsletter_partner"
+              />
+            </div>
+          )}
+
+          <div>
+            <label style={labelStyle}>Medium (utm_medium)</label>
+            <input type="text" style={inputStyle} value={medium} onChange={e => setMedium(e.target.value)} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Campagna (utm_campaign)</label>
+            <input
+              type="text"
+              style={inputStyle}
+              value={campaign}
+              onChange={e => setCampaign(e.target.value)}
+              placeholder="es. post_aprile"
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Contenuto (utm_content, opzionale)</label>
+            <input
+              type="text"
+              style={inputStyle}
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              placeholder="es. storia, post, bio"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="gm-card" style={{ marginBottom: '20px' }}>
+        <h4 style={{ margin: '0 0 10px', color: 'var(--color-text)' }}>Link generato</h4>
+        <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '13px', color: generatedLink ? 'var(--color-text)' : 'var(--color-danger)', wordBreak: 'break-all' }}>
+            {generatedLink || 'Inserisci un URL valido per generare il link UTM.'}
+          </div>
+        </div>
+        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="gm-btn gm-btn-primary"
+            onClick={() => copyToClipboard(generatedLink, 'generated')}
+            disabled={!generatedLink}
+          >
+            {copiedKey === 'generated' ? 'Copiato ✓' : 'Copia'}
+          </button>
+        </div>
+      </div>
+
+      <div className="gm-card">
+        <h4 style={{ margin: '0 0 10px', color: 'var(--color-text)' }}>Esempi rapidi social</h4>
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {quickExamples.map(example => (
+            <div key={example.key} style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px' }}>
+              <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--color-text)', marginBottom: '6px' }}>{example.label}</div>
+              <a
+                href={example.link}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: 'block', color: 'var(--color-primary)', fontSize: '13px', wordBreak: 'break-all', marginBottom: '10px' }}
+              >
+                {example.link}
+              </a>
+              <button type="button" className="gm-btn" onClick={() => copyToClipboard(example.link, example.key)}>
+                {copiedKey === example.key ? 'Copiato ✓' : 'Copia'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Tab: Footer ─────────────────────────────────────────────────────────────
 
 function TabFooter() {
@@ -1302,6 +1509,7 @@ const TABS = [
   { key: 'promozioni', label: '🏷️ Promozioni' },
   { key: 'magazzino', label: '🏭 Magazzino' },
   { key: 'store', label: '🏪 Store' },
+  { key: 'utm', label: '🔗 Link UTM' },
   { key: 'footer', label: '📄 Footer' },
 ]
 
@@ -1352,6 +1560,7 @@ export default function ControlPanel() {
       {activeTab === 'promozioni' && <TabPromozioni />}
       {activeTab === 'magazzino' && <TabMagazzino />}
       {activeTab === 'store' && <TabStore />}
+      {activeTab === 'utm' && <TabUtm />}
       {activeTab === 'footer' && <TabFooter />}
     </div>
   )
