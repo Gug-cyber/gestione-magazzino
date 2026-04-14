@@ -154,7 +154,7 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     assert "€4.50" in captured["payload"]["listingDescription"]
 
 
-def test_fetch_default_policy_id_uses_in_memory_cache(monkeypatch):
+def test_policy_cache_ttl_expiration(monkeypatch):
     ebay_offer_service_module._policy_cache.clear()
     call_count = {"count": 0}
     current_time = {"value": 1000.0}

@@ -128,7 +128,7 @@ class EbayOfferService:
             raise
         except httpx.HTTPStatusError as exc:
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
-        except Exception as exc:
+        except (concurrent.futures.CancelledError, concurrent.futures.BrokenExecutor, RuntimeError) as exc:
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc}")
 
         listing_description = (description or "").strip() or "Annuncio generato automaticamente da Gestione Magazzino"
