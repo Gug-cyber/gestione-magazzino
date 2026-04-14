@@ -1,6 +1,7 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
+import app.services.ebay_offer_service as ebay_offer_service_module
 from app.services.ebay_inventory_service import EbayInventoryService
 from app.services.ebay_order_sync_service import EbayOrderSyncService
 from app.services.ebay_offer_service import EbayOfferService
@@ -151,3 +152,38 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     assert listing_db.ebay_offer_id == "OFFER-1"
     assert captured["payload"]["listingDescription"].startswith("Descrizione prodotto reale")
     assert "€4.50" in captured["payload"]["listingDescription"]
+
+
+def test_policy_cache_ttl_expiration(monkeypatch):
+    ebay_offer_service_module._policy_cache.clear()
+    call_count = {"count": 0}
+    current_time = {"value": 1000.0}
+
+    def _mock_time():
+        return current_time["value"]
+
+    def _mock_request(method, url, **kwargs):
+        call_count["count"] += 1
+        return SimpleNamespace(
+            json=lambda: {
+                "paymentPolicies": [
+                    {"paymentPolicyId": "PAY-1"},
+                ]
+            }
+        )
+
+    monkeypatch.setattr("app.services.ebay_offer_service.time.time", _mock_time)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    first_policy_id = EbayOfferService._fetch_default_policy_id("token", "EBAY_IT", "payment")
+    second_policy_id = EbayOfferService._fetch_default_policy_id("token", "EBAY_IT", "payment")
+
+    assert first_policy_id == "PAY-1"
+    assert second_policy_id == "PAY-1"
+    assert call_count["count"] == 1
+
+    current_time["value"] += ebay_offer_service_module._POLICY_CACHE_TTL + 1
+    third_policy_id = EbayOfferService._fetch_default_policy_id("token", "EBAY_IT", "payment")
+
+    assert third_policy_id == "PAY-1"
+    assert call_count["count"] == 2

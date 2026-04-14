@@ -1,12 +1,18 @@
 import logging
 import os
 import time
+import concurrent.futures
+import threading
 from typing import Optional
 
 import httpx
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+_policy_cache: dict = {}
+_policy_cache_lock = threading.Lock()
+_POLICY_CACHE_TTL = 7200  # 2 ore
 
 
 class EbayOfferService:
@@ -22,7 +28,7 @@ class EbayOfferService:
         delay = 1
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=20.0) as client:
+                with httpx.Client(timeout=30.0) as client:
                     response = client.request(method, url, **kwargs)
                 if response.status_code == 429 and attempt < 2:
                     time.sleep(delay)
@@ -46,6 +52,13 @@ class EbayOfferService:
 
     @staticmethod
     def _fetch_default_policy_id(token: str, marketplace_id: str, policy_type: str) -> str:
+        cache_key = f"{marketplace_id}:{policy_type}"
+        now = time.time()
+        with _policy_cache_lock:
+            cached = _policy_cache.get(cache_key)
+            if cached and cached["expires_at"] > now:
+                return cached["policy_id"]
+
         endpoint_map = {
             "fulfillment": "fulfillment_policy",
             "payment": "payment_policy",
@@ -73,7 +86,16 @@ class EbayOfferService:
         policies = data.get(key, [])
         if not policies:
             raise HTTPException(status_code=400, detail=f"Nessuna policy eBay disponibile ({policy_type})")
-        return policies[0].get(policy_id_field)
+        policy_id = policies[0].get(policy_id_field)
+        if not policy_id:
+            raise HTTPException(status_code=400, detail=f"Policy eBay non valida ({policy_type})")
+
+        with _policy_cache_lock:
+            _policy_cache[cache_key] = {
+                "policy_id": policy_id,
+                "expires_at": now + _POLICY_CACHE_TTL,
+            }
+        return policy_id
 
     @staticmethod
     def create_offer(
@@ -87,11 +109,28 @@ class EbayOfferService:
         shipping_cost: Optional[float] = None,
     ) -> str:
         try:
-            fulfillment_policy_id = EbayOfferService._fetch_default_policy_id(token, marketplace_id, "fulfillment")
-            payment_policy_id = EbayOfferService._fetch_default_policy_id(token, marketplace_id, "payment")
-            return_policy_id = EbayOfferService._fetch_default_policy_id(token, marketplace_id, "return")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                fulfillment_future = executor.submit(
+                    EbayOfferService._fetch_default_policy_id, token, marketplace_id, "fulfillment"
+                )
+                payment_future = executor.submit(
+                    EbayOfferService._fetch_default_policy_id, token, marketplace_id, "payment"
+                )
+                return_future = executor.submit(
+                    EbayOfferService._fetch_default_policy_id, token, marketplace_id, "return"
+                )
+                fulfillment_policy_id = fulfillment_future.result(timeout=30)
+                payment_policy_id = payment_future.result(timeout=30)
+                return_policy_id = return_future.result(timeout=30)
+        except concurrent.futures.TimeoutError:
+            raise HTTPException(status_code=504, detail="Timeout recupero policy eBay - riprova tra qualche secondo")
+        except HTTPException:
+            raise
         except httpx.HTTPStatusError as exc:
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
+        except (concurrent.futures.CancelledError, concurrent.futures.BrokenExecutor, RuntimeError) as exc:
+            logger.exception("Errore interno durante il recupero policy eBay: %s", exc)
+            raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = (description or "").strip() or "Annuncio generato automaticamente da Gestione Magazzino"
         if shipping_cost is not None and float(shipping_cost) > 0:

@@ -46,7 +46,7 @@ class EbayInventoryService:
         delay = 1
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=20.0) as client:
+                with httpx.Client(timeout=30.0) as client:
                     response = client.request(method, url, **kwargs)
                 if response.status_code == 429 and attempt < 2:
                     time.sleep(delay)
