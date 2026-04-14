@@ -117,7 +117,7 @@ def test_publish_listing_uses_default_shipping_cost_when_not_provided(client, au
     response = client.post("/api/ebay/listings/publish", headers=auth_headers, json={"product_id": product.id})
 
     assert response.status_code == 200
-    assert captured["shipping_cost"] == 5.9
+    assert captured["shipping_cost"] == 5.90
 
 
 def test_publish_listing_propagates_detailed_offer_error(client, auth_headers, db, monkeypatch):
