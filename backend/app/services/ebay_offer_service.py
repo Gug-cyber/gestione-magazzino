@@ -4,7 +4,6 @@ import time
 import concurrent.futures
 import threading
 import re as _re
-from typing import Optional
 
 import httpx
 from fastapi import HTTPException
@@ -62,6 +61,11 @@ class EbayOfferService:
 
     @staticmethod
     def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
+        # Guardrail: Content-Language non è supportato dalla Offer API eBay.
+        headers = kwargs.get("headers")
+        if isinstance(headers, dict) and "Content-Language" in headers:
+            kwargs["headers"] = {k: v for k, v in headers.items() if k != "Content-Language"}
+
         delay = 1
         for attempt in range(3):
             try:
@@ -168,7 +172,7 @@ class EbayOfferService:
         marketplace_id: str,
         listing_db,
         description: str,
-        shipping_cost: Optional[float] = None,
+        shipping_cost: float = 5.90,
     ) -> str:
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -205,12 +209,12 @@ class EbayOfferService:
             raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = _sanitize_description(description)
-        if shipping_cost is not None and float(shipping_cost) > 0:
-            listing_description = (
-                f"{listing_description}\n\n"
-                f"Nota spedizione indicativa: costo €{float(shipping_cost):.2f}. "
-                "I costi effettivi sono definiti dalla fulfillment policy eBay."
-            )
+        shipping_cost_value = float(shipping_cost) if shipping_cost is not None else 5.90
+        listing_description = (
+            f"{listing_description}\n\n"
+            f"Spedizione: €{shipping_cost_value:.2f} (stimata). "
+            "I costi effettivi sono definiti dalla fulfillment policy eBay."
+        )
         normalized_marketplace = (marketplace_id or "").strip().upper()
         currency = _MARKETPLACE_CURRENCY_MAP.get(normalized_marketplace, "EUR")
 

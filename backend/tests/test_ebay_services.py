@@ -155,7 +155,7 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     assert offer_id == "OFFER-1"
     assert listing_db.ebay_offer_id == "OFFER-1"
     assert captured["payload"]["listingDescription"].startswith("Descrizione prodotto reale")
-    assert "€4.50" in captured["payload"]["listingDescription"]
+    assert "Spedizione: €4.50 (stimata)." in captured["payload"]["listingDescription"]
 
 
 def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
@@ -180,10 +180,12 @@ def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
         marketplace_id="EBAY_GB",
         listing_db=listing_db,
         description="<p>Descrizione <b>valida</b></p>\n\n\nDettagli",
-        shipping_cost=None,
     )
 
-    assert captured["payload"]["listingDescription"] == "Descrizione valida\n\nDettagli"
+    assert captured["payload"]["listingDescription"] == (
+        "Descrizione valida\n\nDettagli\n\n"
+        "Spedizione: €5.90 (stimata). I costi effettivi sono definiti dalla fulfillment policy eBay."
+    )
     assert captured["payload"]["pricingSummary"]["price"]["currency"] == "GBP"
 
 
@@ -209,7 +211,6 @@ def test_create_offer_uses_only_offer_api_headers(monkeypatch):
         marketplace_id="EBAY_IT",
         listing_db=listing_db,
         description="Descrizione",
-        shipping_cost=None,
     )
 
     assert captured["headers"] == {
@@ -245,7 +246,6 @@ def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, c
             marketplace_id="EBAY_IT",
             listing_db=listing_db,
             description="Descrizione",
-            shipping_cost=None,
         )
 
     assert exc_info.value.detail == "Errore creazione offer eBay: 400 (INVALID_FIELD_VALUE)"
@@ -332,6 +332,41 @@ def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
 
     assert captured["kwargs"]["headers"] == headers
     assert "Content-Language" not in captured["kwargs"]["headers"]
+
+
+def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
+    captured = {}
+
+    class _DummyResponse:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def request(self, method, url, **kwargs):
+            captured["kwargs"] = kwargs
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.services.ebay_offer_service.httpx.Client", _DummyClient)
+
+    EbayOfferService._request_with_retry(
+        "GET",
+        "https://api.example.com/test",
+        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
+    )
+
+    assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
 
 
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
