@@ -8,6 +8,7 @@ from ..database import Base
 class TipoMovimento(str, enum.Enum):
     carico = "carico"
     scarico = "scarico"
+    vendita_ebay = "vendita_ebay"
 
 
 class Movimento(Base):

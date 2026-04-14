@@ -173,6 +173,7 @@ const BASE_SECTIONS = [
       { to: '/ordini', label: 'Ordini', icon: 'ShoppingCart' },
       { to: '/clienti', label: 'Clienti', icon: 'Users' },
       { to: '/fatture', label: 'Fatture', icon: 'FileText' },
+      { to: '/ebay', label: 'Integrazione eBay', icon: 'ShoppingCart' },
     ],
   },
   {

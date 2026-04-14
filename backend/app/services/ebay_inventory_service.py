@@ -1,0 +1,165 @@
+import logging
+import os
+import time
+from datetime import datetime, timezone
+
+import httpx
+from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
+
+_CONDITION_MAP = {
+    "Mint": "NEW",
+    "Near Mint": "NEW",
+    "Excellent": "USED_EXCELLENT",
+    "Good": "USED_EXCELLENT",
+    "Light Played": "USED_GOOD",
+    "Played": "USED_ACCEPTABLE",
+    "Poor": "USED_ACCEPTABLE",
+}
+
+
+class EbayInventoryService:
+    @staticmethod
+    def _base_url() -> str:
+        env = os.getenv("EBAY_ENV", "PRODUCTION").upper().strip()
+        if env == "SANDBOX":
+            return "https://api.sandbox.ebay.com"
+        return "https://api.ebay.com"
+
+    @staticmethod
+    def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
+        delay = 1
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=20.0) as client:
+                    response = client.request(method, url, **kwargs)
+                if response.status_code == 429 and attempt < 2:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                response.raise_for_status()
+                return response
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 429 and attempt < 2:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise
+            except httpx.RequestError as exc:
+                if attempt < 2:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise HTTPException(status_code=502, detail=f"Errore rete eBay: {exc}")
+        raise HTTPException(status_code=429, detail="Rate limit eBay raggiunto")
+
+    @staticmethod
+    def _to_public_image_url(raw_path: str | None) -> str | None:
+        if not raw_path:
+            return None
+        if raw_path.startswith("http://") or raw_path.startswith("https://"):
+            return raw_path
+        backend_url = os.getenv("BACKEND_URL", "").rstrip("/")
+        if backend_url and raw_path.startswith("/"):
+            return f"{backend_url}{raw_path}"
+        return raw_path
+
+    @staticmethod
+    def _build_image_urls(product) -> list[str]:
+        urls: list[str] = []
+        if product.google_drive_folder_id:
+            urls.append(f"https://drive.google.com/uc?export=view&id={product.google_drive_folder_id}")
+        foto_url = EbayInventoryService._to_public_image_url(product.foto_path)
+        if foto_url:
+            urls.append(foto_url)
+        return [u for u in urls if u]
+
+    @staticmethod
+    def create_or_update_inventory_item(token: str, sku: str, product, listing) -> None:
+        title = (product.nome or "").strip()
+        if len(title) > 80:
+            title = f"{title[:77]}..."
+        description = (product.descrizione or "").strip()
+        image_urls = EbayInventoryService._build_image_urls(product)
+        if not image_urls:
+            raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
+
+        condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+        url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
+        payload = {
+            "sku": sku,
+            "availability": {
+                "shipToLocationAvailability": {
+                    "quantity": max(0, listing.quantity_published),
+                }
+            },
+            "product": {
+                "title": title,
+                "description": description,
+                "imageUrls": image_urls,
+            },
+            "condition": condition,
+        }
+
+        try:
+            EbayInventoryService._request_with_retry(
+                "PUT",
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            listing.ebay_item_id = sku
+            listing.last_sync_at = datetime.now(timezone.utc)
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=502, detail=f"Errore creazione inventory eBay: {exc.response.status_code}")
+
+    @staticmethod
+    def delete_inventory_item(token: str, sku: str) -> None:
+        url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
+        try:
+            EbayInventoryService._request_with_retry(
+                "DELETE",
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 404:
+                raise HTTPException(status_code=502, detail=f"Errore eliminazione inventory eBay: {exc.response.status_code}")
+
+    @staticmethod
+    def update_quantity(token: str, sku: str, new_quantity: int) -> None:
+        url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
+        payload = {
+            "availability": {
+                "shipToLocationAvailability": {
+                    "quantity": max(0, int(new_quantity)),
+                }
+            }
+        }
+        try:
+            EbayInventoryService._request_with_retry(
+                "PATCH",
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 405:
+                EbayInventoryService._request_with_retry(
+                    "PUT",
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+                return
+            raise HTTPException(status_code=502, detail=f"Errore update quantità eBay: {exc.response.status_code}")

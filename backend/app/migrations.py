@@ -191,6 +191,10 @@ POST_COLUMN_SQL = [
     # Backfill posizione for existing banners
     "UPDATE banner SET posizione = 'top' WHERE posizione IS NULL",
     "UPDATE banner SET posizione = 'top' WHERE posizione IS NULL",
+    # Unique index per ebay_order_id (idempotenza vendite)
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_ebay_sales_order_id ON ebay_sales(ebay_order_id)",
+    # Unique index per prodotto/connessione su listings attivi
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_ebay_listings_product_active ON ebay_listings(product_id, connection_id) WHERE status = 'active'",
 ] 
 
 
@@ -241,6 +245,7 @@ def run_column_migrations(db) -> None:
 
 ENUM_MIGRATIONS = [
     ("statoordine", "reso"),
+    ("tipomovimento", "vendita_ebay"),
 ]
 
 

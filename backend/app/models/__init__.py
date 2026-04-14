@@ -14,3 +14,6 @@ from .fornitura import Fornitura, RigaFornitura
 from .dati_azienda import DatiAzienda
 from .tracking_update import TrackingUpdate
 from .store_settings import StoreSettings
+from .ebay_connection import EbayConnection
+from .ebay_listing import EbayListing
+from .ebay_sale import EbaySale

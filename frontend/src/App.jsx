@@ -41,6 +41,9 @@ import MobileHome from './pages/mobile/MobileHome.jsx'
 import MobileCaricoFornitura from './pages/mobile/MobileCaricoFornitura.jsx'
 import MobileNuovoOrdine from './pages/mobile/MobileNuovoOrdine.jsx'
 import TrackingDetail from './pages/TrackingDetail.jsx'
+import EbayIntegrazione from './pages/EbayIntegrazione.jsx'
+import EbayPubblicaProdotto from './pages/EbayPubblicaProdotto.jsx'
+import EbayCallback from './pages/EbayCallback.jsx'
 import StorePage from './pages/store/StorePage'
 import StoreProductPage from './pages/store/StoreProductPage'
 import StoreCartPage from './pages/store/StoreCartPage'
@@ -276,6 +279,17 @@ function App() {
               <AppLayout><TrackingDetail /></AppLayout>
             </ProtectedRoute>
           } />
+          <Route path="/ebay" element={
+            <ProtectedRoute>
+              <AppLayout><EbayIntegrazione /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/ebay/pubblica/:productId" element={
+            <ProtectedRoute>
+              <AppLayout><EbayPubblicaProdotto /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/ebay/callback" element={<EbayCallback />} />
           <Route path="/control-panel" element={
             <ProtectedRoute>
               <AppLayout><ControlPanel /></AppLayout>
