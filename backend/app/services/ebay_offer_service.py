@@ -3,6 +3,7 @@ import os
 import time
 import concurrent.futures
 import threading
+import re as _re
 from typing import Optional
 
 import httpx
@@ -13,6 +14,42 @@ logger = logging.getLogger(__name__)
 _policy_cache: dict = {}
 _policy_cache_lock = threading.Lock()
 _POLICY_CACHE_TTL = 7200  # 2 ore
+_MARKETPLACE_CURRENCY_MAP = {
+    "EBAY_IT": "EUR",
+    "EBAY_DE": "EUR",
+    "EBAY_FR": "EUR",
+    "EBAY_ES": "EUR",
+    "EBAY_AU": "AUD",
+    "EBAY_GB": "GBP",
+    "EBAY_US": "USD",
+    "EBAY_CA": "CAD",
+}
+
+
+def _sanitize_description(text: str) -> str:
+    """Rimuove HTML non consentito e tronca a 4000 caratteri per eBay."""
+    if not text:
+        return "Prodotto in ottime condizioni."
+    clean = _re.sub(r"<[^>]+>", "", text)
+    clean = _re.sub(r"\n{3,}", "\n\n", clean).strip()
+    if len(clean) > 4000:
+        clean = clean[:3997] + "..."
+    return clean or "Prodotto in ottime condizioni."
+
+
+def _extract_ebay_error_message(response: httpx.Response) -> str | None:
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+    errors = payload.get("errors")
+    if not isinstance(errors, list) or not errors:
+        return None
+    first_error = errors[0] or {}
+    if not isinstance(first_error, dict):
+        return None
+    message = first_error.get("message")
+    return str(message).strip() if message else None
 
 
 class EbayOfferService:
@@ -66,12 +103,26 @@ class EbayOfferService:
         }
         endpoint = endpoint_map[policy_type]
         url = f"{EbayOfferService._base_url()}/sell/account/v1/{endpoint}"
-        response = EbayOfferService._request_with_retry(
-            "GET",
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            params={"marketplace_id": marketplace_id},
-        )
+        try:
+            response = EbayOfferService._request_with_retry(
+                "GET",
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                params={"marketplace_id": marketplace_id},
+            )
+        except httpx.HTTPStatusError as exc:
+            try:
+                error_body = exc.response.text
+            except Exception:
+                error_body = "<unreadable>"
+            logger.error(
+                "eBay fetch policy error %s (type=%s, marketplace=%s) — body: %s",
+                exc.response.status_code,
+                policy_type,
+                marketplace_id,
+                error_body,
+            )
+            raise
         data = response.json()
         key = {
             "fulfillment": "fulfillmentPolicies",
@@ -127,18 +178,30 @@ class EbayOfferService:
         except HTTPException:
             raise
         except httpx.HTTPStatusError as exc:
+            try:
+                error_body = exc.response.text
+            except Exception:
+                error_body = "<unreadable>"
+            logger.error(
+                "eBay policy fetch error %s (marketplace=%s) — body: %s",
+                exc.response.status_code,
+                marketplace_id,
+                error_body,
+            )
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
         except (concurrent.futures.CancelledError, concurrent.futures.BrokenExecutor, RuntimeError) as exc:
             logger.exception("Errore interno durante il recupero policy eBay: %s", exc)
             raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
-        listing_description = (description or "").strip() or "Annuncio generato automaticamente da Gestione Magazzino"
+        listing_description = _sanitize_description(description)
         if shipping_cost is not None and float(shipping_cost) > 0:
             listing_description = (
                 f"{listing_description}\n\n"
                 f"Nota spedizione indicativa: costo €{float(shipping_cost):.2f}. "
                 "I costi effettivi sono definiti dalla fulfillment policy eBay."
             )
+        normalized_marketplace = (marketplace_id or "").strip().upper()
+        currency = _MARKETPLACE_CURRENCY_MAP.get(normalized_marketplace, "EUR")
 
         payload = {
             "sku": sku,
@@ -154,10 +217,17 @@ class EbayOfferService:
             "pricingSummary": {
                 "price": {
                     "value": str(price),
-                    "currency": "EUR",
+                    "currency": currency,
                 }
             },
         }
+        logger.debug(
+            "eBay create_offer payload (marketplace=%s, sku=%s, price=%s, qty=%s)",
+            marketplace_id,
+            sku,
+            price,
+            quantity,
+        )
 
         try:
             response = EbayOfferService._request_with_retry(
@@ -175,7 +245,20 @@ class EbayOfferService:
             listing_db.ebay_offer_id = offer_id
             return offer_id
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=502, detail=f"Errore creazione offer eBay: {exc.response.status_code}")
+            try:
+                error_body = exc.response.text
+            except Exception:
+                error_body = "<unreadable>"
+            logger.error(
+                "eBay create_offer error %s — body: %s",
+                exc.response.status_code,
+                error_body,
+            )
+            ebay_error_message = _extract_ebay_error_message(exc.response)
+            detail = f"Errore creazione offer eBay: {exc.response.status_code}"
+            if ebay_error_message:
+                detail = f"{detail} ({ebay_error_message})"
+            raise HTTPException(status_code=502, detail=detail)
 
     @staticmethod
     def publish_offer(token: str, offer_id: str) -> str | None:
@@ -187,7 +270,21 @@ class EbayOfferService:
             )
             return response.json().get("listingId")
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=502, detail=f"Errore pubblicazione annuncio eBay: {exc.response.status_code}")
+            try:
+                error_body = exc.response.text
+            except Exception:
+                error_body = "<unreadable>"
+            logger.error(
+                "eBay publish_offer error %s (offer_id=%s) — body: %s",
+                exc.response.status_code,
+                offer_id,
+                error_body,
+            )
+            ebay_error_message = _extract_ebay_error_message(exc.response)
+            detail = f"Errore pubblicazione annuncio eBay: {exc.response.status_code}"
+            if ebay_error_message:
+                detail = f"{detail} ({ebay_error_message})"
+            raise HTTPException(status_code=502, detail=detail)
 
     @staticmethod
     def end_listing(token: str, offer_id: str, reason: str = "OUT_OF_STOCK") -> None:

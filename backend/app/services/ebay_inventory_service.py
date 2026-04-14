@@ -147,8 +147,15 @@ class EbayInventoryService:
             listing.ebay_item_id = sku
             listing.last_sync_at = datetime.now(timezone.utc)
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 400:
-                logger.error("eBay inventory error 400 body: %s", exc.response.text)
+            try:
+                error_body = exc.response.text
+            except Exception:
+                error_body = "<unreadable>"
+            logger.error(
+                "eBay inventory_item error %s — body: %s",
+                exc.response.status_code,
+                error_body,
+            )
             raise HTTPException(status_code=502, detail=f"Errore creazione inventory eBay: {exc.response.status_code}")
 
     @staticmethod
