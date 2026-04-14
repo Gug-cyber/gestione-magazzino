@@ -142,7 +142,9 @@ function EbayIntegrazione() {
                     <button className="gm-btn gm-btn-secondary gm-btn-sm" onClick={async () => { await ebayApi.syncListingQuantity(l.id); await loadData() }}>Sincronizza quantità</button>
                     <button className="gm-btn gm-btn-danger gm-btn-sm" onClick={async () => { await ebayApi.endListing(l.id); await loadData() }}>Termina annuncio</button>
                     {l.ebay_listing_id && (
-                      <a className="gm-btn gm-btn-sm" href={`https://www.ebay.it/itm/${l.ebay_listing_id}`} target="_blank" rel="noreferrer">Apri eBay</a>
+                      <a className="gm-btn gm-btn-sm" href={`https://www.ebay.it/itm/${l.ebay_listing_id}`} target="_blank" rel="noreferrer">
+                        Apri eBay (nuova scheda)
+                      </a>
                     )}
                   </td>
                 </tr>

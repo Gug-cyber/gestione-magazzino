@@ -3,7 +3,7 @@ import hashlib
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from urllib.parse import quote_plus
@@ -523,7 +523,7 @@ def publish_listing(
         listing.ebay_offer_id = offer_id
         listing.ebay_listing_id = ebay_listing_id
         listing.status = "active"
-        listing.last_sync_at = datetime.utcnow()
+        listing.last_sync_at = datetime.now(timezone.utc)
         listing.error_message = None
         db.commit()
         db.refresh(listing)
@@ -558,7 +558,7 @@ def end_listing(
         token = EbayAuthService.get_valid_token(listing.connection, db)
         EbayOfferService.end_listing(token, listing.ebay_offer_id, reason="USER_ENDED")
     listing.status = "ended"
-    listing.last_sync_at = datetime.utcnow()
+    listing.last_sync_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "ok"}
 

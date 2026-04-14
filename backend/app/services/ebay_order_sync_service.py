@@ -155,9 +155,6 @@ class EbayOrderSyncService:
         if not selected_listing or total_qty <= 0:
             return "skipped"
 
-        if db.query(EbaySale).filter(EbaySale.ebay_order_id == order_id).first():
-            return "skipped"
-
         fee_percentage = Decimal(str(selected_listing.fee_percentage or connection.fee_percentage or 0))
         fee_amount = PricingService.calculate_fee_amount(gross_amount, fee_percentage)
         net_amount = PricingService.calculate_net_from_gross(gross_amount, fee_percentage)
