@@ -39,8 +39,16 @@ function EbayIntegrazione() {
   }, [])
 
   const handleConnect = async () => {
-    const res = await ebayApi.getConnectUrl()
-    window.location.href = res.data.auth_url
+    try {
+      const res = await ebayApi.getConnectUrl()
+      if (res.data?.auth_url) {
+        window.location.href = res.data.auth_url
+      } else {
+        setMessage('Errore: URL di autorizzazione eBay non ricevuto.')
+      }
+    } catch (e) {
+      setMessage(e.response?.data?.detail || 'Errore durante la connessione a eBay')
+    }
   }
 
   const handleSaveSettings = async () => {
