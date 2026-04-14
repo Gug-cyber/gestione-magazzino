@@ -209,7 +209,7 @@ class EbayOfferService:
             raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = _sanitize_description(description)
-        shipping_cost_value = float(shipping_cost) if shipping_cost is not None else 5.90
+        shipping_cost_value = float(shipping_cost)
         listing_description = (
             f"{listing_description}\n\n"
             f"Spedizione: €{shipping_cost_value:.2f} (stimata). "
