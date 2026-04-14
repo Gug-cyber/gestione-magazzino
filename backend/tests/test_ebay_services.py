@@ -85,7 +85,7 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
         marketplace_id="EBAY_IT",
         listing_db=listing_db,
         description="Descrizione prodotto reale",
-        shipping_cost=4.5,
+        shipping_cost=Decimal("4.5"),
     )
 
     assert offer_id == "OFFER-1"

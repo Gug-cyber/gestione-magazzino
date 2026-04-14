@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import HTTPException
@@ -58,10 +59,10 @@ class EbayInventoryService:
     def _to_public_image_url(raw_path: str | None) -> str | None:
         if not raw_path:
             return None
-        raw_path_lower = raw_path.lower()
-        if "drive.google.com" in raw_path_lower:
-            return None
         if raw_path.startswith("http://") or raw_path.startswith("https://"):
+            hostname = (urlparse(raw_path).hostname or "").lower()
+            if hostname == "drive.google.com" or hostname.endswith(".drive.google.com"):
+                return None
             return raw_path
         backend_url = os.getenv("BACKEND_URL", "").rstrip("/")
         if backend_url and raw_path.startswith("/"):

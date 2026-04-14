@@ -150,7 +150,7 @@ function EbayPubblicaProdotto() {
             <div>
               Spese di spedizione:{' '}
               <strong>
-                {freeShipping || Number(shippingCost) === 0
+                {freeShipping
                   ? 'Gratuite'
                   : `€${Number(shippingCost || 0).toFixed(2)}`}
               </strong>

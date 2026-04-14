@@ -97,7 +97,7 @@ class EbayOfferService:
         if shipping_cost is not None and float(shipping_cost) > 0:
             listing_description = (
                 f"{listing_description}\n\n"
-                f"Nota spedizione: costo indicativo €{float(shipping_cost):.2f}. "
+                f"Nota spedizione indicativa: costo €{float(shipping_cost):.2f}. "
                 "I costi effettivi sono definiti dalla fulfillment policy eBay."
             )
 
