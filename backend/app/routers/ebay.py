@@ -401,7 +401,7 @@ def get_connection_status(
         )
     return EbayConnectionStatus(
         connected=True,
-        account_id=connection.ebay_account_id,
+        account_id=connection.ebay_account_id or "Account collegato",
         status=connection.status,
         fee_percentage=float(connection.fee_percentage) if connection.fee_percentage is not None else None,
         marketplace_id=connection.marketplace_id,
@@ -514,10 +514,10 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Quantità non disponibile")
     if quantity > product.quantita:
         raise HTTPException(status_code=400, detail="La quantità da pubblicare supera la disponibilità")
-    if payload.shipping_cost is not None and payload.shipping_cost < 0:
+    if payload.shipping_cost < 0:
         raise HTTPException(status_code=400, detail="Spese di spedizione non valide")
 
-    shipping_cost = Decimal(str(payload.shipping_cost)) if payload.shipping_cost is not None else None
+    shipping_cost = Decimal(str(payload.shipping_cost))
 
     published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
     expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)
@@ -553,7 +553,7 @@ def publish_listing(
             connection.marketplace_id or "EBAY_IT",
             listing,
             product.descrizione or "",
-            float(shipping_cost) if shipping_cost is not None else None,
+            float(shipping_cost),
         )
         ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
 
