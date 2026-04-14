@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import HTTPException
@@ -59,6 +60,9 @@ class EbayInventoryService:
         if not raw_path:
             return None
         if raw_path.startswith("http://") or raw_path.startswith("https://"):
+            hostname = (urlparse(raw_path).hostname or "").lower()
+            if hostname == "drive.google.com" or hostname.endswith(".drive.google.com"):
+                return None
             return raw_path
         backend_url = os.getenv("BACKEND_URL", "").rstrip("/")
         if backend_url and raw_path.startswith("/"):
@@ -68,8 +72,6 @@ class EbayInventoryService:
     @staticmethod
     def _build_image_urls(product) -> list[str]:
         urls: list[str] = []
-        if product.google_drive_folder_id:
-            urls.append(f"https://drive.google.com/uc?export=view&id={product.google_drive_folder_id}")
         foto_url = EbayInventoryService._to_public_image_url(product.foto_path)
         if foto_url:
             urls.append(foto_url)
@@ -101,6 +103,10 @@ class EbayInventoryService:
             },
             "condition": condition,
         }
+        if condition != "NEW":
+            payload["conditionDescription"] = (
+                (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
+            )
 
         try:
             EbayInventoryService._request_with_retry(
@@ -115,6 +121,8 @@ class EbayInventoryService:
             listing.ebay_item_id = sku
             listing.last_sync_at = datetime.now(timezone.utc)
         except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 400:
+                logger.error("eBay inventory error 400 body: %s", exc.response.text)
             raise HTTPException(status_code=502, detail=f"Errore creazione inventory eBay: {exc.response.status_code}")
 
     @staticmethod

@@ -17,6 +17,7 @@ class EbayListing(Base):
     status = Column(String(30), default="draft")
     quantity_published = Column(Integer, default=0)
     published_price = Column(Numeric(10, 2), nullable=True)
+    shipping_cost = Column(Numeric(8, 2), nullable=True)
     expected_net_price = Column(Numeric(10, 2), nullable=True)
     fee_percentage = Column(Numeric(5, 2), nullable=True)
     last_sync_at = Column(DateTime(timezone=True), nullable=True)

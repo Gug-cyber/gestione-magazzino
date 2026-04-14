@@ -44,6 +44,7 @@ class PublishRequest(BaseModel):
     product_id: int
     fee_override: Optional[float] = None
     quantity_override: Optional[int] = None
+    shipping_cost: Optional[float] = None
     force: bool = False
 
 

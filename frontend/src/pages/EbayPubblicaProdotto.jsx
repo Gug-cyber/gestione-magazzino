@@ -14,6 +14,8 @@ function EbayPubblicaProdotto() {
   const [netPrice, setNetPrice] = useState('')
   const [fee, setFee] = useState('13.25')
   const [quantity, setQuantity] = useState(1)
+  const [shippingCost, setShippingCost] = useState('0')
+  const [freeShipping, setFreeShipping] = useState(true)
   const [publishedPrice, setPublishedPrice] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -49,10 +51,12 @@ function EbayPubblicaProdotto() {
   const validationMessage = useMemo(() => {
     if (!connection.connected) return 'Account eBay non collegato'
     if (!product) return ''
-    if (!product.foto_path && !product.google_drive_folder_id) return 'Il prodotto non ha immagini — non è possibile pubblicare'
+    if (!product.foto_path) return 'Il prodotto non ha immagini pubbliche — non è possibile pubblicare'
     if ((product.quantita || 0) <= 0) return 'Quantità non disponibile'
+    const shipping = Number(shippingCost)
+    if (!freeShipping && (!Number.isFinite(shipping) || shipping < 0)) return 'Spese di spedizione non valide'
     return ''
-  }, [connection, product])
+  }, [connection, product, freeShipping, shippingCost])
 
   const handlePublish = async () => {
     setError('')
@@ -67,6 +71,7 @@ function EbayPubblicaProdotto() {
         product_id: Number(productId),
         fee_override: Number(fee),
         quantity_override: Number(quantity),
+        shipping_cost: freeShipping ? 0 : Number(shippingCost),
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -116,6 +121,40 @@ function EbayPubblicaProdotto() {
                 onChange={(e) => setQuantity(e.target.value)}
               />
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={freeShipping}
+                onChange={(e) => {
+                  const isChecked = e.target.checked
+                  setFreeShipping(isChecked)
+                  if (isChecked) setShippingCost('0')
+                }}
+              />
+              Spedizione gratuita
+            </label>
+
+            <label style={{ display: 'grid', gap: 4 }}>
+              Spese di spedizione (€)
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={shippingCost}
+                disabled={freeShipping}
+                onChange={(e) => setShippingCost(e.target.value)}
+              />
+            </label>
+
+            <div>
+              Spese di spedizione:{' '}
+              <strong>
+                {freeShipping
+                  ? 'Gratuite'
+                  : `€${Number(shippingCost || 0).toFixed(2)}`}
+              </strong>
+            </div>
 
             {validationMessage && <div style={{ color: 'var(--color-danger)' }}>{validationMessage}</div>}
             {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
