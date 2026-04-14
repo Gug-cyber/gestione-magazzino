@@ -19,6 +19,19 @@ _CONDITION_MAP = {
     "Poor": "USED_ACCEPTABLE",
 }
 
+_MARKETPLACE_LANGUAGE_MAP = {
+    "EBAY_IT": "it-IT",
+    "EBAY_DE": "de-DE",
+    "EBAY_FR": "fr-FR",
+    "EBAY_ES": "es-ES",
+    "EBAY_GB": "en-GB",
+    "EBAY_US": "en-US",
+    "EBAY_AU": "en-AU",
+    "EBAY_CA": "en-CA",
+}
+_DEFAULT_MARKETPLACE_ID = "EBAY_IT"
+_DEFAULT_CONTENT_LANGUAGE = "it-IT"
+
 
 class EbayInventoryService:
     @staticmethod
@@ -78,7 +91,18 @@ class EbayInventoryService:
         return [u for u in urls if u]
 
     @staticmethod
-    def create_or_update_inventory_item(token: str, sku: str, product, listing) -> None:
+    def _content_language_for_marketplace(marketplace_id: str | None) -> str:
+        normalized_marketplace_id = (marketplace_id or "").strip().upper()
+        return _MARKETPLACE_LANGUAGE_MAP.get(normalized_marketplace_id, _DEFAULT_CONTENT_LANGUAGE)
+
+    @staticmethod
+    def create_or_update_inventory_item(
+        token: str,
+        sku: str,
+        product,
+        listing,
+        marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
+    ) -> None:
         title = (product.nome or "").strip()
         if len(title) > 80:
             title = f"{title[:77]}..."
@@ -88,6 +112,7 @@ class EbayInventoryService:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
         condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+        content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
             "sku": sku,
@@ -115,6 +140,7 @@ class EbayInventoryService:
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
+                    "Content-Language": content_language,
                 },
                 json=payload,
             )
@@ -139,8 +165,9 @@ class EbayInventoryService:
                 raise HTTPException(status_code=502, detail=f"Errore eliminazione inventory eBay: {exc.response.status_code}")
 
     @staticmethod
-    def update_quantity(token: str, sku: str, new_quantity: int) -> None:
+    def update_quantity(token: str, sku: str, new_quantity: int, marketplace_id: str = _DEFAULT_MARKETPLACE_ID) -> None:
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
+        content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
         payload = {
             "availability": {
                 "shipToLocationAvailability": {
@@ -155,6 +182,7 @@ class EbayInventoryService:
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
+                    "Content-Language": content_language,
                 },
                 json=payload,
             )
@@ -166,6 +194,7 @@ class EbayInventoryService:
                     headers={
                         "Authorization": f"Bearer {token}",
                         "Content-Type": "application/json",
+                        "Content-Language": content_language,
                     },
                     json=payload,
                 )

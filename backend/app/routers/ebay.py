@@ -538,7 +538,13 @@ def publish_listing(
 
     try:
         token = EbayAuthService.get_valid_token(connection, db)
-        EbayInventoryService.create_or_update_inventory_item(token, product.sku, product, listing)
+        EbayInventoryService.create_or_update_inventory_item(
+            token,
+            product.sku,
+            product,
+            listing,
+            marketplace_id=connection.marketplace_id or "EBAY_IT",
+        )
         offer_id = EbayOfferService.create_offer(
             token,
             product.sku,

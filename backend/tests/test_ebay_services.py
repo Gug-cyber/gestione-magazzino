@@ -41,7 +41,9 @@ def test_inventory_item_payload_uses_only_public_photo_and_sets_condition_descri
     captured = {}
 
     def _mock_request(method, url, **kwargs):
+        captured["method"] = method
         captured["payload"] = kwargs["json"]
+        captured["headers"] = kwargs["headers"]
         return SimpleNamespace()
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
@@ -55,12 +57,69 @@ def test_inventory_item_payload_uses_only_public_photo_and_sets_condition_descri
     )
     listing = SimpleNamespace(quantity_published=3, ebay_item_id=None, last_sync_at=None)
 
-    EbayInventoryService.create_or_update_inventory_item("token", "SKU-1", product, listing)
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-1",
+        product,
+        listing,
+        marketplace_id="EBAY_DE",
+    )
 
     payload = captured["payload"]
+    headers = captured["headers"]
+    assert captured["method"] == "PUT"
+    assert headers["Content-Language"] == "de-DE"
     assert payload["product"]["imageUrls"] == ["https://backend.example.com/uploads/carta.jpg"]
     assert payload["condition"] == "USED_EXCELLENT"
     assert payload["conditionDescription"] == "Good"
+
+
+def test_inventory_item_uses_it_it_content_language_for_unknown_marketplace(monkeypatch):
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["headers"] = kwargs["headers"]
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Carta",
+        descrizione="Descrizione",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/a.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-1",
+        product,
+        listing,
+        marketplace_id="EBAY_UNKNOWN",
+    )
+
+    assert captured["headers"]["Content-Language"] == "it-IT"
+
+
+def test_update_quantity_sets_content_language_header(monkeypatch):
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        calls.append((method, kwargs["headers"]))
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    EbayInventoryService.update_quantity("token", "SKU-1", 5, marketplace_id="EBAY_US")
+
+    assert len(calls) == 1
+    method, headers = calls[0]
+    assert method == "PATCH"
+    assert headers["Authorization"] == "Bearer token"
+    assert headers["Content-Type"] == "application/json"
+    assert headers["Content-Language"] == "en-US"
 
 
 def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):

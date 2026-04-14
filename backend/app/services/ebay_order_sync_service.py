@@ -177,7 +177,12 @@ class EbayOrderSyncService:
 
         token = EbayAuthService.get_valid_token(connection, db)
         if selected_listing.product and selected_listing.product.quantita > 0 and selected_listing.ebay_item_id:
-            EbayInventoryService.update_quantity(token, selected_listing.ebay_item_id, selected_listing.product.quantita)
+            EbayInventoryService.update_quantity(
+                token,
+                selected_listing.ebay_item_id,
+                selected_listing.product.quantita,
+                marketplace_id=connection.marketplace_id or "EBAY_IT",
+            )
             selected_listing.quantity_published = selected_listing.product.quantita
             selected_listing.status = "active"
         else:

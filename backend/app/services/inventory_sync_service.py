@@ -42,7 +42,12 @@ class InventorySyncService:
             raise HTTPException(status_code=400, detail="Listing eBay senza SKU associato")
 
         token = EbayAuthService.get_valid_token(connection, db)
-        EbayInventoryService.update_quantity(token, listing.ebay_item_id, listing.product.quantita)
+        EbayInventoryService.update_quantity(
+            token,
+            listing.ebay_item_id,
+            listing.product.quantita,
+            marketplace_id=connection.marketplace_id or "EBAY_IT",
+        )
         listing.quantity_published = listing.product.quantita
         listing.last_sync_at = datetime.now(timezone.utc)
         db.commit()
