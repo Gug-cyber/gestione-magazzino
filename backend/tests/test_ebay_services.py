@@ -6,6 +6,8 @@ import pytest
 from fastapi import HTTPException
 
 import app.services.ebay_offer_service as ebay_offer_service_module
+from app.schemas.ebay import PublishRequest
+from app.services.ebay_auth_service import EbayAuthService
 from app.services.ebay_inventory_service import EbayInventoryService
 from app.services.ebay_order_sync_service import EbayOrderSyncService
 from app.services.ebay_offer_service import EbayOfferService
@@ -73,13 +75,13 @@ def test_inventory_item_payload_uses_only_public_photo_and_sets_condition_descri
     payload = captured["payload"]
     headers = captured["headers"]
     assert captured["method"] == "PUT"
-    assert headers["Content-Language"] == "de-DE"
+    assert "Content-Language" not in headers
     assert payload["product"]["imageUrls"] == ["https://backend.example.com/uploads/carta.jpg"]
     assert payload["condition"] == "USED_EXCELLENT"
     assert payload["conditionDescription"] == "Good"
 
 
-def test_inventory_item_uses_it_it_content_language_for_unknown_marketplace(monkeypatch):
+def test_inventory_item_does_not_send_content_language_header_for_unknown_marketplace(monkeypatch):
     captured = {}
 
     def _mock_request(method, url, **kwargs):
@@ -105,10 +107,10 @@ def test_inventory_item_uses_it_it_content_language_for_unknown_marketplace(monk
         marketplace_id="EBAY_UNKNOWN",
     )
 
-    assert captured["headers"]["Content-Language"] == "it-IT"
+    assert "Content-Language" not in captured["headers"]
 
 
-def test_update_quantity_sets_content_language_header(monkeypatch):
+def test_update_quantity_does_not_send_content_language_header(monkeypatch):
     calls = []
 
     def _mock_request(method, url, **kwargs):
@@ -124,7 +126,37 @@ def test_update_quantity_sets_content_language_header(monkeypatch):
     assert method == "PATCH"
     assert headers["Authorization"] == "Bearer token"
     assert headers["Content-Type"] == "application/json"
-    assert headers["Content-Language"] == "en-US"
+    assert "Content-Language" not in headers
+
+
+def test_update_quantity_fallback_put_does_not_send_content_language(monkeypatch):
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        calls.append((method, kwargs["headers"]))
+        if method == "PATCH":
+            request = httpx.Request("PATCH", url)
+            response = httpx.Response(405, request=request)
+            raise httpx.HTTPStatusError("Method not allowed", request=request, response=response)
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    EbayInventoryService.update_quantity("token", "SKU-1", 5, marketplace_id="EBAY_US")
+
+    assert [method for method, _ in calls] == ["PATCH", "PUT"]
+    for _, headers in calls:
+        assert headers["Authorization"] == "Bearer token"
+        assert headers["Content-Type"] == "application/json"
+        assert "Content-Language" not in headers
+
+
+def test_publish_request_shipping_cost_default_is_590_and_optional():
+    payload = PublishRequest(product_id=1)
+    assert payload.shipping_cost == 5.90
+
+    payload_with_none = PublishRequest(product_id=1, shipping_cost=None)
+    assert payload_with_none.shipping_cost is None
 
 
 def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
@@ -426,3 +458,130 @@ def test_policy_cache_ttl_expiration(monkeypatch):
 
     assert third_policy_id == "PAY-1"
     assert call_count["count"] == 2
+
+
+def test_exchange_code_for_tokens_fetches_and_stores_identity_username(monkeypatch):
+    class _DummyResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class _DummyQuery:
+        @staticmethod
+        def delete():
+            return None
+
+    class _DummyDB:
+        def __init__(self):
+            self.saved = None
+
+        @staticmethod
+        def query(_model):
+            return _DummyQuery()
+
+        def add(self, obj):
+            self.saved = obj
+
+        @staticmethod
+        def commit():
+            return None
+
+        @staticmethod
+        def refresh(_obj):
+            return None
+
+    def _mock_request(method, url, **kwargs):
+        if method == "POST":
+            return _DummyResponse(
+                {
+                    "access_token": "access-token",
+                    "refresh_token": "refresh-token",
+                    "expires_in": 7200,
+                }
+            )
+        assert method == "GET"
+        assert url.endswith("/commerce/identity/v1/user/")
+        assert kwargs["headers"] == {"Authorization": "Bearer access-token"}
+        return _DummyResponse({"username": "real-ebay-user"})
+
+    monkeypatch.setattr(
+        "app.services.ebay_auth_service.EbayAuthService.get_cached_state_data",
+        lambda _state: {"code_verifier": "verifier"},
+    )
+    monkeypatch.setattr("app.services.ebay_auth_service.EbayAuthService._credentials", lambda: ("cid", "secret"))
+    monkeypatch.setattr("app.services.ebay_auth_service.EbayAuthService._redirect_uri", lambda: "urn:test")
+    monkeypatch.setattr(
+        "app.services.ebay_auth_service.EbayAuthService._base_urls",
+        lambda: ("https://auth", "https://token", "https://revoke"),
+    )
+    monkeypatch.setattr("app.services.ebay_auth_service.EbayAuthService._request_with_retry", _mock_request)
+
+    db = _DummyDB()
+    connection = EbayAuthService.exchange_code_for_tokens("code", "state", db)
+
+    assert connection.ebay_account_id == "real-ebay-user"
+    assert db.saved.ebay_account_id == "real-ebay-user"
+
+
+def test_exchange_code_for_tokens_identity_username_fetch_is_best_effort(monkeypatch):
+    class _DummyResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class _DummyQuery:
+        @staticmethod
+        def delete():
+            return None
+
+    class _DummyDB:
+        def __init__(self):
+            self.saved = None
+
+        @staticmethod
+        def query(_model):
+            return _DummyQuery()
+
+        def add(self, obj):
+            self.saved = obj
+
+        @staticmethod
+        def commit():
+            return None
+
+        @staticmethod
+        def refresh(_obj):
+            return None
+
+    def _mock_request(method, url, **kwargs):
+        if method == "POST":
+            return _DummyResponse(
+                {
+                    "access_token": "access-token",
+                    "refresh_token": "refresh-token",
+                    "expires_in": 7200,
+                }
+            )
+        raise httpx.RequestError("identity api unavailable", request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(
+        "app.services.ebay_auth_service.EbayAuthService.get_cached_state_data",
+        lambda _state: {"code_verifier": "verifier"},
+    )
+    monkeypatch.setattr("app.services.ebay_auth_service.EbayAuthService._credentials", lambda: ("cid", "secret"))
+    monkeypatch.setattr("app.services.ebay_auth_service.EbayAuthService._redirect_uri", lambda: "urn:test")
+    monkeypatch.setattr(
+        "app.services.ebay_auth_service.EbayAuthService._base_urls",
+        lambda: ("https://auth", "https://token", "https://revoke"),
+    )
+    monkeypatch.setattr("app.services.ebay_auth_service.EbayAuthService._request_with_retry", _mock_request)
+
+    db = _DummyDB()
+    connection = EbayAuthService.exchange_code_for_tokens("code", "state", db)
+
+    assert connection.ebay_account_id is None
+    assert db.saved.ebay_account_id is None

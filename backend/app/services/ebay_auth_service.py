@@ -46,6 +46,12 @@ class EbayAuthService:
         )
 
     @staticmethod
+    def _identity_user_url() -> str:
+        if EbayAuthService._get_env() == "SANDBOX":
+            return "https://api.sandbox.ebay.com/commerce/identity/v1/user/"
+        return "https://api.ebay.com/commerce/identity/v1/user/"
+
+    @staticmethod
     def _credentials() -> tuple[str, str]:
         client_id = os.getenv("EBAY_CLIENT_ID", "").strip()
         client_secret = os.getenv("EBAY_CLIENT_SECRET", "").strip()
@@ -162,6 +168,20 @@ class EbayAuthService:
         if not access_token or not refresh_token:
             raise HTTPException(status_code=502, detail="Token eBay non ricevuti")
 
+        ebay_account_id = None
+        try:
+            identity_response = EbayAuthService._request_with_retry(
+                "GET",
+                EbayAuthService._identity_user_url(),
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            identity_data = identity_response.json()
+            username = identity_data.get("username")
+            if isinstance(username, str):
+                ebay_account_id = username.strip() or None
+        except Exception as exc:
+            logger.warning("Impossibile recuperare username eBay da Identity API: %s", exc)
+
         now = datetime.now(timezone.utc)
         token_expires_at = now + timedelta(seconds=int(data.get("expires_in", 7200)))
         refresh_exp = data.get("refresh_token_expires_in")
@@ -169,7 +189,7 @@ class EbayAuthService:
 
         db.query(EbayConnection).delete()
         connection = EbayConnection(
-            ebay_account_id=data.get("username") or data.get("user_id"),
+            ebay_account_id=ebay_account_id,
             access_token=access_token,
             refresh_token=refresh_token,
             token_expires_at=token_expires_at,
