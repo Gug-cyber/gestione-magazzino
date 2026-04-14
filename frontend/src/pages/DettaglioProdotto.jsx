@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 /* TEMPORANEAMENTE DISABILITATO - CardMarket e CardTrader API issues */
 // import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
 import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI } from '../api/client'
+import { ebayApi } from '../api/ebay'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
 import QRCodeDisplay from '../components/QRCodeDisplay'
@@ -140,6 +141,8 @@ function DettaglioProdotto() {
   const [ebayData, setEbayData] = useState(null)
   const [ebayLoading, setEbayLoading] = useState(false)
   const [ebayError, setEbayError] = useState(null)
+  const [ebayConnected, setEbayConnected] = useState(false)
+  const [ebayListingAttivo, setEbayListingAttivo] = useState(false)
 
   const [driveFolder, setDriveFolder] = useState(null)
   const [driveImmagini, setDriveImmagini] = useState([])
@@ -185,6 +188,19 @@ function DettaglioProdotto() {
     Promise.all([categorieAPI.getAll(), ubicazioniAPI.getAll()])
       .then(([c, u]) => { setCategorie(c.data); setUbicazioni(u.data) })
       .catch(() => {})
+    ebayApi.getConnectionStatus()
+      .then((res) => setEbayConnected(Boolean(res.data?.connected)))
+      .catch(() => setEbayConnected(false))
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    ebayApi.getListings()
+      .then((res) => {
+        const active = (res.data || []).some((listing) => Number(listing.product_id) === Number(id) && listing.status === 'active')
+        setEbayListingAttivo(active)
+      })
+      .catch(() => setEbayListingAttivo(false))
   }, [id])
 
   const fetchEbayPrezzi = (prodotto) => {
@@ -430,7 +446,20 @@ function DettaglioProdotto() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <button onClick={() => navigate('/prodotti')} style={btnStyle('#546e7a')}>← Torna ai Prodotti</button>
         <h1 style={{ color: 'var(--color-text)', margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
+        {ebayListingAttivo && (
+          <span style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>
+            Su eBay
+          </span>
+        )}
         {prodotto.stato_conservazione && <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />}
+        {ebayConnected && (
+          <button
+            onClick={() => navigate(`/ebay/pubblica/${prodotto.id}`)}
+            className="gm-btn gm-btn-primary"
+          >
+            Pubblica su eBay
+          </button>
+        )}
         <button onClick={handleEditOpen} className="gm-btn gm-btn-secondary">Modifica</button>
         <button onClick={handleDelete} className="gm-btn gm-btn-danger">Elimina</button>
       </div>

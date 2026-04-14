@@ -1,0 +1,16 @@
+import api from './client'
+
+export const ebayApi = {
+  getConnectionStatus: () => api.get('/api/ebay/connection'),
+  getConnectUrl: () => api.get('/api/ebay/connect'),
+  disconnect: () => api.delete('/api/ebay/connection'),
+  updateSettings: (data) => api.patch('/api/ebay/connection/settings', data),
+  getListings: () => api.get('/api/ebay/listings'),
+  publishProduct: (data) => api.post('/api/ebay/listings/publish', data),
+  endListing: (listingId) => api.delete(`/api/ebay/listings/${listingId}`),
+  syncListingQuantity: (listingId) => api.post(`/api/ebay/listings/${listingId}/sync`),
+  syncOrders: () => api.post('/api/ebay/sync/orders'),
+  getSales: () => api.get('/api/ebay/sales'),
+  getPricingPreview: (netPrice, feePercentage) =>
+    api.get(`/api/ebay/pricing/preview?net_price=${netPrice}&fee_percentage=${feePercentage}`),
+}

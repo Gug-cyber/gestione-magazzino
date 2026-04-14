@@ -3,14 +3,36 @@ import hashlib
 import logging
 import os
 import time
+from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 from urllib.parse import quote_plus
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session, joinedload
 
 from ..auth import get_current_active_user
+from ..database import get_db
+from ..models.ebay_connection import EbayConnection
+from ..models.ebay_listing import EbayListing
+from ..models.ebay_sale import EbaySale
+from ..models.prodotto import Prodotto
+from ..schemas.ebay import (
+    ConnectionSettingsUpdate,
+    EbayConnectionStatus,
+    EbayListingResponse,
+    EbaySaleResponse,
+    PricingPreviewResponse,
+    PublishRequest,
+)
+from ..services.ebay_auth_service import EbayAuthService
+from ..services.ebay_inventory_service import EbayInventoryService
+from ..services.ebay_offer_service import EbayOfferService
+from ..services.ebay_order_sync_service import EbayOrderSyncService
+from ..services.inventory_sync_service import InventorySyncService
+from ..services.pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +48,7 @@ _token_cache: dict = {
 }
 
 
+# === Existing app-level Browse API (client_credentials) ===
 def _get_ebay_urls() -> tuple[str, str]:
     """Return (token_url, browse_api_url) for either SANDBOX or PRODUCTION environment."""
     env = _get_ebay_env()
@@ -76,7 +99,6 @@ def _get_access_token() -> str:
     current_env = _get_ebay_env()
 
     now = time.time()
-    # Return cached token if still valid (with 60-second safety margin) and env unchanged
     if (
         _token_cache["access_token"]
         and _token_cache["expires_at"] > now + 60
@@ -84,7 +106,6 @@ def _get_access_token() -> str:
     ):
         return _token_cache["access_token"]
 
-    # Request a new token via client credentials flow
     credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     try:
         with httpx.Client(timeout=15) as http_client:
@@ -153,10 +174,7 @@ def _search_ebay(access_token: str, nome: str, stato: Optional[str], marketplace
 
 
 def _search_ebay_sold(access_token: str, nome: str, stato: Optional[str], marketplace: str) -> dict:
-    """Search eBay Completed/Sold Listings using the Browse API with soldItems filter.
-
-    Returns the JSON response from eBay, or an empty dict on any error.
-    """
+    """Search eBay Completed/Sold Listings using the Browse API with soldItems filter."""
     _, browse_api_url = _get_ebay_urls()
     filters = ["buyingOptions:{FIXED_PRICE}", "soldItems:true"]
     conditions = CONDITION_MAP.get(stato) if stato else None
@@ -186,7 +204,6 @@ def _search_ebay_sold(access_token: str, nome: str, stato: Optional[str], market
 
 
 def _build_ebay_search_url(nome: str, marketplace: str) -> str:
-    """Return a direct browser search URL for the given marketplace."""
     if marketplace == "EBAY_IT":
         return f"https://www.ebay.it/sch/i.html?_nkw={quote_plus(nome)}"
     return f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(nome)}"
@@ -198,16 +215,6 @@ def get_prezzi_ebay(
     stato: Optional[str] = Query(None, description="Stato di conservazione"),
     current_user=Depends(get_current_active_user),
 ):
-    """Restituisce il prezzo medio, l'ultimo prezzo di annuncio attivo e l'ultimo prezzo
-    di vendita conclusa su eBay per un prodotto.
-
-    Esegue due chiamate all'API eBay Browse v1:
-    1. Annunci attivi (FIXED_PRICE, sort=newlyListed) → prezzo_medio e ultimo_prezzo.
-    2. Vendite concluse (soldItems:true, sort=newlyListed) → ultimo_prezzo_venduto.
-
-    La seconda chiamata non è bloccante: se fallisce per qualsiasi motivo,
-    ``ultimo_prezzo_venduto`` viene restituito come ``null``.
-    """
     client_id, _ = _get_credentials()
     if not client_id:
         return {
@@ -220,13 +227,11 @@ def get_prezzi_ebay(
 
     access_token = _get_access_token()
 
-    # Try Italian marketplace first, fall back to US if not available
     used_marketplace = "EBAY_IT"
     try:
         try:
             data = _search_ebay(access_token, nome, stato, "EBAY_IT")
         except httpx.HTTPStatusError as exc:
-            # Fallback to US marketplace if Italian marketplace rejects the request
             if exc.response.status_code in (400, 403, 422):
                 used_marketplace = "EBAY_US"
                 data = _search_ebay(access_token, nome, stato, "EBAY_US")
@@ -243,7 +248,6 @@ def get_prezzi_ebay(
     url_ricerca = _build_ebay_search_url(nome, used_marketplace)
     items = data.get("itemSummaries", [])
 
-    # --- Sold items (best-effort, non-blocking) ---
     ultimo_prezzo_venduto: Optional[float] = None
     try:
         try:
@@ -275,8 +279,7 @@ def get_prezzi_ebay(
 
     prices = []
     for item in items:
-        price = item.get("price", {})
-        value = price.get("value")
+        value = item.get("price", {}).get("value")
         if value is not None:
             try:
                 prices.append(float(value))
@@ -296,7 +299,6 @@ def get_prezzi_ebay(
         }
 
     prezzo_medio = round(sum(prices) / len(prices), 2)
-    # prices[0] is the most recently listed item (sort=newlyListed)
     ultimo_prezzo = round(prices[0], 2)
     valuta = items[0].get("price", {}).get("currency", "EUR")
 
@@ -312,17 +314,332 @@ def get_prezzi_ebay(
     }
 
 
+# === New user-level OAuth/listing/sync endpoints ===
+def _get_connection(db: Session) -> Optional[EbayConnection]:
+    return db.query(EbayConnection).order_by(EbayConnection.id.desc()).first()
+
+
+def _listing_to_response(listing: EbayListing) -> EbayListingResponse:
+    return EbayListingResponse(
+        id=listing.id,
+        product_id=listing.product_id,
+        product_nome=listing.product.nome if listing.product else "",
+        product_sku=listing.product.sku if listing.product else "",
+        ebay_listing_id=listing.ebay_listing_id,
+        status=listing.status,
+        quantity_published=int(listing.quantity_published or 0),
+        published_price=float(listing.published_price) if listing.published_price is not None else None,
+        expected_net_price=float(listing.expected_net_price) if listing.expected_net_price is not None else None,
+        fee_percentage=float(listing.fee_percentage) if listing.fee_percentage is not None else None,
+        last_sync_at=listing.last_sync_at,
+        error_message=listing.error_message,
+    )
+
+
+@router.get("/connect")
+def ebay_connect(
+    state: Optional[str] = Query(None),
+    current_user=Depends(get_current_active_user),
+):
+    return EbayAuthService.get_authorization_url(state or "")
+
+
+@router.get("/callback")
+def ebay_callback(
+    code: str = Query(...),
+    state: str = Query(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    connection = EbayAuthService.exchange_code_for_tokens(code, state, db)
+    return {
+        "connected": True,
+        "account_id": connection.ebay_account_id,
+        "status": connection.status,
+    }
+
+
+@router.get("/connection", response_model=EbayConnectionStatus)
+def get_connection_status(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    connection = _get_connection(db)
+    if not connection:
+        return EbayConnectionStatus(
+            connected=False,
+            account_id=None,
+            status=None,
+            fee_percentage=None,
+            marketplace_id=None,
+            environment=None,
+        )
+    return EbayConnectionStatus(
+        connected=True,
+        account_id=connection.ebay_account_id,
+        status=connection.status,
+        fee_percentage=float(connection.fee_percentage) if connection.fee_percentage is not None else None,
+        marketplace_id=connection.marketplace_id,
+        environment=connection.environment,
+    )
+
+
+@router.delete("/connection")
+def disconnect_connection(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    connection = _get_connection(db)
+    if not connection:
+        return {"status": "ok"}
+    EbayAuthService.revoke_connection(connection, db)
+    return {"status": "ok"}
+
+
+@router.patch("/connection/settings", response_model=EbayConnectionStatus)
+def update_connection_settings(
+    payload: ConnectionSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    connection = _get_connection(db)
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
+
+    if payload.fee_percentage is not None:
+        fee = Decimal(str(payload.fee_percentage))
+        if fee < 0 or fee >= 100:
+            raise HTTPException(status_code=400, detail="Fee percentage non valida")
+        connection.fee_percentage = fee
+    if payload.marketplace_id is not None:
+        connection.marketplace_id = payload.marketplace_id
+
+    db.commit()
+    db.refresh(connection)
+
+    return EbayConnectionStatus(
+        connected=True,
+        account_id=connection.ebay_account_id,
+        status=connection.status,
+        fee_percentage=float(connection.fee_percentage) if connection.fee_percentage is not None else None,
+        marketplace_id=connection.marketplace_id,
+        environment=connection.environment,
+    )
+
+
+@router.get("/listings", response_model=list[EbayListingResponse])
+def get_listings(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    listings = (
+        db.query(EbayListing)
+        .options(joinedload(EbayListing.product))
+        .order_by(EbayListing.created_at.desc())
+        .all()
+    )
+    return [_listing_to_response(l) for l in listings]
+
+
+@router.post("/listings/publish", response_model=EbayListingResponse)
+def publish_listing(
+    payload: PublishRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    connection = _get_connection(db)
+    if not connection or connection.status != "active":
+        raise HTTPException(status_code=400, detail="Account eBay non collegato o non attivo")
+
+    product = db.query(Prodotto).filter(Prodotto.id == payload.product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+
+    if product.quantita <= 0:
+        raise HTTPException(status_code=400, detail="Quantità non disponibile")
+    if not (product.nome or "").strip():
+        raise HTTPException(status_code=400, detail="Il prodotto non ha un nome valido")
+    if not (product.descrizione or "").strip():
+        raise HTTPException(status_code=400, detail="Il prodotto non ha descrizione")
+    if not product.foto_path and not product.google_drive_folder_id:
+        raise HTTPException(status_code=400, detail="Il prodotto non ha immagini — non è possibile pubblicare")
+
+    active_listing = (
+        db.query(EbayListing)
+        .filter(
+            EbayListing.product_id == product.id,
+            EbayListing.connection_id == connection.id,
+            EbayListing.status == "active",
+        )
+        .first()
+    )
+    if active_listing and not payload.force:
+        raise HTTPException(status_code=400, detail="Esiste già un listing attivo per questo prodotto")
+
+    fee_percentage = Decimal(str(payload.fee_override if payload.fee_override is not None else connection.fee_percentage))
+    if fee_percentage < 0 or fee_percentage >= 100:
+        raise HTTPException(status_code=400, detail="Fee percentage non valida")
+
+    net_price = Decimal(str(product.prezzo_vendita or 0))
+    if net_price <= 0:
+        raise HTTPException(status_code=400, detail="Prezzo vendita prodotto non valido")
+
+    quantity = payload.quantity_override if payload.quantity_override is not None else product.quantita
+    if quantity is None or quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantità non disponibile")
+    if quantity > product.quantita:
+        raise HTTPException(status_code=400, detail="La quantità da pubblicare supera la disponibilità")
+
+    published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
+    expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)
+
+    listing = EbayListing(
+        product_id=product.id,
+        connection_id=connection.id,
+        status="draft",
+        quantity_published=quantity,
+        published_price=published_price,
+        expected_net_price=expected_net_price,
+        fee_percentage=fee_percentage,
+    )
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+
+    try:
+        token = EbayAuthService.get_valid_token(connection, db)
+        EbayInventoryService.create_or_update_inventory_item(token, product.sku, product, listing)
+        offer_id = EbayOfferService.create_offer(
+            token,
+            product.sku,
+            published_price,
+            quantity,
+            connection.marketplace_id or "EBAY_IT",
+            listing,
+        )
+        ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
+
+        listing.ebay_item_id = product.sku
+        listing.ebay_offer_id = offer_id
+        listing.ebay_listing_id = ebay_listing_id
+        listing.status = "active"
+        listing.last_sync_at = datetime.utcnow()
+        listing.error_message = None
+        db.commit()
+        db.refresh(listing)
+    except HTTPException as exc:
+        listing.status = "error"
+        listing.error_message = exc.detail if isinstance(exc.detail, str) else "Errore pubblicazione eBay"
+        db.commit()
+        raise
+    except Exception as exc:
+        listing.status = "error"
+        listing.error_message = "Errore interno durante la pubblicazione eBay"
+        db.commit()
+        logger.exception("Errore pubblicazione listing eBay: %s", exc)
+        raise HTTPException(status_code=500, detail="Errore interno durante la pubblicazione eBay")
+
+    return _listing_to_response(listing)
+
+
+@router.delete("/listings/{listing_id}")
+def end_listing(
+    listing_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    listing = db.query(EbayListing).options(joinedload(EbayListing.connection)).filter(EbayListing.id == listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing non trovato")
+    if not listing.connection:
+        raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
+
+    if listing.ebay_offer_id:
+        token = EbayAuthService.get_valid_token(listing.connection, db)
+        EbayOfferService.end_listing(token, listing.ebay_offer_id, reason="USER_ENDED")
+    listing.status = "ended"
+    listing.last_sync_at = datetime.utcnow()
+    db.commit()
+    return {"status": "ok"}
+
+
+@router.post("/listings/{listing_id}/sync", response_model=EbayListingResponse)
+def sync_listing_quantity(
+    listing_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    listing = (
+        db.query(EbayListing)
+        .options(joinedload(EbayListing.product), joinedload(EbayListing.connection))
+        .filter(EbayListing.id == listing_id)
+        .first()
+    )
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing non trovato")
+    if not listing.connection:
+        raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
+
+    InventorySyncService.sync_quantity_to_ebay(listing, listing.connection, db)
+    InventorySyncService.check_and_handle_zero_stock(listing, listing.connection, db)
+    db.refresh(listing)
+    return _listing_to_response(listing)
+
+
+@router.post("/sync/orders")
+def sync_orders(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    connection = _get_connection(db)
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
+    return EbayOrderSyncService.sync_recent_orders(connection, db)
+
+
+@router.get("/sales", response_model=list[EbaySaleResponse])
+def get_sales(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    sales = db.query(EbaySale).order_by(EbaySale.sold_at.desc().nullslast(), EbaySale.created_at.desc()).limit(200).all()
+    return [
+        EbaySaleResponse(
+            id=s.id,
+            product_id=s.product_id,
+            ebay_order_id=s.ebay_order_id,
+            quantity_sold=s.quantity_sold,
+            gross_amount=float(s.gross_amount) if s.gross_amount is not None else None,
+            fee_amount=float(s.fee_amount) if s.fee_amount is not None else None,
+            net_amount=float(s.net_amount) if s.net_amount is not None else None,
+            sale_status=s.sale_status,
+            sold_at=s.sold_at,
+        )
+        for s in sales
+    ]
+
+
+@router.get("/pricing/preview", response_model=PricingPreviewResponse)
+def pricing_preview(
+    net_price: float = Query(..., gt=0),
+    fee_percentage: float = Query(..., ge=0, lt=100),
+    current_user=Depends(get_current_active_user),
+):
+    net = Decimal(str(net_price))
+    fee = Decimal(str(fee_percentage))
+    published = PricingService.calculate_ebay_price(net, fee)
+    fee_amount = PricingService.calculate_fee_amount(published, fee)
+    return PricingPreviewResponse(
+        net_price=float(net),
+        fee_percentage=float(fee),
+        published_price=float(published),
+        fee_amount=float(fee_amount),
+    )
+
+
+# === Existing account-deletion endpoints preserved ===
 @router.get("/account-deletion")
 def ebay_account_deletion_challenge(challenge_code: str = Query(...)):
-    """eBay marketplace account deletion — ownership verification endpoint.
-
-    eBay sends a GET request with a ``challenge_code`` query parameter to verify
-    that we own the endpoint.  We must respond with the SHA-256 hash of::
-
-        challenge_code + EBAY_VERIFICATION_TOKEN + EBAY_DELETION_ENDPOINT_URL
-
-    (concatenated directly, no separators).
-    """
     verification_token = os.getenv("EBAY_VERIFICATION_TOKEN", "")
     endpoint_url = os.getenv("EBAY_DELETION_ENDPOINT_URL", "")
 
@@ -334,14 +651,8 @@ def ebay_account_deletion_challenge(challenge_code: str = Query(...)):
 
 @router.post("/account-deletion")
 async def ebay_account_deletion_notification(request: Request):
-    """eBay marketplace account deletion — notification receiver.
-
-    eBay sends a POST request when a user requests account deletion.
-    We log only non-sensitive metadata and always respond HTTP 200.
-    """
     try:
         payload: dict = await request.json()
-        # Log only non-PII metadata (notification type) to comply with GDPR
         notification_type = payload.get("metadata", {}).get("topic", "unknown")
         logger.info("eBay account deletion notification received (topic=%s)", notification_type)
     except Exception:

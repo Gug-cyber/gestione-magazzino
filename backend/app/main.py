@@ -44,6 +44,9 @@ from .models import promozione as _promozione_model  # noqa: F401 – ensures pr
 from .models import warehouse_settings as _warehouse_settings_model  # noqa: F401 – ensures warehouse_settings table is created
 from .models import analytics as _analytics_model  # noqa: F401 – ensures analytics_events table is created
 from .models import footer_page as _footer_page_model  # noqa: F401 – ensures footer_pages table is created
+from .models import ebay_connection as _ebay_connection_model  # noqa: F401 – ensures ebay_connections table is created
+from .models import ebay_listing as _ebay_listing_model  # noqa: F401 – ensures ebay_listings table is created
+from .models import ebay_sale as _ebay_sale_model  # noqa: F401 – ensures ebay_sales table is created
 
 load_dotenv()
 
