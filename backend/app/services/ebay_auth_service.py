@@ -5,7 +5,7 @@ import os
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -88,7 +88,7 @@ class EbayAuthService:
         raise HTTPException(status_code=429, detail="Rate limit eBay raggiunto")
 
     @staticmethod
-    def get_authorization_url(state: str) -> dict[str, str]:
+    def get_authorization_url(jwt_token: Optional[str] = None, state: str = "") -> dict[str, str]:
         client_id, _ = EbayAuthService._credentials()
         redirect_uri = EbayAuthService._redirect_uri()
         authorize_url, _, _ = EbayAuthService._base_urls()
@@ -101,6 +101,7 @@ class EbayAuthService:
         _state_cache[state_value] = {
             "code_verifier": code_verifier,
             "created_at": datetime.now(timezone.utc),
+            "jwt_token": jwt_token,
         }
 
         query = {
@@ -115,7 +116,7 @@ class EbayAuthService:
         return {"auth_url": f"{authorize_url}?{urlencode(query)}", "state": state_value}
 
     @staticmethod
-    def exchange_code_for_tokens(code: str, state: str, db: Session) -> EbayConnection:
+    def get_cached_state_data(state: str) -> dict[str, Any]:
         cache = _state_cache.get(state)
         if not cache:
             raise HTTPException(status_code=400, detail="State OAuth non valido o scaduto")
@@ -124,6 +125,11 @@ class EbayAuthService:
         if not created_at or datetime.now(timezone.utc) - created_at > timedelta(minutes=20):
             _state_cache.pop(state, None)
             raise HTTPException(status_code=400, detail="State OAuth scaduto")
+        return cache
+
+    @staticmethod
+    def exchange_code_for_tokens(code: str, state: str, db: Session) -> EbayConnection:
+        cache = EbayAuthService.get_cached_state_data(state)
 
         _, token_url, _ = EbayAuthService._base_urls()
         client_id, client_secret = EbayAuthService._credentials()
