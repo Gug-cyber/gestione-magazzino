@@ -123,13 +123,14 @@ class EbayOfferService:
                 payment_policy_id = payment_future.result(timeout=30)
                 return_policy_id = return_future.result(timeout=30)
         except concurrent.futures.TimeoutError:
-            raise HTTPException(status_code=504, detail="Timeout recupero policy eBay")
+            raise HTTPException(status_code=504, detail="Timeout recupero policy eBay - riprova tra qualche secondo")
         except HTTPException:
             raise
         except httpx.HTTPStatusError as exc:
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
         except (concurrent.futures.CancelledError, concurrent.futures.BrokenExecutor, RuntimeError) as exc:
-            raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc}")
+            logger.exception("Errore interno durante il recupero policy eBay: %s", exc)
+            raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = (description or "").strip() or "Annuncio generato automaticamente da Gestione Magazzino"
         if shipping_cost is not None and float(shipping_cost) > 0:

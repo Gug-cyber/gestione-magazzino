@@ -31,7 +31,10 @@ def test_publish_listing_returns_504_on_timeout(client, auth_headers, db, monkey
     db.add(product)
     db.commit()
 
-    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+    def _mock_get_valid_token(connection_obj, db_session):
+        return "token"
+
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", _mock_get_valid_token)
 
     def _raise_timeout(*_args, **_kwargs):
         raise httpx.TimeoutException("request timed out")
