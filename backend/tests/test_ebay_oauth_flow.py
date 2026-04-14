@@ -56,4 +56,21 @@ def test_callback_returns_401_when_jwt_missing_from_cached_state(client, monkeyp
 
     response = client.get("/api/ebay/callback", params={"code": "oauth-code", "state": state})
     assert response.status_code == 401
-    assert response.json()["detail"] == "Token non valido o scaduto"
+    assert response.json()["detail"] == "Token di autenticazione mancante nella sessione OAuth"
+
+
+def test_connect_accepts_missing_jwt_token(client, auth_headers, monkeypatch):
+    monkeypatch.setenv("EBAY_CLIENT_ID", "test-client-id")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "test-client-secret")
+    monkeypatch.setenv("EBAY_REDIRECT_URI", "http://testserver/api/ebay/callback")
+
+    response = client.get("/api/ebay/connect", headers=auth_headers)
+    assert response.status_code == 200
+    state = response.json()["state"]
+    assert _state_cache[state]["jwt_token"] is None
+
+
+def test_callback_returns_400_when_state_is_invalid(client):
+    response = client.get("/api/ebay/callback", params={"code": "oauth-code", "state": "missing-state"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "State OAuth non valido o scaduto"
