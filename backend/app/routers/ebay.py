@@ -486,7 +486,7 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Il prodotto non ha un nome valido")
     if not (product.descrizione or "").strip():
         raise HTTPException(status_code=400, detail="Il prodotto non ha descrizione")
-    if not product.foto_path and not product.google_drive_folder_id:
+    if not product.foto_path:
         raise HTTPException(status_code=400, detail="Il prodotto non ha immagini — non è possibile pubblicare")
 
     active_listing = (
@@ -514,6 +514,10 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Quantità non disponibile")
     if quantity > product.quantita:
         raise HTTPException(status_code=400, detail="La quantità da pubblicare supera la disponibilità")
+    if payload.shipping_cost is not None and payload.shipping_cost < 0:
+        raise HTTPException(status_code=400, detail="Spese di spedizione non valide")
+
+    shipping_cost = Decimal(str(payload.shipping_cost)) if payload.shipping_cost is not None else None
 
     published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
     expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)
@@ -526,6 +530,7 @@ def publish_listing(
         published_price=published_price,
         expected_net_price=expected_net_price,
         fee_percentage=fee_percentage,
+        shipping_cost=shipping_cost,
     )
     db.add(listing)
     db.commit()
@@ -541,6 +546,8 @@ def publish_listing(
             quantity,
             connection.marketplace_id or "EBAY_IT",
             listing,
+            product.descrizione or "",
+            float(shipping_cost) if shipping_cost is not None else None,
         )
         ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
 

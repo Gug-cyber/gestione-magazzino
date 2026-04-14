@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from typing import Optional
 
 import httpx
 from fastapi import HTTPException
@@ -75,7 +76,16 @@ class EbayOfferService:
         return policies[0].get(policy_id_field)
 
     @staticmethod
-    def create_offer(token: str, sku: str, price, quantity: int, marketplace_id: str, listing_db) -> str:
+    def create_offer(
+        token: str,
+        sku: str,
+        price,
+        quantity: int,
+        marketplace_id: str,
+        listing_db,
+        description: str,
+        shipping_cost: Optional[float] = None,
+    ) -> str:
         try:
             fulfillment_policy_id = EbayOfferService._fetch_default_policy_id(token, marketplace_id, "fulfillment")
             payment_policy_id = EbayOfferService._fetch_default_policy_id(token, marketplace_id, "payment")
@@ -83,12 +93,20 @@ class EbayOfferService:
         except httpx.HTTPStatusError as exc:
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
 
+        listing_description = (description or "").strip() or "Annuncio generato automaticamente da Gestione Magazzino"
+        if shipping_cost is not None and float(shipping_cost) > 0:
+            listing_description = (
+                f"{listing_description}\n\n"
+                f"Nota spedizione: costo indicativo €{float(shipping_cost):.2f}. "
+                "I costi effettivi sono definiti dalla fulfillment policy eBay."
+            )
+
         payload = {
             "sku": sku,
             "marketplaceId": marketplace_id,
             "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
-            "listingDescription": "Annuncio generato automaticamente da Gestione Magazzino",
+            "listingDescription": listing_description,
             "listingPolicies": {
                 "fulfillmentPolicyId": fulfillment_policy_id,
                 "paymentPolicyId": payment_policy_id,
