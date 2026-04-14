@@ -1,6 +1,10 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
+import httpx
+import pytest
+from fastapi import HTTPException
+
 import app.services.ebay_offer_service as ebay_offer_service_module
 from app.services.ebay_inventory_service import EbayInventoryService
 from app.services.ebay_order_sync_service import EbayOrderSyncService
@@ -152,6 +156,111 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     assert listing_db.ebay_offer_id == "OFFER-1"
     assert captured["payload"]["listingDescription"].startswith("Descrizione prodotto reale")
     assert "€4.50" in captured["payload"]["listingDescription"]
+
+
+def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
+    captured = {}
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return SimpleNamespace(json=lambda: {"offerId": "OFFER-1"})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-1",
+        price=Decimal("12.34"),
+        quantity=1,
+        marketplace_id="EBAY_GB",
+        listing_db=listing_db,
+        description="<p>Descrizione <b>valida</b></p>\n\n\nDettagli",
+        shipping_cost=None,
+    )
+
+    assert captured["payload"]["listingDescription"] == "Descrizione valida\n\nDettagli"
+    assert captured["payload"]["pricingSummary"]["price"]["currency"] == "GBP"
+
+
+def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, caplog):
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        request = httpx.Request("POST", url)
+        response = httpx.Response(
+            400,
+            request=request,
+            json={"errors": [{"message": "INVALID_FIELD_VALUE"}]},
+        )
+        raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    with pytest.raises(HTTPException) as exc_info:
+        EbayOfferService.create_offer(
+            token="token",
+            sku="SKU-1",
+            price=Decimal("12.34"),
+            quantity=1,
+            marketplace_id="EBAY_IT",
+            listing_db=listing_db,
+            description="Descrizione",
+            shipping_cost=None,
+        )
+
+    assert exc_info.value.detail == "Errore creazione offer eBay: 400 (INVALID_FIELD_VALUE)"
+    assert any("eBay create_offer error 400 — body:" in message for message in caplog.messages)
+
+
+def test_publish_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, caplog):
+    def _mock_request(method, url, **kwargs):
+        request = httpx.Request("POST", url)
+        response = httpx.Response(
+            422,
+            request=request,
+            json={"errors": [{"message": "INVALID_FIELD"}]},
+        )
+        raise httpx.HTTPStatusError("Unprocessable", request=request, response=response)
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    with pytest.raises(HTTPException) as exc_info:
+        EbayOfferService.publish_offer("token", "OFFER-1")
+
+    assert exc_info.value.detail == "Errore pubblicazione annuncio eBay: 422 (INVALID_FIELD)"
+    assert any("eBay publish_offer error 422" in message for message in caplog.messages)
+
+
+def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
+    def _mock_request(method, url, **kwargs):
+        request = httpx.Request("PUT", url)
+        response = httpx.Response(500, request=request, text='{"error":"internal"}')
+        raise httpx.HTTPStatusError("Internal", request=request, response=response)
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Carta",
+        descrizione="Descrizione",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/a.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        EbayInventoryService.create_or_update_inventory_item("token", "SKU-1", product, listing)
+
+    assert exc_info.value.detail == "Errore creazione inventory eBay: 500"
+    assert any("eBay inventory_item error 500 — body:" in message for message in caplog.messages)
 
 
 def test_policy_cache_ttl_expiration(monkeypatch):
