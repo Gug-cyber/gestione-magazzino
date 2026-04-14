@@ -88,6 +88,17 @@ class EbayOfferService:
         raise HTTPException(status_code=429, detail="Rate limit eBay raggiunto")
 
     @staticmethod
+    def _offer_headers(token: str) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+
+    @staticmethod
+    def _auth_header(token: str) -> dict[str, str]:
+        return {"Authorization": f"Bearer {token}"}
+
+    @staticmethod
     def _fetch_default_policy_id(token: str, marketplace_id: str, policy_type: str) -> str:
         cache_key = f"{marketplace_id}:{policy_type}"
         now = time.time()
@@ -107,7 +118,7 @@ class EbayOfferService:
             response = EbayOfferService._request_with_retry(
                 "GET",
                 url,
-                headers={"Authorization": f"Bearer {token}"},
+                headers=EbayOfferService._auth_header(token),
                 params={"marketplace_id": marketplace_id},
             )
         except httpx.HTTPStatusError as exc:
@@ -233,10 +244,7 @@ class EbayOfferService:
             response = EbayOfferService._request_with_retry(
                 "POST",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
+                headers=EbayOfferService._offer_headers(token),
                 json=payload,
             )
             offer_id = response.json().get("offerId")
@@ -266,7 +274,7 @@ class EbayOfferService:
             response = EbayOfferService._request_with_retry(
                 "POST",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}/publish",
-                headers={"Authorization": f"Bearer {token}"},
+                headers=EbayOfferService._auth_header(token),
             )
             return response.json().get("listingId")
         except httpx.HTTPStatusError as exc:
@@ -292,10 +300,7 @@ class EbayOfferService:
             EbayOfferService._request_with_retry(
                 "POST",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}/withdraw",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
+                headers=EbayOfferService._offer_headers(token),
                 json={"reason": reason},
             )
             return
@@ -307,7 +312,7 @@ class EbayOfferService:
             EbayOfferService._request_with_retry(
                 "DELETE",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}",
-                headers={"Authorization": f"Bearer {token}"},
+                headers=EbayOfferService._auth_header(token),
             )
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code != 404:
@@ -319,7 +324,7 @@ class EbayOfferService:
             response = EbayOfferService._request_with_retry(
                 "GET",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}",
-                headers={"Authorization": f"Bearer {token}"},
+                headers=EbayOfferService._auth_header(token),
             )
             return response.json()
         except httpx.HTTPStatusError as exc:

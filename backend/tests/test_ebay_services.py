@@ -187,6 +187,38 @@ def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
     assert captured["payload"]["pricingSummary"]["price"]["currency"] == "GBP"
 
 
+def test_create_offer_uses_only_offer_api_headers(monkeypatch):
+    captured = {}
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        captured["headers"] = kwargs["headers"]
+        return SimpleNamespace(json=lambda: {"offerId": "OFFER-1"})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-1",
+        price=Decimal("12.34"),
+        quantity=1,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Descrizione",
+        shipping_cost=None,
+    )
+
+    assert captured["headers"] == {
+        "Authorization": "Bearer token",
+        "Content-Type": "application/json",
+    }
+    assert "Content-Language" not in captured["headers"]
+
+
 def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, caplog):
     def _mock_fetch_policy_id(token, marketplace_id, policy_type):
         return f"{policy_type}-id"
@@ -237,6 +269,69 @@ def test_publish_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, 
 
     assert exc_info.value.detail == "Errore pubblicazione annuncio eBay: 422 (INVALID_FIELD)"
     assert any("eBay publish_offer error 422" in message for message in caplog.messages)
+
+
+def test_publish_get_and_end_listing_do_not_send_content_language(monkeypatch):
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        calls.append((method, kwargs.get("headers", {})))
+        if method == "POST" and url.endswith("/publish"):
+            return SimpleNamespace(json=lambda: {"listingId": "LISTING-1"})
+        if method == "GET":
+            return SimpleNamespace(json=lambda: {"offerId": "OFFER-1"})
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_id = EbayOfferService.publish_offer("token", "OFFER-1")
+    offer = EbayOfferService.get_offer("token", "OFFER-1")
+    EbayOfferService.end_listing("token", "OFFER-1")
+
+    assert listing_id == "LISTING-1"
+    assert offer["offerId"] == "OFFER-1"
+
+    for method, headers in calls:
+        assert "Content-Language" not in headers
+        if method in ("GET", "DELETE"):
+            assert headers == {"Authorization": "Bearer token"}
+        if method == "POST":
+            assert headers["Authorization"] == "Bearer token"
+
+
+def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
+    captured = {}
+
+    class _DummyResponse:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def request(self, method, url, **kwargs):
+            captured["method"] = method
+            captured["url"] = url
+            captured["kwargs"] = kwargs
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.services.ebay_offer_service.httpx.Client", _DummyClient)
+
+    headers = {"Authorization": "Bearer token"}
+    EbayOfferService._request_with_retry("GET", "https://api.example.com/test", headers=headers)
+
+    assert captured["kwargs"]["headers"] == headers
+    assert "Content-Language" not in captured["kwargs"]["headers"]
 
 
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
