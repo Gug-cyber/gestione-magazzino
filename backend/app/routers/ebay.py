@@ -565,6 +565,11 @@ def publish_listing(
         listing.error_message = None
         db.commit()
         db.refresh(listing)
+    except httpx.TimeoutException:
+        listing.status = "error"
+        listing.error_message = "Timeout durante la pubblicazione eBay - riprova"
+        db.commit()
+        raise HTTPException(status_code=504, detail="Timeout durante la pubblicazione eBay - riprova tra qualche secondo")
     except HTTPException as exc:
         listing.status = "error"
         listing.error_message = exc.detail if isinstance(exc.detail, str) else "Errore pubblicazione eBay"
