@@ -23,9 +23,9 @@ jobs:
             --max-time 3000 \
             "${{ secrets.BACKEND_URL }}/api/backup/run-store")
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
           echo "HTTP Status: $HTTP_CODE"
-          echo "Response: $BODY"
+          echo "Response Body: $BODY"
           if [ "$HTTP_CODE" != "200" ]; then
             echo "❌ Backup Store fallito (HTTP $HTTP_CODE)"
             exit 1
