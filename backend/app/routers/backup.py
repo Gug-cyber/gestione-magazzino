@@ -10,6 +10,7 @@ Endpoint:
   POST /api/backup/recover     — esegue recover_db.py
   GET  /api/backup/list        — lista backup disponibili su Drive (richiede JWT admin)
   GET  /api/backup/status      — stato ultimo backup (richiede JWT admin)
+  GET  /api/backup/diag        — diagnostica path script (richiede JWT admin)
 """
 
 import asyncio
@@ -61,8 +62,12 @@ def _run_script(script_name: str, extra_env: Optional[dict] = None) -> tuple[boo
         (success: bool, output: str, duration_seconds: float)
     """
     script_path = SCRIPTS_DIR / script_name
+    logger.info("[backup] SCRIPTS_DIR=%s, script_path=%s, exists=%s", SCRIPTS_DIR, script_path, script_path.exists())
+
     if not script_path.exists():
-        raise FileNotFoundError(f"Script non trovato: {script_path}")
+        msg = f"Script non trovato: {script_path} (SCRIPTS_DIR={SCRIPTS_DIR})"
+        logger.error("[backup] %s", msg)
+        return False, msg, 0.0
 
     env = os.environ.copy()
     if extra_env:
@@ -103,19 +108,23 @@ async def run_db_backup():
     """
     logger.info("[backup] Avvio backup DB da GitHub Actions trigger")
     loop = asyncio.get_running_loop()
-    success, output, duration = await loop.run_in_executor(None, _run_script, "backup_db.py")
+    try:
+        success, output, duration = await loop.run_in_executor(None, _run_script, "backup_db.py")
+    except Exception as exc:
+        logger.error("[backup] Eccezione imprevista in run_db_backup: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Errore imprevisto: {str(exc)}")
 
     _last_backup_status["db"] = {
         "status": "success" if success else "error",
         "last_run": datetime.now(timezone.utc).isoformat(),
         "duration_s": round(duration, 1),
-        "error": None if success else output[-500:],  # ultime 500 chars dell'errore
+        "error": None if success else output[-500:],
     }
 
     if not success:
         raise HTTPException(
             status_code=500,
-            detail={"message": "Backup DB fallito", "output": output[-1000:]}
+            detail={"message": "Backup DB fallito", "output": output[-2000:]}
         )
     return {
         "status": "success",
@@ -133,7 +142,11 @@ async def run_store_backup():
     """
     logger.info("[backup] Avvio backup Store da GitHub Actions trigger")
     loop = asyncio.get_running_loop()
-    success, output, duration = await loop.run_in_executor(None, _run_script, "backup_store.py")
+    try:
+        success, output, duration = await loop.run_in_executor(None, _run_script, "backup_store.py")
+    except Exception as exc:
+        logger.error("[backup] Eccezione imprevista in run_store_backup: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Errore imprevisto: {str(exc)}")
 
     _last_backup_status["store"] = {
         "status": "success" if success else "error",
@@ -145,7 +158,7 @@ async def run_store_backup():
     if not success:
         raise HTTPException(
             status_code=500,
-            detail={"message": "Backup Store fallito", "output": output[-1000:]}
+            detail={"message": "Backup Store fallito", "output": output[-2000:]}
         )
     return {
         "status": "success",
@@ -180,9 +193,13 @@ async def run_recovery(request: RecoverRequest):
     extra_env["RECOVERY_DRY_RUN"] = "1" if request.dry_run else "0"
 
     loop = asyncio.get_running_loop()
-    success, output, duration = await loop.run_in_executor(
-        None, lambda: _run_script("recover_db.py", extra_env)
-    )
+    try:
+        success, output, duration = await loop.run_in_executor(
+            None, lambda: _run_script("recover_db.py", extra_env)
+        )
+    except Exception as exc:
+        logger.error("[backup] Eccezione imprevista in run_recovery: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Errore imprevisto: {str(exc)}")
 
     _last_backup_status["recover"] = {
         "status": "success" if success else "error",
@@ -195,7 +212,7 @@ async def run_recovery(request: RecoverRequest):
     if not success:
         raise HTTPException(
             status_code=500,
-            detail={"message": "Recovery fallito", "output": output[-1000:]}
+            detail={"message": "Recovery fallito", "output": output[-2000:]}
         )
     return {
         "status": "success",
@@ -203,6 +220,27 @@ async def run_recovery(request: RecoverRequest):
         "dry_run": request.dry_run,
         "duration_s": round(duration, 1),
         "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/diag", dependencies=[Depends(_verify_backup_secret)])
+async def backup_diag():
+    """
+    Diagnostica: mostra il path degli script e verifica la loro esistenza.
+    Utile per debug su Render.
+    """
+    import shutil
+    return {
+        "scripts_dir": str(SCRIPTS_DIR),
+        "scripts_dir_exists": SCRIPTS_DIR.exists(),
+        "scripts_available": {
+            "backup_db": (SCRIPTS_DIR / "backup_db.py").exists(),
+            "backup_store": (SCRIPTS_DIR / "backup_store.py").exists(),
+            "recover_db": (SCRIPTS_DIR / "recover_db.py").exists(),
+        },
+        "pg_dump_path": shutil.which("pg_dump"),
+        "python_executable": sys.executable,
+        "cwd": os.getcwd(),
     }
 
 
