@@ -58,6 +58,22 @@ def _extract_ebay_error_message(response: httpx.Response) -> str | None:
     message = first_error.get("message")
     return str(message).strip() if message else None
 
+def _extract_existing_offer_id(response: httpx.Response) -> str | None:
+    """Extract offerId from eBay 'Offer entity already exists' error response."""
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+    errors = payload.get("errors", [])
+    for error in errors:
+        if not isinstance(error, dict):
+            continue
+        if error.get("errorId") == 25002:
+            for param in error.get("parameters", []):
+                if isinstance(param, dict) and param.get("name") == "offerId":
+                    return str(param["value"])
+    return None
+
 def _content_language_for_marketplace(marketplace_id: str | None) -> str:
     normalized = (marketplace_id or "").strip().upper()
     return _MARKETPLACE_LANGUAGE_MAP.get(normalized, "it-IT")
@@ -276,6 +292,13 @@ class EbayOfferService:
                 exc.response.status_code,
                 error_body,
             )
+            # Se l'offer esiste già su eBay, recupera l'offerId esistente
+            if exc.response.status_code == 400:
+                existing_offer_id = _extract_existing_offer_id(exc.response)
+                if existing_offer_id:
+                    logger.info("eBay offer already exists, reusing offerId: %%s", existing_offer_id)
+                    listing_db.ebay_offer_id = existing_offer_id
+                    return existing_offer_id
             ebay_error_message = _extract_ebay_error_message(exc.response)
             detail = f"Errore creazione offer eBay: {exc.response.status_code}"
             if ebay_error_message:
