@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -396,6 +397,80 @@ def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
     assert captured["kwargs"]["headers"] == headers
     assert "Content-Language" not in captured["kwargs"]["headers"]
     assert isinstance(captured["transport"], ebay_offer_service_module._NoContentLanguageTransport)
+
+
+def test_get_valid_token_raises_when_token_expires_at_is_none(monkeypatch):
+    """get_valid_token must force a refresh (not crash) when token_expires_at is None."""
+    refreshed_connection = SimpleNamespace(access_token="new-token")
+
+    monkeypatch.setattr(
+        EbayAuthService,
+        "refresh_access_token",
+        staticmethod(lambda conn, db: refreshed_connection),
+    )
+
+    connection = SimpleNamespace(
+        status="active",
+        token_expires_at=None,
+        access_token="old-token",
+        refresh_token="rt-123",
+    )
+
+    token = EbayAuthService.get_valid_token(connection, db=object())
+    assert token == "new-token"
+
+
+def test_get_valid_token_does_not_refresh_when_token_is_valid():
+    """get_valid_token must return the existing access_token when still valid."""
+    future = datetime(2099, 1, 1, tzinfo=timezone.utc)
+    connection = SimpleNamespace(
+        status="active",
+        token_expires_at=future,
+        access_token="valid-token",
+    )
+
+    token = EbayAuthService.get_valid_token(connection, db=object())
+    assert token == "valid-token"
+
+
+def test_refresh_access_token_raises_when_refresh_token_is_none():
+    """refresh_access_token must raise 401 immediately when refresh_token is None."""
+
+    class _DummyDB:
+        committed = False
+
+        def commit(self):
+            self.committed = True
+
+    db = _DummyDB()
+    connection = SimpleNamespace(refresh_token=None, status="active")
+
+    with pytest.raises(HTTPException) as exc_info:
+        EbayAuthService.refresh_access_token(connection, db)
+
+    assert exc_info.value.status_code == 401
+    assert "mancante" in exc_info.value.detail
+    assert connection.status == "expired"
+    assert db.committed
+
+
+def test_refresh_access_token_raises_when_refresh_token_is_empty_string():
+    """refresh_access_token must raise 401 immediately when refresh_token is an empty string."""
+
+    class _DummyDB:
+        committed = False
+
+        def commit(self):
+            self.committed = True
+
+    db = _DummyDB()
+    connection = SimpleNamespace(refresh_token="", status="active")
+
+    with pytest.raises(HTTPException) as exc_info:
+        EbayAuthService.refresh_access_token(connection, db)
+
+    assert exc_info.value.status_code == 401
+    assert connection.status == "expired"
 
 
 def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):

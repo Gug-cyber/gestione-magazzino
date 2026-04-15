@@ -204,6 +204,10 @@ class EbayAuthService:
 
     @staticmethod
     def refresh_access_token(connection: EbayConnection, db: Session) -> EbayConnection:
+        if not connection.refresh_token:
+            connection.status = "expired"
+            db.commit()
+            raise HTTPException(status_code=401, detail="Refresh token eBay mancante — riconnetti l'account")
         client_id, client_secret = EbayAuthService._credentials()
         _, token_url, _ = EbayAuthService._base_urls()
         basic_auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
@@ -254,6 +258,10 @@ class EbayAuthService:
             raise HTTPException(status_code=400, detail="Connessione eBay non attiva")
 
         expires = connection.token_expires_at
+        if expires is None:
+            connection = EbayAuthService.refresh_access_token(connection, db)
+            return connection.access_token
+
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         if expires <= datetime.now(timezone.utc) + timedelta(seconds=60):

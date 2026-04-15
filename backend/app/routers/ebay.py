@@ -580,7 +580,7 @@ def publish_listing(
         listing.status = "error"
         listing.error_message = "Errore interno durante la pubblicazione eBay"
         db.commit()
-        logger.exception("Errore pubblicazione listing eBay: %s", exc)
+        logger.exception("Errore pubblicazione listing eBay (tipo: %s): %s", type(exc).__name__, exc)
         raise HTTPException(status_code=500, detail="Errore interno durante la pubblicazione eBay")
 
     return _listing_to_response(listing)
