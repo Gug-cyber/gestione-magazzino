@@ -224,9 +224,11 @@ def main() -> int:
         if file_id:
             _apply_retention(service, folder_id, retention_days)
         else:
-            logger.warning("Upload fallito — il backup rimane disponibile localmente: %s", output_path)
+            logger.error("Upload su Drive fallito — backup non salvato su Drive: %s", output_path)
+            return 1
     else:
-        logger.warning("Client Drive non disponibile — backup solo locale: %s", output_path)
+        logger.error("Client Drive non disponibile — backup non salvato su Drive: %s", output_path)
+        return 1
 
     logger.info("=== Backup DB completato ===")
     return 0
