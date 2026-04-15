@@ -4,9 +4,11 @@ import time
 import json as _json
 import unicodedata
 from datetime import datetime, timezone
+import urllib.error
+import urllib.parse
+import urllib.request
 from urllib.parse import urlparse
 
-import httpx
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -35,38 +37,14 @@ _DEFAULT_MARKETPLACE_ID = "EBAY_IT"
 _DEFAULT_CONTENT_LANGUAGE = "it-IT"
 
 
-def _extract_ebay_error_message(response: httpx.Response) -> str | None:
-    try:
-        payload = response.json()
-    except Exception:
-        return None
-    errors = payload.get("errors")
-    if not isinstance(errors, list) or not errors:
-        return None
-    first_error = errors[0] or {}
-    if not isinstance(first_error, dict):
-        return None
-    message = first_error.get("message")
-    return str(message).strip() if message else None
-
-
 def _sanitize_ascii_text(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
 
 
-class _NoContentLanguageTransport(httpx.HTTPTransport):
-    """Transport that always removes Content-Language before sending the request."""
-
-    def handle_request(self, request: httpx.Request) -> httpx.Response:
-        headers = [(k, v) for k, v in request.headers.raw if k.lower() != b"content-language"]
-        request = httpx.Request(
-            method=request.method,
-            url=request.url,
-            headers=headers,
-            content=request.content,
-            extensions=request.extensions,
-        )
-        return super().handle_request(request)
+class _EbayRequestHTTPException(HTTPException):
+    def __init__(self, ebay_status: int, detail: str):
+        super().__init__(status_code=502, detail=detail)
+        self.ebay_status = ebay_status
 
 
 class EbayInventoryService:
@@ -78,36 +56,49 @@ class EbayInventoryService:
         return "https://api.ebay.com"
 
     @staticmethod
-    def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
-        headers = dict(kwargs.get("headers") or {})
-        # Serializzazione manuale del JSON per evitare che httpx aggiunga
-        # automaticamente Content-Language per payload con caratteri non-ASCII.
-        # L'eBay Inventory API rifiuta qualsiasi Content-Language (errorId 25709).
-        if "json" in kwargs:
-            body = _json.dumps(kwargs.pop("json"), ensure_ascii=True).encode("ascii")
-            headers["Content-Type"] = "application/json"
-            kwargs["content"] = body
-        kwargs["headers"] = {k: v for k, v in headers.items() if k.lower() != "content-language"}
-        logger.info("eBay inventory request header keys: %s", sorted(kwargs["headers"].keys()))
+    def _request_with_retry(
+        method: str, url: str, headers: dict = None, json=None, params: dict = None
+    ) -> dict | None:
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+        body = None
+        if json is not None:
+            body = _json.dumps(json, ensure_ascii=True).encode("ascii")
+
+        req_headers = {k: v for k, v in (headers or {}).items() if k.lower() != "content-language"}
+        if body is not None and not any(key.lower() == "content-type" for key in req_headers):
+            req_headers["Content-Type"] = "application/json"
+        logger.info("eBay inventory request header keys: %s", sorted(req_headers.keys()))
 
         delay = 1
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=30.0, transport=_NoContentLanguageTransport()) as client:
-                    response = client.request(method, url, **kwargs)
-                if response.status_code == 429 and attempt < 2:
+                req = urllib.request.Request(url, data=body, headers=req_headers, method=method)
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    resp_body = resp.read()
+                    return _json.loads(resp_body) if resp_body else None
+            except urllib.error.HTTPError as exc:
+                status = exc.code
+                if status == 429 and attempt < 2:
                     time.sleep(delay)
                     delay *= 2
                     continue
-                response.raise_for_status()
-                return response
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 429 and attempt < 2:
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                raise
-            except httpx.RequestError as exc:
+                try:
+                    error_body = exc.read().decode("utf-8", errors="replace")
+                except Exception:
+                    error_body = "<unreadable>"
+                logger.error("eBay inventory_item error %s — body: %s", status, error_body)
+                try:
+                    error_data = _json.loads(error_body)
+                    errors = error_data.get("errors", [])
+                    msg = errors[0].get("message") if errors and isinstance(errors[0], dict) else None
+                except Exception:
+                    msg = None
+                detail = f"Errore creazione inventory eBay: {status}"
+                if msg:
+                    detail = f"{detail} ({msg})"
+                raise _EbayRequestHTTPException(ebay_status=status, detail=detail)
+            except urllib.error.URLError as exc:
                 if attempt < 2:
                     time.sleep(delay)
                     delay *= 2
@@ -178,33 +169,17 @@ class EbayInventoryService:
                 _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
             )
 
-        try:
-            EbayInventoryService._request_with_retry(
-                "PUT",
-                url,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-            listing.ebay_item_id = sku
-            listing.last_sync_at = datetime.now(timezone.utc)
-        except httpx.HTTPStatusError as exc:
-            try:
-                error_body = exc.response.text
-            except Exception:
-                error_body = "<unreadable>"
-            logger.error(
-                "eBay inventory_item error %s — body: %s",
-                exc.response.status_code,
-                error_body,
-            )
-            ebay_error_message = _extract_ebay_error_message(exc.response)
-            detail = f"Errore creazione inventory eBay: {exc.response.status_code}"
-            if ebay_error_message:
-                detail = f"{detail} ({ebay_error_message})"
-            raise HTTPException(status_code=502, detail=detail)
+        EbayInventoryService._request_with_retry(
+            "PUT",
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+        listing.ebay_item_id = sku
+        listing.last_sync_at = datetime.now(timezone.utc)
 
     @staticmethod
     def delete_inventory_item(token: str, sku: str) -> None:
@@ -215,9 +190,12 @@ class EbayInventoryService:
                 url,
                 headers={"Authorization": f"Bearer {token}"},
             )
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code != 404:
-                raise HTTPException(status_code=502, detail=f"Errore eliminazione inventory eBay: {exc.response.status_code}")
+        except HTTPException as exc:
+            status = getattr(exc, "ebay_status", None)
+            if status != 404:
+                if status is None:
+                    raise
+                raise HTTPException(status_code=502, detail=f"Errore eliminazione inventory eBay: {status}")
 
     @staticmethod
     def update_quantity(token: str, sku: str, new_quantity: int, marketplace_id: str = _DEFAULT_MARKETPLACE_ID) -> None:
@@ -239,8 +217,9 @@ class EbayInventoryService:
                 },
                 json=payload,
             )
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 405:
+        except HTTPException as exc:
+            status = getattr(exc, "ebay_status", None)
+            if status == 405:
                 EbayInventoryService._request_with_retry(
                     "PUT",
                     url,
@@ -251,4 +230,6 @@ class EbayInventoryService:
                     json=payload,
                 )
                 return
-            raise HTTPException(status_code=502, detail=f"Errore update quantità eBay: {exc.response.status_code}")
+            if status is None:
+                raise
+            raise HTTPException(status_code=502, detail=f"Errore update quantità eBay: {status}")
