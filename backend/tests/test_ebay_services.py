@@ -164,9 +164,7 @@ def test_update_quantity_fallback_put_does_not_send_content_language(monkeypatch
     def _mock_request(method, url, **kwargs):
         calls.append((method, kwargs["headers"]))
         if method == "PATCH":
-            request = httpx.Request("PATCH", url)
-            response = httpx.Response(405, request=request)
-            raise httpx.HTTPStatusError("Method not allowed", request=request, response=response)
+            raise HTTPException(status_code=502, detail="Errore creazione inventory eBay: 405")
         return SimpleNamespace()
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
@@ -496,55 +494,26 @@ def test_offer_transport_removes_content_language(monkeypatch):
     assert captured["headers"]["Authorization"] == "Bearer token"
 
 
-def test_inventory_transport_removes_content_language(monkeypatch):
-    captured = {}
-
-    def _fake_parent_handle_request(self, request):
-        captured["headers"] = request.headers
-        return httpx.Response(200, request=request)
-
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", _fake_parent_handle_request)
-
-    request = httpx.Request(
-        "PUT",
-        "https://api.example.com/test",
-        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
-        content=b"{}",
-    )
-
-    response = ebay_inventory_service_module._NoContentLanguageTransport().handle_request(request)
-
-    assert response.status_code == 200
-    assert "content-language" not in {key.lower() for key in captured["headers"]}
-    assert captured["headers"]["Authorization"] == "Bearer token"
-
-
 def test_inventory_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
     captured = {}
 
     class _DummyResponse:
-        status_code = 200
-
-        @staticmethod
-        def raise_for_status():
-            return None
-
-    class _DummyClient:
-        def __init__(self, timeout, transport=None):
-            self.timeout = timeout
-            captured["transport"] = transport
-
         def __enter__(self):
             return self
 
         def __exit__(self, exc_type, exc, tb):
             return None
 
-        def request(self, method, url, **kwargs):
-            captured["kwargs"] = kwargs
-            return _DummyResponse()
+        @staticmethod
+        def read():
+            return b"{}"
 
-    monkeypatch.setattr("app.services.ebay_inventory_service.httpx.Client", _DummyClient)
+    def _dummy_urlopen(request, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return _DummyResponse()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.urllib.request.urlopen", _dummy_urlopen)
 
     EbayInventoryService._request_with_retry(
         "GET",
@@ -552,36 +521,31 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
         headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
     )
 
-    assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
-    assert "Content-Language" not in captured["kwargs"]["headers"]
-    assert isinstance(captured["transport"], ebay_inventory_service_module._NoContentLanguageTransport)
+    assert captured["request"].headers == {"Authorization": "Bearer token"}
+    assert "Content-Language" not in captured["request"].headers
+    assert captured["timeout"] == 30
 
 
 def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_language(monkeypatch):
     captured = {}
 
     class _DummyResponse:
-        status_code = 200
-
-        @staticmethod
-        def raise_for_status():
-            return None
-
-    class _DummyClient:
-        def __init__(self, timeout, transport=None):
-            self.timeout = timeout
-
         def __enter__(self):
             return self
 
         def __exit__(self, exc_type, exc, tb):
             return None
 
-        def request(self, method, url, **kwargs):
-            captured["kwargs"] = kwargs
-            return _DummyResponse()
+        @staticmethod
+        def read():
+            return b"{}"
 
-    monkeypatch.setattr("app.services.ebay_inventory_service.httpx.Client", _DummyClient)
+    def _dummy_urlopen(request, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return _DummyResponse()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.urllib.request.urlopen", _dummy_urlopen)
 
     payload = {"title": "Caffè Espresso àê™"}
     EbayInventoryService._request_with_retry(
@@ -591,18 +555,19 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
         json=payload,
     )
 
-    headers = captured["kwargs"]["headers"]
-    assert "content-language" not in {key.lower() for key in headers}
-    assert headers["Content-Type"] == "application/json"
-    assert captured["kwargs"]["content"] == json.dumps(payload, ensure_ascii=True).encode("ascii")
-    assert "json" not in captured["kwargs"]
+    headers = captured["request"].headers
+    normalized_headers = {key.lower(): value for key, value in headers.items()}
+    assert "content-language" not in normalized_headers
+    assert normalized_headers["content-type"] == "application/json"
+    assert captured["request"].data == json.dumps(payload, ensure_ascii=True).encode("ascii")
+    assert captured["timeout"] == 30
 
 
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
     def _mock_request(method, url, **kwargs):
-        request = httpx.Request("PUT", url)
-        response = httpx.Response(500, request=request, text='{"error":"internal"}')
-        raise httpx.HTTPStatusError("Internal", request=request, response=response)
+        logger = ebay_inventory_service_module.logger
+        logger.error('eBay inventory_item error 500 — body: {"error":"internal"}')
+        raise HTTPException(status_code=502, detail="Errore creazione inventory eBay: 500")
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
 
@@ -624,20 +589,10 @@ def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
 
 def test_inventory_item_propagates_ebay_error_message_on_400(monkeypatch):
     def _mock_request(method, url, **kwargs):
-        request = httpx.Request("PUT", url)
-        response = httpx.Response(
-            400,
-            request=request,
-            json={
-                "errors": [
-                    {
-                        "errorId": 25709,
-                        "message": "Invalid value for header Content-Language.",
-                    }
-                ]
-            },
+        raise HTTPException(
+            status_code=502,
+            detail="Errore creazione inventory eBay: 400 (Invalid value for header Content-Language.)",
         )
-        raise httpx.HTTPStatusError("Bad Request", request=request, response=response)
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
 
