@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import json as _json
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -43,10 +44,20 @@ class EbayInventoryService:
 
     @staticmethod
     def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
-        # Guardrail: Content-Language non è supportato dalla Inventory API eBay.
-        headers = kwargs.get("headers")
-        if isinstance(headers, dict) and "Content-Language" in headers:
-            kwargs["headers"] = {k: v for k, v in headers.items() if k != "Content-Language"}
+        # Serializzazione manuale del JSON per evitare che httpx aggiunga
+        # automaticamente Content-Language per payload con caratteri non-ASCII.
+        # L'eBay Inventory API rifiuta qualsiasi Content-Language (errorId 25709).
+        if "json" in kwargs:
+            body = _json.dumps(kwargs.pop("json"), ensure_ascii=False).encode("utf-8")
+            headers = dict(kwargs.get("headers") or {})
+            headers["Content-Type"] = "application/json"
+            headers.pop("Content-Language", None)
+            kwargs["headers"] = headers
+            kwargs["content"] = body
+        else:
+            headers = kwargs.get("headers")
+            if isinstance(headers, dict) and "Content-Language" in headers:
+                kwargs["headers"] = {k: v for k, v in headers.items() if k != "Content-Language"}
 
         delay = 1
         for attempt in range(3):
