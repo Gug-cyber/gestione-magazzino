@@ -24,10 +24,18 @@ _MARKETPLACE_CURRENCY_MAP = {
     "EBAY_US": "USD",
     "EBAY_CA": "CAD",
 }
-
+_MARKETPLACE_LANGUAGE_MAP = {
+    "EBAY_IT": "it-IT",
+    "EBAY_DE": "de-DE",
+    "EBAY_FR": "fr-FR",
+    "EBAY_ES": "es-ES",
+    "EBAY_GB": "en-GB",
+    "EBAY_US": "en-US",
+    "EBAY_AU": "en-AU",
+    "EBAY_CA": "en-CA",
+}
 
 def _sanitize_description(text: str) -> str:
-    """Rimuove HTML non consentito e tronca a 4000 caratteri per eBay."""
     if not text:
         return "Prodotto in ottime condizioni."
     clean = _re.sub(r"<[^>]+>", "", text)
@@ -35,7 +43,6 @@ def _sanitize_description(text: str) -> str:
     if len(clean) > 4000:
         clean = clean[:3997] + "..."
     return clean or "Prodotto in ottime condizioni."
-
 
 def _extract_ebay_error_message(response: httpx.Response) -> str | None:
     try:
@@ -51,21 +58,9 @@ def _extract_ebay_error_message(response: httpx.Response) -> str | None:
     message = first_error.get("message")
     return str(message).strip() if message else None
 
-
-class _NoContentLanguageTransport(httpx.HTTPTransport):
-    """Transport that always removes Content-Language before sending the request."""
-
-    def handle_request(self, request: httpx.Request) -> httpx.Response:
-        headers = [(k, v) for k, v in request.headers.raw if k.lower() != b"content-language"]
-        request = httpx.Request(
-            method=request.method,
-            url=request.url,
-            headers=headers,
-            content=request.content,
-            extensions=request.extensions,
-        )
-        return super().handle_request(request)
-
+def _content_language_for_marketplace(marketplace_id: str | None) -> str:
+    normalized = (marketplace_id or "").strip().upper()
+    return _MARKETPLACE_LANGUAGE_MAP.get(normalized, "it-IT")
 
 class EbayOfferService:
     @staticmethod
@@ -77,19 +72,18 @@ class EbayOfferService:
 
     @staticmethod
     def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
-        # Guardrail: Content-Language non è supportato dalla Offer API eBay.
-        headers = dict(kwargs.get("headers") or {})
+        headers = dict(kwargs.pop("headers", None) or {})
         if "json" in kwargs:
             body = _json.dumps(kwargs.pop("json"), ensure_ascii=True).encode("ascii")
-            headers["Content-Type"] = "application/json"
+            headers.setdefault("Content-Type", "application/json")
             kwargs["content"] = body
-        kwargs["headers"] = {k: v for k, v in headers.items() if k.lower() != "content-language"}
-        logger.info("eBay offer request header keys: %s", sorted(kwargs["headers"].keys()))
+        kwargs["headers"] = headers
+        logger.info("eBay offer request header keys: %%s", sorted(headers.keys()))
 
         delay = 1
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=30.0, transport=_NoContentLanguageTransport()) as client:
+                with httpx.Client(timeout=30.0) as client:
                     response = client.request(method, url, **kwargs)
                 if response.status_code == 429 and attempt < 2:
                     time.sleep(delay)
@@ -112,11 +106,14 @@ class EbayOfferService:
         raise HTTPException(status_code=429, detail="Rate limit eBay raggiunto")
 
     @staticmethod
-    def _offer_headers(token: str) -> dict[str, str]:
-        return {
+    def _offer_headers(token: str, marketplace_id: str | None = None) -> dict[str, str]:
+        headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
+        if marketplace_id:
+            headers["Content-Language"] = _content_language_for_marketplace(marketplace_id)
+        return headers
 
     @staticmethod
     def _auth_header(token: str) -> dict[str, str]:
@@ -151,7 +148,7 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay fetch policy error %s (type=%s, marketplace=%s) — body: %s",
+                "eBay fetch policy error %%s (type=%%s, marketplace=%%s) — body: %%s",
                 exc.response.status_code,
                 policy_type,
                 marketplace_id,
@@ -218,14 +215,14 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay policy fetch error %s (marketplace=%s) — body: %s",
+                "eBay policy fetch error %%s (marketplace=%%s) — body: %%s",
                 exc.response.status_code,
                 marketplace_id,
                 error_body,
             )
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
         except (concurrent.futures.CancelledError, concurrent.futures.BrokenExecutor, RuntimeError) as exc:
-            logger.exception("Errore interno durante il recupero policy eBay: %s", exc)
+            logger.exception("Errore interno durante il recupero policy eBay: %%s", exc)
             raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = _sanitize_description(description)
@@ -256,19 +253,12 @@ class EbayOfferService:
                 }
             },
         }
-        logger.debug(
-            "eBay create_offer payload (marketplace=%s, sku=%s, price=%s, qty=%s)",
-            marketplace_id,
-            sku,
-            price,
-            quantity,
-        )
 
         try:
             response = EbayOfferService._request_with_retry(
                 "POST",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer",
-                headers=EbayOfferService._offer_headers(token),
+                headers=EbayOfferService._offer_headers(token, marketplace_id),
                 json=payload,
             )
             offer_id = response.json().get("offerId")
@@ -282,7 +272,7 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay create_offer error %s — body: %s",
+                "eBay create_offer error %%s — body: %%s",
                 exc.response.status_code,
                 error_body,
             )
@@ -307,7 +297,7 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay publish_offer error %s (offer_id=%s) — body: %s",
+                "eBay publish_offer error %%s (offer_id=%%s) — body: %%s",
                 exc.response.status_code,
                 offer_id,
                 error_body,
