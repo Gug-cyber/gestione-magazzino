@@ -6,41 +6,41 @@ services:
     name: gestione-magazzino-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerContext: .
     plan: free
     envVars:
       - key: DATABASE_URL
-        sync: false          # impostare manualmente nella dashboard Render
+        sync: false
       - key: SECRET_KEY
-        generateValue: true  # Render genera automaticamente un valore sicuro
+        generateValue: true
       - key: ALLOWED_ORIGINS
-        sync: false          # es. https://YOUR_APP.vercel.app
+        sync: false
       - key: CORS_ALLOW_LAN
         value: "false"
       - key: FRONTEND_URL
-        sync: false          # es. https://YOUR_APP.vercel.app
+        sync: false
       - key: RESEND_API_KEY
-        sync: false          # opzionale, per invio email
+        sync: false
       - key: UPLOAD_DIR
         value: /app/uploads
       - key: EBAY_CLIENT_ID
-        sync: false          # inserire manualmente nella dashboard Render
+        sync: false
       - key: EBAY_CLIENT_SECRET
-        sync: false          # inserire manualmente nella dashboard Render
+        sync: false
       - key: EBAY_ENV
-        value: "PRODUCTION"  # cambiare in SANDBOX per i test
+        value: "PRODUCTION"
       - key: EBAY_VERIFICATION_TOKEN
-        sync: false          # inserire manualmente nella dashboard Render
+        sync: false
       - key: EBAY_DELETION_ENDPOINT_URL
-        sync: false          # es. https://your-backend.onrender.com/ebay/account-deletion
+        sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false          # JSON completo del Service Account Google (su una riga)
+        sync: false
       - key: GOOGLE_DRIVE_ROOT_FOLDER_ID
-        sync: false          # ID cartella radice Drive per foto prodotti
+        sync: false
       - key: BACKUP_GOOGLE_DRIVE_FOLDER_ID
-        sync: false          # ID cartella Drive per backup DB
+        sync: false
       - key: BACKUP_RETENTION_DAYS
-        value: "30"          # Giorni di retention backup
+        value: "30"
     disk:
       name: uploads
       mountPath: /app/uploads
