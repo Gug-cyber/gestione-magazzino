@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from ..models.ebay_connection import EbayConnection
+from ..models.ebay_listing import EbayListing
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +260,6 @@ class EbayAuthService:
             raise HTTPException(status_code=400, detail="Connessione eBay non attiva")
 
         expires = connection.token_expires_at
-        # Se token_expires_at è None, forza il refresh
         if expires is None:
             logger.warning("token_expires_at è None — forzo il refresh del token eBay")
             connection = EbayAuthService.refresh_access_token(connection, db)
@@ -295,8 +295,9 @@ class EbayAuthService:
                 )
         except Exception as exc:
             logger.warning("Impossibile revocare token eBay (ignorato): %s", exc)
-        # Elimina sempre la connessione dal DB anche se la revoca eBay fallisce
+        # Elimina prima i listing collegati per evitare NOT NULL violation su connection_id
         try:
+            db.query(EbayListing).filter(EbayListing.connection_id == connection.id).delete(synchronize_session=False)
             db.delete(connection)
             db.commit()
         except Exception as exc:
