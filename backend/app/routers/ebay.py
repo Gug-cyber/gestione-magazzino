@@ -514,10 +514,11 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Quantità non disponibile")
     if quantity > product.quantita:
         raise HTTPException(status_code=400, detail="La quantità da pubblicare supera la disponibilità")
-    if payload.shipping_cost < 0:
+    shipping_cost_value = payload.shipping_cost if payload.shipping_cost is not None else 5.90
+    if shipping_cost_value < 0:
         raise HTTPException(status_code=400, detail="Spese di spedizione non valide")
 
-    shipping_cost = Decimal(str(payload.shipping_cost))
+    shipping_cost = Decimal(str(shipping_cost_value))
 
     published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
     expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)

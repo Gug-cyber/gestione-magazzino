@@ -112,7 +112,6 @@ class EbayInventoryService:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
         condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
-        content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
             "sku": sku,
@@ -140,7 +139,6 @@ class EbayInventoryService:
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
-                    "Content-Language": content_language,
                 },
                 json=payload,
             )
@@ -174,7 +172,6 @@ class EbayInventoryService:
     @staticmethod
     def update_quantity(token: str, sku: str, new_quantity: int, marketplace_id: str = _DEFAULT_MARKETPLACE_ID) -> None:
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
-        content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
         payload = {
             "availability": {
                 "shipToLocationAvailability": {
@@ -189,7 +186,6 @@ class EbayInventoryService:
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
-                    "Content-Language": content_language,
                 },
                 json=payload,
             )
@@ -201,7 +197,6 @@ class EbayInventoryService:
                     headers={
                         "Authorization": f"Bearer {token}",
                         "Content-Type": "application/json",
-                        "Content-Language": content_language,
                     },
                     json=payload,
                 )
