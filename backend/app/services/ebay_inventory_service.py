@@ -43,6 +43,11 @@ class EbayInventoryService:
 
     @staticmethod
     def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
+        # Guardrail: Content-Language non è supportato dalla Inventory API eBay.
+        headers = kwargs.get("headers")
+        if isinstance(headers, dict) and "Content-Language" in headers:
+            kwargs["headers"] = {k: v for k, v in headers.items() if k != "Content-Language"}
+
         delay = 1
         for attempt in range(3):
             try:

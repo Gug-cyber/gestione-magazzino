@@ -402,6 +402,41 @@ def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeyp
     assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
 
 
+def test_inventory_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
+    captured = {}
+
+    class _DummyResponse:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def request(self, method, url, **kwargs):
+            captured["kwargs"] = kwargs
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.httpx.Client", _DummyClient)
+
+    EbayInventoryService._request_with_retry(
+        "GET",
+        "https://api.example.com/test",
+        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
+    )
+
+    assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
+
+
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
     def _mock_request(method, url, **kwargs):
         request = httpx.Request("PUT", url)
