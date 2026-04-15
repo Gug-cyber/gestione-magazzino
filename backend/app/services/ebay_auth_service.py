@@ -100,13 +100,8 @@ class EbayAuthService:
         redirect_uri = EbayAuthService._redirect_uri()
         authorize_url, _, _ = EbayAuthService._base_urls()
 
-        code_verifier = secrets.token_urlsafe(64)
-        code_challenge = base64.urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode()).digest()
-        ).decode().rstrip("=")
         state_value = state or secrets.token_urlsafe(24)
         _state_cache[state_value] = {
-            "code_verifier": code_verifier,
             "created_at": datetime.now(timezone.utc),
             "jwt_token": jwt_token,
         }
@@ -117,8 +112,6 @@ class EbayAuthService:
             "redirect_uri": redirect_uri,
             "scope": " ".join(_REQUIRED_SCOPES),
             "state": state_value,
-            "code_challenge": code_challenge,
-            "code_challenge_method": "S256",
         }
         return {"auth_url": f"{authorize_url}?{urlencode(query)}", "state": state_value}
 
@@ -155,7 +148,6 @@ class EbayAuthService:
                     "grant_type": "authorization_code",
                     "code": code,
                     "redirect_uri": redirect_uri,
-                    "code_verifier": cache["code_verifier"],
                 },
             )
         except httpx.HTTPStatusError as exc:
@@ -275,7 +267,6 @@ class EbayAuthService:
     def revoke_connection(connection: EbayConnection, db: Session) -> None:
         if not connection:
             return
-        # Tenta la revoca su eBay, ma non bloccare il disconnect se fallisce
         try:
             client_id, client_secret = EbayAuthService._credentials()
             _, _, revoke_url = EbayAuthService._base_urls()
@@ -295,7 +286,6 @@ class EbayAuthService:
                 )
         except Exception as exc:
             logger.warning("Impossibile revocare token eBay (ignorato): %s", exc)
-        # Elimina prima i listing collegati per evitare NOT NULL violation su connection_id
         try:
             db.query(EbayListing).filter(EbayListing.connection_id == connection.id).delete(synchronize_session=False)
             db.delete(connection)
