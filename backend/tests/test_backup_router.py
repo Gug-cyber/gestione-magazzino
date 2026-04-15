@@ -91,3 +91,30 @@ def test_recovery_sets_dry_run_env_explicitly(client, monkeypatch):
     assert response.status_code == 200
     assert captured["script_name"] == "recover_db.py"
     assert captured["extra_env"]["RECOVERY_DRY_RUN"] == "0"
+
+
+def test_run_script_uses_fallback_candidate_when_scripts_dir_is_stale(tmp_path, monkeypatch):
+    stale_dir = tmp_path / "stale-scripts"
+    real_dir = tmp_path / "real-scripts"
+    stale_dir.mkdir()
+    real_dir.mkdir()
+    script_path = real_dir / "backup_db.py"
+    script_path.write_text("print('ok')", encoding="utf-8")
+
+    monkeypatch.setattr(backup_router, "SCRIPTS_DIR", stale_dir)
+    monkeypatch.setattr(backup_router, "_scripts_dir_candidates", lambda *args, **kwargs: [real_dir])
+
+    captured = {}
+
+    def fake_run(cmd, capture_output, text, timeout, env):
+        captured["cmd"] = cmd
+        return backup_router.subprocess.CompletedProcess(cmd, 0, "ok", "")
+
+    monkeypatch.setattr(backup_router.subprocess, "run", fake_run)
+
+    success, output, duration = backup_router._run_script("backup_db.py")
+
+    assert success is True
+    assert output == "ok"
+    assert duration >= 0
+    assert captured["cmd"][1] == str(script_path)

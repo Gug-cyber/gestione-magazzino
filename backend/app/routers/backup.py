@@ -110,6 +110,19 @@ def _run_script(script_name: str, extra_env: Optional[dict] = None) -> tuple[boo
         (success: bool, output: str, duration_seconds: float)
     """
     script_path = SCRIPTS_DIR / script_name
+    if not script_path.exists():
+        for candidate_dir in _scripts_dir_candidates():
+            candidate_path = candidate_dir / script_name
+            if candidate_path.exists():
+                logger.warning(
+                    "[backup] Script %s non trovato in SCRIPTS_DIR=%s, uso fallback=%s",
+                    script_name,
+                    SCRIPTS_DIR,
+                    candidate_dir,
+                )
+                script_path = candidate_path
+                break
+
     logger.info("[backup] SCRIPTS_DIR=%s, script_path=%s, exists=%s", SCRIPTS_DIR, script_path, script_path.exists())
 
     if not script_path.exists():
