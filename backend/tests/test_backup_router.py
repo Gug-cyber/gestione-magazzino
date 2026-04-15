@@ -1,6 +1,16 @@
 import app.routers.backup as backup_router
 
 
+def test_scripts_dir_candidates_prioritize_backend_scripts():
+    candidates = backup_router._scripts_dir_candidates(
+        file_location=backup_router.Path("/opt/render/project/src/backend/app/routers/backup.py"),
+        cwd=backup_router.Path("/tmp"),
+    )
+
+    assert candidates[0].as_posix() == "/opt/render/project/src/backend/scripts"
+    assert candidates[1].as_posix() == "/opt/render/project/src/scripts"
+
+
 def test_resolve_scripts_dir_prefers_env(monkeypatch):
     monkeypatch.setenv("SCRIPTS_DIR", "/tmp/custom-scripts")
 
@@ -25,6 +35,12 @@ def test_backup_diag_includes_debug_paths(client, monkeypatch):
     assert isinstance(data["candidates_tried"], list)
     assert data["candidates_tried"]
     assert any(path.endswith("/scripts") for path in data["candidates_tried"])
+    assert "candidates_status" in data
+    assert isinstance(data["candidates_status"], list)
+    assert data["candidates_status"]
+    assert all("path" in candidate for candidate in data["candidates_status"])
+    assert all("exists" in candidate for candidate in data["candidates_status"])
+    assert all("scripts_available" in candidate for candidate in data["candidates_status"])
 
 
 def test_backup_run_db_requires_configured_secret(client, monkeypatch):
