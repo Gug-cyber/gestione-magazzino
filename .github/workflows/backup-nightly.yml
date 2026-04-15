@@ -5,6 +5,8 @@ on:
     - cron: '0 2 * * *'   # ogni notte alle 02:00 UTC
   workflow_dispatch:        # possibilità di eseguire manualmente
 
+permissions: {}
+
 jobs:
   backup-db:
     name: Backup PostgreSQL → Google Drive

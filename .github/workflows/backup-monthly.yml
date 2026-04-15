@@ -5,6 +5,8 @@ on:
     - cron: '0 3 1 * *'   # 1° del mese alle 03:00 UTC
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   backup-store:
     name: Backup Store/Magazzino → Google Drive

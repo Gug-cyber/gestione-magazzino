@@ -177,8 +177,7 @@ async def run_recovery(request: RecoverRequest):
     extra_env = {}
     if request.backup_file_id:
         extra_env["RECOVERY_FILE_ID"] = request.backup_file_id
-    if request.dry_run:
-        extra_env["RECOVERY_DRY_RUN"] = "1"
+    extra_env["RECOVERY_DRY_RUN"] = "1" if request.dry_run else "0"
 
     loop = asyncio.get_running_loop()
     success, output, duration = await loop.run_in_executor(

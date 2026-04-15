@@ -9,7 +9,7 @@ Variabili d'ambiente:
   GOOGLE_SERVICE_ACCOUNT_JSON   — JSON Service Account Google
   BACKUP_GOOGLE_DRIVE_FOLDER_ID — ID cartella Drive con i backup
   RECOVERY_FILE_ID              — (opzionale) ID specifico del file da ripristinare
-  RECOVERY_DRY_RUN              — se "1" simula senza applicare (default: "0")
+  RECOVERY_DRY_RUN              — se "1" simula senza applicare (default: "1")
   DOTENV_PATH                   — percorso .env opzionale
 
 ATTENZIONE: se RECOVERY_DRY_RUN != "1" il database viene SOVRASCRITTO.
@@ -189,7 +189,7 @@ def main() -> int:
         return 1
 
     specific_file_id = os.getenv("RECOVERY_FILE_ID", "").strip() or None
-    dry_run = os.getenv("RECOVERY_DRY_RUN", "1") == "1"
+    dry_run = os.getenv("RECOVERY_DRY_RUN", "1") != "0"
 
     logger.info("=== AVVIO RECOVERY DATABASE ===")
     logger.info("Modalità: %s", "DRY RUN (simulazione)" if dry_run else "⚠️  RECOVERY REALE")

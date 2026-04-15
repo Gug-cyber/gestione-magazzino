@@ -20,6 +20,8 @@ on:
           - 'true'
           - 'false'
 
+permissions: {}
+
 jobs:
   recovery:
     name: Recovery Database da Google Drive
