@@ -48,7 +48,7 @@ class EbayInventoryService:
         # automaticamente Content-Language per payload con caratteri non-ASCII.
         # L'eBay Inventory API rifiuta qualsiasi Content-Language (errorId 25709).
         if "json" in kwargs:
-            body = _json.dumps(kwargs.pop("json"), ensure_ascii=False).encode("utf-8")
+            body = _json.dumps(kwargs.pop("json"), ensure_ascii=True).encode("ascii")
             headers = dict(kwargs.get("headers") or {})
             headers["Content-Type"] = "application/json"
             headers.pop("Content-Language", None)

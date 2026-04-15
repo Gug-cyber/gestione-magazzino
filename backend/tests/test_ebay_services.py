@@ -476,7 +476,7 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
     headers = captured["kwargs"]["headers"]
     assert "Content-Language" not in headers
     assert headers["Content-Type"] == "application/json"
-    assert captured["kwargs"]["content"] == json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    assert captured["kwargs"]["content"] == json.dumps(payload, ensure_ascii=True).encode("ascii")
     assert "json" not in captured["kwargs"]
 
 
