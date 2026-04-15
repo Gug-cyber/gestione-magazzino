@@ -215,7 +215,7 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     assert offer_id == "OFFER-1"
     assert listing_db.ebay_offer_id == "OFFER-1"
     assert captured["payload"]["listingDescription"].startswith("Descrizione prodotto reale")
-    assert "Spedizione: €4.50 (stimata)." in captured["payload"]["listingDescription"]
+    assert "Spedizione: EUR 4.50 (stimata)." in captured["payload"]["listingDescription"]
 
 
 def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
@@ -244,7 +244,7 @@ def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
 
     assert captured["payload"]["listingDescription"] == (
         "Descrizione valida\n\nDettagli\n\n"
-        "Spedizione: €5.90 (stimata). I costi effettivi sono definiti dalla fulfillment policy eBay."
+        "Spedizione: EUR 5.90 (stimata). I costi effettivi sono definiti dalla fulfillment policy eBay."
     )
     assert captured["payload"]["pricingSummary"]["price"]["currency"] == "GBP"
 
