@@ -66,12 +66,12 @@ def _resolve_scripts_dir() -> Path:
         return p
 
     candidates = _scripts_dir_candidates()
-    for candidate in candidates[:-1]:
+    *check_candidates, cwd_scripts = candidates
+    for candidate in check_candidates:
         if candidate.exists():
             logger.info("[backup] SCRIPTS_DIR trovata: %s", candidate)
             return candidate
 
-    cwd_scripts = candidates[-1]
     logger.warning(
         "[backup] SCRIPTS_DIR non trovata nei path standard. "
         "Usare variabile d'ambiente SCRIPTS_DIR. Tentativo con CWD: %s",
@@ -278,13 +278,13 @@ async def backup_diag():
     """
     import shutil
     file_location = Path(__file__).resolve()
-    cwd = Path.cwd()
+    candidates_tried = _scripts_dir_candidates()
     return {
         "scripts_dir": str(SCRIPTS_DIR),
         "scripts_dir_exists": SCRIPTS_DIR.exists(),
         "file_location": str(file_location),
         "cwd": os.getcwd(),
-        "candidates_tried": [str(p) for p in _scripts_dir_candidates(file_location=file_location, cwd=cwd)],
+        "candidates_tried": [str(p) for p in candidates_tried],
         "scripts_available": {
             "backup_db": (SCRIPTS_DIR / "backup_db.py").exists(),
             "backup_store": (SCRIPTS_DIR / "backup_store.py").exists(),

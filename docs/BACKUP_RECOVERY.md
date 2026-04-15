@@ -49,7 +49,7 @@ Nel pannello Render → Environment:
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | JSON del service account Google (una riga) |
 | `BACKUP_RETENTION_DAYS` | `30` (default) |
 
-### Variabile d'ambiente SCRIPTS_DIR (obbligatoria su Render se il deploy usa Root Directory = backend)
+### Variabile d'ambiente SCRIPTS_DIR (raccomandata su Render se il deploy usa Root Directory = backend)
 
 Se il servizio Render ha "Root Directory" impostato su `backend`, aggiungere nel pannello Render → Environment:
 
