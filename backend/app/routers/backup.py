@@ -280,11 +280,11 @@ async def backup_diag():
     file_location = Path(__file__).resolve()
     candidates_tried = _scripts_dir_candidates()
     return {
-        "scripts_dir": str(SCRIPTS_DIR),
-        "scripts_dir_exists": SCRIPTS_DIR.exists(),
         "file_location": str(file_location),
         "cwd": os.getcwd(),
         "candidates_tried": [str(p) for p in candidates_tried],
+        "scripts_dir": str(SCRIPTS_DIR),
+        "scripts_dir_exists": SCRIPTS_DIR.exists(),
         "scripts_available": {
             "backup_db": (SCRIPTS_DIR / "backup_db.py").exists(),
             "backup_store": (SCRIPTS_DIR / "backup_store.py").exists(),
