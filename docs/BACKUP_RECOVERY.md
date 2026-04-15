@@ -15,9 +15,9 @@ GitHub Actions cron
         ↓
   Backend FastAPI (Render)
         │
-        ├── scripts/backup_db.py      → pg_dump → Google Drive
-        ├── scripts/backup_store.py   → export tabelle → Google Drive
-        └── scripts/recover_db.py     → Google Drive → psql restore
+        ├── backend/scripts/backup_db.py      → pg_dump → Google Drive
+        ├── backend/scripts/backup_store.py   → export tabelle → Google Drive
+        └── backend/scripts/recover_db.py     → Google Drive → psql restore
 ```
 
 ## Setup iniziale (obbligatorio)
@@ -55,7 +55,7 @@ Se il servizio Render ha "Root Directory" impostato su `backend`, aggiungere nel
 
 | Nome | Valore |
 |------|--------|
-| `SCRIPTS_DIR` | `/opt/render/project/src/scripts` |
+| `SCRIPTS_DIR` | `/opt/render/project/src/backend/scripts` |
 
 In alternativa, lasciare vuota e la funzione proverà automaticamente i path standard.
 

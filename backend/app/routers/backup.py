@@ -43,8 +43,8 @@ def _scripts_dir_candidates(file_location: Optional[Path] = None, cwd: Optional[
     current = file_location or Path(__file__).resolve()
     current_cwd = cwd or Path.cwd()
     return [
-        current.parent.parent.parent.parent / "scripts",
         current.parent.parent.parent / "scripts",
+        current.parent.parent.parent.parent / "scripts",
         current.parent.parent / "scripts",
         current_cwd / "scripts",
     ]
@@ -56,8 +56,9 @@ def _resolve_scripts_dir() -> Path:
 
     Cerca in ordine:
     1. Variabile d'ambiente SCRIPTS_DIR (configurabile su Render)
-    2. scripts/ relativo alla root del repo (risalendo da __file__)
-    3. scripts/ relativo al CWD
+    2. backend/scripts (deploy con Root Directory=backend)
+    3. scripts/ relativo alla root del repo (sviluppo locale)
+    4. scripts/ relativo al CWD
     """
     env_scripts_dir = os.getenv("SCRIPTS_DIR", "").strip()
     if env_scripts_dir:
@@ -279,10 +280,19 @@ async def backup_diag():
     import shutil
     file_location = Path(__file__).resolve()
     candidates_tried = _scripts_dir_candidates()
+    required_scripts = ("backup_db.py", "backup_store.py", "recover_db.py")
     return {
         "file_location": str(file_location),
         "cwd": os.getcwd(),
         "candidates_tried": [str(p) for p in candidates_tried],
+        "candidates_status": [
+            {
+                "path": str(path),
+                "exists": path.exists(),
+                "scripts_available": {name: (path / name).exists() for name in required_scripts},
+            }
+            for path in candidates_tried
+        ],
         "scripts_dir": str(SCRIPTS_DIR),
         "scripts_dir_exists": SCRIPTS_DIR.exists(),
         "scripts_available": {
