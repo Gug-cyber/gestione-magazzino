@@ -12,7 +12,7 @@ def _load_module(script_path: Path):
     return module
 
 
-def test_backup_store_main_returns_1_when_upload_fails(monkeypatch, caplog):
+def test_backup_store_main_returns_0_when_upload_fails(monkeypatch, caplog):
     repo_root = Path(__file__).resolve().parents[2]
     module = _load_module(repo_root / "backend/scripts/backup_store.py")
 
@@ -28,11 +28,11 @@ def test_backup_store_main_returns_1_when_upload_fails(monkeypatch, caplog):
     caplog.set_level("INFO")
     result = module.main()
 
-    assert result == 1
-    assert any("Upload su Drive fallito — backup non salvato su Drive" in message for message in caplog.messages)
+    assert result == 0
+    assert any("Upload su Drive fallito — backup salvato solo localmente" in message for message in caplog.messages)
 
 
-def test_backup_store_main_returns_1_when_drive_client_unavailable(monkeypatch, caplog):
+def test_backup_store_main_returns_0_when_drive_client_unavailable(monkeypatch, caplog):
     repo_root = Path(__file__).resolve().parents[2]
     module = _load_module(repo_root / "backend/scripts/backup_store.py")
 
@@ -48,5 +48,5 @@ def test_backup_store_main_returns_1_when_drive_client_unavailable(monkeypatch, 
     caplog.set_level("INFO")
     result = module.main()
 
-    assert result == 1
-    assert any("Client Drive non disponibile — backup non salvato su Drive" in message for message in caplog.messages)
+    assert result == 0
+    assert any("Client Drive non disponibile — backup salvato solo localmente" in message for message in caplog.messages)

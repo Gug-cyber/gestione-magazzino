@@ -5,29 +5,59 @@ on:
     - cron: '0 3 1 * *'   # 1° del mese alle 03:00 UTC
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   backup-store:
-    name: Backup Store/Magazzino → Google Drive
+    name: Backup Store/Magazzino → GitHub Artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Trigger backup Store sul backend
+      - name: Installa postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Esegui pg_dump tabelle store/magazzino
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          echo "📦 Avvio backup Store/Magazzino..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Backup-Secret: ${{ secrets.BACKUP_TRIGGER_SECRET }}" \
-            --max-time 3000 \
-            "${{ secrets.BACKEND_URL }}/api/backup/run-store")
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
-          echo "HTTP Status: $HTTP_CODE"
-          echo "Response Body: $BODY"
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Backup Store fallito (HTTP $HTTP_CODE)"
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Secret DATABASE_URL non configurato"
             exit 1
           fi
-          echo "✅ Backup Store completato con successo"
+
+          TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+          FILENAME="store_backup_${TIMESTAMP}.sql.gz"
+          echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
+
+          echo "📦 Avvio pg_dump tabelle store/magazzino: $FILENAME"
+          pg_dump --no-password --format=plain --no-owner --no-privileges \
+            -t prodotti \
+            -t categorie \
+            -t ubicazioni \
+            -t movimenti \
+            -t fornitori \
+            -t fatture \
+            -t clienti \
+            -t ordini \
+            -t righe_ordine \
+            -t banner \
+            -t contenuti \
+            -t prodotti_pubblici \
+            -t store_settings \
+            "$DATABASE_URL" | gzip > "/tmp/$FILENAME"
+          SIZE=$(du -sh "/tmp/$FILENAME" | cut -f1)
+          echo "✅ Dump completato: $FILENAME ($SIZE)"
+
+      - name: Salva backup come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: /tmp/${{ env.FILENAME }}
+          retention-days: 90
+
+      - name: Notifica fallimento
+        if: failure()
+        run: |
+          echo "❌ ATTENZIONE: Backup Store/Magazzino FALLITO il $(date '+%Y-%m-%d %H:%M UTC')"
+          exit 1

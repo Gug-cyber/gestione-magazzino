@@ -193,6 +193,17 @@ pytest
 
 > ⚠️ In produzione il server **non si avvia** se `SECRET_KEY` è quella di default o ha meno di 32 caratteri.
 
+## 🗄️ Backup DB via GitHub Actions
+
+I workflow backup (`.github/workflows/backup-nightly.yml` e `backup-monthly.yml`) eseguono `pg_dump` **direttamente su GitHub Actions** e salvano il dump come artifact (retention 90 giorni).
+
+Configura in **GitHub → Settings → Secrets and variables → Actions** anche:
+
+- `DATABASE_URL` (obbligatorio per il dump diretto)
+- oltre ai secret già usati per trigger/recovery (`BACKUP_TRIGGER_SECRET`, `BACKEND_URL`)
+
+> ⚠️ Nota Render: `BACKUP_RETENTION_DAYS` deve essere un numero intero (es. `30`). Valori non numerici sono configurazioni errate.
+
 ## ⏰ Keep-Alive (Render Free Plan)
 
 Render mette in sleep i servizi gratuiti dopo 15 minuti di inattività. Per mantenerli attivi è incluso un workflow GitHub Actions che pinga il backend e il database ogni 10 minuti.
