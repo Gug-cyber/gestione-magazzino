@@ -25,7 +25,7 @@ def test_backup_main_invalid_retention_uses_default_30(monkeypatch, relative_pat
 
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@host/db")
     monkeypatch.setenv("BACKUP_GOOGLE_DRIVE_FOLDER_ID", "folder-id")
-    monkeypatch.setenv("BACKUP_RETENTION_DAYS", "1Iy4esg3FyFSUpdTdty5Rmduz28bHE5th")
+    monkeypatch.setenv("BACKUP_RETENTION_DAYS", "not-a-number")
 
     monkeypatch.setattr(module, "_load_dotenv", lambda: None)
     monkeypatch.setattr(module, "_run_pg_dump", lambda database_url, output_path: True)
