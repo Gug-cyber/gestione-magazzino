@@ -96,7 +96,7 @@ function EbayIntegrazione() {
         ) : (
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>Account: <strong>{connection.account_id || 'N/D'}</strong></span>
+              <span>Account eBay: <strong>{connection.account_id || 'Account collegato'}</strong></span>
               <span style={{ background: '#e8f5e9', color: '#2e7d32', borderRadius: 20, padding: '2px 10px', fontSize: 12 }}>Connesso</span>
               <button className="gm-btn gm-btn-danger gm-btn-sm" onClick={handleDisconnect}>Disconnetti</button>
             </div>

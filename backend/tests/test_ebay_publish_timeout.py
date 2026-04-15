@@ -9,7 +9,7 @@ from app.models.ebay_listing import EbayListing
 from app.models.prodotto import Prodotto
 
 
-def test_get_connection_returns_fallback_account_label_when_account_id_is_null(client, auth_headers, db):
+def test_get_connection_returns_null_account_id_when_ebay_account_id_is_null(client, auth_headers, db):
     connection = EbayConnection(
         ebay_account_id=None,
         access_token="access-token",
@@ -26,7 +26,7 @@ def test_get_connection_returns_fallback_account_label_when_account_id_is_null(c
 
     assert response.status_code == 200
     assert response.json()["connected"] is True
-    assert response.json()["account_id"] == "Account collegato"
+    assert response.json()["account_id"] is None
 
 
 def test_publish_listing_returns_504_on_timeout(client, auth_headers, db, monkeypatch):

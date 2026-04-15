@@ -401,7 +401,7 @@ def get_connection_status(
         )
     return EbayConnectionStatus(
         connected=True,
-        account_id=connection.ebay_account_id or "Account collegato",
+        account_id=connection.ebay_account_id or None,
         status=connection.status,
         fee_percentage=float(connection.fee_percentage) if connection.fee_percentage is not None else None,
         marketplace_id=connection.marketplace_id,
