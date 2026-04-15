@@ -34,16 +34,13 @@ _MARKETPLACE_LANGUAGE_MAP = {
 _DEFAULT_MARKETPLACE_ID = "EBAY_IT"
 _DEFAULT_CONTENT_LANGUAGE = "it-IT"
 
-
 def _sanitize_ascii_text(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-
 
 class _EbayRequestHTTPException(HTTPException):
     def __init__(self, ebay_status: int, detail: str):
         super().__init__(status_code=502, detail=detail)
         self.ebay_status = ebay_status
-
 
 class EbayInventoryService:
     @staticmethod
@@ -57,14 +54,11 @@ class EbayInventoryService:
     def _request_with_retry(
         method: str, url: str, headers: dict = None, json=None, params: dict = None
     ) -> dict | None:
-        clean_headers = {}
-        if headers:
-            for key, value in headers.items():
-                if key.lower() not in ("content-language", "accept-language"):
-                    clean_headers[key] = value
+        # Pass headers as-is — Content-Language is required by eBay Inventory API
+        clean_headers = dict(headers) if headers else {}
         if json is not None and "content-type" not in {k.lower() for k in clean_headers}:
             clean_headers["Content-Type"] = "application/json"
-        logger.info("eBay inventory request header keys: %s", sorted(clean_headers.keys()))
+        logger.info("eBay inventory request header keys: %%s", sorted(clean_headers.keys()))
 
         session = requests.Session()
         session.headers.clear()
@@ -95,7 +89,7 @@ class EbayInventoryService:
                     error_body = response.text
                 except Exception:
                     error_body = "<unreadable>"
-                logger.error("eBay inventory_item error %s — body: %s", status, error_body)
+                logger.error("eBay inventory_item error %%s — body: %%s", status, error_body)
                 try:
                     error_data = _json.loads(error_body)
                     errors = error_data.get("errors", [])
@@ -163,6 +157,7 @@ class EbayInventoryService:
         if not image_urls:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
+        content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
         condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
@@ -189,6 +184,7 @@ class EbayInventoryService:
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
+                "Content-Language": content_language,
             },
             json=payload,
         )
