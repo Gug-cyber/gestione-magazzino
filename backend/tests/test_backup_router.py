@@ -8,15 +8,42 @@ def test_scripts_dir_candidates_prioritize_backend_scripts():
     )
 
     assert candidates[0].as_posix() == "/opt/render/project/src/backend/scripts"
-    assert candidates[1].as_posix() == "/opt/render/project/src/scripts"
+    assert candidates[1].as_posix() == "/opt/render/project/src/backend/app/scripts"
+    assert candidates[2].as_posix() == "/opt/render/project/src/scripts"
 
 
-def test_resolve_scripts_dir_prefers_env(monkeypatch):
-    monkeypatch.setenv("SCRIPTS_DIR", "/tmp/custom-scripts")
+def test_resolve_scripts_dir_prefers_env(monkeypatch, tmp_path):
+    env_dir = tmp_path / "custom-scripts"
+    env_dir.mkdir()
+    monkeypatch.setenv("SCRIPTS_DIR", str(env_dir))
 
     resolved = backup_router._resolve_scripts_dir()
 
-    assert resolved.as_posix() == "/tmp/custom-scripts"
+    assert resolved == env_dir
+
+
+def test_resolve_scripts_dir_falls_back_when_env_dir_not_found(monkeypatch, tmp_path, caplog):
+    missing_env_dir = tmp_path / "missing-env-scripts"
+    fallback_dir = tmp_path / "autodiscovery-scripts"
+    fallback_dir.mkdir()
+    cwd_scripts = tmp_path / "cwd-scripts"
+
+    monkeypatch.setenv("SCRIPTS_DIR", str(missing_env_dir))
+    monkeypatch.setattr(
+        backup_router,
+        "_scripts_dir_candidates",
+        lambda: [
+            tmp_path / "candidate-1",
+            fallback_dir,
+            tmp_path / "candidate-3",
+            cwd_scripts,
+        ],
+    )
+
+    resolved = backup_router._resolve_scripts_dir()
+
+    assert resolved == fallback_dir
+    assert any("SCRIPTS_DIR da env non esiste" in message for message in caplog.messages)
 
 
 def test_backup_diag_includes_debug_paths(client, monkeypatch):

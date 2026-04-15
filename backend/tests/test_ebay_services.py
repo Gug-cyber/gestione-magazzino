@@ -112,6 +112,32 @@ def test_inventory_item_does_not_send_content_language_header_for_unknown_market
     assert "Content-Language" not in captured["headers"]
 
 
+def test_inventory_item_sanitizes_non_ascii_payload_fields(monkeypatch):
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Caffè Pokémon àèìòù",
+        descrizione="Descrizione con accenti: àèìòù e simbolo ™",
+        stato_conservazione="Usàto",
+        foto_path="https://img.example.com/a.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item("token", "SKU-1", product, listing)
+
+    payload = captured["payload"]
+    assert payload["product"]["title"] == "Caffe Pokemon aeiou"
+    assert payload["product"]["description"] == "Descrizione con accenti: aeiou e simbolo TM"
+    assert payload["conditionDescription"] == "Usato"
+
+
 def test_update_quantity_does_not_send_content_language_header(monkeypatch):
     calls = []
 
@@ -502,6 +528,43 @@ def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
 
     assert exc_info.value.detail == "Errore creazione inventory eBay: 500"
     assert any("eBay inventory_item error 500 — body:" in message for message in caplog.messages)
+
+
+def test_inventory_item_propagates_ebay_error_message_on_400(monkeypatch):
+    def _mock_request(method, url, **kwargs):
+        request = httpx.Request("PUT", url)
+        response = httpx.Response(
+            400,
+            request=request,
+            json={
+                "errors": [
+                    {
+                        "errorId": 25709,
+                        "message": "Invalid value for header Content-Language.",
+                    }
+                ]
+            },
+        )
+        raise httpx.HTTPStatusError("Bad Request", request=request, response=response)
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Carta",
+        descrizione="Descrizione",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/a.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        EbayInventoryService.create_or_update_inventory_item("token", "SKU-1", product, listing)
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == (
+        "Errore creazione inventory eBay: 400 (Invalid value for header Content-Language.)"
+    )
 
 
 def test_policy_cache_ttl_expiration(monkeypatch):
