@@ -114,7 +114,6 @@ class EbayInventoryService:
         condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
-            "sku": sku,
             "availability": {
                 "shipToLocationAvailability": {
                     "quantity": max(0, listing.quantity_published),
