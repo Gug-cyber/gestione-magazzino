@@ -55,7 +55,7 @@ def _sanitize_ascii_text(value: str) -> str:
 
 
 class _NoContentLanguageTransport(httpx.HTTPTransport):
-    """Transport che rimuove sempre Content-Language prima di inviare la richiesta."""
+    """Transport that always removes Content-Language before sending the request."""
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         headers = [(k, v) for k, v in request.headers.raw if k.lower() != b"content-language"]
