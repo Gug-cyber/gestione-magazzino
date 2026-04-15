@@ -1,6 +1,4 @@
-import io
 import json
-import urllib.error
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -503,31 +501,39 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
     captured = {}
 
     class _DummyResponse:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
+        status_code = 200
+        ok = True
+        content = b"{}"
 
         @staticmethod
-        def read():
-            return b"{}"
+        def json():
+            return {}
 
-    def _dummy_urlopen(request, timeout):
-        captured["request"] = request
+    def _dummy_request(self, method, url, headers=None, data=None, params=None, timeout=None):
+        captured["method"] = method
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["data"] = data
+        captured["params"] = params
         captured["timeout"] = timeout
         return _DummyResponse()
 
-    monkeypatch.setattr("app.services.ebay_inventory_service.urllib.request.urlopen", _dummy_urlopen)
+    monkeypatch.setattr("app.services.ebay_inventory_service.requests.Session.request", _dummy_request)
 
     EbayInventoryService._request_with_retry(
         "GET",
         "https://api.example.com/test",
-        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
+        headers={
+            "Authorization": "Bearer token",
+            "Content-Language": "it-IT",
+            "Accept-Language": "it-IT",
+        },
     )
 
-    assert captured["request"].headers["Authorization"] == "Bearer token"
-    assert "Content-Language" not in captured["request"].headers
+    assert captured["headers"]["Authorization"] == "Bearer token"
+    normalized_headers = {key.lower(): value for key, value in captured["headers"].items()}
+    assert "content-language" not in normalized_headers
+    assert "accept-language" not in normalized_headers
     assert captured["timeout"] == 30
 
 
@@ -535,22 +541,22 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
     captured = {}
 
     class _DummyResponse:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
+        status_code = 200
+        ok = True
+        content = b"{}"
 
         @staticmethod
-        def read():
-            return b"{}"
+        def json():
+            return {}
 
-    def _dummy_urlopen(request, timeout):
-        captured["request"] = request
+    def _dummy_request(self, method, url, headers=None, data=None, params=None, timeout=None):
+        captured["headers"] = headers
+        captured["data"] = data
+        captured["params"] = params
         captured["timeout"] = timeout
         return _DummyResponse()
 
-    monkeypatch.setattr("app.services.ebay_inventory_service.urllib.request.urlopen", _dummy_urlopen)
+    monkeypatch.setattr("app.services.ebay_inventory_service.requests.Session.request", _dummy_request)
 
     payload = {"title": "Caffè Espresso àê™"}
     EbayInventoryService._request_with_retry(
@@ -560,25 +566,25 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
         json=payload,
     )
 
-    headers = captured["request"].headers
+    headers = captured["headers"]
     normalized_headers = {key.lower(): value for key, value in headers.items()}
     assert "content-language" not in normalized_headers
     assert normalized_headers["content-type"] == "application/json"
-    assert captured["request"].data == json.dumps(payload, ensure_ascii=True).encode("ascii")
+    assert captured["data"] == json.dumps(payload, ensure_ascii=True).encode("ascii")
     assert captured["timeout"] == 30
 
 
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
-    def _mock_urlopen(request, timeout):
-        raise urllib.error.HTTPError(
-            request.full_url,
-            500,
-            "Internal",
-            hdrs=None,
-            fp=io.BytesIO(b'{"error":"internal"}'),
-        )
+    class _DummyResponse:
+        status_code = 500
+        ok = False
+        content = b'{"error":"internal"}'
+        text = '{"error":"internal"}'
 
-    monkeypatch.setattr("app.services.ebay_inventory_service.urllib.request.urlopen", _mock_urlopen)
+    def _mock_request(self, method, url, headers=None, data=None, params=None, timeout=None):
+        return _DummyResponse()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.requests.Session.request", _mock_request)
 
     with pytest.raises(HTTPException) as exc_info:
         EbayInventoryService._request_with_retry("PUT", "https://api.example.com/test", headers={"Authorization": "x"})

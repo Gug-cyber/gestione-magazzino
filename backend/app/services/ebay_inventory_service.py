@@ -4,11 +4,9 @@ import time
 import json as _json
 import unicodedata
 from datetime import datetime, timezone
-import urllib.error
-import urllib.parse
-import urllib.request
 from urllib.parse import urlparse
 
+import requests
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -59,32 +57,42 @@ class EbayInventoryService:
     def _request_with_retry(
         method: str, url: str, headers: dict = None, json=None, params: dict = None
     ) -> dict | None:
-        if params:
-            url = f"{url}?{urllib.parse.urlencode(params)}"
-        body = None
-        if json is not None:
-            body = _json.dumps(json, ensure_ascii=True).encode("ascii")
+        clean_headers = {}
+        if headers:
+            for key, value in headers.items():
+                if key.lower() not in ("content-language", "accept-language"):
+                    clean_headers[key] = value
+        if json is not None and "content-type" not in {k.lower() for k in clean_headers}:
+            clean_headers["Content-Type"] = "application/json"
+        logger.info("eBay inventory request header keys: %s", sorted(clean_headers.keys()))
 
-        req_headers = {k: v for k, v in (headers or {}).items() if k.lower() != "content-language"}
-        if body is not None and not any(key.lower() == "content-type" for key in req_headers):
-            req_headers["Content-Type"] = "application/json"
-        logger.info("eBay inventory request header keys: %s", sorted(req_headers.keys()))
+        session = requests.Session()
+        session.headers.clear()
+        session.headers["User-Agent"] = "gestione-magazzino/1.0"
+
+        body = _json.dumps(json, ensure_ascii=True).encode("ascii") if json is not None else None
 
         delay = 1
         for attempt in range(3):
             try:
-                req = urllib.request.Request(url, data=body, headers=req_headers, method=method)
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    resp_body = resp.read()
-                    return _json.loads(resp_body) if resp_body else None
-            except urllib.error.HTTPError as exc:
-                status = exc.code
-                if status == 429 and attempt < 2:
+                response = session.request(
+                    method,
+                    url,
+                    headers=clean_headers,
+                    data=body,
+                    params=params,
+                    timeout=30,
+                )
+                if response.status_code == 429 and attempt < 2:
                     time.sleep(delay)
                     delay *= 2
                     continue
+                if response.ok:
+                    return response.json() if response.content else None
+
+                status = response.status_code
                 try:
-                    error_body = exc.read().decode("utf-8", errors="replace")
+                    error_body = response.text
                 except Exception:
                     error_body = "<unreadable>"
                 logger.error("eBay inventory_item error %s — body: %s", status, error_body)
@@ -98,7 +106,13 @@ class EbayInventoryService:
                 if msg:
                     detail = f"{detail} ({msg})"
                 raise _EbayRequestHTTPException(ebay_status=status, detail=detail)
-            except urllib.error.URLError as exc:
+            except requests.exceptions.Timeout:
+                if attempt < 2:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise HTTPException(status_code=504, detail="Timeout rete eBay")
+            except requests.exceptions.RequestException as exc:
                 if attempt < 2:
                     time.sleep(delay)
                     delay *= 2
