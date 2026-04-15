@@ -435,6 +435,7 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
     )
 
     assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
+    assert "Content-Language" not in captured["kwargs"]["headers"]
 
 
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
