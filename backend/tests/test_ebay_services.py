@@ -433,15 +433,18 @@ def test_get_valid_token_does_not_refresh_when_token_is_valid():
     assert token == "valid-token"
 
 
+class _DummyDB:
+    """Minimal DB stub that tracks whether commit() was called."""
+
+    def __init__(self):
+        self.committed = False
+
+    def commit(self):
+        self.committed = True
+
+
 def test_refresh_access_token_raises_when_refresh_token_is_none():
     """refresh_access_token must raise 401 immediately when refresh_token is None."""
-
-    class _DummyDB:
-        committed = False
-
-        def commit(self):
-            self.committed = True
-
     db = _DummyDB()
     connection = SimpleNamespace(refresh_token=None, status="active")
 
@@ -456,13 +459,6 @@ def test_refresh_access_token_raises_when_refresh_token_is_none():
 
 def test_refresh_access_token_raises_when_refresh_token_is_empty_string():
     """refresh_access_token must raise 401 immediately when refresh_token is an empty string."""
-
-    class _DummyDB:
-        committed = False
-
-        def commit(self):
-            self.committed = True
-
     db = _DummyDB()
     connection = SimpleNamespace(refresh_token="", status="active")
 
@@ -471,6 +467,7 @@ def test_refresh_access_token_raises_when_refresh_token_is_empty_string():
 
     assert exc_info.value.status_code == 401
     assert connection.status == "expired"
+
 
 
 def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
