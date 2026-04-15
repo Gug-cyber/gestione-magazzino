@@ -52,6 +52,21 @@ def _extract_ebay_error_message(response: httpx.Response) -> str | None:
     return str(message).strip() if message else None
 
 
+class _NoContentLanguageTransport(httpx.HTTPTransport):
+    """Transport che rimuove sempre Content-Language prima di inviare la richiesta."""
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        headers = [(k, v) for k, v in request.headers.raw if k.lower() != b"content-language"]
+        request = httpx.Request(
+            method=request.method,
+            url=request.url,
+            headers=headers,
+            content=request.content,
+            extensions=request.extensions,
+        )
+        return super().handle_request(request)
+
+
 class EbayOfferService:
     @staticmethod
     def _base_url() -> str:
@@ -74,7 +89,7 @@ class EbayOfferService:
         delay = 1
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=30.0, transport=_NoContentLanguageTransport()) as client:
                     response = client.request(method, url, **kwargs)
                 if response.status_code == 429 and attempt < 2:
                     time.sleep(delay)
