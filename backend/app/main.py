@@ -22,6 +22,7 @@ from .routers import ebay
 from .routers import cardmarket_scraper
 from .routers import cms_sync
 from .routers import tracking as tracking_router
+from .routers import backup as backup_router
 from .routers.cms import contenuti as cms_contenuti, banner as cms_banner, prodotti as cms_prodotti
 from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
 from .models import contenuto as _contenuto_model  # noqa: F401 – ensures contenuti table is created
@@ -127,6 +128,7 @@ app.include_router(cms_prodotti.router, prefix="/api/cms", tags=["CMS - Prodotti
 app.include_router(store_router.router, prefix="/api/store", tags=["Store Pubblico"])
 app.include_router(control_panel_router.router, prefix="/api/control-panel", tags=["Control Panel"])
 app.include_router(analytics_router.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(backup_router.router)
 
 
 @app.on_event("startup")

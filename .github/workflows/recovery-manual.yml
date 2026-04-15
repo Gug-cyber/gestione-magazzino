@@ -1,0 +1,55 @@
+name: 🔄 Recovery Database (MANUALE)
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_file_id:
+        description: 'ID del file di backup su Google Drive (lascia vuoto per usare il più recente)'
+        required: false
+        default: ''
+      confirm:
+        description: 'Digita CONFIRM per procedere con il recovery (ATTENZIONE: sovrascrive il database!)'
+        required: true
+        default: ''
+      dry_run:
+        description: 'Esecuzione di prova senza applicare modifiche (true/false)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  recovery:
+    name: Recovery Database da Google Drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Verifica conferma
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "CONFIRM" ]; then
+            echo "❌ Recovery annullato: devi digitare CONFIRM per procedere"
+            exit 1
+          fi
+          echo "✅ Conferma ricevuta"
+
+      - name: Esegui recovery
+        run: |
+          echo "🔄 Avvio recovery database..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Backup-Secret: ${{ secrets.BACKUP_TRIGGER_SECRET }}" \
+            --data "{\"backup_file_id\": \"${{ github.event.inputs.backup_file_id }}\", \"dry_run\": ${{ github.event.inputs.dry_run }}}" \
+            --max-time 3600 \
+            "${{ secrets.BACKEND_URL }}/api/backup/recover")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Recovery fallito (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          echo "✅ Recovery completato"
