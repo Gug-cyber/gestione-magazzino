@@ -218,9 +218,11 @@ def main() -> int:
 
         file_id = _upload_to_drive(service, output_path, folder_id)
         if not file_id:
-            logger.warning("Upload fallito — il backup rimane disponibile localmente: %s", output_path)
+            logger.error("Upload su Drive fallito — backup non salvato su Drive: %s", output_path)
+            return 1
     else:
-        logger.warning("Client Drive non disponibile — backup solo locale: %s", output_path)
+        logger.error("Client Drive non disponibile — backup non salvato su Drive: %s", output_path)
+        return 1
 
     logger.info("=== Backup store/magazzino completato ===")
     return 0

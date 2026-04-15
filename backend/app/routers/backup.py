@@ -137,7 +137,7 @@ def _run_script(script_name: str, extra_env: Optional[dict] = None) -> tuple[boo
         if not success:
             logger.error("[backup] Script %s fallito (rc=%d):\n%s", script_name, result.returncode, output)
         else:
-            logger.info("[backup] Script %s completato in %.1fs", script_name, duration)
+            logger.info("[backup] Script %s completato in %.1fs:\n%s", script_name, duration, output)
         return success, output, duration
     except subprocess.TimeoutExpired:
         duration = (datetime.now(timezone.utc) - start).total_seconds()

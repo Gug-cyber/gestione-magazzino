@@ -1,6 +1,30 @@
 import app.routers.backup as backup_router
 
 
+def test_run_script_logs_output_even_on_success(monkeypatch, tmp_path, caplog):
+    script_path = tmp_path / "backup_db.py"
+    script_path.write_text("print('ok')", encoding="utf-8")
+    monkeypatch.setattr(backup_router, "SCRIPTS_DIR", tmp_path)
+
+    class _Result:
+        returncode = 0
+        stdout = "stdout line"
+        stderr = "stderr line"
+
+    monkeypatch.setattr(backup_router.subprocess, "run", lambda *args, **kwargs: _Result())
+
+    caplog.set_level("INFO")
+    success, output, _ = backup_router._run_script("backup_db.py")
+
+    assert success is True
+    assert "stdout line" in output
+    assert "stderr line" in output
+    assert any(
+        "Script backup_db.py completato" in message and "stdout line" in message and "stderr line" in message
+        for message in caplog.messages
+    )
+
+
 def test_scripts_dir_candidates_prioritize_backend_scripts():
     candidates = backup_router._scripts_dir_candidates(
         file_location=backup_router.Path("/opt/render/project/src/backend/app/routers/backup.py"),
