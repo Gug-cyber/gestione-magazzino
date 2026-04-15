@@ -2,7 +2,6 @@ import logging
 import os
 import time
 import json as _json
-import re
 import unicodedata
 from datetime import datetime, timezone
 import urllib.error
@@ -42,16 +41,10 @@ def _sanitize_ascii_text(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
 
 
-def _extract_status_from_detail(detail: str | None) -> int | None:
-    if not isinstance(detail, str):
-        return None
-    match = re.search(r":\s*(\d{3})\b", detail)
-    if not match:
-        return None
-    try:
-        return int(match.group(1))
-    except Exception:
-        return None
+class _EbayRequestHTTPException(HTTPException):
+    def __init__(self, ebay_status: int, detail: str):
+        super().__init__(status_code=502, detail=detail)
+        self.ebay_status = ebay_status
 
 
 class EbayInventoryService:
@@ -73,7 +66,7 @@ class EbayInventoryService:
             body = _json.dumps(json, ensure_ascii=True).encode("ascii")
 
         req_headers = {k: v for k, v in (headers or {}).items() if k.lower() != "content-language"}
-        if body is not None and "Content-Type" not in req_headers:
+        if body is not None and not any(key.lower() == "content-type" for key in req_headers):
             req_headers["Content-Type"] = "application/json"
         logger.info("eBay inventory request header keys: %s", sorted(req_headers.keys()))
 
@@ -98,13 +91,13 @@ class EbayInventoryService:
                 try:
                     error_data = _json.loads(error_body)
                     errors = error_data.get("errors", [])
-                    msg = errors[0].get("message") if errors else None
+                    msg = errors[0].get("message") if errors and isinstance(errors[0], dict) else None
                 except Exception:
                     msg = None
                 detail = f"Errore creazione inventory eBay: {status}"
                 if msg:
                     detail = f"{detail} ({msg})"
-                raise HTTPException(status_code=502, detail=detail)
+                raise _EbayRequestHTTPException(ebay_status=status, detail=detail)
             except urllib.error.URLError as exc:
                 if attempt < 2:
                     time.sleep(delay)
@@ -198,7 +191,7 @@ class EbayInventoryService:
                 headers={"Authorization": f"Bearer {token}"},
             )
         except HTTPException as exc:
-            status = _extract_status_from_detail(exc.detail)
+            status = getattr(exc, "ebay_status", None)
             if status != 404:
                 if status is None:
                     raise
@@ -225,7 +218,7 @@ class EbayInventoryService:
                 json=payload,
             )
         except HTTPException as exc:
-            status = _extract_status_from_detail(exc.detail)
+            status = getattr(exc, "ebay_status", None)
             if status == 405:
                 EbayInventoryService._request_with_retry(
                     "PUT",

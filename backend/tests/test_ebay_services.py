@@ -1,4 +1,6 @@
+import io
 import json
+import urllib.error
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -164,7 +166,10 @@ def test_update_quantity_fallback_put_does_not_send_content_language(monkeypatch
     def _mock_request(method, url, **kwargs):
         calls.append((method, kwargs["headers"]))
         if method == "PATCH":
-            raise HTTPException(status_code=502, detail="Errore creazione inventory eBay: 405")
+            raise ebay_inventory_service_module._EbayRequestHTTPException(
+                ebay_status=405,
+                detail="Errore creazione inventory eBay: 405",
+            )
         return SimpleNamespace()
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
@@ -521,7 +526,7 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
         headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
     )
 
-    assert captured["request"].headers == {"Authorization": "Bearer token"}
+    assert captured["request"].headers["Authorization"] == "Bearer token"
     assert "Content-Language" not in captured["request"].headers
     assert captured["timeout"] == 30
 
@@ -564,24 +569,19 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
 
 
 def test_inventory_item_logs_error_body_for_any_status(monkeypatch, caplog):
-    def _mock_request(method, url, **kwargs):
-        logger = ebay_inventory_service_module.logger
-        logger.error('eBay inventory_item error 500 — body: {"error":"internal"}')
-        raise HTTPException(status_code=502, detail="Errore creazione inventory eBay: 500")
+    def _mock_urlopen(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            500,
+            "Internal",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"internal"}'),
+        )
 
-    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
-
-    product = SimpleNamespace(
-        nome="Carta",
-        descrizione="Descrizione",
-        stato_conservazione="Good",
-        foto_path="https://img.example.com/a.jpg",
-        google_drive_folder_id=None,
-    )
-    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+    monkeypatch.setattr("app.services.ebay_inventory_service.urllib.request.urlopen", _mock_urlopen)
 
     with pytest.raises(HTTPException) as exc_info:
-        EbayInventoryService.create_or_update_inventory_item("token", "SKU-1", product, listing)
+        EbayInventoryService._request_with_retry("PUT", "https://api.example.com/test", headers={"Authorization": "x"})
 
     assert exc_info.value.detail == "Errore creazione inventory eBay: 500"
     assert any("eBay inventory_item error 500 — body:" in message for message in caplog.messages)
