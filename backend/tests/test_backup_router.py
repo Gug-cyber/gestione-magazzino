@@ -1,0 +1,51 @@
+import app.routers.backup as backup_router
+
+
+def test_backup_run_db_requires_configured_secret(client, monkeypatch):
+    monkeypatch.delenv("BACKUP_TRIGGER_SECRET", raising=False)
+
+    response = client.post(
+        "/api/backup/run-db",
+        headers={"X-Backup-Secret": "anything"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Backup non configurato"
+
+
+def test_backup_run_db_executes_with_valid_secret(client, monkeypatch):
+    monkeypatch.setenv("BACKUP_TRIGGER_SECRET", "test-secret")
+    monkeypatch.setattr(backup_router, "_run_script", lambda script_name, extra_env=None: (True, "ok", 1.2))
+
+    response = client.post(
+        "/api/backup/run-db",
+        headers={"X-Backup-Secret": "test-secret"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["message"] == "Backup DB completato"
+
+
+def test_recovery_sets_dry_run_env_explicitly(client, monkeypatch):
+    monkeypatch.setenv("BACKUP_TRIGGER_SECRET", "test-secret")
+
+    captured = {}
+
+    def fake_run_script(script_name, extra_env=None):
+        captured["script_name"] = script_name
+        captured["extra_env"] = dict(extra_env or {})
+        return True, "ok", 1.0
+
+    monkeypatch.setattr(backup_router, "_run_script", fake_run_script)
+
+    response = client.post(
+        "/api/backup/recover",
+        headers={"X-Backup-Secret": "test-secret"},
+        json={"dry_run": False},
+    )
+
+    assert response.status_code == 200
+    assert captured["script_name"] == "recover_db.py"
+    assert captured["extra_env"]["RECOVERY_DRY_RUN"] == "0"

@@ -1,0 +1,45 @@
+name: 🗄️ Backup Notturno DB
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # ogni notte alle 02:00 UTC
+  workflow_dispatch:        # possibilità di eseguire manualmente
+
+permissions: {}
+
+jobs:
+  backup-db:
+    name: Backup PostgreSQL → Google Drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Trigger backup DB sul backend
+        run: |
+          echo "🗄️ Avvio backup DB..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Backup-Secret: ${{ secrets.BACKUP_TRIGGER_SECRET }}" \
+            --max-time 1200 \
+            "${{ secrets.BACKEND_URL }}/api/backup/run-db")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Backup fallito (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          echo "✅ Backup completato con successo"
+
+      - name: Notifica successo
+        if: success()
+        run: |
+          echo "✅ Backup DB completato il $(date '+%Y-%m-%d %H:%M UTC')"
+
+      - name: Notifica fallimento
+        if: failure()
+        run: |
+          echo "❌ ATTENZIONE: Backup DB FALLITO il $(date '+%Y-%m-%d %H:%M UTC')"
+          echo "Controlla i log del backend su Render"
+          exit 1

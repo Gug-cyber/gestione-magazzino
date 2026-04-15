@@ -1,0 +1,33 @@
+name: 📦 Backup Mensile Store
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'   # 1° del mese alle 03:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  backup-store:
+    name: Backup Store/Magazzino → Google Drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Trigger backup Store sul backend
+        run: |
+          echo "📦 Avvio backup Store/Magazzino..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Backup-Secret: ${{ secrets.BACKUP_TRIGGER_SECRET }}" \
+            --max-time 3000 \
+            "${{ secrets.BACKEND_URL }}/api/backup/run-store")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Backup Store fallito (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          echo "✅ Backup Store completato con successo"
