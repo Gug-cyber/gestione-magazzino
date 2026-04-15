@@ -73,7 +73,7 @@ class EbayInventoryService:
             headers["Content-Type"] = "application/json"
             kwargs["content"] = body
         kwargs["headers"] = {k: v for k, v in headers.items() if k.lower() != "content-language"}
-        logger.debug("eBay inventory request header keys: %s", sorted(kwargs["headers"].keys()))
+        logger.info("eBay inventory request header keys: %s", sorted(kwargs["headers"].keys()))
 
         delay = 1
         for attempt in range(3):

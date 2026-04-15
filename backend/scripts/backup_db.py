@@ -176,12 +176,29 @@ def main() -> int:
     _load_dotenv()
 
     database_url = os.getenv("DATABASE_URL")
+    logger.info(
+        "Config: DATABASE_URL=%s, BACKUP_RETENTION_DAYS=%r, BACKUP_GOOGLE_DRIVE_FOLDER_ID=%s",
+        "***" if database_url else "NON CONFIGURATA",
+        os.getenv("BACKUP_RETENTION_DAYS", "(non impostata)"),
+        "configurata" if os.getenv("BACKUP_GOOGLE_DRIVE_FOLDER_ID") else "NON CONFIGURATA",
+    )
     if not database_url:
         logger.error("DATABASE_URL non configurata")
         return 1
 
     folder_id = os.getenv("BACKUP_GOOGLE_DRIVE_FOLDER_ID")
-    retention_days = int(os.getenv("BACKUP_RETENTION_DAYS", "30"))
+    _raw_retention = os.getenv("BACKUP_RETENTION_DAYS", "30").strip()
+    try:
+        retention_days = int(_raw_retention)
+        if retention_days <= 0:
+            raise ValueError("deve essere positivo")
+    except ValueError:
+        logger.error(
+            "BACKUP_RETENTION_DAYS ha un valore non valido (%r) — uso default 30 giorni. "
+            "Verifica la variabile d'ambiente su Render.",
+            _raw_retention,
+        )
+        retention_days = 30
 
     now = datetime.now()
     is_sunday = now.weekday() == 6  # 0=lunedì … 6=domenica

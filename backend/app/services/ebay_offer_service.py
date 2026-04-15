@@ -3,6 +3,7 @@ import os
 import time
 import concurrent.futures
 import threading
+import json as _json
 import re as _re
 
 import httpx
@@ -62,9 +63,13 @@ class EbayOfferService:
     @staticmethod
     def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
         # Guardrail: Content-Language non è supportato dalla Offer API eBay.
-        headers = kwargs.get("headers")
-        if isinstance(headers, dict) and "Content-Language" in headers:
-            kwargs["headers"] = {k: v for k, v in headers.items() if k != "Content-Language"}
+        headers = dict(kwargs.get("headers") or {})
+        if "json" in kwargs:
+            body = _json.dumps(kwargs.pop("json"), ensure_ascii=True).encode("ascii")
+            headers["Content-Type"] = "application/json"
+            kwargs["content"] = body
+        kwargs["headers"] = {k: v for k, v in headers.items() if k.lower() != "content-language"}
+        logger.info("eBay offer request header keys: %s", sorted(kwargs["headers"].keys()))
 
         delay = 1
         for attempt in range(3):
