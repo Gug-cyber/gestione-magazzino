@@ -3,43 +3,49 @@ name: 🗄️ Backup Notturno DB
 on:
   schedule:
     - cron: '0 2 * * *'   # ogni notte alle 02:00 UTC
-  workflow_dispatch:        # possibilità di eseguire manualmente
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   backup-db:
-    name: Backup PostgreSQL → Google Drive
+    name: Backup PostgreSQL → GitHub Artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Trigger backup DB sul backend
+      - name: Installa postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Esegui pg_dump
+        env:
+          # Configurare in GitHub → Settings → Secrets and variables → Actions
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          echo "🗄️ Avvio backup DB..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Backup-Secret: ${{ secrets.BACKUP_TRIGGER_SECRET }}" \
-            --max-time 1200 \
-            "${{ secrets.BACKEND_URL }}/api/backup/run-db")
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -1)
-          echo "HTTP Status: $HTTP_CODE"
-          echo "Response: $BODY"
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ Backup fallito (HTTP $HTTP_CODE)"
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ Secret DATABASE_URL non configurato"
             exit 1
           fi
-          echo "✅ Backup completato con successo"
 
-      - name: Notifica successo
-        if: success()
-        run: |
-          echo "✅ Backup DB completato il $(date '+%Y-%m-%d %H:%M UTC')"
+          TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+          LABEL=$([ "$(date +%u)" = "7" ] && echo "full" || echo "incremental")
+          FILENAME="db_${LABEL}_${TIMESTAMP}.sql.gz"
+          echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
+
+          echo "🗄️ Avvio pg_dump: $FILENAME"
+          pg_dump --no-password --format=plain --no-owner --no-privileges "$DATABASE_URL" | gzip > "/tmp/$FILENAME"
+          SIZE=$(du -sh "/tmp/$FILENAME" | cut -f1)
+          echo "✅ Dump completato: $FILENAME ($SIZE)"
+
+      - name: Salva backup come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}
+          path: /tmp/${{ env.FILENAME }}
+          retention-days: 90
 
       - name: Notifica fallimento
         if: failure()
         run: |
           echo "❌ ATTENZIONE: Backup DB FALLITO il $(date '+%Y-%m-%d %H:%M UTC')"
-          echo "Controlla i log del backend su Render"
           exit 1
