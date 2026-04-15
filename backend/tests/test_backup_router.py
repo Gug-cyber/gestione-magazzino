@@ -6,12 +6,12 @@ def test_run_script_logs_output_even_on_success(monkeypatch, tmp_path, caplog):
     script_path.write_text("print('ok')", encoding="utf-8")
     monkeypatch.setattr(backup_router, "SCRIPTS_DIR", tmp_path)
 
-    class _Result:
+    class _MockSubprocessResult:
         returncode = 0
         stdout = "stdout line"
         stderr = "stderr line"
 
-    monkeypatch.setattr(backup_router.subprocess, "run", lambda *args, **kwargs: _Result())
+    monkeypatch.setattr(backup_router.subprocess, "run", lambda *args, **kwargs: _MockSubprocessResult())
 
     caplog.set_level("INFO")
     success, output, _ = backup_router._run_script("backup_db.py")

@@ -29,7 +29,7 @@ def test_backup_store_main_returns_1_when_upload_fails(monkeypatch, caplog):
     result = module.main()
 
     assert result == 1
-    assert any("Upload su Drive fallito" in message for message in caplog.messages)
+    assert any("Upload su Drive fallito — backup non salvato su Drive" in message for message in caplog.messages)
 
 
 def test_backup_store_main_returns_1_when_drive_client_unavailable(monkeypatch, caplog):
@@ -49,4 +49,4 @@ def test_backup_store_main_returns_1_when_drive_client_unavailable(monkeypatch, 
     result = module.main()
 
     assert result == 1
-    assert any("Client Drive non disponibile" in message for message in caplog.messages)
+    assert any("Client Drive non disponibile — backup non salvato su Drive" in message for message in caplog.messages)
