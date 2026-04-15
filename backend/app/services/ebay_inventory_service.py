@@ -54,6 +54,21 @@ def _sanitize_ascii_text(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
 
 
+class _NoContentLanguageTransport(httpx.HTTPTransport):
+    """Transport that always removes Content-Language before sending the request."""
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        headers = [(k, v) for k, v in request.headers.raw if k.lower() != b"content-language"]
+        request = httpx.Request(
+            method=request.method,
+            url=request.url,
+            headers=headers,
+            content=request.content,
+            extensions=request.extensions,
+        )
+        return super().handle_request(request)
+
+
 class EbayInventoryService:
     @staticmethod
     def _base_url() -> str:
@@ -78,7 +93,7 @@ class EbayInventoryService:
         delay = 1
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=30.0, transport=_NoContentLanguageTransport()) as client:
                     response = client.request(method, url, **kwargs)
                 if response.status_code == 429 and attempt < 2:
                     time.sleep(delay)

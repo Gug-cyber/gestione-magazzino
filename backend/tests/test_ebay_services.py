@@ -6,6 +6,7 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
+import app.services.ebay_inventory_service as ebay_inventory_service_module
 import app.services.ebay_offer_service as ebay_offer_service_module
 from app.schemas.ebay import PublishRequest
 from app.services.ebay_auth_service import EbayAuthService
@@ -370,8 +371,9 @@ def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
             return None
 
     class _DummyClient:
-        def __init__(self, timeout):
+        def __init__(self, timeout, transport=None):
             self.timeout = timeout
+            captured["transport"] = transport
 
         def __enter__(self):
             return self
@@ -392,6 +394,7 @@ def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
 
     assert captured["kwargs"]["headers"] == headers
     assert "Content-Language" not in captured["kwargs"]["headers"]
+    assert isinstance(captured["transport"], ebay_offer_service_module._NoContentLanguageTransport)
 
 
 def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
@@ -405,7 +408,7 @@ def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeyp
             return None
 
     class _DummyClient:
-        def __init__(self, timeout):
+        def __init__(self, timeout, transport=None):
             self.timeout = timeout
 
         def __enter__(self):
@@ -440,7 +443,7 @@ def test_offer_request_with_retry_serializes_non_ascii_json_without_content_lang
             return None
 
     class _DummyClient:
-        def __init__(self, timeout):
+        def __init__(self, timeout, transport=None):
             self.timeout = timeout
 
         def __enter__(self):
@@ -470,6 +473,52 @@ def test_offer_request_with_retry_serializes_non_ascii_json_without_content_lang
     assert "json" not in captured["kwargs"]
 
 
+def test_offer_transport_removes_content_language(monkeypatch):
+    captured = {}
+
+    def _fake_parent_handle_request(self, request):
+        captured["headers"] = request.headers
+        return httpx.Response(200, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", _fake_parent_handle_request)
+
+    request = httpx.Request(
+        "PUT",
+        "https://api.example.com/test",
+        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
+        content=b"{}",
+    )
+
+    response = ebay_offer_service_module._NoContentLanguageTransport().handle_request(request)
+
+    assert response.status_code == 200
+    assert "content-language" not in {key.lower() for key in captured["headers"]}
+    assert captured["headers"]["Authorization"] == "Bearer token"
+
+
+def test_inventory_transport_removes_content_language(monkeypatch):
+    captured = {}
+
+    def _fake_parent_handle_request(self, request):
+        captured["headers"] = request.headers
+        return httpx.Response(200, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", _fake_parent_handle_request)
+
+    request = httpx.Request(
+        "PUT",
+        "https://api.example.com/test",
+        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
+        content=b"{}",
+    )
+
+    response = ebay_inventory_service_module._NoContentLanguageTransport().handle_request(request)
+
+    assert response.status_code == 200
+    assert "content-language" not in {key.lower() for key in captured["headers"]}
+    assert captured["headers"]["Authorization"] == "Bearer token"
+
+
 def test_inventory_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
     captured = {}
 
@@ -481,8 +530,9 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
             return None
 
     class _DummyClient:
-        def __init__(self, timeout):
+        def __init__(self, timeout, transport=None):
             self.timeout = timeout
+            captured["transport"] = transport
 
         def __enter__(self):
             return self
@@ -504,6 +554,7 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
 
     assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
     assert "Content-Language" not in captured["kwargs"]["headers"]
+    assert isinstance(captured["transport"], ebay_inventory_service_module._NoContentLanguageTransport)
 
 
 def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_language(monkeypatch):
@@ -517,7 +568,7 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
             return None
 
     class _DummyClient:
-        def __init__(self, timeout):
+        def __init__(self, timeout, transport=None):
             self.timeout = timeout
 
         def __enter__(self):
