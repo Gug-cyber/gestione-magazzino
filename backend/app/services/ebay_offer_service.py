@@ -217,7 +217,7 @@ class EbayOfferService:
         shipping_cost_value = float(shipping_cost)
         listing_description = (
             f"{listing_description}\n\n"
-            f"Spedizione: €{shipping_cost_value:.2f} (stimata). "
+            f"Spedizione: EUR {shipping_cost_value:.2f} (stimata). "
             "I costi effettivi sono definiti dalla fulfillment policy eBay."
         )
         normalized_marketplace = (marketplace_id or "").strip().upper()
