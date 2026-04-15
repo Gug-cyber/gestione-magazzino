@@ -44,8 +44,8 @@ def _scripts_dir_candidates(file_location: Optional[Path] = None, cwd: Optional[
     current_cwd = cwd or Path.cwd()
     return [
         current.parent.parent.parent / "scripts",
-        current.parent.parent.parent.parent / "scripts",
         current.parent.parent / "scripts",
+        current.parent.parent.parent.parent / "scripts",
         current_cwd / "scripts",
     ]
 
@@ -55,16 +55,17 @@ def _resolve_scripts_dir() -> Path:
     Risolve la directory degli script di backup.
 
     Cerca in ordine:
-    1. Variabile d'ambiente SCRIPTS_DIR (configurabile su Render)
-    2. backend/scripts (deploy con Root Directory=backend)
-    3. scripts/ relativo alla root del repo (sviluppo locale)
-    4. scripts/ relativo al CWD
+    1. Variabile d'ambiente SCRIPTS_DIR (se esistente)
+    2. Path candidati autodiscovery (Render/local)
+    3. scripts/ relativo al CWD
     """
     env_scripts_dir = os.getenv("SCRIPTS_DIR", "").strip()
     if env_scripts_dir:
         p = Path(env_scripts_dir)
-        logger.info("[backup] SCRIPTS_DIR da env: %s (exists=%s)", p, p.exists())
-        return p
+        if p.exists():
+            logger.info("[backup] SCRIPTS_DIR da env: %s", p)
+            return p
+        logger.warning("[backup] SCRIPTS_DIR da env non esiste: %s — tentativo autodiscovery", p)
 
     candidates = _scripts_dir_candidates()
     *check_candidates, cwd_scripts = candidates

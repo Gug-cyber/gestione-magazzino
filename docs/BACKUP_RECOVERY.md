@@ -55,9 +55,10 @@ Se il servizio Render ha "Root Directory" impostato su `backend`, aggiungere nel
 
 | Nome | Valore |
 |------|--------|
-| `SCRIPTS_DIR` | `/opt/render/project/src/backend/scripts` |
+| `SCRIPTS_DIR` | `/opt/render/project/src/scripts` |
 
-In alternativa, lasciare vuota e la funzione proverà automaticamente i path standard.
+Se `SCRIPTS_DIR` è impostata ma la directory non esiste, il backend logga un warning e passa automaticamente
+all'autodiscovery dei path standard (fallback resiliente a configurazioni errate).
 
 ## Utilizzo
 

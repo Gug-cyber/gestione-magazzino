@@ -2,6 +2,7 @@ import logging
 import os
 import time
 import json as _json
+import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -34,6 +35,25 @@ _DEFAULT_MARKETPLACE_ID = "EBAY_IT"
 _DEFAULT_CONTENT_LANGUAGE = "it-IT"
 
 
+def _extract_ebay_error_message(response: httpx.Response) -> str | None:
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+    errors = payload.get("errors")
+    if not isinstance(errors, list) or not errors:
+        return None
+    first_error = errors[0] or {}
+    if not isinstance(first_error, dict):
+        return None
+    message = first_error.get("message")
+    return str(message).strip() if message else None
+
+
+def _sanitize_ascii_text(value: str) -> str:
+    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+
+
 class EbayInventoryService:
     @staticmethod
     def _base_url() -> str:
@@ -44,20 +64,16 @@ class EbayInventoryService:
 
     @staticmethod
     def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
+        headers = dict(kwargs.get("headers") or {})
         # Serializzazione manuale del JSON per evitare che httpx aggiunga
         # automaticamente Content-Language per payload con caratteri non-ASCII.
         # L'eBay Inventory API rifiuta qualsiasi Content-Language (errorId 25709).
         if "json" in kwargs:
             body = _json.dumps(kwargs.pop("json"), ensure_ascii=True).encode("ascii")
-            headers = dict(kwargs.get("headers") or {})
             headers["Content-Type"] = "application/json"
-            headers.pop("Content-Language", None)
-            kwargs["headers"] = headers
             kwargs["content"] = body
-        else:
-            headers = kwargs.get("headers")
-            if isinstance(headers, dict) and "Content-Language" in headers:
-                kwargs["headers"] = {k: v for k, v in headers.items() if k != "Content-Language"}
+        kwargs["headers"] = {k: v for k, v in headers.items() if k.lower() != "content-language"}
+        logger.debug("eBay inventory request header keys: %s", sorted(kwargs["headers"].keys()))
 
         delay = 1
         for attempt in range(3):
@@ -119,10 +135,10 @@ class EbayInventoryService:
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
     ) -> None:
-        title = (product.nome or "").strip()
+        title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
             title = f"{title[:77]}..."
-        description = (product.descrizione or "").strip()
+        description = _sanitize_ascii_text((product.descrizione or "").strip())
         image_urls = EbayInventoryService._build_image_urls(product)
         if not image_urls:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
@@ -144,7 +160,7 @@ class EbayInventoryService:
         }
         if condition != "NEW":
             payload["conditionDescription"] = (
-                (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
+                _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
             )
 
         try:
@@ -169,7 +185,11 @@ class EbayInventoryService:
                 exc.response.status_code,
                 error_body,
             )
-            raise HTTPException(status_code=502, detail=f"Errore creazione inventory eBay: {exc.response.status_code}")
+            ebay_error_message = _extract_ebay_error_message(exc.response)
+            detail = f"Errore creazione inventory eBay: {exc.response.status_code}"
+            if ebay_error_message:
+                detail = f"{detail} ({ebay_error_message})"
+            raise HTTPException(status_code=502, detail=detail)
 
     @staticmethod
     def delete_inventory_item(token: str, sku: str) -> None:
