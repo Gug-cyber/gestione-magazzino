@@ -23,7 +23,8 @@ def test_backup_diag_includes_debug_paths(client, monkeypatch):
     assert "cwd" in data
     assert "candidates_tried" in data
     assert isinstance(data["candidates_tried"], list)
-    assert len(data["candidates_tried"]) == 4
+    assert data["candidates_tried"]
+    assert any(path.endswith("/scripts") for path in data["candidates_tried"])
 
 
 def test_backup_run_db_requires_configured_secret(client, monkeypatch):

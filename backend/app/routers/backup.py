@@ -34,6 +34,12 @@ router = APIRouter(prefix="/api/backup", tags=["backup"])
 
 
 def _scripts_dir_candidates(file_location: Optional[Path] = None, cwd: Optional[Path] = None) -> list[Path]:
+    """
+    Costruisce i path candidati per la directory `scripts`.
+
+    I parametri opzionali consentono test deterministici senza dipendere
+    da `__file__` e dalla cwd reale del processo.
+    """
     current = file_location or Path(__file__).resolve()
     current_cwd = cwd or Path.cwd()
     return [
