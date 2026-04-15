@@ -1,6 +1,32 @@
 import app.routers.backup as backup_router
 
 
+def test_resolve_scripts_dir_prefers_env(monkeypatch):
+    monkeypatch.setenv("SCRIPTS_DIR", "/tmp/custom-scripts")
+
+    resolved = backup_router._resolve_scripts_dir()
+
+    assert resolved.as_posix() == "/tmp/custom-scripts"
+
+
+def test_backup_diag_includes_debug_paths(client, monkeypatch):
+    monkeypatch.setenv("BACKUP_TRIGGER_SECRET", "test-secret")
+
+    response = client.get(
+        "/api/backup/diag",
+        headers={"X-Backup-Secret": "test-secret"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "file_location" in data
+    assert "cwd" in data
+    assert "candidates_tried" in data
+    assert isinstance(data["candidates_tried"], list)
+    assert data["candidates_tried"]
+    assert any(path.endswith("/scripts") for path in data["candidates_tried"])
+
+
 def test_backup_run_db_requires_configured_secret(client, monkeypatch):
     monkeypatch.delenv("BACKUP_TRIGGER_SECRET", raising=False)
 

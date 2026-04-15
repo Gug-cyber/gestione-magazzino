@@ -32,8 +32,55 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
-# Directory degli script (relativa alla root del progetto)
-SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts"
+
+def _scripts_dir_candidates(file_location: Optional[Path] = None, cwd: Optional[Path] = None) -> list[Path]:
+    """
+    Costruisce i path candidati per la directory `scripts`.
+
+    I parametri opzionali consentono test deterministici senza dipendere
+    da `__file__` e dalla cwd reale del processo.
+    """
+    current = file_location or Path(__file__).resolve()
+    current_cwd = cwd or Path.cwd()
+    return [
+        current.parent.parent.parent.parent / "scripts",
+        current.parent.parent.parent / "scripts",
+        current.parent.parent / "scripts",
+        current_cwd / "scripts",
+    ]
+
+
+def _resolve_scripts_dir() -> Path:
+    """
+    Risolve la directory degli script di backup.
+
+    Cerca in ordine:
+    1. Variabile d'ambiente SCRIPTS_DIR (configurabile su Render)
+    2. scripts/ relativo alla root del repo (risalendo da __file__)
+    3. scripts/ relativo al CWD
+    """
+    env_scripts_dir = os.getenv("SCRIPTS_DIR", "").strip()
+    if env_scripts_dir:
+        p = Path(env_scripts_dir)
+        logger.info("[backup] SCRIPTS_DIR da env: %s (exists=%s)", p, p.exists())
+        return p
+
+    candidates = _scripts_dir_candidates()
+    *check_candidates, cwd_scripts = candidates
+    for candidate in check_candidates:
+        if candidate.exists():
+            logger.info("[backup] SCRIPTS_DIR trovata: %s", candidate)
+            return candidate
+
+    logger.warning(
+        "[backup] SCRIPTS_DIR non trovata nei path standard. "
+        "Usare variabile d'ambiente SCRIPTS_DIR. Tentativo con CWD: %s",
+        cwd_scripts,
+    )
+    return cwd_scripts
+
+
+SCRIPTS_DIR = _resolve_scripts_dir()
 
 # Stato in memoria dell'ultimo backup (semplice, no DB)
 _last_backup_status: dict = {
@@ -230,7 +277,12 @@ async def backup_diag():
     Utile per debug su Render.
     """
     import shutil
+    file_location = Path(__file__).resolve()
+    candidates_tried = _scripts_dir_candidates()
     return {
+        "file_location": str(file_location),
+        "cwd": os.getcwd(),
+        "candidates_tried": [str(p) for p in candidates_tried],
         "scripts_dir": str(SCRIPTS_DIR),
         "scripts_dir_exists": SCRIPTS_DIR.exists(),
         "scripts_available": {
@@ -240,7 +292,6 @@ async def backup_diag():
         },
         "pg_dump_path": shutil.which("pg_dump"),
         "python_executable": sys.executable,
-        "cwd": os.getcwd(),
     }
 
 
