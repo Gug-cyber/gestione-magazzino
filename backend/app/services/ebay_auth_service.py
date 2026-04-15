@@ -204,6 +204,11 @@ class EbayAuthService:
 
     @staticmethod
     def refresh_access_token(connection: EbayConnection, db: Session) -> EbayConnection:
+        if not connection.refresh_token:
+            connection.status = "expired"
+            db.commit()
+            raise HTTPException(status_code=401, detail="Refresh token eBay mancante — riconnetti l'account eBay")
+
         client_id, client_secret = EbayAuthService._credentials()
         _, token_url, _ = EbayAuthService._base_urls()
         basic_auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
@@ -254,6 +259,12 @@ class EbayAuthService:
             raise HTTPException(status_code=400, detail="Connessione eBay non attiva")
 
         expires = connection.token_expires_at
+        # Se token_expires_at è None, forza il refresh
+        if expires is None:
+            logger.warning("token_expires_at è None — forzo il refresh del token eBay")
+            connection = EbayAuthService.refresh_access_token(connection, db)
+            return connection.access_token
+
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         if expires <= datetime.now(timezone.utc) + timedelta(seconds=60):
@@ -264,23 +275,31 @@ class EbayAuthService:
     def revoke_connection(connection: EbayConnection, db: Session) -> None:
         if not connection:
             return
-        client_id, client_secret = EbayAuthService._credentials()
-        _, _, revoke_url = EbayAuthService._base_urls()
-        basic_auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+        # Tenta la revoca su eBay, ma non bloccare il disconnect se fallisce
         try:
-            EbayAuthService._request_with_retry(
-                "POST",
-                revoke_url,
-                headers={
-                    "Authorization": f"Basic {basic_auth}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data={
-                    "token": connection.refresh_token,
-                    "token_type_hint": "REFRESH_TOKEN",
-                },
-            )
+            client_id, client_secret = EbayAuthService._credentials()
+            _, _, revoke_url = EbayAuthService._base_urls()
+            basic_auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+            if connection.refresh_token:
+                EbayAuthService._request_with_retry(
+                    "POST",
+                    revoke_url,
+                    headers={
+                        "Authorization": f"Basic {basic_auth}",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    data={
+                        "token": connection.refresh_token,
+                        "token_type_hint": "REFRESH_TOKEN",
+                    },
+                )
         except Exception as exc:
-            logger.warning("Impossibile revocare token eBay: %s", exc)
-        db.delete(connection)
-        db.commit()
+            logger.warning("Impossibile revocare token eBay (ignorato): %s", exc)
+        # Elimina sempre la connessione dal DB anche se la revoca eBay fallisce
+        try:
+            db.delete(connection)
+            db.commit()
+        except Exception as exc:
+            logger.error("Errore eliminazione connessione eBay dal DB: %s", exc)
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Errore durante la disconnessione eBay")
