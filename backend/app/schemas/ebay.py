@@ -55,6 +55,7 @@ class PublishRequest(BaseModel):
     ebay_condition: Optional[str] = None
     grading_service: Optional[str] = None
     grade: Optional[str] = None
+    description_override: Optional[str] = None
 
 
 class PricingPreviewResponse(BaseModel):

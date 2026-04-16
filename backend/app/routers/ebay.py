@@ -647,8 +647,6 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Quantità non disponibile")
     if not (product.nome or "").strip():
         raise HTTPException(status_code=400, detail="Il prodotto non ha un nome valido")
-    if not (product.descrizione or "").strip():
-        raise HTTPException(status_code=400, detail="Il prodotto non ha descrizione")
     if not product.foto_path:
         raise HTTPException(status_code=400, detail="Il prodotto non ha immagini — non è possibile pubblicare")
 
@@ -722,6 +720,8 @@ def publish_listing(
         db.commit()
         db.refresh(listing)
 
+    effective_description = (payload.description_override or product.descrizione or product.nome or "").strip()
+
     try:
         token = EbayAuthService.get_valid_token(connection, db)
         EbayInventoryService.create_or_update_inventory_item(
@@ -733,6 +733,7 @@ def publish_listing(
             ebay_condition=payload.ebay_condition,
             grading_service=payload.grading_service,
             grade=payload.grade,
+            description_override=effective_description,
         )
         offer_id = EbayOfferService.create_offer(
             token,
@@ -741,7 +742,7 @@ def publish_listing(
             quantity,
             connection.marketplace_id or "EBAY_IT",
             listing,
-            product.descrizione or "",
+            effective_description,
             float(shipping_cost),
             category_id=payload.ebay_category_id,
             listing_format=payload.listing_format,
