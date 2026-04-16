@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { prodottiAPI, getFotoUrl } from '../api/client'
 import { ebayApi } from '../api/ebay'
+import { useIsMobile } from '../hooks/useIsMobile'
+import '../styles/shared.css'
 
 function EbayPubblicaProdotto() {
   const navigate = useNavigate()
   const { productId: paramId } = useParams()
   const [searchParams] = useSearchParams()
   const productId = paramId || searchParams.get('product_id')
+  const isMobile = useIsMobile()
 
   const [product, setProduct] = useState(null)
   const [connection, setConnection] = useState({ connected: false })
@@ -35,6 +38,7 @@ function EbayPubblicaProdotto() {
   const [ebayCondition, setEbayCondition] = useState('')
   const [availableConditions, setAvailableConditions] = useState([])
   const [conditionsLoading, setConditionsLoading] = useState(false)
+  const [conditionsFromFallback, setConditionsFromFallback] = useState(false)
   const [gradingService, setGradingService] = useState('')
   const [gradingGrade, setGradingGrade] = useState('')
 
@@ -89,6 +93,7 @@ function EbayPubblicaProdotto() {
       return
     }
     setConditionsLoading(true)
+    setConditionsFromFallback(false)
     ebayApi.getCategoryConditions(selectedCategoryId, connection.marketplace_id || 'EBAY_IT')
       .then(res => {
         const conditions = res.data
@@ -103,6 +108,7 @@ function EbayPubblicaProdotto() {
         }
       })
       .catch(() => {
+        setConditionsFromFallback(true)
         const fallback = [
           { conditionId: '3000', conditionEnum: 'USED_EXCELLENT', conditionDescription: 'Ottime condizioni' },
           { conditionId: '4000', conditionEnum: 'USED_GOOD', conditionDescription: 'Buone condizioni' },
@@ -218,13 +224,13 @@ function EbayPubblicaProdotto() {
 
         {product && (
           <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {product.foto_url && <img src={getFotoUrl(product.foto_url)} alt={product.nome} style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8 }} />}
-              <div>
-                <div><strong>{product.nome}</strong></div>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: isMobile ? 'flex-start' : 'center' }}>
+              {product.foto_url && <img src={getFotoUrl(product.foto_url)} alt={product.nome} style={{ width: isMobile ? 64 : 88, height: isMobile ? 64 : 88, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, wordBreak: 'break-word' }}>{product.nome}</div>
                 <div>SKU: {product.sku}</div>
                 <div>Disponibile: {product.quantita}</div>
-                <div>{product.descrizione || 'Nessuna descrizione'}</div>
+                <div style={{ wordBreak: 'break-word' }}>{product.descrizione || 'Nessuna descrizione'}</div>
               </div>
             </div>
 
@@ -240,7 +246,7 @@ function EbayPubblicaProdotto() {
 
             <label style={{ display: 'grid', gap: 4 }}>
               Formato annuncio
-              <select value={listingFormat} onChange={e => setListingFormat(e.target.value)}>
+              <select value={listingFormat} onChange={e => setListingFormat(e.target.value)} style={{ width: '100%' }}>
                 <option value="FIXED_PRICE">Prezzo fisso</option>
                 <option value="AUCTION">Asta</option>
               </select>
@@ -255,7 +261,7 @@ function EbayPubblicaProdotto() {
 
                 <label style={{ display: 'grid', gap: 4 }}>
                   Durata asta
-                  <select value={auctionDuration} onChange={e => setAuctionDuration(e.target.value)}>
+                  <select value={auctionDuration} onChange={e => setAuctionDuration(e.target.value)} style={{ width: '100%' }}>
                     <option value="DAYS_3">3 giorni</option>
                     <option value="DAYS_5">5 giorni</option>
                     <option value="DAYS_7">7 giorni</option>
@@ -280,19 +286,25 @@ function EbayPubblicaProdotto() {
               {categoriesError && <div style={{ color: 'var(--color-danger)', fontSize: 13 }}>{categoriesError}</div>}
 
               {categoryLevels.map((cats, levelIdx) => (
-                <select
-                  key={levelIdx}
-                  value={categoryPath[levelIdx]?.id || ''}
-                  onChange={e => handleCategorySelect(levelIdx, e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">— Seleziona {levelIdx === 0 ? 'categoria' : 'sottocategoria'} —</option>
-                  {cats.map(cat => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}{cat.is_leaf ? ' ✓' : ' →'}
-                    </option>
-                  ))}
-                </select>
+                <div key={levelIdx} style={{ display: 'grid', gap: 4 }}>
+                  {levelIdx > 0 && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', paddingLeft: isMobile ? 0 : levelIdx * 12 }}>
+                      {'›'.repeat(levelIdx)} Sottocategoria livello {levelIdx}
+                    </div>
+                  )}
+                  <select
+                    value={categoryPath[levelIdx]?.id || ''}
+                    onChange={e => handleCategorySelect(levelIdx, e.target.value)}
+                    style={{ width: '100%', marginLeft: isMobile ? 0 : levelIdx * 12, maxWidth: isMobile ? '100%' : `calc(100% - ${levelIdx * 12}px)` }}
+                  >
+                    <option value="">— Seleziona {levelIdx === 0 ? 'categoria' : 'sottocategoria'} —</option>
+                    {cats.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}{cat.is_leaf ? ' ✓' : ' →'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               ))}
 
               {selectedCategoryId && (
@@ -312,16 +324,23 @@ function EbayPubblicaProdotto() {
                 Condizione eBay
                 {conditionsLoading
                   ? <div style={{ color: '#888', fontSize: 13 }}>Caricamento condizioni...</div>
-                  : <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)}>
-                      {product?.is_graded && (
-                        <option value="GRADED">Gradata (Graded)</option>
+                  : <>
+                      <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)} style={{ width: '100%' }}>
+                        {product?.is_graded && (
+                          <option value="GRADED">Gradata (Graded)</option>
+                        )}
+                        {availableConditions.map(c => (
+                          <option key={c.conditionId} value={c.conditionEnum}>
+                            {c.conditionDescription}
+                          </option>
+                        ))}
+                      </select>
+                      {conditionsFromFallback && (
+                        <div style={{ color: '#f57c00', fontSize: 13 }}>
+                          ⚠️ Impossibile verificare le condizioni valide per questa categoria. Le condizioni mostrate sono generiche e potrebbero non essere compatibili.
+                        </div>
                       )}
-                      {availableConditions.map(c => (
-                        <option key={c.conditionId} value={c.conditionEnum}>
-                          {c.conditionDescription}
-                        </option>
-                      ))}
-                    </select>
+                    </>
                 }
               </label>
             )}
@@ -332,7 +351,7 @@ function EbayPubblicaProdotto() {
 
                 <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}>
                   Grading Service
-                  <select value={gradingService} onChange={e => setGradingService(e.target.value)}>
+                  <select value={gradingService} onChange={e => setGradingService(e.target.value)} style={{ width: '100%' }}>
                     <option value="">-- Seleziona --</option>
                     <option value="PSA">PSA</option>
                     <option value="BGS">BGS (Beckett)</option>
@@ -409,11 +428,11 @@ function EbayPubblicaProdotto() {
               </strong>
             </div>
 
-            {validationMessage && <div style={{ color: 'var(--color-danger)' }}>{validationMessage}</div>}
-            {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
-            {success && <div style={{ color: 'var(--color-success)' }}>{success}</div>}
+            {validationMessage && <div style={{ color: 'var(--color-danger)', wordBreak: 'break-word' }}>{validationMessage}</div>}
+            {error && <div style={{ color: 'var(--color-danger)', wordBreak: 'break-word' }}>{error}</div>}
+            {success && <div style={{ color: 'var(--color-success)', wordBreak: 'break-word' }}>{success}</div>}
 
-            <button className="gm-btn gm-btn-primary" onClick={handlePublish} disabled={saving || !!validationMessage}>
+            <button className="gm-btn gm-btn-primary" onClick={handlePublish} disabled={saving || !!validationMessage} style={{ width: isMobile ? '100%' : undefined }}>
               {saving ? 'Pubblicazione...' : 'Pubblica su eBay'}
             </button>
           </div>

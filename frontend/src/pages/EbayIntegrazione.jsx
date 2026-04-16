@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ebayApi } from '../api/ebay'
+import { useIsMobile } from '../hooks/useIsMobile'
+import '../styles/shared.css'
 
 const MARKETPLACES = ['EBAY_IT', 'EBAY_DE', 'EBAY_FR', 'EBAY_ES', 'EBAY_GB', 'EBAY_US']
 
 function EbayIntegrazione() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [connection, setConnection] = useState({ connected: false })
   const [listings, setListings] = useState([])
   const [sales, setSales] = useState([])
@@ -107,28 +110,30 @@ function EbayIntegrazione() {
               <button className="gm-btn gm-btn-danger gm-btn-sm" onClick={handleDisconnect}>Disconnetti</button>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end' }}>
-              <label style={{ display: 'grid', gap: 4 }}>
+              <label style={{ display: 'grid', gap: 4, flex: isMobile ? '1 1 100%' : undefined }}>
                 Fee eBay %
                 <input
                   type="number"
                   step="0.01"
                   value={settings.fee_percentage}
                   onChange={(e) => setSettings((prev) => ({ ...prev, fee_percentage: e.target.value }))}
+                  style={{ width: isMobile ? '100%' : undefined }}
                 />
               </label>
-              <label style={{ display: 'grid', gap: 4 }}>
+              <label style={{ display: 'grid', gap: 4, flex: isMobile ? '1 1 100%' : undefined }}>
                 Marketplace
                 <select
                   value={settings.marketplace_id}
                   onChange={(e) => setSettings((prev) => ({ ...prev, marketplace_id: e.target.value }))}
+                  style={{ width: isMobile ? '100%' : undefined }}
                 >
                   {MARKETPLACES.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </label>
-              <button className="gm-btn gm-btn-secondary" onClick={handleSaveSettings} disabled={saving}>Salva impostazioni</button>
-              <button className="gm-btn gm-btn-primary" onClick={handleSyncOrders}>Sincronizza ordini eBay</button>
-              <button className="gm-btn gm-btn-secondary" onClick={handleSyncAllListings}>Sincronizza tutti i listing</button>
-              <button className="gm-btn gm-btn-secondary" onClick={() => navigate('/prodotti')}>Vai ai prodotti</button>
+              <button className="gm-btn gm-btn-secondary" onClick={handleSaveSettings} disabled={saving} style={{ flex: isMobile ? '1 1 100%' : undefined }}>Salva impostazioni</button>
+              <button className="gm-btn gm-btn-primary" onClick={handleSyncOrders} style={{ flex: isMobile ? '1 1 100%' : undefined }}>Sincronizza ordini eBay</button>
+              <button className="gm-btn gm-btn-secondary" onClick={handleSyncAllListings} style={{ flex: isMobile ? '1 1 100%' : undefined }}>Sincronizza tutti i listing</button>
+              <button className="gm-btn gm-btn-secondary" onClick={() => navigate('/prodotti')} style={{ flex: isMobile ? '1 1 100%' : undefined }}>Vai ai prodotti</button>
             </div>
           </div>
         )}
@@ -137,65 +142,112 @@ function EbayIntegrazione() {
 
       <div className="gm-card" style={{ padding: 16 }}>
         <h3 style={{ marginTop: 0 }}>Annunci eBay</h3>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th>Prodotto</th><th>SKU</th><th>Prezzo pubblicato</th><th>Netto atteso</th><th>Quantità</th><th>Status</th><th>Ultima sync</th><th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listings.map((l) => (
-                <tr key={l.id}>
-                  <td>{l.product_nome}</td>
-                  <td>{l.product_sku}</td>
-                  <td>{l.published_price ? `€${Number(l.published_price).toFixed(2)}` : '—'}</td>
-                  <td>{l.expected_net_price ? `€${Number(l.expected_net_price).toFixed(2)}` : '—'}</td>
-                  <td>{l.quantity_published}</td>
-                  <td><span style={{ background: badgeColor(l.status), color: 'white', borderRadius: 12, padding: '2px 8px', fontSize: 12 }}>{l.status}</span></td>
-                  <td>{l.last_sync_at ? new Date(l.last_sync_at).toLocaleString() : '—'}</td>
-                  <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="gm-btn gm-btn-secondary gm-btn-sm" onClick={async () => { await ebayApi.syncListingQuantity(l.id); await loadData() }}>Sincronizza quantità</button>
-                    <button className="gm-btn gm-btn-danger gm-btn-sm" onClick={async () => { await ebayApi.endListing(l.id); await loadData() }}>Termina annuncio</button>
-                    {l.ebay_listing_id && (
-                      <a className="gm-btn gm-btn-sm" href={`https://www.ebay.it/itm/${l.ebay_listing_id}`} target="_blank" rel="noreferrer">
-                        Apri eBay (nuova scheda)
-                      </a>
-                    )}
-                  </td>
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {listings.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>Nessun annuncio</div>}
+            {listings.map((l) => (
+              <div key={l.id} className="mobile-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <span className="mobile-card-title" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.product_nome}</span>
+                  <span style={{ background: badgeColor(l.status), color: 'white', borderRadius: 12, padding: '2px 8px', fontSize: 12, flexShrink: 0 }}>{l.status}</span>
+                </div>
+                <div className="mobile-card-row"><span className="mobile-card-label">SKU</span><span className="mobile-card-value">{l.product_sku}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Prezzo</span><span className="mobile-card-value">{l.published_price ? `€${Number(l.published_price).toFixed(2)}` : '—'}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Netto</span><span className="mobile-card-value">{l.expected_net_price ? `€${Number(l.expected_net_price).toFixed(2)}` : '—'}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Quantità</span><span className="mobile-card-value">{l.quantity_published}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Ultima sync</span><span className="mobile-card-value">{l.last_sync_at ? new Date(l.last_sync_at).toLocaleString() : '—'}</span></div>
+                <div className="mobile-card-footer" style={{ flexWrap: 'wrap' }}>
+                  <button className="gm-btn gm-btn-secondary gm-btn-sm" onClick={async () => { await ebayApi.syncListingQuantity(l.id); await loadData() }}>Sincronizza quantità</button>
+                  <button className="gm-btn gm-btn-danger gm-btn-sm" onClick={async () => { await ebayApi.endListing(l.id); await loadData() }}>Termina annuncio</button>
+                  {l.ebay_listing_id && (
+                    <a className="gm-btn gm-btn-sm" href={`https://www.ebay.it/itm/${l.ebay_listing_id}`} target="_blank" rel="noreferrer">
+                      Apri eBay
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th>Prodotto</th><th>SKU</th><th>Prezzo pubblicato</th><th>Netto atteso</th><th>Quantità</th><th>Status</th><th>Ultima sync</th><th>Azioni</th>
                 </tr>
-              ))}
-              {listings.length === 0 && <tr><td colSpan={8}>Nessun annuncio</td></tr>}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {listings.map((l) => (
+                  <tr key={l.id}>
+                    <td>{l.product_nome}</td>
+                    <td>{l.product_sku}</td>
+                    <td>{l.published_price ? `€${Number(l.published_price).toFixed(2)}` : '—'}</td>
+                    <td>{l.expected_net_price ? `€${Number(l.expected_net_price).toFixed(2)}` : '—'}</td>
+                    <td>{l.quantity_published}</td>
+                    <td><span style={{ background: badgeColor(l.status), color: 'white', borderRadius: 12, padding: '2px 8px', fontSize: 12 }}>{l.status}</span></td>
+                    <td>{l.last_sync_at ? new Date(l.last_sync_at).toLocaleString() : '—'}</td>
+                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className="gm-btn gm-btn-secondary gm-btn-sm" onClick={async () => { await ebayApi.syncListingQuantity(l.id); await loadData() }}>Sincronizza quantità</button>
+                      <button className="gm-btn gm-btn-danger gm-btn-sm" onClick={async () => { await ebayApi.endListing(l.id); await loadData() }}>Termina annuncio</button>
+                      {l.ebay_listing_id && (
+                        <a className="gm-btn gm-btn-sm" href={`https://www.ebay.it/itm/${l.ebay_listing_id}`} target="_blank" rel="noreferrer">
+                          Apri eBay (nuova scheda)
+                        </a>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {listings.length === 0 && <tr><td colSpan={8}>Nessun annuncio</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="gm-card" style={{ padding: 16 }}>
         <h3 style={{ marginTop: 0 }}>Vendite recenti</h3>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th>Order ID eBay</th><th>Prodotto</th><th>Quantità venduta</th><th>Lordo</th><th>Fee</th><th>Netto</th><th>Data vendita</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.ebay_order_id}</td>
-                  <td>{s.product_id || 'N/D'}</td>
-                  <td>{s.quantity_sold}</td>
-                  <td>{s.gross_amount != null ? `€${Number(s.gross_amount).toFixed(2)}` : '—'}</td>
-                  <td>{s.fee_amount != null ? `€${Number(s.fee_amount).toFixed(2)}` : '—'}</td>
-                  <td>{s.net_amount != null ? `€${Number(s.net_amount).toFixed(2)}` : '—'}</td>
-                  <td>{s.sold_at ? new Date(s.sold_at).toLocaleString() : '—'}</td>
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {sales.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>Nessuna vendita sincronizzata</div>}
+            {sales.map((s) => (
+              <div key={s.id} className="mobile-card">
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <span className="mobile-card-title">{s.product_id || 'N/D'}</span>
+                </div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Order ID</span><span className="mobile-card-value" style={{ fontSize: 12, wordBreak: 'break-word' }}>{s.ebay_order_id}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Quantità</span><span className="mobile-card-value">{s.quantity_sold}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Lordo</span><span className="mobile-card-value">{s.gross_amount != null ? `€${Number(s.gross_amount).toFixed(2)}` : '—'}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Fee</span><span className="mobile-card-value">{s.fee_amount != null ? `€${Number(s.fee_amount).toFixed(2)}` : '—'}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Netto</span><span className="mobile-card-value">{s.net_amount != null ? `€${Number(s.net_amount).toFixed(2)}` : '—'}</span></div>
+                <div className="mobile-card-row"><span className="mobile-card-label">Data</span><span className="mobile-card-value">{s.sold_at ? new Date(s.sold_at).toLocaleString() : '—'}</span></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th>Order ID eBay</th><th>Prodotto</th><th>Quantità venduta</th><th>Lordo</th><th>Fee</th><th>Netto</th><th>Data vendita</th>
                 </tr>
-              ))}
-              {sales.length === 0 && <tr><td colSpan={7}>Nessuna vendita sincronizzata</td></tr>}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sales.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.ebay_order_id}</td>
+                    <td>{s.product_id || 'N/D'}</td>
+                    <td>{s.quantity_sold}</td>
+                    <td>{s.gross_amount != null ? `€${Number(s.gross_amount).toFixed(2)}` : '—'}</td>
+                    <td>{s.fee_amount != null ? `€${Number(s.fee_amount).toFixed(2)}` : '—'}</td>
+                    <td>{s.net_amount != null ? `€${Number(s.net_amount).toFixed(2)}` : '—'}</td>
+                    <td>{s.sold_at ? new Date(s.sold_at).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+                {sales.length === 0 && <tr><td colSpan={7}>Nessuna vendita sincronizzata</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )
