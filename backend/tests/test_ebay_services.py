@@ -1315,3 +1315,49 @@ def test_publish_with_condition_retry_propagates_non_condition_error(monkeypatch
     assert exc_info.value.detail == "Errore generico eBay"
     # Only the first fallback should have been tried before the non-condition error stopped the chain
     assert len(inventory_updates) == 1
+
+
+def test_publish_retry_queries_metadata_api_for_valid_conditions(monkeypatch):
+    """
+    Verifica che quando publish_offer fallisce con 25059,
+    il retry interroghi l'API Metadata per le condizioni valide
+    invece di usare solo il chain hardcodato.
+    """
+    from app.routers.ebay import _fetch_valid_conditions_for_category
+
+    metadata_calls = []
+
+    def mock_fetch_conditions(token, category_id, marketplace_id):
+        metadata_calls.append(category_id)
+        return ["GRADED"]  # solo questa è valida per la categoria fittizia
+
+    inventory_updates = []
+    publish_calls = {"count": 0}
+
+    def mock_publish(token, offer_id):
+        publish_calls["count"] += 1
+        if publish_calls["count"] == 1:
+            raise _make_condition_error_exc()
+        return "LISTING-GRADED"
+
+    def mock_inventory_update(token, sku, product, listing, marketplace_id, ebay_condition=None, **kw):
+        inventory_updates.append(ebay_condition)
+
+    monkeypatch.setattr("app.routers.ebay._fetch_valid_conditions_for_category", mock_fetch_conditions)
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.publish_offer", mock_publish)
+    monkeypatch.setattr(
+        "app.routers.ebay.EbayInventoryService.create_or_update_inventory_item",
+        mock_inventory_update,
+    )
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.delete_offer", lambda token, oid: None)
+    monkeypatch.setattr(
+        "app.routers.ebay.EbayOfferService.create_offer",
+        lambda *a, **kw: "OFFER-GRADED",
+    )
+
+    _, listing_id = _publish_with_condition_retry(**_retry_kwargs("OFFER-ORIG"))
+
+    assert len(metadata_calls) == 1  # chiamata all'API Metadata
+    assert metadata_calls[0] == "183454"  # category_id da _retry_kwargs
+    assert listing_id == "LISTING-GRADED"
+    assert "GRADED" in inventory_updates  # condizione usata nel retry

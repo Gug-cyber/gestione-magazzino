@@ -413,8 +413,81 @@ _DEFAULT_CONDITIONS = [
     {"conditionId": "5000", "conditionEnum": "USED_ACCEPTABLE", "conditionDescription": "Condizioni accettabili (Used Acceptable)"},
 ]
 
-# Ordered fallback chain for condition retries: attempt each in sequence when 25059 is returned
+# Ordered fallback chain for condition retries: used when Metadata API is unavailable
 _CONDITION_FALLBACK_CHAIN = ["USED_GOOD", "USED_EXCELLENT", "NEW"]
+
+
+def _fetch_valid_conditions_for_category(
+    token: str,
+    category_id: str,
+    marketplace_id: str,
+) -> list:
+    """
+    Interroga l'API eBay Metadata per ottenere le condizioni valide per una categoria.
+    Restituisce una lista di conditionEnum (es. ["USED_EXCELLENT", "USED_GOOD"]).
+    In caso di errore, restituisce la lista di fallback hardcodata.
+    Usa il token user-level passato come parametro.
+    """
+    if not category_id:
+        return list(_CONDITION_FALLBACK_CHAIN)
+
+    env = _get_ebay_env()
+    base_url = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
+
+    try:
+        resp = httpx.get(
+            f"{base_url}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_condition_policies",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
+            },
+            params={"filter": f"categoryId:{category_id}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        policies = data.get("itemConditionPolicies", [])
+        if not policies:
+            logger.warning(
+                "Nessuna policy di condizione trovata per categoria %s — uso fallback hardcodato",
+                category_id,
+            )
+            return list(_CONDITION_FALLBACK_CHAIN)
+        conditions = policies[0].get("itemConditions", [])
+        result = []
+        for c in conditions:
+            cid = str(c.get("conditionId", ""))
+            if not cid:
+                continue
+            enum = _CONDITION_ID_TO_ENUM.get(cid)
+            if enum is None:
+                logger.warning(
+                    "conditionId sconosciuto %s per categoria %s — ignorato",
+                    cid,
+                    category_id,
+                )
+                continue
+            result.append(enum)
+        if result:
+            logger.info(
+                "Condizioni valide da API Metadata per categoria %s: %s",
+                category_id,
+                result,
+            )
+            return result
+        logger.warning(
+            "Lista condizioni vuota da API Metadata per categoria %s — uso fallback hardcodato",
+            category_id,
+        )
+        return list(_CONDITION_FALLBACK_CHAIN)
+    except Exception as exc:
+        logger.warning(
+            "Impossibile recuperare condizioni eBay per categoria %s: %s — uso fallback hardcodato",
+            category_id,
+            exc,
+        )
+        return list(_CONDITION_FALLBACK_CHAIN)
 
 
 @router.get("/categories/{category_id}/conditions")
@@ -540,7 +613,14 @@ def _publish_with_condition_retry(
             raise
 
         _last_exc: Exception = publish_exc
-        for fallback_condition in _CONDITION_FALLBACK_CHAIN:
+        # Query Metadata API for valid conditions for this specific category
+        valid_conditions = _fetch_valid_conditions_for_category(
+            token,
+            ebay_category_id,
+            marketplace_id or "EBAY_IT",
+        )
+        fallback_chain = valid_conditions if valid_conditions else list(_CONDITION_FALLBACK_CHAIN)
+        for fallback_condition in fallback_chain:
             logger.warning(
                 "Condizione non valida per la categoria — retry con %s "
                 "(product_id=%s, offer_id=%s)",
@@ -621,7 +701,7 @@ def _publish_with_condition_retry(
         logger.warning(
             "Tutti i retry di condizione falliti per product_id=%s (catena: %s)",
             product.id,
-            _CONDITION_FALLBACK_CHAIN,
+            fallback_chain,
         )
         raise _last_exc
 

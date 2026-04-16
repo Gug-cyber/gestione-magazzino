@@ -58,7 +58,7 @@ class EbayInventoryService:
         clean_headers = dict(headers) if headers else {}
         if json is not None and "content-type" not in {k.lower() for k in clean_headers}:
             clean_headers["Content-Type"] = "application/json"
-        logger.info("eBay inventory request header keys: %%s", sorted(clean_headers.keys()))
+        logger.info("eBay inventory request header keys: %s", sorted(clean_headers.keys()))
 
         session = requests.Session()
         session.headers.clear()
@@ -89,7 +89,7 @@ class EbayInventoryService:
                     error_body = response.text
                 except Exception:
                     error_body = "<unreadable>"
-                logger.error("eBay inventory_item error %%s — body: %%s", status, error_body)
+                logger.error("eBay inventory_item error %s — body: %s", status, error_body)
                 try:
                     error_data = _json.loads(error_body)
                     errors = error_data.get("errors", [])
