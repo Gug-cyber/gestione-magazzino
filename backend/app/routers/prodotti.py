@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 import os
+import uuid
 import cloudinary
 import cloudinary.uploader
 from datetime import datetime as dt_datetime
@@ -500,10 +501,10 @@ async def upload_foto_aggiuntiva(
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="Il file supera il limite massimo di 10 MB")
     existing = db_prodotto.foto_aggiuntive or []
-    if len(existing) >= 11:
-        raise HTTPException(status_code=400, detail="Limite massimo di foto aggiuntive raggiunto (11, più la foto principale = 12 totali per eBay)")
+    max_extra = 11 if db_prodotto.foto_path else 12
+    if len(existing) >= max_extra:
+        raise HTTPException(status_code=400, detail=f"Limite massimo di foto aggiuntive raggiunto ({max_extra} extra consentite per rispettare il limite eBay di 12 immagini totali)")
     get_cloudinary()
-    import uuid
     unique_id = uuid.uuid4().hex[:8]
     result = cloudinary.uploader.upload(
         contents,

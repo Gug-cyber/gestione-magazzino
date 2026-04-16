@@ -987,7 +987,7 @@ function DettaglioProdotto() {
         )}
         {(prodotto.foto_aggiuntive || []).length === 0 && (
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontStyle: 'italic', marginBottom: 12 }}>
-            Nessuna foto aggiuntiva. Puoi aggiungere fino a {11 - (prodotto.foto_url ? 0 : 1)} foto extra (il limite eBay è 12 totali inclusa la foto principale).
+            Nessuna foto aggiuntiva. Puoi aggiungere fino a {11 - (prodotto.foto_url ? 1 : 0)} foto extra (il limite eBay è 12 totali inclusa la foto principale).
           </p>
         )}
         <input
@@ -1014,7 +1014,7 @@ function DettaglioProdotto() {
         <button
           className="gm-btn gm-btn-secondary"
           onClick={() => fotoAggiuntiveInputRef.current?.click()}
-          disabled={uploadingFotoAggiuntiva || (prodotto.foto_aggiuntive || []).length >= 11}
+          disabled={uploadingFotoAggiuntiva || (prodotto.foto_aggiuntive || []).length >= (prodotto.foto_url ? 11 : 12)}
           style={{ fontSize: '0.85rem' }}
         >
           {uploadingFotoAggiuntiva ? '⏳ Caricamento...' : '➕ Aggiungi foto'}
