@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 _policy_cache: dict = {}
 _policy_cache_lock = threading.Lock()
 _POLICY_CACHE_TTL = 7200  # 2 ore
+
+_location_cache: dict = {}
+_location_cache_lock = threading.Lock()
+_LOCATION_KEY = "default_it"
+
 _MARKETPLACE_CURRENCY_MAP = {
     "EBAY_IT": "EUR",
     "EBAY_DE": "EUR",
@@ -34,6 +39,17 @@ _MARKETPLACE_LANGUAGE_MAP = {
     "EBAY_AU": "en-AU",
     "EBAY_CA": "en-CA",
 }
+_MARKETPLACE_COUNTRY_MAP = {
+    "EBAY_IT": "IT",
+    "EBAY_DE": "DE",
+    "EBAY_FR": "FR",
+    "EBAY_ES": "ES",
+    "EBAY_GB": "GB",
+    "EBAY_US": "US",
+    "EBAY_AU": "AU",
+    "EBAY_CA": "CA",
+}
+
 
 def _sanitize_description(text: str) -> str:
     if not text:
@@ -43,6 +59,7 @@ def _sanitize_description(text: str) -> str:
     if len(clean) > 4000:
         clean = clean[:3997] + "..."
     return clean or "Prodotto in ottime condizioni."
+
 
 def _extract_ebay_error_message(response: httpx.Response) -> str | None:
     try:
@@ -58,8 +75,8 @@ def _extract_ebay_error_message(response: httpx.Response) -> str | None:
     message = first_error.get("message")
     return str(message).strip() if message else None
 
+
 def _extract_existing_offer_id(response: httpx.Response) -> str | None:
-    """Extract offerId from eBay 'Offer entity already exists' error response."""
     try:
         payload = response.json()
     except Exception:
@@ -74,9 +91,11 @@ def _extract_existing_offer_id(response: httpx.Response) -> str | None:
                     return str(param["value"])
     return None
 
+
 def _content_language_for_marketplace(marketplace_id: str | None) -> str:
     normalized = (marketplace_id or "").strip().upper()
     return _MARKETPLACE_LANGUAGE_MAP.get(normalized, "it-IT")
+
 
 class EbayOfferService:
     @staticmethod
@@ -94,7 +113,6 @@ class EbayOfferService:
             headers.setdefault("Content-Type", "application/json")
             kwargs["content"] = body
         kwargs["headers"] = headers
-        logger.info("eBay offer request header keys: %%s", sorted(headers.keys()))
 
         delay = 1
         for attempt in range(3):
@@ -136,6 +154,66 @@ class EbayOfferService:
         return {"Authorization": f"Bearer {token}"}
 
     @staticmethod
+    def _ensure_merchant_location(token: str, marketplace_id: str) -> str:
+        with _location_cache_lock:
+            if _location_cache.get("confirmed"):
+                return _LOCATION_KEY
+
+        base = EbayOfferService._base_url()
+        url = f"{base}/sell/inventory/v1/location/{_LOCATION_KEY}"
+        country = _MARKETPLACE_COUNTRY_MAP.get((marketplace_id or "").strip().upper(), "IT")
+
+        try:
+            EbayOfferService._request_with_retry(
+                "GET",
+                url,
+                headers=EbayOfferService._auth_header(token),
+            )
+            logger.info("eBay merchant location '%s' already exists", _LOCATION_KEY)
+            with _location_cache_lock:
+                _location_cache["confirmed"] = True
+            return _LOCATION_KEY
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 404:
+                logger.warning(
+                    "eBay GET location error %s — skipping location creation",
+                    exc.response.status_code,
+                )
+                return _LOCATION_KEY
+
+        payload = {
+            "location": {
+                "address": {
+                    "country": country,
+                }
+            },
+            "locationTypes": ["WAREHOUSE"],
+            "name": "Magazzino principale",
+            "merchantLocationStatus": "ENABLED",
+        }
+        try:
+            EbayOfferService._request_with_retry(
+                "POST",
+                url,
+                headers=EbayOfferService._offer_headers(token, marketplace_id),
+                json=payload,
+            )
+            logger.info("eBay merchant location '%s' created successfully", _LOCATION_KEY)
+            with _location_cache_lock:
+                _location_cache["confirmed"] = True
+        except httpx.HTTPStatusError as exc:
+            try:
+                body = exc.response.text
+            except Exception:
+                body = "<unreadable>"
+            logger.warning(
+                "eBay create location error %s — body: %s (will continue without location)",
+                exc.response.status_code,
+                body,
+            )
+        return _LOCATION_KEY
+
+    @staticmethod
     def _fetch_default_policy_id(token: str, marketplace_id: str, policy_type: str) -> str:
         cache_key = f"{marketplace_id}:{policy_type}"
         now = time.time()
@@ -164,7 +242,7 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay fetch policy error %%s (type=%%s, marketplace=%%s) — body: %%s",
+                "eBay fetch policy error %s (type=%s, marketplace=%s) — body: %s",
                 exc.response.status_code,
                 policy_type,
                 marketplace_id,
@@ -197,6 +275,29 @@ class EbayOfferService:
         return policy_id
 
     @staticmethod
+    def _update_offer(token: str, offer_id: str, payload: dict, marketplace_id: str) -> None:
+        url = f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}"
+        try:
+            EbayOfferService._request_with_retry(
+                "PUT",
+                url,
+                headers=EbayOfferService._offer_headers(token, marketplace_id),
+                json=payload,
+            )
+            logger.info("eBay offer %s updated successfully", offer_id)
+        except httpx.HTTPStatusError as exc:
+            try:
+                body = exc.response.text
+            except Exception:
+                body = "<unreadable>"
+            logger.warning(
+                "eBay update offer %s error %s — body: %s (will try to publish anyway)",
+                offer_id,
+                exc.response.status_code,
+                body,
+            )
+
+    @staticmethod
     def create_offer(
         token: str,
         sku: str,
@@ -207,6 +308,8 @@ class EbayOfferService:
         description: str,
         shipping_cost: float = 5.90,
     ) -> str:
+        location_key = EbayOfferService._ensure_merchant_location(token, marketplace_id)
+
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 fulfillment_future = executor.submit(
@@ -231,14 +334,14 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay policy fetch error %%s (marketplace=%%s) — body: %%s",
+                "eBay policy fetch error %s (marketplace=%s) — body: %s",
                 exc.response.status_code,
                 marketplace_id,
                 error_body,
             )
             raise HTTPException(status_code=502, detail=f"Errore recupero policy eBay: {exc.response.status_code}")
         except (concurrent.futures.CancelledError, concurrent.futures.BrokenExecutor, RuntimeError) as exc:
-            logger.exception("Errore interno durante il recupero policy eBay: %%s", exc)
+            logger.exception("Errore interno durante il recupero policy eBay: %s", exc)
             raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = _sanitize_description(description)
@@ -257,6 +360,7 @@ class EbayOfferService:
             "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
             "listingDescription": listing_description,
+            "merchantLocationKey": location_key,
             "listingPolicies": {
                 "fulfillmentPolicyId": fulfillment_policy_id,
                 "paymentPolicyId": payment_policy_id,
@@ -288,16 +392,16 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay create_offer error %%s — body: %%s",
+                "eBay create_offer error %s — body: %s",
                 exc.response.status_code,
                 error_body,
             )
-            # Se l'offer esiste già su eBay, recupera l'offerId esistente
             if exc.response.status_code == 400:
                 existing_offer_id = _extract_existing_offer_id(exc.response)
                 if existing_offer_id:
-                    logger.info("eBay offer already exists, reusing offerId: %%s", existing_offer_id)
+                    logger.info("eBay offer already exists, updating and reusing offerId: %s", existing_offer_id)
                     listing_db.ebay_offer_id = existing_offer_id
+                    EbayOfferService._update_offer(token, existing_offer_id, payload, marketplace_id)
                     return existing_offer_id
             ebay_error_message = _extract_ebay_error_message(exc.response)
             detail = f"Errore creazione offer eBay: {exc.response.status_code}"
@@ -320,7 +424,7 @@ class EbayOfferService:
             except Exception:
                 error_body = "<unreadable>"
             logger.error(
-                "eBay publish_offer error %%s (offer_id=%%s) — body: %%s",
+                "eBay publish_offer error %s (offer_id=%s) — body: %s",
                 exc.response.status_code,
                 offer_id,
                 error_body,
