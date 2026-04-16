@@ -31,6 +31,10 @@ _VALID_EBAY_CONDITIONS = {
     "USED_ACCEPTABLE",
     "FOR_PARTS_OR_NOT_WORKING",
     "GRADED",
+    # Trading card / collectibles category enums (e.g. category 183454 on EBAY_IT)
+    "VERY_GOOD",
+    "GOOD",
+    "ACCEPTABLE",
 }
 
 _MARKETPLACE_LANGUAGE_MAP = {

@@ -396,18 +396,44 @@ def get_ebay_categories(
         raise HTTPException(status_code=502, detail=f"Errore di rete eBay: {exc}")
 
 
-_CONDITION_ID_TO_ENUM = {
+_STANDARD_CONDITION_ID_TO_ENUM = {
     "1000": "NEW",
     "1500": "LIKE_NEW",
     "2000": "MANUFACTURER_REFURBISHED",
     "2500": "SELLER_REFURBISHED",
-    "2750": "LIKE_NEW",           # Near Mint or Better (trading cards, sports cards)
     "3000": "USED_EXCELLENT",
     "4000": "USED_GOOD",
     "5000": "USED_ACCEPTABLE",
     "6000": "FOR_PARTS_OR_NOT_WORKING",
-    "7000": "FOR_PARTS_OR_NOT_WORKING",  # Poor (some marketplaces)
 }
+
+# Trading card categories (e.g. 183454 on EBAY_IT) use a distinct set of conditionIds
+# that include 2750 (Near Mint or Better) and/or 7000 (Poor), and require different enums.
+_TRADING_CARD_CONDITION_MAP = {
+    "2750": "LIKE_NEW",
+    "3000": "VERY_GOOD",
+    "4000": "GOOD",
+    "5000": "ACCEPTABLE",
+    "6000": "ACCEPTABLE",
+    "7000": "FOR_PARTS_OR_NOT_WORKING",
+}
+
+# These conditionIds are exclusive to trading card / collectibles categories.
+# Their presence in the policy's conditionId set identifies the policy type.
+_TRADING_CARD_INDICATOR_IDS = {"2750", "7000"}
+
+
+def _get_condition_enum_for_policy(condition_id: str, all_condition_ids: list) -> str:
+    """
+    Returns the correct eBay conditionEnum for a given conditionId, taking into account
+    whether the policy belongs to a trading-card category.
+    Trading card policies are identified by the presence of conditionId 2750 or 7000.
+    """
+    is_trading_card = bool(_TRADING_CARD_INDICATOR_IDS & set(all_condition_ids))
+    if is_trading_card:
+        return _TRADING_CARD_CONDITION_MAP.get(condition_id, "GOOD")
+    return _STANDARD_CONDITION_ID_TO_ENUM.get(condition_id, "USED_GOOD")
+
 
 _DEFAULT_CONDITIONS = [
     {"conditionId": "3000", "conditionEnum": "USED_EXCELLENT", "conditionDescription": "Ottime condizioni (Used Excellent)"},
@@ -459,17 +485,23 @@ def get_category_conditions(
         if not item_conditions:
             return _DEFAULT_CONDITIONS
 
+        all_ids = [str(c.get("conditionId", "")) for c in item_conditions]
         result = []
         for cond in item_conditions:
             condition_id = str(cond.get("conditionId", ""))
             condition_description = cond.get("conditionDescription", condition_id)
-            condition_enum = _CONDITION_ID_TO_ENUM.get(condition_id, "USED_GOOD")
+            condition_enum = _get_condition_enum_for_policy(condition_id, all_ids)
             result.append({
                 "conditionId": condition_id,
                 "conditionEnum": condition_enum,
                 "conditionDescription": condition_description,
             })
 
+        logger.info(
+            "eBay conditions for category %s: %s",
+            category_id,
+            [(c["conditionId"], c["conditionEnum"]) for c in result],
+        )
         return result
 
     except (httpx.HTTPStatusError, httpx.RequestError) as exc:
