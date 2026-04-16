@@ -21,6 +21,18 @@ _CONDITION_MAP = {
     "Poor": "USED_ACCEPTABLE",
 }
 
+_VALID_EBAY_CONDITIONS = {
+    "NEW",
+    "LIKE_NEW",
+    "MANUFACTURER_REFURBISHED",
+    "SELLER_REFURBISHED",
+    "USED_EXCELLENT",
+    "USED_GOOD",
+    "USED_ACCEPTABLE",
+    "FOR_PARTS_OR_NOT_WORKING",
+    "GRADED",
+}
+
 _MARKETPLACE_LANGUAGE_MAP = {
     "EBAY_IT": "it-IT",
     "EBAY_DE": "de-DE",
@@ -165,7 +177,10 @@ class EbayInventoryService:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
         content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
-        condition = ebay_condition or _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+        condition = (
+            ebay_condition if ebay_condition and ebay_condition in _VALID_EBAY_CONDITIONS
+            else _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+        )
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
 
         product_payload: dict = {

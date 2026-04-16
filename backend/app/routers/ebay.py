@@ -448,7 +448,11 @@ def get_category_conditions(
         if not item_condition_policies:
             return _DEFAULT_CONDITIONS
 
-        policy = item_condition_policies[0]
+        policy = next(
+            # eBay may return categoryId as either a number or a string, so compare as strings
+            (p for p in item_condition_policies if str(p.get("categoryId")) == str(category_id)),
+            item_condition_policies[0],
+        )
         item_conditions = policy.get("itemConditions", [])
         if not item_conditions:
             return _DEFAULT_CONDITIONS
@@ -680,19 +684,41 @@ def publish_listing(
     published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
     expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)
 
-    listing = EbayListing(
-        product_id=product.id,
-        connection_id=connection.id,
-        status="draft",
-        quantity_published=quantity,
-        published_price=published_price,
-        expected_net_price=expected_net_price,
-        fee_percentage=fee_percentage,
-        shipping_cost=shipping_cost,
+    # Reuse an existing error-state listing for the same product/connection to avoid
+    # accumulating stale listings and triggering "offer already exists" cycles on eBay.
+    listing = (
+        db.query(EbayListing)
+        .filter(
+            EbayListing.product_id == product.id,
+            EbayListing.connection_id == connection.id,
+            EbayListing.status == "error",
+        )
+        .first()
     )
-    db.add(listing)
-    db.commit()
-    db.refresh(listing)
+    if listing:
+        listing.status = "draft"
+        listing.quantity_published = quantity
+        listing.published_price = published_price
+        listing.expected_net_price = expected_net_price
+        listing.fee_percentage = fee_percentage
+        listing.shipping_cost = shipping_cost
+        listing.error_message = None
+        db.commit()
+        db.refresh(listing)
+    else:
+        listing = EbayListing(
+            product_id=product.id,
+            connection_id=connection.id,
+            status="draft",
+            quantity_published=quantity,
+            published_price=published_price,
+            expected_net_price=expected_net_price,
+            fee_percentage=fee_percentage,
+            shipping_cost=shipping_cost,
+        )
+        db.add(listing)
+        db.commit()
+        db.refresh(listing)
 
     try:
         token = EbayAuthService.get_valid_token(connection, db)
@@ -739,7 +765,12 @@ def publish_listing(
         raise HTTPException(status_code=504, detail="Timeout durante la pubblicazione eBay - riprova tra qualche secondo")
     except HTTPException as exc:
         listing.status = "error"
-        if getattr(exc, "is_condition_error", False):
+        is_condition_error = getattr(exc, "is_condition_error", False)
+        if not is_condition_error:
+            detail_text = exc.detail if isinstance(exc.detail, str) else ""
+            if "condition" in detail_text.lower() or "condizione" in detail_text.lower():
+                is_condition_error = True
+        if is_condition_error:
             exc = HTTPException(
                 status_code=400,
                 detail="Condizione non valida per la categoria eBay selezionata. Torna indietro e seleziona una condizione compatibile con la categoria.",
