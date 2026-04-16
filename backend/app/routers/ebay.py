@@ -413,82 +413,6 @@ _DEFAULT_CONDITIONS = [
     {"conditionId": "5000", "conditionEnum": "USED_ACCEPTABLE", "conditionDescription": "Condizioni accettabili (Used Acceptable)"},
 ]
 
-# Ordered fallback chain for condition retries: used when Metadata API is unavailable
-_CONDITION_FALLBACK_CHAIN = ["USED_GOOD", "USED_EXCELLENT", "NEW"]
-
-
-def _fetch_valid_conditions_for_category(
-    token: str,
-    category_id: str,
-    marketplace_id: str,
-) -> list:
-    """
-    Interroga l'API eBay Metadata per ottenere le condizioni valide per una categoria.
-    Restituisce una lista di conditionEnum (es. ["USED_EXCELLENT", "USED_GOOD"]).
-    In caso di errore, restituisce la lista di fallback hardcodata.
-    Usa il token user-level passato come parametro.
-    """
-    if not category_id:
-        return list(_CONDITION_FALLBACK_CHAIN)
-
-    env = _get_ebay_env()
-    base_url = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
-
-    try:
-        resp = httpx.get(
-            f"{base_url}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_condition_policies",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
-            },
-            params={"filter": f"categoryId:{category_id}"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        policies = data.get("itemConditionPolicies", [])
-        if not policies:
-            logger.warning(
-                "Nessuna policy di condizione trovata per categoria %s — uso fallback hardcodato",
-                category_id,
-            )
-            return list(_CONDITION_FALLBACK_CHAIN)
-        conditions = policies[0].get("itemConditions", [])
-        result = []
-        for c in conditions:
-            cid = str(c.get("conditionId", ""))
-            if not cid:
-                continue
-            enum = _CONDITION_ID_TO_ENUM.get(cid)
-            if enum is None:
-                logger.warning(
-                    "conditionId sconosciuto %s per categoria %s — ignorato",
-                    cid,
-                    category_id,
-                )
-                continue
-            result.append(enum)
-        if result:
-            logger.info(
-                "Condizioni valide da API Metadata per categoria %s: %s",
-                category_id,
-                result,
-            )
-            return result
-        logger.warning(
-            "Lista condizioni vuota da API Metadata per categoria %s — uso fallback hardcodato",
-            category_id,
-        )
-        return list(_CONDITION_FALLBACK_CHAIN)
-    except Exception as exc:
-        logger.warning(
-            "Impossibile recuperare condizioni eBay per categoria %s: %s — uso fallback hardcodato",
-            category_id,
-            exc,
-        )
-        return list(_CONDITION_FALLBACK_CHAIN)
-
 
 @router.get("/categories/{category_id}/conditions")
 def get_category_conditions(
@@ -573,137 +497,6 @@ def _normalize_bearer_token(token: str) -> str:
     if token.startswith("Bearer "):
         return token.split(" ", 1)[1]
     return token
-
-
-def _publish_with_condition_retry(
-    token: str,
-    product,
-    listing,
-    offer_id: str,
-    marketplace_id: str,
-    published_price,
-    quantity: int,
-    shipping_cost,
-    ebay_category_id,
-    listing_format: str,
-    auction_start_price,
-    auction_duration,
-    auction_reserve_price,
-    auction_buy_it_now_price,
-    grading_service,
-    grade,
-) -> tuple:
-    """
-    Attempts to publish *offer_id*.  If eBay returns errorId 25059 (condition not valid
-    for category), iterates through *_CONDITION_FALLBACK_CHAIN*:
-      1. Updates the inventory_item with the fallback condition FIRST
-      2. Deletes the old offer
-      3. Recreates the offer
-      4. Tries to publish again
-
-    Returns ``(final_offer_id, ebay_listing_id)`` on success.
-    Raises the last condition-related HTTPException after the chain is exhausted,
-    or propagates any non-condition error immediately.
-    """
-    try:
-        ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
-        return offer_id, ebay_listing_id
-    except HTTPException as publish_exc:
-        if not getattr(publish_exc, "is_condition_error", False):
-            raise
-
-        _last_exc: Exception = publish_exc
-        # Query Metadata API for valid conditions for this specific category
-        valid_conditions = _fetch_valid_conditions_for_category(
-            token,
-            ebay_category_id,
-            marketplace_id or "EBAY_IT",
-        )
-        fallback_chain = valid_conditions if valid_conditions else list(_CONDITION_FALLBACK_CHAIN)
-        for fallback_condition in fallback_chain:
-            logger.warning(
-                "Condizione non valida per la categoria — retry con %s "
-                "(product_id=%s, offer_id=%s)",
-                fallback_condition,
-                product.id,
-                offer_id,
-            )
-            try:
-                # Step 1: aggiorna inventory_item con la condizione fallback PRIMA di ricreare l'offer
-                EbayInventoryService.create_or_update_inventory_item(
-                    token,
-                    product.sku,
-                    product,
-                    listing,
-                    marketplace_id=marketplace_id,
-                    ebay_condition=fallback_condition,
-                    grading_service=grading_service,
-                    grade=grade,
-                )
-                # Step 2: elimina l'offer con la condizione sbagliata
-                try:
-                    EbayOfferService.delete_offer(token, offer_id)
-                except Exception as del_exc:
-                    logger.debug(
-                        "Errore eliminazione offer %s durante retry condizione — ignorato: %s",
-                        offer_id,
-                        del_exc,
-                    )
-                # Step 3: ricrea l'offer con la nuova condizione
-                offer_id = EbayOfferService.create_offer(
-                    token,
-                    product.sku,
-                    published_price,
-                    quantity,
-                    marketplace_id,
-                    listing,
-                    product.descrizione or "",
-                    float(shipping_cost),
-                    category_id=ebay_category_id,
-                    listing_format=listing_format,
-                    auction_start_price=auction_start_price,
-                    auction_duration=auction_duration,
-                    auction_reserve_price=auction_reserve_price,
-                    auction_buy_it_now_price=auction_buy_it_now_price,
-                )
-                # Step 4: pubblica
-                ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
-                logger.info(
-                    "Pubblicazione riuscita con condizione fallback %s (product_id=%s)",
-                    fallback_condition,
-                    product.id,
-                )
-                return offer_id, ebay_listing_id  # successo
-            except HTTPException as retry_exc:
-                if getattr(retry_exc, "is_condition_error", False):
-                    logger.warning(
-                        "Retry con %s fallito per condizione non valida "
-                        "(product_id=%s, offer_id=%s): %s",
-                        fallback_condition,
-                        product.id,
-                        offer_id,
-                        retry_exc,
-                    )
-                    _last_exc = retry_exc
-                    continue  # prova la prossima condizione nella catena
-                raise  # errore non legato alla condizione: propaga
-            except Exception as retry_exc:
-                logger.warning(
-                    "Retry con %s fallito (product_id=%s, offer_id=%s): %s",
-                    fallback_condition,
-                    product.id,
-                    offer_id,
-                    retry_exc,
-                )
-                raise retry_exc from _last_exc
-
-        # Nessuna condizione nella catena ha funzionato
-        logger.warning(
-            "Tutti i retry di condizione falliti per product_id=%s (catena: %s)",
-            product.id,
-            fallback_chain,
-        )
-        raise _last_exc
 
 
 @router.get("/connect")
@@ -929,24 +722,7 @@ def publish_listing(
             auction_reserve_price=payload.auction_reserve_price,
             auction_buy_it_now_price=payload.auction_buy_it_now_price,
         )
-        offer_id, ebay_listing_id = _publish_with_condition_retry(
-            token=token,
-            product=product,
-            listing=listing,
-            offer_id=offer_id,
-            marketplace_id=connection.marketplace_id or "EBAY_IT",
-            published_price=published_price,
-            quantity=quantity,
-            shipping_cost=shipping_cost,
-            ebay_category_id=payload.ebay_category_id,
-            listing_format=payload.listing_format,
-            auction_start_price=payload.auction_start_price,
-            auction_duration=payload.auction_duration,
-            auction_reserve_price=payload.auction_reserve_price,
-            auction_buy_it_now_price=payload.auction_buy_it_now_price,
-            grading_service=payload.grading_service,
-            grade=payload.grade,
-        )
+        ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
 
         listing.ebay_item_id = product.sku
         listing.ebay_offer_id = offer_id
@@ -963,9 +739,14 @@ def publish_listing(
         raise HTTPException(status_code=504, detail="Timeout durante la pubblicazione eBay - riprova tra qualche secondo")
     except HTTPException as exc:
         listing.status = "error"
+        if getattr(exc, "is_condition_error", False):
+            exc = HTTPException(
+                status_code=400,
+                detail="Condizione non valida per la categoria eBay selezionata. Torna indietro e seleziona una condizione compatibile con la categoria.",
+            )
         listing.error_message = exc.detail if isinstance(exc.detail, str) else "Errore pubblicazione eBay"
         db.commit()
-        raise
+        raise exc
     except Exception as exc:
         listing.status = "error"
         listing.error_message = "Errore interno durante la pubblicazione eBay"
