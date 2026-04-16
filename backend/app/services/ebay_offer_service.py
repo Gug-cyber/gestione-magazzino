@@ -56,8 +56,8 @@ _MARKETPLACE_DEFAULT_CATEGORY_MAP = {
     "EBAY_ES": "45100",   # Monedas españolas (leaf su EBAY_ES)
     "EBAY_GB": "4726",    # British coins (leaf su EBAY_GB)
     "EBAY_US": "4726",    # US coins (leaf su EBAY_US)
-    "EBAY_AU": "4726",
-    "EBAY_CA": "4726",
+    "EBAY_AU": "4726",    # World coins (leaf su EBAY_AU)
+    "EBAY_CA": "4726",    # World coins (leaf su EBAY_CA)
 }
 
 

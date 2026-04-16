@@ -121,7 +121,8 @@ function EbayPubblicaProdotto() {
               />
               <small style={{ color: 'var(--color-muted, #888)', fontSize: 12 }}>
                 Obbligatorio. Deve essere una categoria foglia eBay (senza sottocategorie).{' '}
-                Esempi: 45101 (Monete italiane), 45100 (Monedas españolas).{' '}
+                Esempi: 45101 (Monete italiane), 45100 (Monedas españolas), 45098 (Münzen DE).{' '}
+                Verifica la categoria corretta per il tuo marketplace.{' '}
                 <a href="https://www.ebay.it/sch/i.html" target="_blank" rel="noreferrer">
                   Trova la categoria
                 </a>
