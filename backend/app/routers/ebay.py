@@ -396,6 +396,81 @@ def get_ebay_categories(
         raise HTTPException(status_code=502, detail=f"Errore di rete eBay: {exc}")
 
 
+_CONDITION_ID_TO_ENUM = {
+    "1000": "NEW",
+    "1500": "LIKE_NEW",
+    "2000": "MANUFACTURER_REFURBISHED",
+    "2500": "SELLER_REFURBISHED",
+    "3000": "USED_EXCELLENT",
+    "4000": "USED_GOOD",
+    "5000": "USED_ACCEPTABLE",
+    "6000": "FOR_PARTS_OR_NOT_WORKING",
+}
+
+_DEFAULT_CONDITIONS = [
+    {"conditionId": "3000", "conditionEnum": "USED_EXCELLENT", "conditionDescription": "Ottime condizioni (Used Excellent)"},
+    {"conditionId": "4000", "conditionEnum": "USED_GOOD", "conditionDescription": "Buone condizioni (Used Good)"},
+    {"conditionId": "5000", "conditionEnum": "USED_ACCEPTABLE", "conditionDescription": "Condizioni accettabili (Used Acceptable)"},
+]
+
+
+@router.get("/categories/{category_id}/conditions")
+def get_category_conditions(
+    category_id: str,
+    marketplace_id: str = Query("EBAY_IT"),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Restituisce le condizioni valide per una categoria eBay specifica.
+    Chiama l'API eBay Metadata (getItemConditionPolicies).
+    """
+    env = _get_ebay_env()
+    base_url = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
+
+    access_token = _get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
+    }
+
+    try:
+        resp = httpx.get(
+            f"{base_url}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_condition_policies",
+            headers=headers,
+            params={"filter": f"categoryId:{category_id}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        item_condition_policies = data.get("itemConditionPolicies", [])
+        if not item_condition_policies:
+            return _DEFAULT_CONDITIONS
+
+        policy = item_condition_policies[0]
+        item_conditions = policy.get("itemConditions", [])
+        if not item_conditions:
+            return _DEFAULT_CONDITIONS
+
+        result = []
+        for cond in item_conditions:
+            condition_id = str(cond.get("conditionId", ""))
+            condition_description = cond.get("conditionDescription", condition_id)
+            condition_enum = _CONDITION_ID_TO_ENUM.get(condition_id, "USED_GOOD")
+            result.append({
+                "conditionId": condition_id,
+                "conditionEnum": condition_enum,
+                "conditionDescription": condition_description,
+            })
+
+        return result
+
+    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+        logger.warning("eBay Metadata API error for category %s: %s", category_id, exc)
+        return _DEFAULT_CONDITIONS
+
+
 # === New user-level OAuth/listing/sync endpoints ===
 def _get_connection(db: Session) -> Optional[EbayConnection]:
     return db.query(EbayConnection).order_by(EbayConnection.id.desc()).first()
