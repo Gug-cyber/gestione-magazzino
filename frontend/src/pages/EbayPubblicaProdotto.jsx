@@ -16,7 +16,7 @@ function EbayPubblicaProdotto() {
   const [quantity, setQuantity] = useState(1)
   const [shippingCost, setShippingCost] = useState('5.90')
   const [freeShipping, setFreeShipping] = useState(false)
-  const [ebayCategoryId, setEbayCategoryId] = useState('4726')
+  const [ebayCategoryId, setEbayCategoryId] = useState('45101')
   const [publishedPrice, setPublishedPrice] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -73,7 +73,7 @@ function EbayPubblicaProdotto() {
         fee_override: Number(fee),
         quantity_override: Number(quantity),
         shipping_cost: freeShipping ? 0 : Number(shippingCost),
-        ebay_category_id: ebayCategoryId || '4726',
+        ebay_category_id: ebayCategoryId || '45101',
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -117,12 +117,13 @@ function EbayPubblicaProdotto() {
                 type="text"
                 value={ebayCategoryId}
                 onChange={(e) => setEbayCategoryId(e.target.value)}
-                placeholder="es. 4726 (Monete italiane)"
+                placeholder="es. 45101 (Monete italiane)"
               />
-              <small style={{ color: 'var(--color-muted, #888)' }}>
-                Richiesta da eBay. Default: 4726 (Monete italiane).
-                <a href="https://www.ebay.it/sch/i.html" target="_blank" rel="noreferrer" style={{ marginLeft: 4 }}>
-                  Cerca categoria
+              <small style={{ color: 'var(--color-muted, #888)', fontSize: 12 }}>
+                Obbligatorio. Deve essere una categoria foglia eBay (senza sottocategorie).{' '}
+                Esempi: 45101 (Monete italiane), 45100 (Monedas españolas).{' '}
+                <a href="https://www.ebay.it/sch/i.html" target="_blank" rel="noreferrer">
+                  Trova la categoria
                 </a>
               </small>
             </label>
