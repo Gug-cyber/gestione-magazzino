@@ -401,10 +401,12 @@ _CONDITION_ID_TO_ENUM = {
     "1500": "LIKE_NEW",
     "2000": "MANUFACTURER_REFURBISHED",
     "2500": "SELLER_REFURBISHED",
+    "2750": "LIKE_NEW",           # Near Mint or Better (trading cards, sports cards)
     "3000": "USED_EXCELLENT",
     "4000": "USED_GOOD",
     "5000": "USED_ACCEPTABLE",
     "6000": "FOR_PARTS_OR_NOT_WORKING",
+    "7000": "FOR_PARTS_OR_NOT_WORKING",  # Poor (some marketplaces)
 }
 
 _DEFAULT_CONDITIONS = [
