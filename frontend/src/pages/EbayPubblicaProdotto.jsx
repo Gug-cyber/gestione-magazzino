@@ -76,7 +76,7 @@ function EbayPubblicaProdotto() {
   }, [connection])
 
   useEffect(() => {
-    if (!selectedCategoryId) {
+    if (!selectedCategoryId || !connection?.connected) {
       setAvailableConditions([])
       setEbayCondition('')
       return
@@ -104,7 +104,7 @@ function EbayPubblicaProdotto() {
         setEbayCondition(match ? match.conditionEnum : 'USED_GOOD')
       })
       .finally(() => setConditionsLoading(false))
-  }, [selectedCategoryId, connection.marketplace_id])
+  }, [selectedCategoryId, connection.marketplace_id, product?.stato_conservazione])
 
   useEffect(() => {
     const n = Number(netPrice)
