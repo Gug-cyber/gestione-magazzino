@@ -41,6 +41,7 @@ function EbayPubblicaProdotto() {
   const [conditionsFromFallback, setConditionsFromFallback] = useState(false)
   const [gradingService, setGradingService] = useState('')
   const [gradingGrade, setGradingGrade] = useState('')
+  const [descriptionOverride, setDescriptionOverride] = useState('')
 
   const _conditionIdMap = {
     'Mint': '3000',
@@ -69,6 +70,7 @@ function EbayPubblicaProdotto() {
         setGradingService(p.grading_service || '')
         setGradingGrade(p.grade || '')
       }
+      setDescriptionOverride(p.descrizione || '')
     }).catch((e) => setError(e.response?.data?.detail || 'Errore caricamento dati'))
   }, [productId])
 
@@ -207,6 +209,7 @@ function EbayPubblicaProdotto() {
         ebay_condition: ebayCondition,
         grading_service: product?.is_graded ? gradingService : undefined,
         grade: product?.is_graded ? gradingGrade : undefined,
+        description_override: descriptionOverride.trim() || undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -233,6 +236,22 @@ function EbayPubblicaProdotto() {
                 <div style={{ wordBreak: 'break-word' }}>{product.descrizione || 'Nessuna descrizione'}</div>
               </div>
             </div>
+
+            <label style={{ display: 'grid', gap: 4 }}>
+              Descrizione per eBay
+              <textarea
+                value={descriptionOverride}
+                onChange={(e) => setDescriptionOverride(e.target.value)}
+                placeholder="Inserisci una descrizione per l'annuncio eBay..."
+                rows={4}
+                style={{ resize: 'vertical', width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 14 }}
+              />
+              {!descriptionOverride.trim() && (
+                <span style={{ color: '#f57c00', fontSize: 12 }}>
+                  ⚠️ Nessuna descrizione — verrà usata la descrizione del prodotto o il nome come descrizione eBay
+                </span>
+              )}
+            </label>
 
             <label style={{ display: 'grid', gap: 4 }}>
               Prezzo netto desiderato

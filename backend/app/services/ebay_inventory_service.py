@@ -167,11 +167,12 @@ class EbayInventoryService:
         ebay_condition: str | None = None,
         grading_service: str | None = None,
         grade: str | None = None,
+        description_override: str | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
             title = f"{title[:77]}..."
-        description = _sanitize_ascii_text((product.descrizione or "").strip())
+        description = _sanitize_ascii_text((description_override or product.descrizione or product.nome or "").strip())
         image_urls = EbayInventoryService._build_image_urls(product)
         if not image_urls:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
