@@ -15,6 +15,10 @@ _policy_cache: dict = {}
 _policy_cache_lock = threading.Lock()
 _POLICY_CACHE_TTL = 7200  # 2 ore
 
+# Brief delay after deleting a stale eBay offer before retrying creation,
+# to avoid race conditions where eBay still considers the offer to exist.
+_OFFER_DELETION_DELAY_SECONDS = 1
+
 _location_cache: dict = {}
 _location_cache_lock = threading.Lock()
 _LOCATION_KEY = "default_it"
@@ -488,7 +492,8 @@ class EbayOfferService:
                         listing_db.ebay_offer_id = existing_offer_id
                         EbayOfferService._update_offer(token, existing_offer_id, payload, marketplace_id)
                         return existing_offer_id
-                    # Ritenta la creazione dopo la cancellazione
+                    # Ritenta la creazione dopo la cancellazione (breve pausa per evitare race condition eBay)
+                    time.sleep(_OFFER_DELETION_DELAY_SECONDS)
                     try:
                         response = EbayOfferService._request_with_retry(
                             "POST",
