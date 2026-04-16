@@ -32,16 +32,18 @@ function EbayPubblicaProdotto() {
   const [auctionDuration, setAuctionDuration] = useState('DAYS_7')
   const [auctionReservePrice, setAuctionReservePrice] = useState('')
   const [auctionBuyItNow, setAuctionBuyItNow] = useState('')
-  const [ebayCondition, setEbayCondition] = useState('USED_EXCELLENT')
+  const [ebayCondition, setEbayCondition] = useState('')
+  const [availableConditions, setAvailableConditions] = useState([])
+  const [conditionsLoading, setConditionsLoading] = useState(false)
 
-  const _conditionMap = {
-    'Mint': 'USED_EXCELLENT',
-    'Near Mint': 'USED_EXCELLENT',
-    'Excellent': 'USED_EXCELLENT',
-    'Good': 'USED_GOOD',
-    'Light Played': 'USED_GOOD',
-    'Played': 'USED_ACCEPTABLE',
-    'Poor': 'USED_ACCEPTABLE',
+  const _conditionIdMap = {
+    'Mint': '3000',
+    'Near Mint': '3000',
+    'Excellent': '3000',
+    'Good': '4000',
+    'Light Played': '4000',
+    'Played': '5000',
+    'Poor': '5000',
   }
 
   useEffect(() => {
@@ -56,7 +58,6 @@ function EbayPubblicaProdotto() {
       setQuantity(Math.max(1, p.quantita || 1))
       setConnection(cRes.data)
       if (cRes.data?.fee_percentage != null) setFee(String(cRes.data.fee_percentage))
-      setEbayCondition(_conditionMap[p.stato_conservazione] || 'USED_EXCELLENT')
     }).catch((e) => setError(e.response?.data?.detail || 'Errore caricamento dati'))
   }, [productId])
 
@@ -73,6 +74,37 @@ function EbayPubblicaProdotto() {
       .catch(() => setCategoriesError('Impossibile caricare le categorie eBay. Riprova più tardi.'))
       .finally(() => setCategoriesLoading(false))
   }, [connection])
+
+  useEffect(() => {
+    if (!selectedCategoryId) {
+      setAvailableConditions([])
+      setEbayCondition('')
+      return
+    }
+    setConditionsLoading(true)
+    ebayApi.getCategoryConditions(selectedCategoryId, connection.marketplace_id || 'EBAY_IT')
+      .then(res => {
+        const conditions = res.data
+        setAvailableConditions(conditions)
+        if (conditions.length > 0) {
+          const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
+          const match = conditions.find(c => c.conditionId === preferred)
+          setEbayCondition(match ? match.conditionEnum : conditions[0].conditionEnum)
+        }
+      })
+      .catch(() => {
+        const fallback = [
+          { conditionId: '3000', conditionEnum: 'USED_EXCELLENT', conditionDescription: 'Ottime condizioni' },
+          { conditionId: '4000', conditionEnum: 'USED_GOOD', conditionDescription: 'Buone condizioni' },
+          { conditionId: '5000', conditionEnum: 'USED_ACCEPTABLE', conditionDescription: 'Condizioni accettabili' },
+        ]
+        setAvailableConditions(fallback)
+        const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
+        const match = fallback.find(c => c.conditionId === preferred)
+        setEbayCondition(match ? match.conditionEnum : 'USED_GOOD')
+      })
+      .finally(() => setConditionsLoading(false))
+  }, [selectedCategoryId, connection.marketplace_id])
 
   useEffect(() => {
     const n = Number(netPrice)
@@ -223,15 +255,6 @@ function EbayPubblicaProdotto() {
               </>
             )}
 
-            <label style={{ display: 'grid', gap: 4 }}>
-              Condizione eBay
-              <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)}>
-                <option value="USED_EXCELLENT">Ottime condizioni (Used Excellent)</option>
-                <option value="USED_GOOD">Buone condizioni (Used Good)</option>
-                <option value="USED_ACCEPTABLE">Condizioni accettabili (Used Acceptable)</option>
-              </select>
-            </label>
-
             <div style={{ display: 'grid', gap: 8 }}>
               <label>Categoria eBay</label>              {categoriesLoading && <div style={{ color: '#888', fontSize: 13 }}>Caricamento categorie...</div>}
               {categoriesError && <div style={{ color: 'var(--color-danger)', fontSize: 13 }}>{categoriesError}</div>}
@@ -263,6 +286,22 @@ function EbayPubblicaProdotto() {
                 </div>
               )}
             </div>
+
+            {selectedCategoryId && (
+              <label style={{ display: 'grid', gap: 4 }}>
+                Condizione eBay
+                {conditionsLoading
+                  ? <div style={{ color: '#888', fontSize: 13 }}>Caricamento condizioni...</div>
+                  : <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)}>
+                      {availableConditions.map(c => (
+                        <option key={c.conditionId} value={c.conditionEnum}>
+                          {c.conditionDescription}
+                        </option>
+                      ))}
+                    </select>
+                }
+              </label>
+            )}
 
             {listingFormat === 'FIXED_PRICE' && (
               <div>Prezzo da pubblicare su eBay: <strong>{publishedPrice != null ? `€${Number(publishedPrice).toFixed(2)}` : '—'}</strong></div>
