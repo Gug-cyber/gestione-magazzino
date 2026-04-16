@@ -35,6 +35,8 @@ function EbayPubblicaProdotto() {
   const [ebayCondition, setEbayCondition] = useState('')
   const [availableConditions, setAvailableConditions] = useState([])
   const [conditionsLoading, setConditionsLoading] = useState(false)
+  const [gradingService, setGradingService] = useState('')
+  const [gradingGrade, setGradingGrade] = useState('')
 
   const _conditionIdMap = {
     'Mint': '3000',
@@ -58,6 +60,11 @@ function EbayPubblicaProdotto() {
       setQuantity(Math.max(1, p.quantita || 1))
       setConnection(cRes.data)
       if (cRes.data?.fee_percentage != null) setFee(String(cRes.data.fee_percentage))
+      if (p.is_graded) {
+        setEbayCondition('GRADED')
+        setGradingService(p.grading_service || '')
+        setGradingGrade(p.grade || '')
+      }
     }).catch((e) => setError(e.response?.data?.detail || 'Errore caricamento dati'))
   }, [productId])
 
@@ -78,7 +85,7 @@ function EbayPubblicaProdotto() {
   useEffect(() => {
     if (!selectedCategoryId || !connection?.connected) {
       setAvailableConditions([])
-      setEbayCondition('')
+      if (!product?.is_graded) setEbayCondition('')
       return
     }
     setConditionsLoading(true)
@@ -86,7 +93,9 @@ function EbayPubblicaProdotto() {
       .then(res => {
         const conditions = res.data
         setAvailableConditions(conditions)
-        if (conditions.length > 0) {
+        if (product?.is_graded) {
+          setEbayCondition('GRADED')
+        } else if (conditions.length > 0) {
           const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
           const match = conditions.find(c => c.conditionId === preferred)
           setEbayCondition(match ? match.conditionEnum : conditions[0].conditionEnum)
@@ -99,12 +108,16 @@ function EbayPubblicaProdotto() {
           { conditionId: '5000', conditionEnum: 'USED_ACCEPTABLE', conditionDescription: 'Condizioni accettabili' },
         ]
         setAvailableConditions(fallback)
-        const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
-        const match = fallback.find(c => c.conditionId === preferred)
-        setEbayCondition(match ? match.conditionEnum : 'USED_GOOD')
+        if (product?.is_graded) {
+          setEbayCondition('GRADED')
+        } else {
+          const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
+          const match = fallback.find(c => c.conditionId === preferred)
+          setEbayCondition(match ? match.conditionEnum : 'USED_GOOD')
+        }
       })
       .finally(() => setConditionsLoading(false))
-  }, [selectedCategoryId, connection.marketplace_id, product?.stato_conservazione])
+  }, [selectedCategoryId, connection.marketplace_id, product?.stato_conservazione, product?.is_graded])
 
   useEffect(() => {
     const n = Number(netPrice)
@@ -157,8 +170,11 @@ function EbayPubblicaProdotto() {
       const sp = Number(auctionStartPrice)
       if (!Number.isFinite(sp) || sp <= 0) return 'Prezzo di partenza asta non valido'
     }
+    if (product.is_graded && (!gradingService || !gradingGrade)) {
+      return 'Inserisci Grading Service e Grade per le carte gradate'
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, gradingService, gradingGrade])
 
   const handlePublish = async () => {
     setError('')
@@ -181,6 +197,8 @@ function EbayPubblicaProdotto() {
         auction_reserve_price: listingFormat === 'AUCTION' && auctionReservePrice ? Number(auctionReservePrice) : undefined,
         auction_buy_it_now_price: listingFormat === 'AUCTION' && auctionBuyItNow ? Number(auctionBuyItNow) : undefined,
         ebay_condition: ebayCondition,
+        grading_service: product?.is_graded ? gradingService : undefined,
+        grade: product?.is_graded ? gradingGrade : undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -293,6 +311,9 @@ function EbayPubblicaProdotto() {
                 {conditionsLoading
                   ? <div style={{ color: '#888', fontSize: 13 }}>Caricamento condizioni...</div>
                   : <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)}>
+                      {product?.is_graded && (
+                        <option value="GRADED">Gradata (Graded)</option>
+                      )}
                       {availableConditions.map(c => (
                         <option key={c.conditionId} value={c.conditionEnum}>
                           {c.conditionDescription}
@@ -301,6 +322,29 @@ function EbayPubblicaProdotto() {
                     </select>
                 }
               </label>
+            )}
+
+            {product?.is_graded && (
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12, background: 'var(--color-surface)' }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>📋 Dettagli grading (obbligatori per eBay)</div>
+
+                <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}>
+                  Grading Service
+                  <select value={gradingService} onChange={e => setGradingService(e.target.value)}>
+                    <option value="">-- Seleziona --</option>
+                    <option value="PSA">PSA</option>
+                    <option value="BGS">BGS (Beckett)</option>
+                    <option value="CGC">CGC</option>
+                    <option value="SGC">SGC</option>
+                    <option value="ACE">ACE</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'grid', gap: 4 }}>
+                  Grade
+                  <input type="text" placeholder="es. 9.5" value={gradingGrade} onChange={e => setGradingGrade(e.target.value)} />
+                </label>
+              </div>
             )}
 
             {listingFormat === 'FIXED_PRICE' && (

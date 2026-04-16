@@ -327,6 +327,9 @@ function DettaglioProdotto() {
       stato_conservazione: p.stato_conservazione || '',
       lingua: p.lingua || '',
       cardtrader_blueprint_id: p.cardtrader_blueprint_id || '',
+      is_graded: p.is_graded || false,
+      grading_service: p.grading_service || '',
+      grade: p.grade || '',
     })
     setFormError('')
     setShowEditForm(true)
@@ -346,6 +349,9 @@ function DettaglioProdotto() {
       stato_conservazione: form.stato_conservazione || null,
       lingua: form.lingua || null,
       cardtrader_blueprint_id: form.cardtrader_blueprint_id ? parseInt(form.cardtrader_blueprint_id) : null,
+      is_graded: form.is_graded,
+      grading_service: form.is_graded ? (form.grading_service || null) : null,
+      grade: form.is_graded ? (form.grade || null) : null,
     }
     try {
       await prodottiAPI.update(id, payload)
@@ -455,6 +461,11 @@ function DettaglioProdotto() {
           </span>
         )}
         {prodotto.stato_conservazione && <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />}
+        {prodotto.is_graded && (
+          <span style={{ backgroundColor: '#fce4ec', color: '#880e4f', padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>
+            Gradata{prodotto.grading_service ? `: ${prodotto.grading_service}` : ''}{prodotto.grade ? ` ${prodotto.grade}` : ''}
+          </span>
+        )}
         {ebayConnected && (
           <button
             onClick={() => navigate(`/ebay/pubblica/${prodotto.id}`)}
@@ -534,6 +545,47 @@ function DettaglioProdotto() {
                 <option value="Poor">Poor</option>
               </select>
             </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.is_graded || false}
+                  onChange={e => setForm({ ...form, is_graded: e.target.checked, grading_service: '', grade: '' })}
+                />
+                <strong style={{ fontSize: '0.9rem' }}>Carta gradata</strong>
+              </span>
+            </label>
+
+            {form.is_graded && (
+              <>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Grading Service</span>
+                  <select
+                    value={form.grading_service || ''}
+                    onChange={e => setForm({ ...form, grading_service: e.target.value })}
+                    style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}
+                  >
+                    <option value="">-- Seleziona --</option>
+                    <option value="PSA">PSA</option>
+                    <option value="BGS">BGS (Beckett)</option>
+                    <option value="CGC">CGC</option>
+                    <option value="SGC">SGC</option>
+                    <option value="ACE">ACE</option>
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Grade</span>
+                  <input
+                    type="text"
+                    placeholder="es. 9.5"
+                    value={form.grade || ''}
+                    onChange={e => setForm({ ...form, grade: e.target.value })}
+                    style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}
+                  />
+                </label>
+              </>
+            )}
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Lingua</span>

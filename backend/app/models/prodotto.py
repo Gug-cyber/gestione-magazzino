@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, JSON
+from sqlalchemy import Boolean, Column, Integer, String, Numeric, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -25,6 +25,9 @@ class Prodotto(Base):
     barcode_generated_at = Column(DateTime(timezone=True), nullable=True)
     cardtrader_blueprint_id = Column(Integer, nullable=True)
     google_drive_folder_id = Column(String(255), nullable=True)
+    is_graded = Column(Boolean, nullable=False, default=False, server_default='false')
+    grading_service = Column(String(50), nullable=True)
+    grade = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

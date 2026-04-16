@@ -53,6 +53,8 @@ class PublishRequest(BaseModel):
     auction_reserve_price: Optional[float] = None
     auction_buy_it_now_price: Optional[float] = None
     ebay_condition: Optional[str] = None
+    grading_service: Optional[str] = None
+    grade: Optional[str] = None
 
 
 class PricingPreviewResponse(BaseModel):
