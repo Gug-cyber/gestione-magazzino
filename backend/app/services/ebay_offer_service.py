@@ -378,7 +378,7 @@ class EbayOfferService:
             "marketplaceId": marketplace_id,
             "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
-            "categoryId": category_id or "11116",
+            "categoryId": category_id or "4726",  # 4726 = Monete italiane (foglia su EBAY_IT)
             "listingDescription": listing_description,
             "listingPolicies": {
                 "fulfillmentPolicyId": fulfillment_policy_id,
@@ -420,54 +420,47 @@ class EbayOfferService:
             if exc.response.status_code == 400:
                 existing_offer_id = _extract_existing_offer_id(exc.response)
                 if existing_offer_id:
-                    if not location_confirmed:
-                        # The stale offer may carry an invalid merchantLocationKey.
-                        # Delete it and recreate cleanly without a location.
-                        logger.info(
-                            "eBay offer already exists with potentially stale location, deleting and recreating: %s",
-                            existing_offer_id,
+                    # Sempre elimina e ricrea l'offer stale — garantisce dati freschi (categoryId, location, ecc.)
+                    logger.info(
+                        "eBay offer already exists (%s), deleting and recreating with fresh data",
+                        existing_offer_id,
+                    )
+                    try:
+                        EbayOfferService._request_with_retry(
+                            "DELETE",
+                            f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{existing_offer_id}",
+                            headers=EbayOfferService._auth_header(token),
                         )
-                        try:
-                            EbayOfferService._request_with_retry(
-                                "DELETE",
-                                f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{existing_offer_id}",
-                                headers=EbayOfferService._auth_header(token),
-                            )
-                        except httpx.HTTPStatusError as del_exc:
-                            logger.warning(
-                                "eBay delete stale offer %s error %s — will try update fallback",
-                                existing_offer_id,
-                                del_exc.response.status_code,
-                            )
-                            # fallback: try to update the existing offer
-                            listing_db.ebay_offer_id = existing_offer_id
-                            EbayOfferService._update_offer(token, existing_offer_id, payload, marketplace_id)
-                            return existing_offer_id
-                        # Retry creation after deletion
-                        try:
-                            response = EbayOfferService._request_with_retry(
-                                "POST",
-                                f"{EbayOfferService._base_url()}/sell/inventory/v1/offer",
-                                headers=EbayOfferService._offer_headers(token, marketplace_id),
-                                json=payload,
-                            )
-                            new_offer_id = response.json().get("offerId")
-                            if not new_offer_id:
-                                raise HTTPException(status_code=502, detail="Offerta eBay non creata correttamente dopo eliminazione")
-                            listing_db.ebay_offer_id = new_offer_id
-                            return new_offer_id
-                        except httpx.HTTPStatusError as retry_exc:
-                            logger.error(
-                                "eBay create_offer retry after delete error %s — body: %s",
-                                retry_exc.response.status_code,
-                                retry_exc.response.text,
-                            )
-                            raise HTTPException(status_code=502, detail="Errore ricreazione offerta eBay dopo eliminazione")
-                    else:
-                        logger.info("eBay offer already exists, updating and reusing offerId: %s", existing_offer_id)
+                    except httpx.HTTPStatusError as del_exc:
+                        logger.warning(
+                            "eBay delete stale offer %s error %s — fallback to update",
+                            existing_offer_id,
+                            del_exc.response.status_code,
+                        )
+                        # fallback: aggiorna l'offer esistente
                         listing_db.ebay_offer_id = existing_offer_id
                         EbayOfferService._update_offer(token, existing_offer_id, payload, marketplace_id)
                         return existing_offer_id
+                    # Ritenta la creazione dopo la cancellazione
+                    try:
+                        response = EbayOfferService._request_with_retry(
+                            "POST",
+                            f"{EbayOfferService._base_url()}/sell/inventory/v1/offer",
+                            headers=EbayOfferService._offer_headers(token, marketplace_id),
+                            json=payload,
+                        )
+                        new_offer_id = response.json().get("offerId")
+                        if not new_offer_id:
+                            raise HTTPException(status_code=502, detail="Offerta eBay non creata correttamente dopo eliminazione")
+                        listing_db.ebay_offer_id = new_offer_id
+                        return new_offer_id
+                    except httpx.HTTPStatusError as retry_exc:
+                        logger.error(
+                            "eBay create_offer retry after delete error %s — body: %s",
+                            retry_exc.response.status_code,
+                            retry_exc.response.text,
+                        )
+                        raise HTTPException(status_code=502, detail="Errore ricreazione offerta eBay dopo eliminazione")
             ebay_error_message = _extract_ebay_error_message(exc.response)
             detail = f"Errore creazione offer eBay: {exc.response.status_code}"
             if ebay_error_message:
