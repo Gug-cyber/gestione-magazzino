@@ -336,6 +336,11 @@ class EbayOfferService:
         description: str,
         shipping_cost: float = 5.90,
         category_id: str | None = None,
+        listing_format: str = "FIXED_PRICE",
+        auction_start_price: float | None = None,
+        auction_duration: str | None = None,
+        auction_reserve_price: float | None = None,
+        auction_buy_it_now_price: float | None = None,
     ) -> str:
         location_key, location_confirmed = EbayOfferService._ensure_merchant_location(token, marketplace_id)
 
@@ -374,12 +379,6 @@ class EbayOfferService:
             raise HTTPException(status_code=502, detail="Errore interno durante il recupero delle policy eBay")
 
         listing_description = _sanitize_description(description)
-        shipping_cost_value = float(shipping_cost)
-        listing_description = (
-            f"{listing_description}\n\n"
-            f"Spedizione: EUR {shipping_cost_value:.2f} (stimata). "
-            "I costi effettivi sono definiti dalla fulfillment policy eBay."
-        )
         normalized_marketplace = (marketplace_id or "").strip().upper()
         currency = _MARKETPLACE_CURRENCY_MAP.get(normalized_marketplace, "EUR")
 
@@ -389,7 +388,6 @@ class EbayOfferService:
         payload = {
             "sku": sku,
             "marketplaceId": marketplace_id,
-            "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
             "categoryId": effective_category,
             "listingDescription": listing_description,
@@ -398,13 +396,36 @@ class EbayOfferService:
                 "paymentPolicyId": payment_policy_id,
                 "returnPolicyId": return_policy_id,
             },
-            "pricingSummary": {
+        }
+        if listing_format == "AUCTION" and auction_start_price is not None:
+            payload["format"] = "AUCTION"
+            payload["pricingSummary"] = {
+                "auctionStartPrice": {
+                    "value": str(round(float(auction_start_price), 2)),
+                    "currency": currency,
+                }
+            }
+            if auction_reserve_price is not None:
+                payload["pricingSummary"]["auctionReservePrice"] = {
+                    "value": str(round(float(auction_reserve_price), 2)),
+                    "currency": currency,
+                }
+            if auction_buy_it_now_price is not None:
+                payload["pricingSummary"]["price"] = {
+                    "value": str(round(float(auction_buy_it_now_price), 2)),
+                    "currency": currency,
+                }
+            if auction_duration:
+                payload["listingDuration"] = auction_duration
+            payload["availableQuantity"] = 1
+        else:
+            payload["format"] = "FIXED_PRICE"
+            payload["pricingSummary"] = {
                 "price": {
                     "value": str(price),
                     "currency": currency,
                 }
-            },
-        }
+            }
         if location_confirmed:
             payload["merchantLocationKey"] = location_key
 

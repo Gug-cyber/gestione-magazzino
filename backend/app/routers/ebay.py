@@ -638,6 +638,11 @@ def publish_listing(
             product.descrizione or "",
             float(shipping_cost),
             category_id=payload.ebay_category_id,
+            listing_format=payload.listing_format,
+            auction_start_price=payload.auction_start_price,
+            auction_duration=payload.auction_duration,
+            auction_reserve_price=payload.auction_reserve_price,
+            auction_buy_it_now_price=payload.auction_buy_it_now_price,
         )
         ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
 
