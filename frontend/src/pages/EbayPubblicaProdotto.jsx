@@ -94,7 +94,8 @@ function EbayPubblicaProdotto() {
         const conditions = res.data
         setAvailableConditions(conditions)
         if (product?.is_graded) {
-          setEbayCondition('GRADED')
+          const gradedMatch = conditions.find(c => c.conditionEnum === 'GRADED')
+          setEbayCondition(gradedMatch ? 'GRADED' : 'USED_GOOD')
         } else if (conditions.length > 0) {
           const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
           const match = conditions.find(c => c.conditionId === preferred)
@@ -109,7 +110,8 @@ function EbayPubblicaProdotto() {
         ]
         setAvailableConditions(fallback)
         if (product?.is_graded) {
-          setEbayCondition('GRADED')
+          const gradedMatch = fallback.find(c => c.conditionEnum === 'GRADED')
+          setEbayCondition(gradedMatch ? 'GRADED' : 'USED_GOOD')
         } else {
           const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
           const match = fallback.find(c => c.conditionId === preferred)

@@ -722,7 +722,63 @@ def publish_listing(
             auction_reserve_price=payload.auction_reserve_price,
             auction_buy_it_now_price=payload.auction_buy_it_now_price,
         )
-        ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
+        try:
+            ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
+        except HTTPException as publish_exc:
+            # Retry automatico: se la condizione non è valida per la categoria,
+            # riprova con USED_GOOD (condizione più permissiva e universalmente accettata)
+            if getattr(publish_exc, 'is_condition_error', False):
+                logger.warning(
+                    "Condizione non valida per la categoria — retry con USED_GOOD (product_id=%s, offer_id=%s)",
+                    product.id,
+                    offer_id,
+                )
+                try:
+                    EbayInventoryService.create_or_update_inventory_item(
+                        token,
+                        product.sku,
+                        product,
+                        listing,
+                        marketplace_id=connection.marketplace_id or "EBAY_IT",
+                        ebay_condition="USED_GOOD",
+                        grading_service=payload.grading_service,
+                        grade=payload.grade,
+                    )
+                    try:
+                        EbayOfferService.delete_offer(token, offer_id)
+                    except Exception as del_exc:
+                        logger.debug(
+                            "Errore eliminazione offer %s durante retry condizione — ignorato: %s",
+                            offer_id,
+                            del_exc,
+                        )
+                    offer_id = EbayOfferService.create_offer(
+                        token,
+                        product.sku,
+                        published_price,
+                        quantity,
+                        connection.marketplace_id or "EBAY_IT",
+                        listing,
+                        product.descrizione or "",
+                        float(shipping_cost),
+                        category_id=payload.ebay_category_id,
+                        listing_format=payload.listing_format,
+                        auction_start_price=payload.auction_start_price,
+                        auction_duration=payload.auction_duration,
+                        auction_reserve_price=payload.auction_reserve_price,
+                        auction_buy_it_now_price=payload.auction_buy_it_now_price,
+                    )
+                    ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
+                except Exception as retry_exc:
+                    logger.warning(
+                        "Retry con USED_GOOD fallito (product_id=%s, offer_id=%s): %s",
+                        product.id,
+                        offer_id,
+                        retry_exc,
+                    )
+                    raise publish_exc  # rilancia l'errore originale se anche il retry fallisce
+            else:
+                raise
 
         listing.ebay_item_id = product.sku
         listing.ebay_offer_id = offer_id
