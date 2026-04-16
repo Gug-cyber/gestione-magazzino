@@ -15,7 +15,7 @@ from ..models.movimento import TipoMovimento
 from .ebay_auth_service import EbayAuthService
 from .ebay_inventory_service import EbayInventoryService
 from .ebay_offer_service import EbayOfferService
-from .inventory_sync_service import InventorySyncService
+from .inventory_sync_service import InventorySyncService, _EBAY_OFFER_READONLY_FIELDS
 from .pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
@@ -194,7 +194,7 @@ class EbayOrderSyncService:
             try:
                 offer_data = EbayOfferService.get_offer(token, selected_listing.ebay_offer_id)
                 offer_data["availableQuantity"] = remaining_qty
-                for key in ["offerId", "listing", "status", "marketplaceFees", "auditInfo"]:
+                for key in _EBAY_OFFER_READONLY_FIELDS:
                     offer_data.pop(key, None)
                 EbayOfferService._update_offer(
                     token, selected_listing.ebay_offer_id, offer_data, marketplace_id

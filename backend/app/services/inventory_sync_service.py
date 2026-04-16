@@ -14,6 +14,9 @@ from .ebay_offer_service import EbayOfferService
 
 logger = logging.getLogger(__name__)
 
+# eBay offer fields that must be removed before a PUT update (read-only in the API)
+_EBAY_OFFER_READONLY_FIELDS = ("offerId", "listing", "status", "marketplaceFees", "auditInfo")
+
 
 class InventorySyncService:
     @staticmethod
@@ -82,7 +85,7 @@ class InventorySyncService:
                 try:
                     offer_data = EbayOfferService.get_offer(token, listing.ebay_offer_id)
                     offer_data["availableQuantity"] = new_qty
-                    for key in ["offerId", "listing", "status", "marketplaceFees", "auditInfo"]:
+                    for key in _EBAY_OFFER_READONLY_FIELDS:
                         offer_data.pop(key, None)
                     EbayOfferService._update_offer(token, listing.ebay_offer_id, offer_data, marketplace_id)
                 except Exception as exc:
@@ -108,7 +111,9 @@ class InventorySyncService:
     def check_and_handle_zero_stock(listing: EbayListing, connection, db: Session) -> EbayListing:
         if not listing.product:
             return listing
-        if listing.product.quantita > 0 or listing.status != "active":
+        if listing.product.quantita > 0:
+            return listing
+        if listing.status != "active":
             return listing
 
         token = EbayAuthService.get_valid_token(connection, db)

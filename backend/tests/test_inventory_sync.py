@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import MagicMock, patch, call
 from sqlalchemy.orm import Session
 
-from app.services.inventory_sync_service import InventorySyncService
+from app.services.inventory_sync_service import InventorySyncService, _EBAY_OFFER_READONLY_FIELDS
 from app.models.movimento import TipoMovimento, Movimento
 from app.models.prodotto import Prodotto
 
@@ -264,7 +264,7 @@ def test_sync_quantity_to_ebay_uses_offer_api_when_offer_id_available():
         payload = call_args[0][2]
         assert payload["availableQuantity"] == 5
         # Read-only fields should be removed
-        for key in ["offerId", "listing", "status", "marketplaceFees", "auditInfo"]:
+        for key in _EBAY_OFFER_READONLY_FIELDS:
             assert key not in payload
 
 
