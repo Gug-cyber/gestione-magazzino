@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..models.ebay_listing import EbayListing
 from ..models.ebay_sale import EbaySale
+from ..models.movimento import TipoMovimento
 from .ebay_auth_service import EbayAuthService
 from .ebay_inventory_service import EbayInventoryService
 from .inventory_sync_service import InventorySyncService
@@ -173,7 +174,14 @@ class EbayOrderSyncService:
         db.add(sale)
         db.flush()
 
-        InventorySyncService.decrement_stock(selected_listing.product_id, total_qty, db)
+        InventorySyncService.decrement_stock(
+            selected_listing.product_id,
+            total_qty,
+            db,
+            tipo=TipoMovimento.vendita_ebay,
+            note=f"Vendita eBay ordine {order_id}",
+            auto_commit=False,
+        )
 
         token = EbayAuthService.get_valid_token(connection, db)
         if selected_listing.product and selected_listing.product.quantita > 0 and selected_listing.ebay_item_id:

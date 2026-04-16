@@ -77,6 +77,12 @@ function EbayIntegrazione() {
     await loadData()
   }
 
+  const handleSyncAllListings = async () => {
+    const res = await ebayApi.syncAllListings()
+    setMessage(`Sincronizzazione listing completata: ${res.data.updated} aggiornati, ${res.data.closed} chiusi, ${res.data.errors} errori`)
+    await loadData()
+  }
+
   const badgeColor = (status) => {
     if (status === 'active') return '#2e7d32'
     if (status === 'error') return '#c62828'
@@ -121,6 +127,7 @@ function EbayIntegrazione() {
               </label>
               <button className="gm-btn gm-btn-secondary" onClick={handleSaveSettings} disabled={saving}>Salva impostazioni</button>
               <button className="gm-btn gm-btn-primary" onClick={handleSyncOrders}>Sincronizza ordini eBay</button>
+              <button className="gm-btn gm-btn-secondary" onClick={handleSyncAllListings}>Sincronizza tutti i listing</button>
               <button className="gm-btn gm-btn-secondary" onClick={() => navigate('/prodotti')}>Vai ai prodotti</button>
             </div>
           </div>
