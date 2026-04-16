@@ -39,6 +39,7 @@ function EbayPubblicaProdotto() {
   const [availableConditions, setAvailableConditions] = useState([])
   const [conditionsLoading, setConditionsLoading] = useState(false)
   const [conditionsFromFallback, setConditionsFromFallback] = useState(false)
+  const [isTradingCardCategory, setIsTradingCardCategory] = useState(false)
   const [gradingService, setGradingService] = useState('')
   const [gradingGrade, setGradingGrade] = useState('')
   const [descriptionOverride, setDescriptionOverride] = useState('')
@@ -91,15 +92,19 @@ function EbayPubblicaProdotto() {
   useEffect(() => {
     if (!selectedCategoryId || !connection?.connected) {
       setAvailableConditions([])
+      setIsTradingCardCategory(false)
       if (!product?.is_graded) setEbayCondition('')
       return
     }
     setConditionsLoading(true)
     setConditionsFromFallback(false)
+    setIsTradingCardCategory(false)
     ebayApi.getCategoryConditions(selectedCategoryId, connection.marketplace_id || 'EBAY_IT')
       .then(res => {
         const conditions = res.data
         setAvailableConditions(conditions)
+        const isTradingCard = conditions.some(c => c.conditionId === '2750' || c.conditionId === '7000')
+        setIsTradingCardCategory(isTradingCard)
         if (product?.is_graded) {
           const gradedMatch = conditions.find(c => c.conditionEnum === 'GRADED')
           setEbayCondition(gradedMatch ? 'GRADED' : 'USED_GOOD')
@@ -111,6 +116,7 @@ function EbayPubblicaProdotto() {
       })
       .catch(() => {
         setConditionsFromFallback(true)
+        setIsTradingCardCategory(false)
         const fallback = [
           { conditionId: '3000', conditionEnum: 'USED_EXCELLENT', conditionDescription: 'Ottime condizioni' },
           { conditionId: '4000', conditionEnum: 'USED_GOOD', conditionDescription: 'Buone condizioni' },
@@ -339,29 +345,83 @@ function EbayPubblicaProdotto() {
             </div>
 
             {selectedCategoryId && (
-              <label style={{ display: 'grid', gap: 4 }}>
-                Condizione eBay
-                {conditionsLoading
-                  ? <div style={{ color: '#888', fontSize: 13 }}>Caricamento condizioni...</div>
-                  : <>
-                      <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)} style={{ width: '100%' }}>
-                        {product?.is_graded && (
-                          <option value="GRADED">Gradata (Graded)</option>
+              <div style={{ display: 'grid', gap: 4 }}>
+                <label style={{ fontWeight: 500 }}>Condizione eBay</label>
+                {conditionsLoading ? (
+                  <div style={{ color: '#888', fontSize: 13 }}>Caricamento condizioni...</div>
+                ) : isTradingCardCategory ? (
+                  <div style={{ display: 'grid', gap: 10, marginTop: 4 }}>
+                    {product?.is_graded && (
+                      <div
+                        onClick={() => setEbayCondition('GRADED')}
+                        style={{
+                          border: ebayCondition === 'GRADED' ? '2px solid var(--color-primary, #6366f1)' : '1px solid var(--color-border, #ccc)',
+                          borderRadius: 10,
+                          padding: '14px 16px',
+                          cursor: 'pointer',
+                          background: ebayCondition === 'GRADED' ? 'var(--color-primary-bg, #eef2ff)' : 'var(--color-surface, #fff)',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>Gradata (Graded)</div>
+                        <div style={{ color: '#666', fontSize: 13, marginTop: 3 }}>Carta con certificazione professionale</div>
+                      </div>
+                    )}
+                    {availableConditions.map(c => (
+                      <div
+                        key={c.conditionId}
+                        onClick={() => setEbayCondition(c.conditionEnum)}
+                        style={{
+                          border: ebayCondition === c.conditionEnum ? '2px solid var(--color-primary, #6366f1)' : '1px solid var(--color-border, #ccc)',
+                          borderRadius: 10,
+                          padding: '14px 16px',
+                          cursor: 'pointer',
+                          background: ebayCondition === c.conditionEnum ? 'var(--color-primary-bg, #eef2ff)' : 'var(--color-surface, #fff)',
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                          if (ebayCondition !== c.conditionEnum) {
+                            e.currentTarget.style.background = 'var(--color-hover, #f5f5f5)'
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (ebayCondition !== c.conditionEnum) {
+                            e.currentTarget.style.background = 'var(--color-surface, #fff)'
+                          }
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{c.conditionDescription}</div>
+                        {c.conditionSubtitle && (
+                          <div style={{ color: '#666', fontSize: 13, marginTop: 3 }}>{c.conditionSubtitle}</div>
                         )}
-                        {availableConditions.map(c => (
-                          <option key={c.conditionId} value={c.conditionEnum}>
-                            {c.conditionDescription}
-                          </option>
-                        ))}
-                      </select>
-                      {conditionsFromFallback && (
-                        <div style={{ color: '#f57c00', fontSize: 13 }}>
-                          ⚠️ Impossibile verificare le condizioni valide per questa categoria. Le condizioni mostrate sono generiche e potrebbero non essere compatibili.
-                        </div>
+                      </div>
+                    ))}
+                    {conditionsFromFallback && (
+                      <div style={{ color: '#f57c00', fontSize: 13 }}>
+                        ⚠️ Condizioni generiche — potrebbero non essere tutte compatibili con questa categoria.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)} style={{ width: '100%' }}>
+                      {product?.is_graded && (
+                        <option value="GRADED">Gradata (Graded)</option>
                       )}
-                    </>
-                }
-              </label>
+                      {availableConditions.map(c => (
+                        <option key={c.conditionId} value={c.conditionEnum}>
+                          {c.conditionDescription}
+                        </option>
+                      ))}
+                    </select>
+                    {conditionsFromFallback && (
+                      <div style={{ color: '#f57c00', fontSize: 13 }}>
+                        ⚠️ Impossibile verificare le condizioni valide per questa categoria. Le condizioni mostrate sono generiche e potrebbero non essere compatibili.
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             {product?.is_graded && (
