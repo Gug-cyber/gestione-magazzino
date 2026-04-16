@@ -27,6 +27,12 @@ function EbayPubblicaProdotto() {
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [categoriesError, setCategoriesError] = useState('')
 
+  const [listingFormat, setListingFormat] = useState('FIXED_PRICE')
+  const [auctionStartPrice, setAuctionStartPrice] = useState('0.99')
+  const [auctionDuration, setAuctionDuration] = useState('DAYS_7')
+  const [auctionReservePrice, setAuctionReservePrice] = useState('')
+  const [auctionBuyItNow, setAuctionBuyItNow] = useState('')
+
   useEffect(() => {
     if (!productId) return
     Promise.all([
@@ -103,8 +109,12 @@ function EbayPubblicaProdotto() {
     if (!selectedCategoryId) return 'Seleziona una categoria eBay foglia'
     const shipping = Number(shippingCost)
     if (!freeShipping && (!Number.isFinite(shipping) || shipping < 0)) return 'Spese di spedizione non valide'
+    if (listingFormat === 'AUCTION') {
+      const sp = Number(auctionStartPrice)
+      if (!Number.isFinite(sp) || sp <= 0) return 'Prezzo di partenza asta non valido'
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice])
 
   const handlePublish = async () => {
     setError('')
@@ -118,9 +128,14 @@ function EbayPubblicaProdotto() {
       await ebayApi.publishProduct({
         product_id: Number(productId),
         fee_override: Number(fee),
-        quantity_override: Number(quantity),
+        quantity_override: listingFormat === 'AUCTION' ? 1 : Number(quantity),
         shipping_cost: freeShipping ? 0 : Number(shippingCost),
         ebay_category_id: selectedCategoryId,
+        listing_format: listingFormat,
+        auction_start_price: listingFormat === 'AUCTION' ? Number(auctionStartPrice) : undefined,
+        auction_duration: listingFormat === 'AUCTION' ? auctionDuration : undefined,
+        auction_reserve_price: listingFormat === 'AUCTION' && auctionReservePrice ? Number(auctionReservePrice) : undefined,
+        auction_buy_it_now_price: listingFormat === 'AUCTION' && auctionBuyItNow ? Number(auctionBuyItNow) : undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -158,6 +173,43 @@ function EbayPubblicaProdotto() {
               <input type="number" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
             </label>
 
+            <label style={{ display: 'grid', gap: 4 }}>
+              Formato annuncio
+              <select value={listingFormat} onChange={e => setListingFormat(e.target.value)}>
+                <option value="FIXED_PRICE">Prezzo fisso</option>
+                <option value="AUCTION">Asta</option>
+              </select>
+            </label>
+
+            {listingFormat === 'AUCTION' && (
+              <>
+                <label style={{ display: 'grid', gap: 4 }}>
+                  Prezzo di partenza asta (€)
+                  <input type="number" step="0.01" min="0.01" value={auctionStartPrice} onChange={e => setAuctionStartPrice(e.target.value)} />
+                </label>
+
+                <label style={{ display: 'grid', gap: 4 }}>
+                  Durata asta
+                  <select value={auctionDuration} onChange={e => setAuctionDuration(e.target.value)}>
+                    <option value="DAYS_3">3 giorni</option>
+                    <option value="DAYS_5">5 giorni</option>
+                    <option value="DAYS_7">7 giorni</option>
+                    <option value="DAYS_10">10 giorni</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'grid', gap: 4 }}>
+                  Prezzo di riserva (€) — opzionale
+                  <input type="number" step="0.01" min="0" value={auctionReservePrice} onChange={e => setAuctionReservePrice(e.target.value)} placeholder="Lascia vuoto per nessuna riserva" />
+                </label>
+
+                <label style={{ display: 'grid', gap: 4 }}>
+                  Compralo subito (€) — opzionale
+                  <input type="number" step="0.01" min="0" value={auctionBuyItNow} onChange={e => setAuctionBuyItNow(e.target.value)} placeholder="Lascia vuoto per disabilitare" />
+                </label>
+              </>
+            )}
+
             <div style={{ display: 'grid', gap: 8 }}>
               <label>Categoria eBay</label>
               {categoriesLoading && <div style={{ color: '#888', fontSize: 13 }}>Caricamento categorie...</div>}
@@ -191,7 +243,9 @@ function EbayPubblicaProdotto() {
               )}
             </div>
 
-            <div>Prezzo da pubblicare su eBay: <strong>{publishedPrice != null ? `€${Number(publishedPrice).toFixed(2)}` : '—'}</strong></div>
+            {listingFormat === 'FIXED_PRICE' && (
+              <div>Prezzo da pubblicare su eBay: <strong>{publishedPrice != null ? `€${Number(publishedPrice).toFixed(2)}` : '—'}</strong></div>
+            )}
 
             <label style={{ display: 'grid', gap: 4 }}>
               Quantità da pubblicare

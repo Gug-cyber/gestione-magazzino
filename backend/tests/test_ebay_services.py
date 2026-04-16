@@ -192,6 +192,9 @@ def test_publish_request_shipping_cost_default_is_590_and_optional():
 def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     captured = {}
 
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_location", True
+
     def _mock_fetch_policy_id(token, marketplace_id, policy_type):
         return f"{policy_type}-id"
 
@@ -199,6 +202,7 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
         captured["payload"] = kwargs["json"]
         return SimpleNamespace(json=lambda: {"offerId": "OFFER-1"})
 
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
 
@@ -216,12 +220,15 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
 
     assert offer_id == "OFFER-1"
     assert listing_db.ebay_offer_id == "OFFER-1"
-    assert captured["payload"]["listingDescription"].startswith("Descrizione prodotto reale")
-    assert "Spedizione: EUR 4.50 (stimata)." in captured["payload"]["listingDescription"]
+    assert captured["payload"]["listingDescription"] == "Descrizione prodotto reale"
+    assert "Spedizione" not in captured["payload"]["listingDescription"]
 
 
 def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
     captured = {}
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_location", True
 
     def _mock_fetch_policy_id(token, marketplace_id, policy_type):
         return f"{policy_type}-id"
@@ -230,6 +237,7 @@ def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
         captured["payload"] = kwargs["json"]
         return SimpleNamespace(json=lambda: {"offerId": "OFFER-1"})
 
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
 
@@ -244,15 +252,98 @@ def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
         description="<p>Descrizione <b>valida</b></p>\n\n\nDettagli",
     )
 
-    assert captured["payload"]["listingDescription"] == (
-        "Descrizione valida\n\nDettagli\n\n"
-        "Spedizione: EUR 5.90 (stimata). I costi effettivi sono definiti dalla fulfillment policy eBay."
-    )
+    assert captured["payload"]["listingDescription"] == "Descrizione valida\n\nDettagli"
     assert captured["payload"]["pricingSummary"]["price"]["currency"] == "GBP"
+
+
+def test_create_offer_auction_format(monkeypatch):
+    captured = {}
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_location", True
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return SimpleNamespace(json=lambda: {"offerId": "OFFER-AUCTION-1"})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    offer_id = EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-AUCTION",
+        price=Decimal("10.00"),
+        quantity=3,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Moneta rara",
+        listing_format="AUCTION",
+        auction_start_price=0.99,
+        auction_duration="DAYS_7",
+        auction_reserve_price=5.00,
+        auction_buy_it_now_price=15.00,
+    )
+
+    assert offer_id == "OFFER-AUCTION-1"
+    payload = captured["payload"]
+    assert payload["format"] == "AUCTION"
+    assert payload["availableQuantity"] == 1
+    assert payload["listingDuration"] == "DAYS_7"
+    assert payload["pricingSummary"]["auctionStartPrice"]["value"] == "0.99"
+    assert payload["pricingSummary"]["auctionStartPrice"]["currency"] == "EUR"
+    assert payload["pricingSummary"]["auctionReservePrice"]["value"] == "5.0"
+    assert payload["pricingSummary"]["price"]["value"] == "15.0"
+    assert "Spedizione" not in payload["listingDescription"]
+
+
+def test_create_offer_auction_format_minimal(monkeypatch):
+    captured = {}
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_location", True
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return SimpleNamespace(json=lambda: {"offerId": "OFFER-AUCTION-2"})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-AUCTION-2",
+        price=Decimal("10.00"),
+        quantity=5,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Moneta",
+        listing_format="AUCTION",
+        auction_start_price=1.00,
+    )
+
+    payload = captured["payload"]
+    assert payload["format"] == "AUCTION"
+    assert payload["availableQuantity"] == 1
+    assert "listingDuration" not in payload
+    assert "auctionReservePrice" not in payload["pricingSummary"]
+    assert "price" not in payload["pricingSummary"]
 
 
 def test_create_offer_uses_only_offer_api_headers(monkeypatch):
     captured = {}
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_location", True
 
     def _mock_fetch_policy_id(token, marketplace_id, policy_type):
         return f"{policy_type}-id"
@@ -261,6 +352,7 @@ def test_create_offer_uses_only_offer_api_headers(monkeypatch):
         captured["headers"] = kwargs["headers"]
         return SimpleNamespace(json=lambda: {"offerId": "OFFER-1"})
 
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
 
@@ -283,6 +375,9 @@ def test_create_offer_uses_only_offer_api_headers(monkeypatch):
 
 
 def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, caplog):
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_location", True
+
     def _mock_fetch_policy_id(token, marketplace_id, policy_type):
         return f"{policy_type}-id"
 
@@ -295,6 +390,7 @@ def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, c
         )
         raise httpx.HTTPStatusError("Bad request", request=request, response=response)
 
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
 

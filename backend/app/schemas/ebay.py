@@ -47,6 +47,11 @@ class PublishRequest(BaseModel):
     shipping_cost: Optional[float] = 5.90
     force: bool = False
     ebay_category_id: Optional[str] = None
+    listing_format: str = "FIXED_PRICE"
+    auction_start_price: Optional[float] = None
+    auction_duration: Optional[str] = None
+    auction_reserve_price: Optional[float] = None
+    auction_buy_it_now_price: Optional[float] = None
 
 
 class PricingPreviewResponse(BaseModel):
