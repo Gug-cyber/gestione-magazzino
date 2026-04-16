@@ -720,6 +720,213 @@ def test_exchange_code_for_tokens_fetches_and_stores_identity_username(monkeypat
     assert db.saved.ebay_account_id == "real-ebay-user"
 
 
+def test_create_offer_deletes_and_recreates_stale_offer_when_location_not_confirmed(monkeypatch):
+    """When offer already exists and location_confirmed is False, delete and recreate."""
+    calls = []
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_it", False  # location NOT confirmed
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        calls.append(method)
+        if method == "POST" and url.endswith("/offer"):
+            if len([c for c in calls if c == "POST"]) == 1:
+                # First POST: offer already exists
+                request = httpx.Request("POST", url)
+                response = httpx.Response(
+                    400,
+                    request=request,
+                    json={"errors": [{"errorId": 25002, "message": "Offer already exists.", "parameters": [{"name": "offerId", "value": "STALE-OFFER-1"}]}]},
+                )
+                raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+            # Second POST after deletion: success
+            return SimpleNamespace(json=lambda: {"offerId": "NEW-OFFER-1"})
+        if method == "DELETE":
+            return SimpleNamespace()
+        return SimpleNamespace(json=lambda: {})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    offer_id = EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-1",
+        price=Decimal("12.34"),
+        quantity=1,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Descrizione",
+    )
+
+    assert offer_id == "NEW-OFFER-1"
+    assert listing_db.ebay_offer_id == "NEW-OFFER-1"
+    assert "DELETE" in calls
+
+
+def test_create_offer_falls_back_to_update_when_delete_fails_and_location_not_confirmed(monkeypatch, caplog):
+    """When offer exists, location_confirmed=False, and DELETE fails → fall back to update."""
+    update_calls = []
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_it", False  # location NOT confirmed
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        if method == "POST" and url.endswith("/offer"):
+            request = httpx.Request("POST", url)
+            response = httpx.Response(
+                400,
+                request=request,
+                json={"errors": [{"errorId": 25002, "message": "Offer already exists.", "parameters": [{"name": "offerId", "value": "STALE-OFFER-2"}]}]},
+            )
+            raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+        if method == "DELETE":
+            request = httpx.Request("DELETE", url)
+            response = httpx.Response(403, request=request, json={"errors": [{"message": "Forbidden"}]})
+            raise httpx.HTTPStatusError("Forbidden", request=request, response=response)
+        return SimpleNamespace()
+
+    def _mock_update_offer(token, offer_id, payload, marketplace_id):
+        update_calls.append(offer_id)
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._update_offer", _mock_update_offer)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    offer_id = EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-1",
+        price=Decimal("12.34"),
+        quantity=1,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Descrizione",
+    )
+
+    assert offer_id == "STALE-OFFER-2"
+    assert listing_db.ebay_offer_id == "STALE-OFFER-2"
+    assert update_calls == ["STALE-OFFER-2"]
+    assert any("will try update fallback" in message for message in caplog.messages)
+
+
+def test_create_offer_updates_existing_offer_when_location_confirmed(monkeypatch):
+    """When offer already exists and location_confirmed=True, update and reuse (original behaviour)."""
+    update_calls = []
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_it", True  # location IS confirmed
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        if method == "POST" and url.endswith("/offer"):
+            request = httpx.Request("POST", url)
+            response = httpx.Response(
+                400,
+                request=request,
+                json={"errors": [{"errorId": 25002, "message": "Offer already exists.", "parameters": [{"name": "offerId", "value": "EXIST-OFFER-3"}]}]},
+            )
+            raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+        return SimpleNamespace()
+
+    def _mock_update_offer(token, offer_id, payload, marketplace_id):
+        update_calls.append(offer_id)
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._update_offer", _mock_update_offer)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    offer_id = EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-1",
+        price=Decimal("12.34"),
+        quantity=1,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Descrizione",
+    )
+
+    assert offer_id == "EXIST-OFFER-3"
+    assert listing_db.ebay_offer_id == "EXIST-OFFER-3"
+    assert update_calls == ["EXIST-OFFER-3"]
+
+
+def test_ensure_merchant_location_retries_with_extra_address_fields_on_400(monkeypatch):
+    """When creating location fails with 400, retry with city+postalCode."""
+    import app.services.ebay_offer_service as svc_module
+
+    svc_module._location_cache.clear()
+    post_attempts = []
+
+    def _mock_request(method, url, **kwargs):
+        if method == "GET":
+            # Location doesn't exist yet
+            request = httpx.Request("GET", url)
+            response = httpx.Response(404, request=request, json={})
+            raise httpx.HTTPStatusError("Not found", request=request, response=response)
+        if method == "POST":
+            address = kwargs.get("json", {}).get("location", {}).get("address", {})
+            post_attempts.append(address)
+            if len(post_attempts) == 1:
+                # First attempt (country only) → 400
+                request = httpx.Request("POST", url)
+                response = httpx.Response(400, request=request, json={"errors": [{"errorId": 25802, "message": "Input error."}]})
+                raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+            # Second attempt (with city+postalCode) → success
+            return SimpleNamespace()
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    location_key, confirmed = EbayOfferService._ensure_merchant_location("token", "EBAY_IT")
+
+    assert confirmed is True
+    assert len(post_attempts) == 2
+    assert post_attempts[0] == {"country": "IT"}
+    assert post_attempts[1]["country"] == "IT"
+    assert "city" in post_attempts[1]
+    assert "postalCode" in post_attempts[1]
+
+    svc_module._location_cache.clear()
+
+
+def test_ensure_merchant_location_returns_false_when_all_attempts_fail(monkeypatch, caplog):
+    """When all create-location attempts fail, return confirmed=False and log a warning."""
+    import app.services.ebay_offer_service as svc_module
+
+    svc_module._location_cache.clear()
+
+    def _mock_request(method, url, **kwargs):
+        if method == "GET":
+            request = httpx.Request("GET", url)
+            response = httpx.Response(404, request=request, json={})
+            raise httpx.HTTPStatusError("Not found", request=request, response=response)
+        request = httpx.Request("POST", url)
+        response = httpx.Response(400, request=request, json={"errors": [{"errorId": 25802, "message": "Input error."}]})
+        raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    location_key, confirmed = EbayOfferService._ensure_merchant_location("token", "EBAY_IT")
+
+    assert confirmed is False
+    assert any("eBay create location error" in message for message in caplog.messages)
+
+    svc_module._location_cache.clear()
+
+
 def test_exchange_code_for_tokens_identity_username_fetch_is_best_effort(monkeypatch):
     class _DummyResponse:
         def __init__(self, payload):
