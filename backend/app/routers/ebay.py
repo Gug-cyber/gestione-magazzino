@@ -863,6 +863,49 @@ def sync_orders(
     return EbayOrderSyncService.sync_recent_orders(connection, db)
 
 
+@router.post("/sync/listings", response_model=dict)
+def sync_all_listings(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Sincronizza la quantità eBay per tutti i listing attivi.
+    Da chiamare periodicamente (es. ogni ora via cron).
+    """
+    connection = _get_connection(db)
+    if not connection or connection.status != "active":
+        raise HTTPException(status_code=400, detail="Account eBay non collegato")
+
+    listings = (
+        db.query(EbayListing)
+        .options(joinedload(EbayListing.product))
+        .filter(EbayListing.status == "active")
+        .all()
+    )
+
+    updated = 0
+    closed = 0
+    errors = 0
+    skipped = 0
+    for listing in listings:
+        try:
+            if not listing.product or not listing.ebay_item_id:
+                skipped += 1
+                continue
+            InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
+            before_status = listing.status
+            InventorySyncService.check_and_handle_zero_stock(listing, connection, db)
+            if listing.status != before_status:
+                closed += 1
+            else:
+                updated += 1
+        except Exception as e:
+            logger.warning("Errore sync listing %s: %s", listing.id, e)
+            errors += 1
+
+    return {"updated": updated, "closed": closed, "errors": errors, "skipped": skipped, "total": len(listings)}
+
+
 @router.get("/sales", response_model=list[EbaySaleResponse])
 def get_sales(
     db: Session = Depends(get_db),

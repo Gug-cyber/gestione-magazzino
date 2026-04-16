@@ -16,6 +16,56 @@ from ..crud.fattura import get_fattura_by_ordine, genera_fattura_da_ordine, gene
 logger = logging.getLogger(__name__)
 
 
+def _sync_ebay_after_order_confirmation(ordine: Ordine, db: Session) -> None:
+    """
+    Dopo la conferma di un ordine interno, sincronizza la quantità eBay
+    per tutti i prodotti coinvolti e chiude i listing a stock zero.
+    Fallisce silenziosamente (con log) per non bloccare il flusso dell'ordine.
+    """
+    try:
+        from ..models.ebay_listing import EbayListing
+        from ..models.ebay_connection import EbayConnection
+        from ..services.inventory_sync_service import InventorySyncService
+
+        connection = (
+            db.query(EbayConnection)
+            .filter_by(status="active")
+            .order_by(EbayConnection.id.desc())
+            .first()
+        )
+        if not connection:
+            return
+
+        product_ids = {riga.prodotto_id for riga in ordine.righe if riga.prodotto_id}
+        for product_id in product_ids:
+            listing = (
+                db.query(EbayListing)
+                .filter(
+                    EbayListing.product_id == product_id,
+                    EbayListing.status == "active",
+                )
+                .first()
+            )
+            if not listing:
+                continue
+            try:
+                InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
+                InventorySyncService.check_and_handle_zero_stock(listing, connection, db)
+            except Exception as e:
+                logger.warning(
+                    "Sync eBay post-conferma ordine fallita per prodotto %s (listing %s): %s",
+                    product_id,
+                    listing.id,
+                    e,
+                )
+    except Exception as e:
+        logger.error(
+            "Errore inatteso in _sync_ebay_after_order_confirmation (ordine=%s): %s",
+            ordine.id,
+            e,
+        )
+
+
 def _genera_numero_ordine(db: Session) -> str:
     anno = datetime.now(timezone.utc).year
     prefix = f"ORD-{anno}-"
@@ -195,6 +245,7 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
         return None
 
     stato_precedente = ordine.stato
+    stock_era_gia_scalato = ordine.stock_scalato
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(ordine, field, value)
@@ -315,6 +366,11 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     db.commit()
     db.refresh(ordine)
+
+    # Sync eBay post-conferma: aggiorna quantità listing eBay per prodotti coinvolti
+    if nuovo_stato == StatoOrdine.confermato and not stock_era_gia_scalato:
+        _sync_ebay_after_order_confirmation(ordine, db)
+
     return ordine
 
 

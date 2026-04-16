@@ -10,6 +10,7 @@ export const ebayApi = {
   endListing: (listingId) => api.delete(`/api/ebay/listings/${listingId}`),
   syncListingQuantity: (listingId) => api.post(`/api/ebay/listings/${listingId}/sync`),
   syncOrders: () => api.post('/api/ebay/sync/orders'),
+  syncAllListings: () => api.post('/api/ebay/sync/listings'),
   getSales: () => api.get('/api/ebay/sales'),
   getPricingPreview: (netPrice, feePercentage) =>
     api.get(`/api/ebay/pricing/preview?net_price=${netPrice}&fee_percentage=${feePercentage}`),
