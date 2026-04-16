@@ -253,9 +253,13 @@ function EbayPubblicaProdotto() {
                 type="number"
                 min={1}
                 max={product.quantita || 1}
-                value={quantity}
+                value={listingFormat === 'AUCTION' ? 1 : quantity}
+                disabled={listingFormat === 'AUCTION'}
                 onChange={(e) => setQuantity(e.target.value)}
               />
+              {listingFormat === 'AUCTION' && (
+                <span style={{ color: '#888', fontSize: 12 }}>Le aste supportano solo quantità 1</span>
+              )}
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
