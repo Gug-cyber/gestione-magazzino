@@ -153,6 +153,8 @@ class EbayInventoryService:
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
         ebay_condition: str | None = None,
+        grading_service: str | None = None,
+        grade: str | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
@@ -165,17 +167,29 @@ class EbayInventoryService:
         content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
         condition = ebay_condition or _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
+
+        product_payload: dict = {
+            "title": title,
+            "description": description,
+            "imageUrls": image_urls,
+        }
+
+        if grading_service or grade:
+            aspects: dict = {}
+            if grading_service:
+                aspects["Professional Grader"] = [grading_service]
+            if grade:
+                aspects["Grade"] = [grade]
+            if aspects:
+                product_payload["aspects"] = aspects
+
         payload = {
             "availability": {
                 "shipToLocationAvailability": {
                     "quantity": max(0, listing.quantity_published),
                 }
             },
-            "product": {
-                "title": title,
-                "description": description,
-                "imageUrls": image_urls,
-            },
+            "product": product_payload,
             "condition": condition,
         }
         payload["conditionDescription"] = (

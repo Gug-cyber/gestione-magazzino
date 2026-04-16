@@ -703,6 +703,8 @@ def publish_listing(
             listing,
             marketplace_id=connection.marketplace_id or "EBAY_IT",
             ebay_condition=payload.ebay_condition,
+            grading_service=payload.grading_service,
+            grade=payload.grade,
         )
         offer_id = EbayOfferService.create_offer(
             token,

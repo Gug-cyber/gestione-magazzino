@@ -7,6 +7,7 @@
 export const STATO_MAP = {
   'Mint': 'MT', 'Near Mint': 'NM', 'Excellent': 'EX',
   'Good': 'GD', 'Light Played': 'LP', 'Played': 'PL', 'Poor': 'PO',
+  'Graded': 'GR',
 }
 
 export const LINGUA_MAP = {
