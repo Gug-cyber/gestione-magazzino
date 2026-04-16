@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { prodottiAPI, getFotoUrl } from '../api/client'
 import { ebayApi } from '../api/ebay'
@@ -16,11 +16,16 @@ function EbayPubblicaProdotto() {
   const [quantity, setQuantity] = useState(1)
   const [shippingCost, setShippingCost] = useState('5.90')
   const [freeShipping, setFreeShipping] = useState(false)
-  const [ebayCategoryId, setEbayCategoryId] = useState('45101')
   const [publishedPrice, setPublishedPrice] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const [categoryPath, setCategoryPath] = useState([])
+  const [categoryLevels, setCategoryLevels] = useState([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoriesError, setCategoriesError] = useState('')
 
   useEffect(() => {
     if (!productId) return
@@ -38,6 +43,20 @@ function EbayPubblicaProdotto() {
   }, [productId])
 
   useEffect(() => {
+    if (!connection.connected) return
+    setCategoriesLoading(true)
+    setCategoriesError('')
+    ebayApi.getCategories(null, connection.marketplace_id || 'EBAY_IT')
+      .then(res => {
+        setCategoryLevels([res.data.categories])
+        setCategoryPath([])
+        setSelectedCategoryId('')
+      })
+      .catch(() => setCategoriesError('Impossibile caricare le categorie eBay. Riprova più tardi.'))
+      .finally(() => setCategoriesLoading(false))
+  }, [connection])
+
+  useEffect(() => {
     const n = Number(netPrice)
     const f = Number(fee)
     if (!Number.isFinite(n) || !Number.isFinite(f) || n <= 0 || f < 0 || f >= 100) {
@@ -49,15 +68,43 @@ function EbayPubblicaProdotto() {
       .catch(() => setPublishedPrice(null))
   }, [netPrice, fee])
 
+  const handleCategorySelect = useCallback((levelIndex, categoryId) => {
+    const selectedCat = categoryLevels[levelIndex].find(c => c.id === categoryId)
+    if (!selectedCat) return
+
+    const newPath = [...categoryPath.slice(0, levelIndex), selectedCat]
+    const newLevels = categoryLevels.slice(0, levelIndex + 1)
+    setCategoryPath(newPath)
+
+    if (selectedCat.is_leaf) {
+      setSelectedCategoryId(categoryId)
+      setCategoryLevels(newLevels)
+      return
+    }
+
+    setSelectedCategoryId('')
+    ebayApi.getCategories(categoryId, connection.marketplace_id || 'EBAY_IT')
+      .then(res => {
+        if (res.data.categories.length > 0) {
+          setCategoryLevels([...newLevels, res.data.categories])
+        } else {
+          setSelectedCategoryId(categoryId)
+          setCategoryLevels(newLevels)
+        }
+      })
+      .catch(() => setCategoriesError('Impossibile caricare le sottocategorie eBay. Riprova più tardi.'))
+  }, [categoryPath, categoryLevels, connection])
+
   const validationMessage = useMemo(() => {
     if (!connection.connected) return 'Account eBay non collegato'
     if (!product) return ''
     if (!product.foto_path) return 'Il prodotto non ha immagini pubbliche — non è possibile pubblicare'
     if ((product.quantita || 0) <= 0) return 'Quantità non disponibile'
+    if (!selectedCategoryId) return 'Seleziona una categoria eBay foglia'
     const shipping = Number(shippingCost)
     if (!freeShipping && (!Number.isFinite(shipping) || shipping < 0)) return 'Spese di spedizione non valide'
     return ''
-  }, [connection, product, freeShipping, shippingCost])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId])
 
   const handlePublish = async () => {
     setError('')
@@ -73,7 +120,7 @@ function EbayPubblicaProdotto() {
         fee_override: Number(fee),
         quantity_override: Number(quantity),
         shipping_cost: freeShipping ? 0 : Number(shippingCost),
-        ebay_category_id: ebayCategoryId || '45101',
+        ebay_category_id: selectedCategoryId,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -111,23 +158,38 @@ function EbayPubblicaProdotto() {
               <input type="number" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
             </label>
 
-            <label style={{ display: 'grid', gap: 4 }}>
-              ID Categoria eBay
-              <input
-                type="text"
-                value={ebayCategoryId}
-                onChange={(e) => setEbayCategoryId(e.target.value)}
-                placeholder="es. 45101 (Monete italiane)"
-              />
-              <small style={{ color: 'var(--color-muted, #888)', fontSize: 12 }}>
-                Obbligatorio. Deve essere una categoria foglia eBay (senza sottocategorie).{' '}
-                Esempi: 45101 (Monete italiane), 45100 (Monedas españolas), 45098 (Münzen DE).{' '}
-                Verifica la categoria corretta per il tuo marketplace.{' '}
-                <a href="https://www.ebay.it/sch/i.html" target="_blank" rel="noreferrer">
-                  Trova la categoria
-                </a>
-              </small>
-            </label>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <label>Categoria eBay</label>
+              {categoriesLoading && <div style={{ color: '#888', fontSize: 13 }}>Caricamento categorie...</div>}
+              {categoriesError && <div style={{ color: 'var(--color-danger)', fontSize: 13 }}>{categoriesError}</div>}
+
+              {categoryLevels.map((cats, levelIdx) => (
+                <select
+                  key={levelIdx}
+                  value={categoryPath[levelIdx]?.id || ''}
+                  onChange={e => handleCategorySelect(levelIdx, e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">— Seleziona {levelIdx === 0 ? 'categoria' : 'sottocategoria'} —</option>
+                  {cats.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}{cat.is_leaf ? ' ✓' : ' →'}
+                    </option>
+                  ))}
+                </select>
+              ))}
+
+              {selectedCategoryId && (
+                <div style={{ color: 'var(--color-success, #4caf50)', fontSize: 13 }}>
+                  ✓ Categoria selezionata: {categoryPath.map(c => c.name).join(' → ')} (ID: {selectedCategoryId})
+                </div>
+              )}
+              {!selectedCategoryId && categoryPath.length > 0 && (
+                <div style={{ color: '#888', fontSize: 13 }}>
+                  Seleziona una categoria foglia (marcata con ✓) per continuare
+                </div>
+              )}
+            </div>
 
             <div>Prezzo da pubblicare su eBay: <strong>{publishedPrice != null ? `€${Number(publishedPrice).toFixed(2)}` : '—'}</strong></div>
 

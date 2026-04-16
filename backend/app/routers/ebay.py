@@ -314,6 +314,88 @@ def get_prezzi_ebay(
     }
 
 
+@router.get("/categories")
+def get_ebay_categories(
+    parent_id: Optional[str] = Query(None, description="ID categoria padre. Se None, restituisce le root categories"),
+    marketplace_id: str = Query("EBAY_IT"),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Restituisce le sottocategorie di una categoria eBay.
+    Usa la Taxonomy API con il token app-level (client_credentials).
+    """
+    env = _get_ebay_env()
+    if env == "SANDBOX":
+        base_taxonomy = "https://api.sandbox.ebay.com"
+    else:
+        base_taxonomy = "https://api.ebay.com"
+
+    access_token = _get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
+    }
+
+    try:
+        # Step 1: ottieni il category_tree_id per il marketplace
+        tree_resp = httpx.get(
+            f"{base_taxonomy}/commerce/taxonomy/v1/get_default_category_tree_id",
+            headers=headers,
+            params={"marketplace_id": marketplace_id},
+            timeout=15,
+        )
+        tree_resp.raise_for_status()
+        category_tree_id = tree_resp.json().get("categoryTreeId")
+
+        if not category_tree_id:
+            raise HTTPException(status_code=502, detail="Category tree ID non ricevuto da eBay")
+
+        # Step 2: ottieni le sottocategorie
+        if parent_id:
+            subtree_resp = httpx.get(
+                f"{base_taxonomy}/commerce/taxonomy/v1/category_tree/{category_tree_id}/get_category_subtree",
+                headers=headers,
+                params={"category_id": parent_id},
+                timeout=15,
+            )
+            subtree_resp.raise_for_status()
+            data = subtree_resp.json()
+            # Estrai i figli diretti del nodo richiesto
+            root_node = data.get("categorySubtreeNode", {})
+            child_nodes = root_node.get("childCategoryTreeNodes", [])
+        else:
+            # Root categories
+            tree_resp2 = httpx.get(
+                f"{base_taxonomy}/commerce/taxonomy/v1/category_tree/{category_tree_id}",
+                headers=headers,
+                timeout=15,
+            )
+            tree_resp2.raise_for_status()
+            data = tree_resp2.json()
+            root_node = data.get("rootCategoryNode", {})
+            child_nodes = root_node.get("childCategoryTreeNodes", [])
+
+        categories = []
+        for node in child_nodes:
+            cat = node.get("category", {})
+            is_leaf = node.get("leafCategoryTreeNode", False)
+            categories.append({
+                "id": cat.get("categoryId"),
+                "name": cat.get("categoryName"),
+                "is_leaf": is_leaf,
+                "has_children": not is_leaf,
+            })
+
+        return {"categories": categories, "category_tree_id": category_tree_id}
+
+    except httpx.HTTPStatusError as exc:
+        logger.error("eBay Taxonomy API error %s: %s", exc.response.status_code, exc.response.text)
+        raise HTTPException(status_code=502, detail=f"Errore API categorie eBay: {exc.response.status_code}")
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Errore di rete eBay: {exc}")
+
+
 # === New user-level OAuth/listing/sync endpoints ===
 def _get_connection(db: Session) -> Optional[EbayConnection]:
     return db.query(EbayConnection).order_by(EbayConnection.id.desc()).first()
