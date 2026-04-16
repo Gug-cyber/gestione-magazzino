@@ -107,6 +107,7 @@ def test_publish_listing_uses_default_shipping_cost_when_not_provided(client, au
         listing,
         description,
         shipping_cost,
+        category_id=None,
     ):
         captured["shipping_cost"] = shipping_cost
         return "OFFER-1"

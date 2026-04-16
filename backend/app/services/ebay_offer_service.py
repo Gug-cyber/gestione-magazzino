@@ -325,6 +325,7 @@ class EbayOfferService:
         listing_db,
         description: str,
         shipping_cost: float = 5.90,
+        category_id: str | None = None,
     ) -> str:
         location_key, location_confirmed = EbayOfferService._ensure_merchant_location(token, marketplace_id)
 
@@ -377,6 +378,7 @@ class EbayOfferService:
             "marketplaceId": marketplace_id,
             "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
+            "categoryId": category_id or "11116",
             "listingDescription": listing_description,
             "listingPolicies": {
                 "fulfillmentPolicyId": fulfillment_policy_id,
