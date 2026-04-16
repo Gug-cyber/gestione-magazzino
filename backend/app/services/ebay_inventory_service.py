@@ -12,10 +12,10 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 _CONDITION_MAP = {
-    "Mint": "NEW",
-    "Near Mint": "NEW",
+    "Mint": "USED_EXCELLENT",
+    "Near Mint": "USED_EXCELLENT",
     "Excellent": "USED_EXCELLENT",
-    "Good": "USED_EXCELLENT",
+    "Good": "USED_GOOD",
     "Light Played": "USED_GOOD",
     "Played": "USED_ACCEPTABLE",
     "Poor": "USED_ACCEPTABLE",
@@ -152,6 +152,7 @@ class EbayInventoryService:
         product,
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
+        ebay_condition: str | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
@@ -162,7 +163,7 @@ class EbayInventoryService:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
         content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
-        condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+        condition = ebay_condition or _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
             "availability": {
@@ -177,10 +178,9 @@ class EbayInventoryService:
             },
             "condition": condition,
         }
-        if condition != "NEW":
-            payload["conditionDescription"] = (
-                _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
-            )
+        payload["conditionDescription"] = (
+            _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
+        )
 
         EbayInventoryService._request_with_retry(
             "PUT",

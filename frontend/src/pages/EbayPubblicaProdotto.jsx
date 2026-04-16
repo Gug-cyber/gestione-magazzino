@@ -32,6 +32,17 @@ function EbayPubblicaProdotto() {
   const [auctionDuration, setAuctionDuration] = useState('DAYS_7')
   const [auctionReservePrice, setAuctionReservePrice] = useState('')
   const [auctionBuyItNow, setAuctionBuyItNow] = useState('')
+  const [ebayCondition, setEbayCondition] = useState('USED_EXCELLENT')
+
+  const _conditionMap = {
+    'Mint': 'USED_EXCELLENT',
+    'Near Mint': 'USED_EXCELLENT',
+    'Excellent': 'USED_EXCELLENT',
+    'Good': 'USED_GOOD',
+    'Light Played': 'USED_GOOD',
+    'Played': 'USED_ACCEPTABLE',
+    'Poor': 'USED_ACCEPTABLE',
+  }
 
   useEffect(() => {
     if (!productId) return
@@ -45,6 +56,7 @@ function EbayPubblicaProdotto() {
       setQuantity(Math.max(1, p.quantita || 1))
       setConnection(cRes.data)
       if (cRes.data?.fee_percentage != null) setFee(String(cRes.data.fee_percentage))
+      setEbayCondition(_conditionMap[p.stato_conservazione] || 'USED_EXCELLENT')
     }).catch((e) => setError(e.response?.data?.detail || 'Errore caricamento dati'))
   }, [productId])
 
@@ -136,6 +148,7 @@ function EbayPubblicaProdotto() {
         auction_duration: listingFormat === 'AUCTION' ? auctionDuration : undefined,
         auction_reserve_price: listingFormat === 'AUCTION' && auctionReservePrice ? Number(auctionReservePrice) : undefined,
         auction_buy_it_now_price: listingFormat === 'AUCTION' && auctionBuyItNow ? Number(auctionBuyItNow) : undefined,
+        ebay_condition: ebayCondition,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -210,9 +223,17 @@ function EbayPubblicaProdotto() {
               </>
             )}
 
+            <label style={{ display: 'grid', gap: 4 }}>
+              Condizione eBay
+              <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)}>
+                <option value="USED_EXCELLENT">Ottime condizioni (Used Excellent)</option>
+                <option value="USED_GOOD">Buone condizioni (Used Good)</option>
+                <option value="USED_ACCEPTABLE">Condizioni accettabili (Used Acceptable)</option>
+              </select>
+            </label>
+
             <div style={{ display: 'grid', gap: 8 }}>
-              <label>Categoria eBay</label>
-              {categoriesLoading && <div style={{ color: '#888', fontSize: 13 }}>Caricamento categorie...</div>}
+              <label>Categoria eBay</label>              {categoriesLoading && <div style={{ color: '#888', fontSize: 13 }}>Caricamento categorie...</div>}
               {categoriesError && <div style={{ color: 'var(--color-danger)', fontSize: 13 }}>{categoriesError}</div>}
 
               {categoryLevels.map((cats, levelIdx) => (
