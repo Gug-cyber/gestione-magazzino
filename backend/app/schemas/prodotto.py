@@ -62,6 +62,7 @@ class ProdottoResponse(ProdottoBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     foto_url: Optional[str] = None
+    foto_aggiuntive: Optional[List[str]] = None
     barcode_generated_at: Optional[datetime] = None
     immagini_drive: Optional[List[str]] = None
 
