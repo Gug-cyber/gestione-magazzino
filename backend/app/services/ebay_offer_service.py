@@ -181,9 +181,20 @@ class EbayOfferService:
                 )
                 return _LOCATION_KEY, False
 
+        _COUNTRY_ADDRESS_FALLBACK = {
+            "IT": {"city": "Roma", "postalCode": "00100"},
+            "DE": {"city": "Berlin", "postalCode": "10115"},
+            "FR": {"city": "Paris", "postalCode": "75001"},
+            "ES": {"city": "Madrid", "postalCode": "28001"},
+            "GB": {"city": "London", "postalCode": "EC1A1BB"},
+            "US": {"city": "New York", "postalCode": "10001"},
+            "AU": {"city": "Sydney", "postalCode": "2000"},
+            "CA": {"city": "Toronto", "postalCode": "M5H2N2"},
+        }
+        extra_fields = _COUNTRY_ADDRESS_FALLBACK.get(country, {"city": country, "postalCode": "00000"})
         address_candidates = [
             {"country": country},
-            {"country": country, "city": "Roma" if country == "IT" else country, "postalCode": "00100" if country == "IT" else "00000"},
+            {"country": country, **extra_fields},
         ]
         last_exc: httpx.HTTPStatusError | None = None
         for address_payload in address_candidates:
@@ -440,7 +451,7 @@ class EbayOfferService:
                             )
                             new_offer_id = response.json().get("offerId")
                             if not new_offer_id:
-                                raise HTTPException(status_code=502, detail="Offer eBay non creata correttamente dopo eliminazione")
+                                raise HTTPException(status_code=502, detail="Offerta eBay non creata correttamente dopo eliminazione")
                             listing_db.ebay_offer_id = new_offer_id
                             return new_offer_id
                         except httpx.HTTPStatusError as retry_exc:
@@ -449,7 +460,7 @@ class EbayOfferService:
                                 retry_exc.response.status_code,
                                 retry_exc.response.text,
                             )
-                            raise HTTPException(status_code=502, detail="Errore ricreazione offer eBay dopo eliminazione")
+                            raise HTTPException(status_code=502, detail="Errore ricreazione offerta eBay dopo eliminazione")
                     else:
                         logger.info("eBay offer already exists, updating and reusing offerId: %s", existing_offer_id)
                         listing_db.ebay_offer_id = existing_offer_id
