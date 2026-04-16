@@ -14,7 +14,8 @@ from ..models.ebay_sale import EbaySale
 from ..models.movimento import TipoMovimento
 from .ebay_auth_service import EbayAuthService
 from .ebay_inventory_service import EbayInventoryService
-from .inventory_sync_service import InventorySyncService
+from .ebay_offer_service import EbayOfferService
+from .inventory_sync_service import InventorySyncService, _EBAY_OFFER_READONLY_FIELDS
 from .pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
@@ -182,19 +183,52 @@ class EbayOrderSyncService:
             note=f"Vendita eBay ordine {order_id}",
             auto_commit=False,
         )
+        db.flush()
+        db.refresh(selected_listing.product)
 
+        remaining_qty = selected_listing.product.quantita
         token = EbayAuthService.get_valid_token(connection, db)
-        if selected_listing.product and selected_listing.product.quantita > 0 and selected_listing.ebay_item_id:
-            EbayInventoryService.update_quantity(
-                token,
-                selected_listing.ebay_item_id,
-                selected_listing.product.quantita,
-                marketplace_id=connection.marketplace_id or "EBAY_IT",
-            )
-            selected_listing.quantity_published = selected_listing.product.quantita
-            selected_listing.status = "active"
+        marketplace_id = connection.marketplace_id or "EBAY_IT"
+
+        if remaining_qty > 0 and selected_listing.ebay_item_id and selected_listing.ebay_offer_id:
+            try:
+                offer_data = EbayOfferService.get_offer(token, selected_listing.ebay_offer_id)
+                offer_data["availableQuantity"] = remaining_qty
+                for key in _EBAY_OFFER_READONLY_FIELDS:
+                    offer_data.pop(key, None)
+                EbayOfferService._update_offer(
+                    token, selected_listing.ebay_offer_id, offer_data, marketplace_id
+                )
+                selected_listing.quantity_published = remaining_qty
+                selected_listing.status = "active"
+            except Exception as exc:
+                logger.warning("Impossibile aggiornare quantità offer eBay post-vendita: %s", exc)
+                selected_listing.quantity_published = remaining_qty
+                selected_listing.status = "active"
+        elif remaining_qty > 0 and selected_listing.ebay_item_id:
+            try:
+                EbayInventoryService.update_quantity(
+                    token,
+                    selected_listing.ebay_item_id,
+                    remaining_qty,
+                    marketplace_id=marketplace_id,
+                )
+                selected_listing.quantity_published = remaining_qty
+                selected_listing.status = "active"
+            except Exception as exc:
+                logger.warning("Impossibile aggiornare quantità inventory eBay post-vendita: %s", exc)
+                selected_listing.quantity_published = remaining_qty
+                selected_listing.status = "active"
+        elif remaining_qty <= 0 and selected_listing.ebay_offer_id:
+            try:
+                EbayOfferService.end_listing(token, selected_listing.ebay_offer_id, reason="OUT_OF_STOCK")
+                selected_listing.status = "out_of_stock"
+            except Exception as exc:
+                logger.warning("Impossibile chiudere listing eBay a stock zero: %s", exc)
+                selected_listing.status = "out_of_stock"
         else:
             selected_listing.status = "out_of_stock"
+
         selected_listing.last_sync_at = datetime.now(timezone.utc)
 
         db.commit()

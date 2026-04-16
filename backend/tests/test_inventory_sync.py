@@ -2,10 +2,10 @@
 Test per la sincronizzazione stock bidirezionale (magazzino ↔ eBay).
 """
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 from sqlalchemy.orm import Session
 
-from app.services.inventory_sync_service import InventorySyncService
+from app.services.inventory_sync_service import InventorySyncService, _EBAY_OFFER_READONLY_FIELDS
 from app.models.movimento import TipoMovimento, Movimento
 from app.models.prodotto import Prodotto
 
@@ -42,6 +42,24 @@ def _crea_ordine(client, auth_headers, prodotto_id, quantita=2, prezzo=10.00):
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+def _make_listing(product_quantita=5, offer_id="OFFER-1", item_id="SKU-1", status="active"):
+    """Create a mock EbayListing with associated product."""
+    listing = MagicMock()
+    listing.ebay_offer_id = offer_id
+    listing.ebay_item_id = item_id
+    listing.status = status
+    product = MagicMock()
+    product.quantita = product_quantita
+    listing.product = product
+    return listing
+
+
+def _make_connection(marketplace_id="EBAY_IT"):
+    connection = MagicMock()
+    connection.marketplace_id = marketplace_id
+    return connection
 
 
 # ---------------------------------------------------------------------------
@@ -218,3 +236,151 @@ def test_sync_all_listings_no_connection(client, auth_headers):
     """Verifica che /sync/listings risponda 400 senza connessione eBay."""
     resp = client.post("/api/ebay/sync/listings", headers=auth_headers)
     assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# 10. sync_quantity_to_ebay usa get_offer + _update_offer quando ebay_offer_id disponibile
+# ---------------------------------------------------------------------------
+
+def test_sync_quantity_to_ebay_uses_offer_api_when_offer_id_available():
+    """Verifica che sync_quantity_to_ebay usi GET+PUT offer quando ebay_offer_id è presente."""
+    listing = _make_listing(product_quantita=5, offer_id="OFFER-99", item_id="SKU-99")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayAuthService.get_valid_token", return_value="tok"), \
+         patch("app.services.inventory_sync_service.EbayOfferService.get_offer", return_value={"availableQuantity": 10}) as mock_get, \
+         patch("app.services.inventory_sync_service.EbayOfferService._update_offer") as mock_update, \
+         patch("app.services.inventory_sync_service.EbayInventoryService.update_quantity") as mock_inv:
+
+        InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
+
+        mock_get.assert_called_once_with("tok", "OFFER-99")
+        mock_update.assert_called_once()
+        mock_inv.assert_not_called()
+
+        # Verify availableQuantity was set correctly
+        call_args = mock_update.call_args
+        payload = call_args[0][2]
+        assert payload["availableQuantity"] == 5
+        # Read-only fields should be removed
+        for key in _EBAY_OFFER_READONLY_FIELDS:
+            assert key not in payload
+
+
+# ---------------------------------------------------------------------------
+# 11. sync_quantity_to_ebay fallback a update_quantity quando ebay_offer_id è None
+# ---------------------------------------------------------------------------
+
+def test_sync_quantity_to_ebay_fallback_no_offer_id():
+    """Verifica che sync_quantity_to_ebay usi update_quantity quando ebay_offer_id è None."""
+    listing = _make_listing(product_quantita=3, offer_id=None, item_id="SKU-88")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayAuthService.get_valid_token", return_value="tok"), \
+         patch("app.services.inventory_sync_service.EbayOfferService.get_offer") as mock_get, \
+         patch("app.services.inventory_sync_service.EbayInventoryService.update_quantity") as mock_inv:
+
+        InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
+
+        mock_get.assert_not_called()
+        mock_inv.assert_called_once_with("tok", "SKU-88", 3, marketplace_id="EBAY_IT")
+
+
+# ---------------------------------------------------------------------------
+# 12. sync_quantity_to_ebay salta chiamata eBay quando qty <= 0
+# ---------------------------------------------------------------------------
+
+def test_sync_quantity_to_ebay_skips_ebay_call_when_zero_stock():
+    """Verifica che sync_quantity_to_ebay non chiami eBay se la quantità è 0."""
+    listing = _make_listing(product_quantita=0, offer_id="OFFER-77", item_id="SKU-77")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayAuthService.get_valid_token", return_value="tok"), \
+         patch("app.services.inventory_sync_service.EbayOfferService.get_offer") as mock_get, \
+         patch("app.services.inventory_sync_service.EbayOfferService._update_offer") as mock_update, \
+         patch("app.services.inventory_sync_service.EbayInventoryService.update_quantity") as mock_inv:
+
+        InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
+
+        mock_get.assert_not_called()
+        mock_update.assert_not_called()
+        mock_inv.assert_not_called()
+        assert listing.quantity_published == 0
+
+
+# ---------------------------------------------------------------------------
+# 13. check_and_handle_zero_stock chiude il listing quando product.quantita == 0
+# ---------------------------------------------------------------------------
+
+def test_check_and_handle_zero_stock_closes_listing():
+    """Verifica che check_and_handle_zero_stock chiuda l'annuncio quando stock è 0."""
+    listing = _make_listing(product_quantita=0, offer_id="OFFER-55", status="active")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayAuthService.get_valid_token", return_value="tok"), \
+         patch("app.services.inventory_sync_service.EbayOfferService.end_listing") as mock_end:
+
+        InventorySyncService.check_and_handle_zero_stock(listing, connection, db)
+
+        mock_end.assert_called_once_with("tok", "OFFER-55", reason="OUT_OF_STOCK")
+        assert listing.status == "out_of_stock"
+        db.commit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# 14. check_and_handle_zero_stock non chiude se stock > 0
+# ---------------------------------------------------------------------------
+
+def test_check_and_handle_zero_stock_no_action_when_stock_positive():
+    """Verifica che check_and_handle_zero_stock non faccia nulla se stock > 0."""
+    listing = _make_listing(product_quantita=5, offer_id="OFFER-44", status="active")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayOfferService.end_listing") as mock_end:
+        result = InventorySyncService.check_and_handle_zero_stock(listing, connection, db)
+
+        mock_end.assert_not_called()
+        db.commit.assert_not_called()
+        assert result is listing
+
+
+# ---------------------------------------------------------------------------
+# 15. check_and_handle_zero_stock non chiude listing già out_of_stock
+# ---------------------------------------------------------------------------
+
+def test_check_and_handle_zero_stock_skips_already_closed():
+    """Verifica che check_and_handle_zero_stock non tenti di chiudere listing già chiusi."""
+    listing = _make_listing(product_quantita=0, offer_id="OFFER-33", status="out_of_stock")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayOfferService.end_listing") as mock_end:
+        result = InventorySyncService.check_and_handle_zero_stock(listing, connection, db)
+
+        mock_end.assert_not_called()
+        db.commit.assert_not_called()
+        assert result is listing
+
+
+# ---------------------------------------------------------------------------
+# 16. sync_quantity_to_ebay fallback a update_quantity quando get_offer lancia eccezione
+# ---------------------------------------------------------------------------
+
+def test_sync_quantity_to_ebay_fallback_on_offer_error():
+    """Verifica il fallback a update_quantity quando get_offer fallisce."""
+    listing = _make_listing(product_quantita=4, offer_id="OFFER-FAIL", item_id="SKU-FAIL")
+    connection = _make_connection()
+    db = MagicMock()
+
+    with patch("app.services.inventory_sync_service.EbayAuthService.get_valid_token", return_value="tok"), \
+         patch("app.services.inventory_sync_service.EbayOfferService.get_offer", side_effect=Exception("Network error")), \
+         patch("app.services.inventory_sync_service.EbayInventoryService.update_quantity") as mock_inv:
+
+        InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
+
+        mock_inv.assert_called_once_with("tok", "SKU-FAIL", 4, marketplace_id="EBAY_IT")

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -10,6 +11,11 @@ from ..models.prodotto import Prodotto
 from .ebay_auth_service import EbayAuthService
 from .ebay_inventory_service import EbayInventoryService
 from .ebay_offer_service import EbayOfferService
+
+logger = logging.getLogger(__name__)
+
+# eBay offer fields that must be removed before a PUT update (read-only in the API)
+_EBAY_OFFER_READONLY_FIELDS = ("offerId", "listing", "status", "marketplaceFees", "auditInfo")
 
 
 class InventorySyncService:
@@ -69,14 +75,33 @@ class InventorySyncService:
         if not listing.ebay_item_id:
             raise HTTPException(status_code=400, detail="Listing eBay senza SKU associato")
 
+        new_qty = max(0, listing.product.quantita)
         token = EbayAuthService.get_valid_token(connection, db)
-        EbayInventoryService.update_quantity(
-            token,
-            listing.ebay_item_id,
-            listing.product.quantita,
-            marketplace_id=connection.marketplace_id or "EBAY_IT",
-        )
-        listing.quantity_published = listing.product.quantita
+        marketplace_id = connection.marketplace_id or "EBAY_IT"
+
+        if new_qty > 0:
+            if listing.ebay_offer_id:
+                # Correct approach for published listings: update the offer
+                try:
+                    offer_data = EbayOfferService.get_offer(token, listing.ebay_offer_id)
+                    offer_data["availableQuantity"] = new_qty
+                    for key in _EBAY_OFFER_READONLY_FIELDS:
+                        offer_data.pop(key, None)
+                    EbayOfferService._update_offer(token, listing.ebay_offer_id, offer_data, marketplace_id)
+                except Exception as exc:
+                    logger.warning(
+                        "Impossibile aggiornare offer %s via GET+PUT, fallback a inventory_item: %s",
+                        listing.ebay_offer_id, exc,
+                    )
+                    EbayInventoryService.update_quantity(
+                        token, listing.ebay_item_id, new_qty, marketplace_id=marketplace_id
+                    )
+            else:
+                EbayInventoryService.update_quantity(
+                    token, listing.ebay_item_id, new_qty, marketplace_id=marketplace_id
+                )
+
+        listing.quantity_published = new_qty
         listing.last_sync_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(listing)
@@ -85,13 +110,18 @@ class InventorySyncService:
     @staticmethod
     def check_and_handle_zero_stock(listing: EbayListing, connection, db: Session) -> EbayListing:
         if not listing.product:
-            raise HTTPException(status_code=404, detail="Prodotto listing non trovato")
+            return listing
         if listing.product.quantita > 0:
+            return listing
+        if listing.status != "active":
             return listing
 
         token = EbayAuthService.get_valid_token(connection, db)
         if listing.ebay_offer_id:
-            EbayOfferService.end_listing(token, listing.ebay_offer_id, reason="OUT_OF_STOCK")
+            try:
+                EbayOfferService.end_listing(token, listing.ebay_offer_id, reason="OUT_OF_STOCK")
+            except Exception as exc:
+                logger.warning("Impossibile chiudere listing %s: %s", listing.ebay_offer_id, exc)
         listing.status = "out_of_stock"
         listing.last_sync_at = datetime.now(timezone.utc)
         db.commit()
