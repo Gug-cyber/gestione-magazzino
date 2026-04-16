@@ -49,6 +49,16 @@ _MARKETPLACE_COUNTRY_MAP = {
     "EBAY_AU": "AU",
     "EBAY_CA": "CA",
 }
+_MARKETPLACE_DEFAULT_CATEGORY_MAP = {
+    "EBAY_IT": "45101",   # Monete italiane (leaf su EBAY_IT)
+    "EBAY_DE": "45098",   # Münzen Deutschland (leaf su EBAY_DE)
+    "EBAY_FR": "45099",   # Monnaies françaises (leaf su EBAY_FR)
+    "EBAY_ES": "45100",   # Monedas españolas (leaf su EBAY_ES)
+    "EBAY_GB": "4726",    # British coins (leaf su EBAY_GB)
+    "EBAY_US": "4726",    # US coins (leaf su EBAY_US)
+    "EBAY_AU": "4726",    # World coins (leaf su EBAY_AU)
+    "EBAY_CA": "4726",    # World coins (leaf su EBAY_CA)
+}
 
 
 def _sanitize_description(text: str) -> str:
@@ -373,12 +383,15 @@ class EbayOfferService:
         normalized_marketplace = (marketplace_id or "").strip().upper()
         currency = _MARKETPLACE_CURRENCY_MAP.get(normalized_marketplace, "EUR")
 
+        effective_category = category_id or _MARKETPLACE_DEFAULT_CATEGORY_MAP.get(
+            normalized_marketplace, "45101"
+        )
         payload = {
             "sku": sku,
             "marketplaceId": marketplace_id,
             "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
-            "categoryId": category_id or "4726",  # 4726 = Monete italiane (foglia su EBAY_IT)
+            "categoryId": effective_category,
             "listingDescription": listing_description,
             "listingPolicies": {
                 "fulfillmentPolicyId": fulfillment_policy_id,
