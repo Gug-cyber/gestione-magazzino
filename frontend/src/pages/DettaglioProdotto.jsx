@@ -1045,15 +1045,18 @@ function DettaglioProdotto() {
         <input
           type="file"
           accept="image/*"
+          multiple
           ref={fotoAggiuntiveInputRef}
           style={{ display: 'none' }}
           onChange={async (e) => {
-            const file = e.target.files[0]
-            if (!file) return
+            const files = Array.from(e.target.files || [])
+            if (!files.length) return
             setFotoAggiuntiveError('')
             setUploadingFotoAggiuntiva(true)
             try {
-              await prodottiAPI.uploadFotoAggiuntiva(id, file)
+              for (const file of files) {
+                await prodottiAPI.uploadFotoAggiuntiva(id, file)
+              }
               loadScheda()
             } catch (err) {
               setFotoAggiuntiveError(err.response?.data?.detail || 'Errore nel caricamento della foto')
