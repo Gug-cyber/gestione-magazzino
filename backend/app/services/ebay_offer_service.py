@@ -154,10 +154,10 @@ class EbayOfferService:
         return {"Authorization": f"Bearer {token}"}
 
     @staticmethod
-    def _ensure_merchant_location(token: str, marketplace_id: str) -> str:
+    def _ensure_merchant_location(token: str, marketplace_id: str) -> tuple[str, bool]:
         with _location_cache_lock:
             if _location_cache.get("confirmed"):
-                return _LOCATION_KEY
+                return _LOCATION_KEY, True
 
         base = EbayOfferService._base_url()
         url = f"{base}/sell/inventory/v1/location/{_LOCATION_KEY}"
@@ -172,14 +172,14 @@ class EbayOfferService:
             logger.info("eBay merchant location '%s' already exists", _LOCATION_KEY)
             with _location_cache_lock:
                 _location_cache["confirmed"] = True
-            return _LOCATION_KEY
+            return _LOCATION_KEY, True
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code != 404:
                 logger.warning(
                     "eBay GET location error %s — skipping location creation",
                     exc.response.status_code,
                 )
-                return _LOCATION_KEY
+                return _LOCATION_KEY, False
 
         payload = {
             "location": {
@@ -189,7 +189,6 @@ class EbayOfferService:
             },
             "locationTypes": ["WAREHOUSE"],
             "name": "Magazzino principale",
-            "merchantLocationStatus": "ENABLED",
         }
         try:
             EbayOfferService._request_with_retry(
@@ -201,6 +200,7 @@ class EbayOfferService:
             logger.info("eBay merchant location '%s' created successfully", _LOCATION_KEY)
             with _location_cache_lock:
                 _location_cache["confirmed"] = True
+            return _LOCATION_KEY, True
         except httpx.HTTPStatusError as exc:
             try:
                 body = exc.response.text
@@ -211,7 +211,7 @@ class EbayOfferService:
                 exc.response.status_code,
                 body,
             )
-        return _LOCATION_KEY
+        return _LOCATION_KEY, False
 
     @staticmethod
     def _fetch_default_policy_id(token: str, marketplace_id: str, policy_type: str) -> str:
@@ -308,7 +308,7 @@ class EbayOfferService:
         description: str,
         shipping_cost: float = 5.90,
     ) -> str:
-        location_key = EbayOfferService._ensure_merchant_location(token, marketplace_id)
+        location_key, location_confirmed = EbayOfferService._ensure_merchant_location(token, marketplace_id)
 
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -360,7 +360,6 @@ class EbayOfferService:
             "format": "FIXED_PRICE",
             "availableQuantity": int(quantity),
             "listingDescription": listing_description,
-            "merchantLocationKey": location_key,
             "listingPolicies": {
                 "fulfillmentPolicyId": fulfillment_policy_id,
                 "paymentPolicyId": payment_policy_id,
@@ -373,6 +372,8 @@ class EbayOfferService:
                 }
             },
         }
+        if location_confirmed:
+            payload["merchantLocationKey"] = location_key
 
         try:
             response = EbayOfferService._request_with_retry(
