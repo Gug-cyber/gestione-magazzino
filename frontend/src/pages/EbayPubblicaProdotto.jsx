@@ -16,6 +16,7 @@ function EbayPubblicaProdotto() {
   const [quantity, setQuantity] = useState(1)
   const [shippingCost, setShippingCost] = useState('5.90')
   const [freeShipping, setFreeShipping] = useState(false)
+  const [ebayCategoryId, setEbayCategoryId] = useState('11116')
   const [publishedPrice, setPublishedPrice] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -72,6 +73,7 @@ function EbayPubblicaProdotto() {
         fee_override: Number(fee),
         quantity_override: Number(quantity),
         shipping_cost: freeShipping ? 0 : Number(shippingCost),
+        ebay_category_id: ebayCategoryId || '11116',
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -107,6 +109,22 @@ function EbayPubblicaProdotto() {
             <label style={{ display: 'grid', gap: 4 }}>
               Fee eBay %
               <input type="number" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
+            </label>
+
+            <label style={{ display: 'grid', gap: 4 }}>
+              ID Categoria eBay
+              <input
+                type="text"
+                value={ebayCategoryId}
+                onChange={(e) => setEbayCategoryId(e.target.value)}
+                placeholder="es. 11116 (Monete del Mondo)"
+              />
+              <small style={{ color: 'var(--color-muted, #888)' }}>
+                Categoria eBay obbligatoria. Default: 11116 (Coins: World).
+                <a href="https://www.ebay.it/sch/i.html" target="_blank" rel="noreferrer" style={{ marginLeft: 4 }}>
+                  Cerca categoria
+                </a>
+              </small>
             </label>
 
             <div>Prezzo da pubblicare su eBay: <strong>{publishedPrice != null ? `€${Number(publishedPrice).toFixed(2)}` : '—'}</strong></div>

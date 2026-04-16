@@ -555,6 +555,7 @@ def publish_listing(
             listing,
             product.descrizione or "",
             float(shipping_cost),
+            category_id=payload.ebay_category_id,
         )
         ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
 

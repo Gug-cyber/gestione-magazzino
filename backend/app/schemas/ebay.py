@@ -46,6 +46,7 @@ class PublishRequest(BaseModel):
     quantity_override: Optional[int] = None
     shipping_cost: Optional[float] = 5.90
     force: bool = False
+    ebay_category_id: Optional[str] = None
 
 
 class PricingPreviewResponse(BaseModel):
