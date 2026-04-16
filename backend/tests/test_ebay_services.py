@@ -815,12 +815,12 @@ def test_create_offer_falls_back_to_update_when_delete_fails_and_location_not_co
     assert offer_id == "STALE-OFFER-2"
     assert listing_db.ebay_offer_id == "STALE-OFFER-2"
     assert update_calls == ["STALE-OFFER-2"]
-    assert any("will try update fallback" in message for message in caplog.messages)
+    assert any("fallback to update" in message for message in caplog.messages)
 
 
-def test_create_offer_updates_existing_offer_when_location_confirmed(monkeypatch):
-    """When offer already exists and location_confirmed=True, update and reuse (original behaviour)."""
-    update_calls = []
+def test_create_offer_deletes_and_recreates_stale_offer_when_location_confirmed(monkeypatch):
+    """When offer already exists and location_confirmed=True, delete and recreate (same as location_confirmed=False)."""
+    calls = []
 
     def _mock_ensure_location(token, marketplace_id):
         return "default_it", True  # location IS confirmed
@@ -829,23 +829,26 @@ def test_create_offer_updates_existing_offer_when_location_confirmed(monkeypatch
         return f"{policy_type}-id"
 
     def _mock_request(method, url, **kwargs):
+        calls.append(method)
         if method == "POST" and url.endswith("/offer"):
-            request = httpx.Request("POST", url)
-            response = httpx.Response(
-                400,
-                request=request,
-                json={"errors": [{"errorId": 25002, "message": "Offer already exists.", "parameters": [{"name": "offerId", "value": "EXIST-OFFER-3"}]}]},
-            )
-            raise httpx.HTTPStatusError("Bad request", request=request, response=response)
-        return SimpleNamespace()
-
-    def _mock_update_offer(token, offer_id, payload, marketplace_id):
-        update_calls.append(offer_id)
+            if len([c for c in calls if c == "POST"]) == 1:
+                # First POST: offer already exists
+                request = httpx.Request("POST", url)
+                response = httpx.Response(
+                    400,
+                    request=request,
+                    json={"errors": [{"errorId": 25002, "message": "Offer already exists.", "parameters": [{"name": "offerId", "value": "EXIST-OFFER-3"}]}]},
+                )
+                raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+            # Second POST after deletion: success
+            return SimpleNamespace(json=lambda: {"offerId": "NEW-OFFER-3"})
+        if method == "DELETE":
+            return SimpleNamespace()
+        return SimpleNamespace(json=lambda: {})
 
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
     monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
-    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._update_offer", _mock_update_offer)
 
     listing_db = SimpleNamespace(ebay_offer_id=None)
     offer_id = EbayOfferService.create_offer(
@@ -858,9 +861,9 @@ def test_create_offer_updates_existing_offer_when_location_confirmed(monkeypatch
         description="Descrizione",
     )
 
-    assert offer_id == "EXIST-OFFER-3"
-    assert listing_db.ebay_offer_id == "EXIST-OFFER-3"
-    assert update_calls == ["EXIST-OFFER-3"]
+    assert offer_id == "NEW-OFFER-3"
+    assert listing_db.ebay_offer_id == "NEW-OFFER-3"
+    assert "DELETE" in calls
 
 
 def test_ensure_merchant_location_retries_with_extra_address_fields_on_400(monkeypatch):
