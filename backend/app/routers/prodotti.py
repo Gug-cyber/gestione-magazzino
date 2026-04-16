@@ -2,12 +2,14 @@ import csv
 import io
 import logging
 import os
+import uuid
 import cloudinary
 import cloudinary.uploader
 from datetime import datetime as dt_datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from ..database import get_db
@@ -472,6 +474,78 @@ def get_foto_prodotto(
     if not os.path.exists(db_prodotto.foto_path):
         raise HTTPException(status_code=404, detail="File foto non trovato")
     return FileResponse(db_prodotto.foto_path)
+
+
+@router.post("/{prodotto_id}/foto-aggiuntive", response_model=ProdottoResponse)
+async def upload_foto_aggiuntiva(
+    prodotto_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Il file deve essere un'immagine")
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+    if not cloud_name or not api_key or not api_secret:
+        raise HTTPException(
+            status_code=503,
+            detail="Cloudinary non configurato. Impostare CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET."
+        )
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Il file supera il limite massimo di 10 MB")
+    existing = db_prodotto.foto_aggiuntive or []
+    max_extra = 11 if db_prodotto.foto_path else 12
+    if len(existing) >= max_extra:
+        raise HTTPException(status_code=400, detail=f"Limite massimo di foto aggiuntive raggiunto ({max_extra} extra consentite per rispettare il limite eBay di 12 immagini totali)")
+    get_cloudinary()
+    unique_id = uuid.uuid4().hex[:8]
+    result = cloudinary.uploader.upload(
+        contents,
+        public_id=f"prodotti/{prodotto_id}/extra/{unique_id}",
+        overwrite=False,
+        resource_type="image",
+        transformation=[{"width": 800, "height": 800, "crop": "limit", "quality": "auto"}],
+    )
+    updated = list(existing)
+    updated.append(result["secure_url"])
+    db_prodotto.foto_aggiuntive = updated
+    flag_modified(db_prodotto, "foto_aggiuntive")
+    db.commit()
+    db.refresh(db_prodotto)
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
+
+
+@router.delete("/{prodotto_id}/foto-aggiuntive/{index}", response_model=ProdottoResponse)
+def remove_foto_aggiuntiva(
+    prodotto_id: int,
+    index: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    existing = list(db_prodotto.foto_aggiuntive or [])
+    if index < 0 or index >= len(existing):
+        raise HTTPException(status_code=404, detail="Foto aggiuntiva non trovata all'indice specificato")
+    existing.pop(index)
+    db_prodotto.foto_aggiuntive = existing
+    flag_modified(db_prodotto, "foto_aggiuntive")
+    db.commit()
+    db.refresh(db_prodotto)
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
 
 
 @router.post("/{prodotto_id}/barcode", response_model=ProdottoResponse)

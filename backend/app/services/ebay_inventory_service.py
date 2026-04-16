@@ -134,7 +134,11 @@ class EbayInventoryService:
         foto_url = EbayInventoryService._to_public_image_url(product.foto_path)
         if foto_url:
             urls.append(foto_url)
-        return [u for u in urls if u]
+        for extra in (getattr(product, "foto_aggiuntive", None) or []):
+            extra_url = EbayInventoryService._to_public_image_url(extra)
+            if extra_url and extra_url not in urls:
+                urls.append(extra_url)
+        return [u for u in urls if u][:12]  # eBay max 12 immagini
 
     @staticmethod
     def _content_language_for_marketplace(marketplace_id: str | None) -> str:

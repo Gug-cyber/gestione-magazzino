@@ -52,6 +52,15 @@ export const prodottiAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  uploadFotoAggiuntiva: (id, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post(`/api/prodotti/${id}/foto-aggiuntive`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  removeFotoAggiuntiva: (id, index) =>
+    client.delete(`/api/prodotti/${id}/foto-aggiuntive/${index}`),
   generateBarcode: (id) => client.post(`/api/prodotti/${id}/barcode`),
   deleteBarcode: (id) => client.delete(`/api/prodotti/${id}/barcode`),
   lookupByBarcode: (barcodeValue) => client.get(`/api/prodotti/barcode/${encodeURIComponent(barcodeValue)}`),

@@ -137,6 +137,9 @@ function DettaglioProdotto() {
   const [barcodeError, setBarcodeError] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(false)
   const fotoInputRef = useRef(null)
+  const fotoAggiuntiveInputRef = useRef(null)
+  const [uploadingFotoAggiuntiva, setUploadingFotoAggiuntiva] = useState(false)
+  const [fotoAggiuntiveError, setFotoAggiuntiveError] = useState('')
 
   const [ebayData, setEbayData] = useState(null)
   const [ebayLoading, setEbayLoading] = useState(false)
@@ -944,6 +947,78 @@ function DettaglioProdotto() {
             >Stampa QR</button>
           </div>
         </div>
+      </div>
+
+      {/* Sezione Foto aggiuntive */}
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
+          🖼️ Foto aggiuntive{' '}
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 400 }}>
+            {(prodotto.foto_aggiuntive || []).length + (prodotto.foto_url ? 1 : 0)}/12 foto
+          </span>
+        </h2>
+        {fotoAggiuntiveError && <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem', marginBottom: 8 }}>{fotoAggiuntiveError}</div>}
+        {(prodotto.foto_aggiuntive || []).length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 12 }}>
+            {(prodotto.foto_aggiuntive || []).map((url, idx) => (
+              <div key={idx} style={{ position: 'relative' }}>
+                <img
+                  src={url}
+                  alt={`Foto aggiuntiva ${idx + 1}`}
+                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, border: '2px solid var(--color-border)', display: 'block' }}
+                  onError={e => { e.currentTarget.style.opacity = '0.3' }}
+                />
+                <button
+                  onClick={async () => {
+                    setFotoAggiuntiveError('')
+                    try {
+                      await prodottiAPI.removeFotoAggiuntiva(id, idx)
+                      loadScheda()
+                    } catch {
+                      setFotoAggiuntiveError('Errore nella rimozione della foto')
+                    }
+                  }}
+                  title="Rimuovi foto"
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.65)', color: 'white', border: 'none', borderRadius: 4, width: 22, height: 22, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {(prodotto.foto_aggiuntive || []).length === 0 && (
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontStyle: 'italic', marginBottom: 12 }}>
+            Nessuna foto aggiuntiva. Puoi aggiungere fino a {11 - (prodotto.foto_url ? 1 : 0)} foto extra (il limite eBay è 12 totali inclusa la foto principale).
+          </p>
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          ref={fotoAggiuntiveInputRef}
+          style={{ display: 'none' }}
+          onChange={async (e) => {
+            const file = e.target.files[0]
+            if (!file) return
+            setFotoAggiuntiveError('')
+            setUploadingFotoAggiuntiva(true)
+            try {
+              await prodottiAPI.uploadFotoAggiuntiva(id, file)
+              loadScheda()
+            } catch (err) {
+              setFotoAggiuntiveError(err.response?.data?.detail || 'Errore nel caricamento della foto')
+            } finally {
+              setUploadingFotoAggiuntiva(false)
+              e.target.value = ''
+            }
+          }}
+        />
+        <button
+          className="gm-btn gm-btn-secondary"
+          onClick={() => fotoAggiuntiveInputRef.current?.click()}
+          disabled={uploadingFotoAggiuntiva || (prodotto.foto_aggiuntive || []).length >= (prodotto.foto_url ? 11 : 12)}
+          style={{ fontSize: '0.85rem' }}
+        >
+          {uploadingFotoAggiuntiva ? '⏳ Caricamento...' : '➕ Aggiungi foto'}
+        </button>
       </div>
 
       {/* Sezione Google Drive */}
