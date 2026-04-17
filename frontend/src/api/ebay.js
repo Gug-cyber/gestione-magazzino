@@ -10,12 +10,9 @@ export const ebayApi = {
   endListing: (listingId) => api.delete(`/api/ebay/listings/${listingId}`),
   syncListingQuantity: (listingId) => api.post(`/api/ebay/listings/${listingId}/sync`),
   syncOrders: () => api.post('/api/ebay/sync/orders'),
-  syncAllListings: () => api.post('/api/ebay/sync/listings'),
   getSales: () => api.get('/api/ebay/sales'),
   getPricingPreview: (netPrice, feePercentage) =>
     api.get(`/api/ebay/pricing/preview?net_price=${netPrice}&fee_percentage=${feePercentage}`),
   getCategories: (parentId = null, marketplaceId = 'EBAY_IT') =>
     api.get('/api/ebay/categories', { params: { parent_id: parentId, marketplace_id: marketplaceId } }),
-  getCategoryConditions: (categoryId, marketplaceId = 'EBAY_IT') =>
-    api.get(`/api/ebay/categories/${categoryId}/conditions`, { params: { marketplace_id: marketplaceId } }),
 }

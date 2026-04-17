@@ -15,10 +15,6 @@ _policy_cache: dict = {}
 _policy_cache_lock = threading.Lock()
 _POLICY_CACHE_TTL = 7200  # 2 ore
 
-# Brief delay after deleting a stale eBay offer before retrying creation,
-# to avoid race conditions where eBay still considers the offer to exist.
-_OFFER_DELETION_DELAY_SECONDS = 1
-
 _location_cache: dict = {}
 _location_cache_lock = threading.Lock()
 _LOCATION_KEY = "default_it"
@@ -88,19 +84,6 @@ def _extract_ebay_error_message(response: httpx.Response) -> str | None:
         return None
     message = first_error.get("message")
     return str(message).strip() if message else None
-
-
-def _is_condition_invalid_error(response: httpx.Response) -> bool:
-    """Returns True if the eBay error is 25059 (condition not valid for category)."""
-    try:
-        payload = response.json()
-    except Exception:
-        return False
-    errors = payload.get("errors", [])
-    return any(
-        isinstance(e, dict) and e.get("errorId") == 25059
-        for e in errors
-    )
 
 
 def _extract_existing_offer_id(response: httpx.Response) -> str | None:
@@ -492,8 +475,7 @@ class EbayOfferService:
                         listing_db.ebay_offer_id = existing_offer_id
                         EbayOfferService._update_offer(token, existing_offer_id, payload, marketplace_id)
                         return existing_offer_id
-                    # Ritenta la creazione dopo la cancellazione (breve pausa per evitare race condition eBay)
-                    time.sleep(_OFFER_DELETION_DELAY_SECONDS)
+                    # Ritenta la creazione dopo la cancellazione
                     try:
                         response = EbayOfferService._request_with_retry(
                             "POST",
@@ -540,13 +522,10 @@ class EbayOfferService:
                 error_body,
             )
             ebay_error_message = _extract_ebay_error_message(exc.response)
-            is_condition_error = _is_condition_invalid_error(exc.response)
             detail = f"Errore pubblicazione annuncio eBay: {exc.response.status_code}"
             if ebay_error_message:
                 detail = f"{detail} ({ebay_error_message})"
-            http_exc = HTTPException(status_code=502, detail=detail)
-            http_exc.is_condition_error = is_condition_error  # type: ignore[attr-defined]
-            raise http_exc
+            raise HTTPException(status_code=502, detail=detail)
 
     @staticmethod
     def end_listing(token: str, offer_id: str, reason: str = "OUT_OF_STOCK") -> None:
@@ -571,19 +550,6 @@ class EbayOfferService:
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code != 404:
                 raise HTTPException(status_code=502, detail=f"Errore chiusura annuncio eBay: {exc.response.status_code}")
-
-    @staticmethod
-    def delete_offer(token: str, offer_id: str) -> None:
-        """Delete an eBay offer. Ignores 404 (already gone). Raises HTTPException on other errors."""
-        try:
-            EbayOfferService._request_with_retry(
-                "DELETE",
-                f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}",
-                headers=EbayOfferService._auth_header(token),
-            )
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code != 404:
-                raise HTTPException(status_code=502, detail=f"Errore eliminazione offer eBay: {exc.response.status_code}")
 
     @staticmethod
     def get_offer(token: str, offer_id: str) -> dict:

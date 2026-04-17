@@ -106,13 +106,14 @@ def _to_public(prodotto: Prodotto, request: Request) -> StoreProdottoPublic:
     prezzo_vendita = float(prodotto.prezzo_vendita) if prodotto.prezzo_vendita is not None else None
     foto_url = _build_foto_url(prodotto, request)
 
-    # Costruisce lista immagini dalla foto principale + foto aggiuntive (Cloudinary)
+    # Recupera immagini da Google Drive se disponibile
     immagini: List[str] = []
-    if foto_url:
-        immagini.append(foto_url)
-    for extra in (prodotto.foto_aggiuntive or []):
-        if extra and extra not in immagini:
-            immagini.append(extra)
+    if prodotto.google_drive_folder_id:
+        immagini = drive_service.list_images_in_folder(prodotto.google_drive_folder_id)
+
+    # Fallback retrocompatibile: se nessuna immagine Drive ma esiste foto_url, usala
+    if not immagini and foto_url:
+        immagini = [foto_url]
 
     return StoreProdottoPublic(
         id=prodotto.id,

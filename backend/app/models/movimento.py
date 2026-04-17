@@ -9,7 +9,6 @@ class TipoMovimento(str, enum.Enum):
     carico = "carico"
     scarico = "scarico"
     vendita_ebay = "vendita_ebay"
-    scarico_ordine = "scarico_ordine"
 
 
 class Movimento(Base):

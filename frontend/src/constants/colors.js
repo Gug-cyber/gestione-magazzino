@@ -11,7 +11,6 @@ export const STATO_CONSERVAZIONE_COLORS = {
   'Light Played': { bg: '#fff3e0', text: '#e65100' },
   'Played':       { bg: '#fce4ec', text: '#c62828' },
   'Poor':         { bg: '#ffebee', text: '#b71c1c' },
-  'Graded':       { bg: '#fce4ec', text: '#880e4f' },
 }
 
 /** Colori per lo stato degli ordini */

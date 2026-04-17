@@ -396,130 +396,6 @@ def get_ebay_categories(
         raise HTTPException(status_code=502, detail=f"Errore di rete eBay: {exc}")
 
 
-_STANDARD_CONDITION_ID_TO_ENUM = {
-    "1000": "NEW",
-    "1500": "LIKE_NEW",
-    "2000": "MANUFACTURER_REFURBISHED",
-    "2500": "SELLER_REFURBISHED",
-    "3000": "USED_EXCELLENT",
-    "4000": "USED_GOOD",
-    "5000": "USED_ACCEPTABLE",
-    "6000": "FOR_PARTS_OR_NOT_WORKING",
-}
-
-# Trading card categories (e.g. 183454 on EBAY_IT) use a distinct set of conditionIds
-# that include 2750 (Near Mint or Better) and/or 7000 (Poor), and require different enums.
-_TRADING_CARD_CONDITION_MAP = {
-    "2750": "LIKE_NEW",
-    "3000": "VERY_GOOD",
-    "4000": "GOOD",
-    "5000": "ACCEPTABLE",
-    "6000": "ACCEPTABLE",
-    "7000": "FOR_PARTS_OR_NOT_WORKING",
-}
-
-# These conditionIds are exclusive to trading card / collectibles categories.
-# Their presence in the policy's conditionId set identifies the policy type.
-_TRADING_CARD_INDICATOR_IDS = {"2750", "7000"}
-
-_TRADING_CARD_CONDITION_SUBTITLES = {
-    "2750": "Equiparabile a un pacchetto nuovo",
-    "3000": "Presenta segni di usura facilmente visibili",
-    "4000": "Presenta danni da moderati a elevati su tutta la superficie",
-    "5000": "È estremamente usurata e presenta difetti su tutta la superficie",
-    "6000": "Accettabile — con difetti evidenti",
-    "7000": "Danneggiate — solo per pezzi di ricambio",
-}
-
-
-def _get_condition_enum_for_policy(condition_id: str, all_condition_ids: list) -> str:
-    """
-    Returns the correct eBay conditionEnum for a given conditionId, taking into account
-    whether the policy belongs to a trading-card category.
-    Trading card policies are identified by the presence of conditionId 2750 or 7000.
-    """
-    is_trading_card = bool(_TRADING_CARD_INDICATOR_IDS & set(all_condition_ids))
-    if is_trading_card:
-        return _TRADING_CARD_CONDITION_MAP.get(condition_id, "GOOD")
-    return _STANDARD_CONDITION_ID_TO_ENUM.get(condition_id, "USED_GOOD")
-
-
-_DEFAULT_CONDITIONS = [
-    {"conditionId": "3000", "conditionEnum": "USED_EXCELLENT", "conditionDescription": "Ottime condizioni (Used Excellent)"},
-    {"conditionId": "4000", "conditionEnum": "USED_GOOD", "conditionDescription": "Buone condizioni (Used Good)"},
-    {"conditionId": "5000", "conditionEnum": "USED_ACCEPTABLE", "conditionDescription": "Condizioni accettabili (Used Acceptable)"},
-]
-
-
-@router.get("/categories/{category_id}/conditions")
-def get_category_conditions(
-    category_id: str,
-    marketplace_id: str = Query("EBAY_IT"),
-    current_user=Depends(get_current_active_user),
-):
-    """
-    Restituisce le condizioni valide per una categoria eBay specifica.
-    Chiama l'API eBay Metadata (getItemConditionPolicies).
-    """
-    env = _get_ebay_env()
-    base_url = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
-
-    access_token = _get_access_token()
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-        "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
-    }
-
-    try:
-        resp = httpx.get(
-            f"{base_url}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_condition_policies",
-            headers=headers,
-            params={"filter": f"categoryId:{category_id}"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-        item_condition_policies = data.get("itemConditionPolicies", [])
-        if not item_condition_policies:
-            return _DEFAULT_CONDITIONS
-
-        policy = next(
-            # eBay may return categoryId as either a number or a string, so compare as strings
-            (p for p in item_condition_policies if str(p.get("categoryId")) == str(category_id)),
-            item_condition_policies[0],
-        )
-        item_conditions = policy.get("itemConditions", [])
-        if not item_conditions:
-            return _DEFAULT_CONDITIONS
-
-        all_ids = [str(c.get("conditionId", "")) for c in item_conditions]
-        is_trading_card = bool(_TRADING_CARD_INDICATOR_IDS & set(all_ids))
-        result = []
-        for cond in item_conditions:
-            condition_id = str(cond.get("conditionId", ""))
-            condition_description = cond.get("conditionDescription", condition_id)
-            condition_enum = _get_condition_enum_for_policy(condition_id, all_ids)
-            result.append({
-                "conditionId": condition_id,
-                "conditionEnum": condition_enum,
-                "conditionDescription": condition_description,
-                "conditionSubtitle": _TRADING_CARD_CONDITION_SUBTITLES.get(condition_id) if is_trading_card else None,
-            })
-
-        logger.info(
-            "eBay conditions for category %s: %s",
-            category_id,
-            [(c["conditionId"], c["conditionEnum"]) for c in result],
-        )
-        return result
-
-    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-        logger.warning("eBay Metadata API error for category %s: %s", category_id, exc)
-        return _DEFAULT_CONDITIONS
-
-
 # === New user-level OAuth/listing/sync endpoints ===
 def _get_connection(db: Session) -> Optional[EbayConnection]:
     return db.query(EbayConnection).order_by(EbayConnection.id.desc()).first()
@@ -690,6 +566,8 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Quantità non disponibile")
     if not (product.nome or "").strip():
         raise HTTPException(status_code=400, detail="Il prodotto non ha un nome valido")
+    if not (product.descrizione or "").strip():
+        raise HTTPException(status_code=400, detail="Il prodotto non ha descrizione")
     if not product.foto_path:
         raise HTTPException(status_code=400, detail="Il prodotto non ha immagini — non è possibile pubblicare")
 
@@ -727,43 +605,19 @@ def publish_listing(
     published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
     expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)
 
-    # Reuse an existing error-state listing for the same product/connection to avoid
-    # accumulating stale listings and triggering "offer already exists" cycles on eBay.
-    listing = (
-        db.query(EbayListing)
-        .filter(
-            EbayListing.product_id == product.id,
-            EbayListing.connection_id == connection.id,
-            EbayListing.status == "error",
-        )
-        .first()
+    listing = EbayListing(
+        product_id=product.id,
+        connection_id=connection.id,
+        status="draft",
+        quantity_published=quantity,
+        published_price=published_price,
+        expected_net_price=expected_net_price,
+        fee_percentage=fee_percentage,
+        shipping_cost=shipping_cost,
     )
-    if listing:
-        listing.status = "draft"
-        listing.quantity_published = quantity
-        listing.published_price = published_price
-        listing.expected_net_price = expected_net_price
-        listing.fee_percentage = fee_percentage
-        listing.shipping_cost = shipping_cost
-        listing.error_message = None
-        db.commit()
-        db.refresh(listing)
-    else:
-        listing = EbayListing(
-            product_id=product.id,
-            connection_id=connection.id,
-            status="draft",
-            quantity_published=quantity,
-            published_price=published_price,
-            expected_net_price=expected_net_price,
-            fee_percentage=fee_percentage,
-            shipping_cost=shipping_cost,
-        )
-        db.add(listing)
-        db.commit()
-        db.refresh(listing)
-
-    effective_description = (payload.description_override or product.descrizione or product.nome or "").strip()
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
 
     try:
         token = EbayAuthService.get_valid_token(connection, db)
@@ -773,11 +627,6 @@ def publish_listing(
             product,
             listing,
             marketplace_id=connection.marketplace_id or "EBAY_IT",
-            ebay_condition=payload.ebay_condition,
-            grading_service=payload.grading_service,
-            grade=payload.grade,
-            description_override=effective_description,
-            item_game=payload.item_game,
         )
         offer_id = EbayOfferService.create_offer(
             token,
@@ -786,7 +635,7 @@ def publish_listing(
             quantity,
             connection.marketplace_id or "EBAY_IT",
             listing,
-            effective_description,
+            product.descrizione or "",
             float(shipping_cost),
             category_id=payload.ebay_category_id,
             listing_format=payload.listing_format,
@@ -812,19 +661,9 @@ def publish_listing(
         raise HTTPException(status_code=504, detail="Timeout durante la pubblicazione eBay - riprova tra qualche secondo")
     except HTTPException as exc:
         listing.status = "error"
-        is_condition_error = getattr(exc, "is_condition_error", False)
-        if not is_condition_error:
-            detail_text = exc.detail if isinstance(exc.detail, str) else ""
-            if "condition" in detail_text.lower() or "condizione" in detail_text.lower():
-                is_condition_error = True
-        if is_condition_error:
-            exc = HTTPException(
-                status_code=400,
-                detail="Condizione non valida per la categoria eBay selezionata. Torna indietro e seleziona una condizione compatibile con la categoria.",
-            )
         listing.error_message = exc.detail if isinstance(exc.detail, str) else "Errore pubblicazione eBay"
         db.commit()
-        raise exc
+        raise
     except Exception as exc:
         listing.status = "error"
         listing.error_message = "Errore interno durante la pubblicazione eBay"
@@ -888,49 +727,6 @@ def sync_orders(
     if not connection:
         raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
     return EbayOrderSyncService.sync_recent_orders(connection, db)
-
-
-@router.post("/sync/listings", response_model=dict)
-def sync_all_listings(
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
-):
-    """
-    Sincronizza la quantità eBay per tutti i listing attivi.
-    Da chiamare periodicamente (es. ogni ora via cron).
-    """
-    connection = _get_connection(db)
-    if not connection or connection.status != "active":
-        raise HTTPException(status_code=400, detail="Account eBay non collegato")
-
-    listings = (
-        db.query(EbayListing)
-        .options(joinedload(EbayListing.product))
-        .filter(EbayListing.status == "active")
-        .all()
-    )
-
-    updated = 0
-    closed = 0
-    errors = 0
-    skipped = 0
-    for listing in listings:
-        try:
-            if not listing.product or not listing.ebay_item_id:
-                skipped += 1
-                continue
-            InventorySyncService.sync_quantity_to_ebay(listing, connection, db)
-            before_status = listing.status
-            InventorySyncService.check_and_handle_zero_stock(listing, connection, db)
-            if listing.status != before_status:
-                closed += 1
-            else:
-                updated += 1
-        except Exception as e:
-            logger.warning("Errore sync listing %s: %s", listing.id, e)
-            errors += 1
-
-    return {"updated": updated, "closed": closed, "errors": errors, "skipped": skipped, "total": len(listings)}
 
 
 @router.get("/sales", response_model=list[EbaySaleResponse])
