@@ -206,33 +206,40 @@ class InventoryService:
             .filter(
                 EbayListing.product_id == prodotto_id,
                 EbayListing.ebay_offer_id.isnot(None),
-                EbayListing.status.notin_(["out_of_stock", "draft"]),
+                EbayListing.status.notin_(["out_of_stock", "draft", "ended"]),
             )
             .all()
         )
 
         for listing in listings:
             if not listing.connection:
+                logger.warning(
+                    "Listing eBay senza connessione (prodotto_id=%s, offer_id=%s) — marcato out_of_stock senza chiamata API",
+                    prodotto_id,
+                    listing.ebay_offer_id,
+                )
+                listing.status = "out_of_stock"
+                listing.last_sync_at = datetime.now(timezone.utc)
                 continue
             try:
                 token = EbayAuthService.get_valid_token(listing.connection, db)
                 EbayOfferService.end_listing(token, listing.ebay_offer_id, reason="OUT_OF_STOCK")
-                now = datetime.now(timezone.utc)
-                listing.status = "out_of_stock"
-                listing.last_sync_at = now
                 logger.info(
-                    "eBay listing chiuso (stock=0): prodotto_id=%s, offer_id=%s, timestamp=%s",
+                    "eBay listing chiuso (stock=0): prodotto_id=%s, offer_id=%s",
                     prodotto_id,
                     listing.ebay_offer_id,
-                    now.isoformat(),
                 )
             except Exception as exc:
                 logger.error(
-                    "Errore chiusura listing eBay: prodotto_id=%s, offer_id=%s, error=%s",
+                    "Errore chiusura listing eBay (API): prodotto_id=%s, offer_id=%s, error=%s — marking out_of_stock anyway",
                     prodotto_id,
                     listing.ebay_offer_id,
                     exc,
                 )
+            finally:
+                # Aggiorna SEMPRE il DB, indipendentemente dal successo API
+                listing.status = "out_of_stock"
+                listing.last_sync_at = datetime.now(timezone.utc)
 
     # ------------------------------------------------------------------ #
     # Gestione vendita eBay in arrivo                                      #

@@ -529,17 +529,29 @@ class EbayOfferService:
 
     @staticmethod
     def end_listing(token: str, offer_id: str, reason: str = "OUT_OF_STOCK") -> None:
+        """Chiude/ritira un'offerta eBay.
+
+        Strategia:
+        1. Tenta POST /offer/{id}/withdraw
+        2. Se fallisce per qualsiasi motivo (incluso 400, 409), tenta DELETE /offer/{id}
+        3. Se anche DELETE fallisce con 404, l'offer non esiste più → OK
+        4. Rilancia solo se entrambi falliscono con errori non-404
+        """
         try:
             EbayOfferService._request_with_retry(
                 "POST",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}/withdraw",
-                headers=EbayOfferService._offer_headers(token),
-                json={"reason": reason},
+                headers=EbayOfferService._auth_header(token),
+                json={},
             )
             return
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code not in (404, 405):
-                raise HTTPException(status_code=502, detail=f"Errore chiusura annuncio eBay: {exc.response.status_code}")
+            logger.warning(
+                "eBay withdraw offer %s error %s — trying DELETE fallback",
+                offer_id,
+                exc.response.status_code,
+            )
+            # Continua sempre con DELETE come fallback
 
         try:
             EbayOfferService._request_with_retry(
@@ -548,8 +560,14 @@ class EbayOfferService:
                 headers=EbayOfferService._auth_header(token),
             )
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code != 404:
-                raise HTTPException(status_code=502, detail=f"Errore chiusura annuncio eBay: {exc.response.status_code}")
+            if exc.response.status_code == 404:
+                # L'offer non esiste più su eBay — OK, obiettivo raggiunto
+                logger.info("eBay offer %s already gone (404) — treating as success", offer_id)
+                return
+            raise HTTPException(
+                status_code=502,
+                detail=f"Errore chiusura annuncio eBay: withdraw e DELETE entrambi falliti (DELETE status={exc.response.status_code})",
+            )
 
     @staticmethod
     def get_offer(token: str, offer_id: str) -> dict:

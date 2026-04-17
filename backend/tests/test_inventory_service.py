@@ -189,6 +189,40 @@ def test_close_ebay_listing_when_zero(db, monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
+# Test 5b: DB aggiornato anche se la chiamata API eBay fallisce                #
+# --------------------------------------------------------------------------- #
+
+
+def test_close_ebay_listing_api_fails_but_db_updated(db, monkeypatch):
+    """Il listing viene marcato out_of_stock nel DB anche se la chiamata API eBay fallisce."""
+    product = _make_product(db, sku="INV-005B", quantita=1)
+    connection = _make_connection(db)
+    listing = _make_listing(db, product, connection, sku="INV-005B", offer_id="OFF-005B")
+
+    monkeypatch.setattr(
+        "app.services.inventory_service.EbayAuthService.get_valid_token",
+        lambda conn, db: "fake-token",
+    )
+    monkeypatch.setattr(
+        "app.services.inventory_service.EbayOfferService.end_listing",
+        lambda token, offer_id, reason="OUT_OF_STOCK": (_ for _ in ()).throw(
+            Exception("eBay API error simulato")
+        ),
+    )
+
+    # Decrementa a 0
+    InventoryService.decrement_stock(db, product.id, 1, source="test")
+    db.commit()
+
+    # Nonostante l'errore API, il DB deve essere aggiornato
+    InventoryService.close_ebay_listing_if_zero(db, product.id)
+    db.commit()
+
+    db.refresh(listing)
+    assert listing.status == "out_of_stock"
+
+
+# --------------------------------------------------------------------------- #
 # Test 6: vendita eBay decrementa stock interno                                #
 # --------------------------------------------------------------------------- #
 
