@@ -656,7 +656,7 @@ def get_category_conditions(
     for item in raw_conditions:
         cid = str(item.get("conditionId", ""))
         cenum = _CONDITION_ID_TO_ENUM.get(cid, "")
-        if not cid or cid in seen:
+        if not cid or not cenum or cid in seen:
             continue
         seen.add(cid)
         result.append({

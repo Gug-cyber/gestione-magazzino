@@ -330,7 +330,7 @@ function EbayPubblicaProdotto() {
                     </div>
                   )}
                   <select value={conditionOverride} onChange={e => setConditionOverride(e.target.value)}>
-                    <option value="">— Seleziona condizione —</option>
+                    {!conditionOverride && <option value="">— Seleziona condizione —</option>}
                     {validConditions.map(c => (
                       <option key={c.conditionEnum} value={c.conditionEnum}>
                         {c.conditionDescription} ({c.conditionEnum})
