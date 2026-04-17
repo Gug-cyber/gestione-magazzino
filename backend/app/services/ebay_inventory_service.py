@@ -172,6 +172,7 @@ class EbayInventoryService:
         grading_service: str | None = None,
         grade: str | None = None,
         description_override: str | None = None,
+        item_game: str | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
@@ -194,12 +195,14 @@ class EbayInventoryService:
             "imageUrls": image_urls,
         }
 
-        if grading_service or grade:
+        if grading_service or grade or item_game:
             aspects: dict = {}
             if grading_service:
                 aspects["Professional Grader"] = [grading_service]
             if grade:
                 aspects["Grade"] = [grade]
+            if item_game:
+                aspects["Gioco"] = [item_game]  # required for trading card categories
             if aspects:
                 product_payload["aspects"] = aspects
 
