@@ -33,6 +33,11 @@ function EbayPubblicaProdotto() {
   const [auctionReservePrice, setAuctionReservePrice] = useState('')
   const [auctionBuyItNow, setAuctionBuyItNow] = useState('')
 
+  const [aspects, setAspects] = useState([])
+  const [aspectValues, setAspectValues] = useState({})
+  const [aspectsLoading, setAspectsLoading] = useState(false)
+  const [aspectCustom, setAspectCustom] = useState({})
+
   useEffect(() => {
     if (!productId) return
     Promise.all([
@@ -82,9 +87,31 @@ function EbayPubblicaProdotto() {
     const newLevels = categoryLevels.slice(0, levelIndex + 1)
     setCategoryPath(newPath)
 
+    // Reset aspects when navigating the category tree
+    setAspects([])
+    setAspectValues({})
+    setAspectCustom({})
+
     if (selectedCat.is_leaf) {
       setSelectedCategoryId(categoryId)
       setCategoryLevels(newLevels)
+      // Fetch aspects for this leaf category
+      setAspectsLoading(true)
+      ebayApi.getAspects(categoryId, connection.marketplace_id || 'EBAY_IT')
+        .then(res => {
+          const filtered = (res.data.aspects || [])
+            .filter(a => a.required || a.recommended)
+            .slice(0, 15) // eBay can return many aspects; cap to avoid UI overflow
+          setAspects(filtered)
+          setAspectValues(Object.fromEntries(filtered.map(a => [a.name, ''])))
+          setAspectCustom({})
+        })
+        .catch(() => {
+          // Non-blocking: aspects failure should not block publishing
+          setAspects([])
+          setAspectValues({})
+        })
+        .finally(() => setAspectsLoading(false))
       return
     }
 
@@ -113,8 +140,13 @@ function EbayPubblicaProdotto() {
       const sp = Number(auctionStartPrice)
       if (!Number.isFinite(sp) || sp <= 0) return 'Prezzo di partenza asta non valido'
     }
+    for (const asp of aspects) {
+      if (asp.required && !(aspectValues[asp.name] || '').trim()) {
+        return `Compila il campo obbligatorio: ${asp.name}`
+      }
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, aspects, aspectValues])
 
   const handlePublish = async () => {
     setError('')
@@ -125,6 +157,11 @@ function EbayPubblicaProdotto() {
     }
     setSaving(true)
     try {
+      const aspectsPayload = Object.fromEntries(
+        Object.entries(aspectValues)
+          .filter(([, v]) => v && v.trim())
+          .map(([k, v]) => [k, [v.trim()]])
+      )
       await ebayApi.publishProduct({
         product_id: Number(productId),
         fee_override: Number(fee),
@@ -136,6 +173,7 @@ function EbayPubblicaProdotto() {
         auction_duration: listingFormat === 'AUCTION' ? auctionDuration : undefined,
         auction_reserve_price: listingFormat === 'AUCTION' && auctionReservePrice ? Number(auctionReservePrice) : undefined,
         auction_buy_it_now_price: listingFormat === 'AUCTION' && auctionBuyItNow ? Number(auctionBuyItNow) : undefined,
+        aspects: Object.keys(aspectsPayload).length > 0 ? aspectsPayload : undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -242,6 +280,69 @@ function EbayPubblicaProdotto() {
                 </div>
               )}
             </div>
+
+            {/* Aspects / Item Specifics section */}
+            {selectedCategoryId && (
+              <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
+                {aspectsLoading && (
+                  <div style={{ color: '#888', fontSize: 13 }}>Caricamento dettagli categoria...</div>
+                )}
+                {!aspectsLoading && aspects.length > 0 && (
+                  <>
+                    <div style={{ fontWeight: 600, marginTop: 8 }}>Dettagli specifici della categoria</div>
+                    {aspects.map(asp => (
+                      <label key={asp.name} style={{ display: 'grid', gap: 4 }}>
+                        <span>
+                          {asp.name}
+                          {asp.required && <span style={{ color: 'var(--color-danger, #e53e3e)', marginLeft: 2 }}>*</span>}
+                          {!asp.required && asp.recommended && (
+                            <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>(consigliato)</span>
+                          )}
+                        </span>
+                        {asp.values && asp.values.length > 0 ? (
+                          <>
+                            <select
+                              value={aspectCustom[asp.name] ? '__custom__' : (aspectValues[asp.name] || '')}
+                              onChange={e => {
+                                const val = e.target.value
+                                if (val === '__custom__') {
+                                  setAspectCustom(prev => ({ ...prev, [asp.name]: true }))
+                                  setAspectValues(prev => ({ ...prev, [asp.name]: '' }))
+                                } else {
+                                  setAspectCustom(prev => ({ ...prev, [asp.name]: false }))
+                                  setAspectValues(prev => ({ ...prev, [asp.name]: val }))
+                                }
+                              }}
+                            >
+                              <option value="">— Seleziona —</option>
+                              {asp.values.map(v => (
+                                <option key={v} value={v}>{v}</option>
+                              ))}
+                              <option value="__custom__">Altro (scrivi qui)</option>
+                            </select>
+                            {aspectCustom[asp.name] && (
+                              <input
+                                type="text"
+                                value={aspectValues[asp.name] || ''}
+                                onChange={e => setAspectValues(prev => ({ ...prev, [asp.name]: e.target.value }))}
+                                placeholder={`Inserisci ${asp.name}`}
+                              />
+                            )}
+                          </>
+                        ) : (
+                          <input
+                            type="text"
+                            value={aspectValues[asp.name] || ''}
+                            onChange={e => setAspectValues(prev => ({ ...prev, [asp.name]: e.target.value }))}
+                            placeholder={`Inserisci ${asp.name}`}
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
 
             {listingFormat === 'FIXED_PRICE' && (
               <div>Prezzo da pubblicare su eBay: <strong>{publishedPrice != null ? `€${Number(publishedPrice).toFixed(2)}` : '—'}</strong></div>

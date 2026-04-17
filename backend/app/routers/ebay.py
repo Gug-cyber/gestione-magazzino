@@ -534,6 +534,67 @@ def update_connection_settings(
     )
 
 
+@router.get("/aspects")
+def get_item_aspects(
+    category_id: str = Query(...),
+    marketplace_id: str = Query("EBAY_IT"),
+    current_user=Depends(get_current_active_user),
+):
+    """Return required/recommended item aspects for a given eBay leaf category."""
+    token = _get_access_token()
+    env = _get_ebay_env()
+    base = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
+    url = f"{base}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_aspects_for_category"
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                params={"category_id": category_id},
+            )
+        if resp.status_code == 404:
+            return {"aspects": []}
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Errore eBay Metadata API: {exc.response.status_code}",
+        )
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Errore di rete eBay: {exc}")
+
+    data = resp.json()
+    aspect_constraints = data.get("aspects", [])
+    if not aspect_constraints:
+        return {"aspects": []}
+
+    result = []
+    for aspect in aspect_constraints:
+        constraint = aspect.get("aspectConstraint", {})
+        usage = constraint.get("aspectUsage", "OPTIONAL")
+        required = usage == "REQUIRED"
+        recommended = usage == "RECOMMENDED"
+        data_type = constraint.get("aspectDataType", "STRING")
+        cardinality = constraint.get("aspectCardinality", "SINGLE")
+        value_type = constraint.get("itemToAspectCardinality", "SINGLE")
+        values = [
+            v.get("localizedValue", "")
+            for v in aspect.get("aspectValues", [])
+            if v.get("localizedValue")
+        ]
+        result.append({
+            "name": aspect.get("localizedAspectName", ""),
+            "required": required,
+            "recommended": recommended,
+            "data_type": data_type,
+            "value_type": value_type,
+            "cardinality": cardinality,
+            "values": values,
+        })
+
+    return {"aspects": result}
+
+
 @router.get("/listings", response_model=list[EbayListingResponse])
 def get_listings(
     db: Session = Depends(get_db),
@@ -627,6 +688,7 @@ def publish_listing(
             product,
             listing,
             marketplace_id=connection.marketplace_id or "EBAY_IT",
+            aspects=payload.aspects,
         )
         offer_id = EbayOfferService.create_offer(
             token,
