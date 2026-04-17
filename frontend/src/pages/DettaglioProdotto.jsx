@@ -147,11 +147,12 @@ function DettaglioProdotto() {
   const [ebayConnected, setEbayConnected] = useState(false)
   const [ebayListingAttivo, setEbayListingAttivo] = useState(false)
 
-  const [driveFolder, setDriveFolder] = useState(null)
-  const [driveImmagini, setDriveImmagini] = useState([])
-  const [driveLoading, setDriveLoading] = useState(false)
-  const [driveError, setDriveError] = useState('')
-  const [creatingFolder, setCreatingFolder] = useState(false)
+  // DISABILITATO - Sezione Google Drive rimossa
+  // const [driveFolder, setDriveFolder] = useState(null)
+  // const [driveImmagini, setDriveImmagini] = useState([])
+  // const [driveLoading, setDriveLoading] = useState(false)
+  // const [driveError, setDriveError] = useState('')
+  // const [creatingFolder, setCreatingFolder] = useState(false)
 
   /* TEMPORANEAMENTE DISABILITATO - CardTrader API issues */
   // const [cardtraderData, setCardtraderData] = useState(null)
@@ -170,15 +171,16 @@ function DettaglioProdotto() {
       const res = await prodottiAPI.getScheda(id)
       const data = res.data
       setScheda(data)
-      if (data.prodotto.google_drive_folder_id) {
-        try {
-          const storeRes = await prodottiAPI.getDriveImmagini(id)
-          setDriveImmagini(storeRes.data.immagini || [])
-          setDriveFolder({ folder_id: data.prodotto.google_drive_folder_id, folder_url: `https://drive.google.com/drive/folders/${data.prodotto.google_drive_folder_id}` })
-        } catch {
-          // ignora errori di caricamento immagini
-        }
-      }
+      // DISABILITATO - Sezione Google Drive rimossa
+      // if (data.prodotto.google_drive_folder_id) {
+      //   try {
+      //     const storeRes = await prodottiAPI.getDriveImmagini(id)
+      //     setDriveImmagini(storeRes.data.immagini || [])
+      //     setDriveFolder({ folder_id: data.prodotto.google_drive_folder_id, folder_url: `https://drive.google.com/drive/folders/${data.prodotto.google_drive_folder_id}` })
+      //   } catch {
+      //     // ignora errori di caricamento immagini
+      //   }
+      // }
     } catch (err) {
       setError(err.response?.data?.detail || 'Prodotto non trovato')
     } finally {
@@ -276,41 +278,10 @@ function DettaglioProdotto() {
     fetchEbayPrezzi(scheda.prodotto)
   }
 
-  const handleCreaCartellaDrive = async () => {
-    setCreatingFolder(true)
-    setDriveError('')
-    try {
-      const res = await prodottiAPI.createDriveFolder(id)
-      setDriveFolder(res.data)
-      await loadScheda()
-    } catch (e) {
-      setDriveError(e.response?.data?.detail || 'Errore nella creazione della cartella Drive')
-    } finally {
-      setCreatingFolder(false)
-    }
-  }
-
-  const handleRicaricaDrive = async () => {
-    if (!scheda?.prodotto?.google_drive_folder_id) return
-    setDriveLoading(true)
-    try {
-      const storeRes = await prodottiAPI.getDriveImmagini(id)
-      setDriveImmagini(storeRes.data.immagini || [])
-    } catch {
-      setDriveError('Errore nel caricamento immagini Drive')
-    } finally {
-      setDriveLoading(false)
-    }
-  }
-
-  const handleSetMainPhoto = async (url) => {
-    try {
-      await prodottiAPI.update(id, { foto_path: url })
-      await loadScheda()
-    } catch {
-      setDriveError('Errore nel salvataggio della foto principale')
-    }
-  }
+  // DISABILITATO - Sezione Google Drive rimossa
+  // const handleCreaCartellaDrive = async () => { ... }
+  // const handleRicaricaDrive = async () => { ... }
+  // const handleSetMainPhoto = async (url) => { ... }
 
   const handleEditOpen = () => {
     const p = scheda.prodotto
@@ -1029,108 +1000,7 @@ function DettaglioProdotto() {
         </button>
       </div>
 
-      {/* Sezione Google Drive */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h2 style={{ color: 'var(--color-text)', marginTop: 0, marginBottom: 16, fontSize: '1.1rem' }}>
-          🗂️ Galleria Google Drive
-        </h2>
-
-        {/* CASO 1: Cartella Drive non ancora creata */}
-        {!prodotto?.google_drive_folder_id && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              Crea una cartella Drive per questo prodotto e carica le foto direttamente da Google Drive. Lo store mostrerà automaticamente tutte le immagini presenti.
-            </p>
-            {driveError && <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem' }}>{driveError}</div>}
-            <button
-              className="gm-btn gm-btn-primary"
-              onClick={handleCreaCartellaDrive}
-              disabled={creatingFolder}
-              style={{ alignSelf: 'flex-start' }}
-            >
-              {creatingFolder ? '⏳ Creazione in corso...' : '📁 Crea cartella Drive'}
-            </button>
-          </div>
-        )}
-
-        {/* CASO 2: Cartella Drive già esistente */}
-        {prodotto?.google_drive_folder_id && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-            {/* Link alla cartella + pulsante ricarica */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <a
-                href={`https://drive.google.com/drive/folders/${prodotto.google_drive_folder_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="gm-btn gm-btn-secondary"
-                style={{ fontSize: '0.85rem', textDecoration: 'none' }}
-              >
-                📂 Apri cartella su Drive
-              </a>
-              <button
-                className="gm-btn gm-btn-secondary"
-                onClick={handleRicaricaDrive}
-                disabled={driveLoading}
-                style={{ fontSize: '0.85rem' }}
-              >
-                {driveLoading ? '⏳ Caricamento...' : '🔄 Ricarica immagini'}
-              </button>
-            </div>
-
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 0 }}>
-              Carica le foto direttamente nella cartella Google Drive. Clicca su un&apos;immagine per impostarla come foto principale del prodotto.
-            </p>
-
-            {driveError && <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem' }}>{driveError}</div>}
-
-            {/* Griglia immagini */}
-            {driveImmagini.length === 0 && !driveLoading && (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                Nessuna immagine nella cartella Drive. Carica le foto aprendo la cartella su Drive.
-              </p>
-            )}
-
-            {driveImmagini.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
-                {driveImmagini.map((url, idx) => (
-                  <div
-                    key={idx}
-                    style={{ position: 'relative', cursor: 'pointer' }}
-                    title="Clicca per impostare come foto principale"
-                    onClick={() => handleSetMainPhoto(url)}
-                  >
-                    <img
-                      src={url}
-                      alt={`Immagine ${idx + 1}`}
-                      style={{
-                        width: '100%',
-                        aspectRatio: '1',
-                        objectFit: 'cover',
-                        borderRadius: 6,
-                        border: prodotto.foto_url === url ? '3px solid var(--color-primary)' : '2px solid var(--color-border)',
-                      }}
-                      onError={e => { e.currentTarget.style.opacity = '0.3' }}
-                    />
-                    {prodotto.foto_url === url && (
-                      <span style={{
-                        position: 'absolute', top: 4, right: 4,
-                        background: 'var(--color-primary)', color: 'white',
-                        borderRadius: 4, fontSize: '0.65rem', padding: '1px 4px'
-                      }}>✓ Principale</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ID cartella */}
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', margin: 0 }}>
-              ID cartella: <code style={{ fontSize: '0.75rem' }}>{prodotto.google_drive_folder_id}</code>
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Sezione Google Drive — DISABILITATA */}
 
       {/* Prodotti correlati */}
       {prodotti_correlati.length > 0 && (

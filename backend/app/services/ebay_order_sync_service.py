@@ -14,6 +14,7 @@ from ..models.ebay_sale import EbaySale
 from .ebay_auth_service import EbayAuthService
 from .ebay_inventory_service import EbayInventoryService
 from .inventory_service import InventoryService
+from .multi_platform_sync_service import MultiPlatformSyncService
 from .pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
@@ -181,9 +182,8 @@ class EbayOrderSyncService:
             quantity=total_qty,
         )
 
-        # Sincronizza la quantità eBay dopo il decremento
-        InventoryService.sync_ebay_quantity(db, selected_listing.product_id)
-        InventoryService.close_ebay_listing_if_zero(db, selected_listing.product_id)
+        # Sincronizza stock e annunci su tutte le piattaforme dopo il decremento
+        MultiPlatformSyncService.sync_after_order(db, selected_listing.product_id)
 
         db.commit()
         logger.info(
