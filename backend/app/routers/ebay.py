@@ -595,6 +595,79 @@ def get_item_aspects(
     return {"aspects": result}
 
 
+_CONDITION_ID_TO_ENUM: dict[str, str] = {
+    "1000": "NEW",
+    "1500": "NEW_OTHER",
+    "1750": "NEW_WITH_DEFECTS",
+    "2000": "MANUFACTURER_REFURBISHED",
+    "2500": "LIKE_NEW",
+    "2750": "USED_EXCELLENT",
+    "3000": "USED_GOOD",
+    "4000": "USED_ACCEPTABLE",
+    "7000": "FOR_PARTS_OR_NOT_WORKING",
+}
+
+
+@router.get("/category_conditions")
+def get_category_conditions(
+    category_id: str = Query(...),
+    marketplace_id: str = Query("EBAY_IT"),
+    current_user=Depends(get_current_active_user),
+):
+    """Return valid listing conditions for a given eBay leaf category."""
+    token = _get_access_token()
+    env = _get_ebay_env()
+    base = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
+    url = f"{base}/sell/metadata/v1/marketplace/{marketplace_id}/get_listing_conditions_by_category"
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                params={"category_id": category_id},
+            )
+        if resp.status_code in (404, 204):
+            return {"conditions": []}
+        resp.raise_for_status()
+    except httpx.HTTPStatusError:
+        return {"conditions": []}
+    except httpx.RequestError:
+        return {"conditions": []}
+
+    try:
+        data = resp.json()
+    except Exception:
+        return {"conditions": []}
+
+    # eBay Metadata API returns conditionPolicies[].conditions[]
+    raw_conditions: list = []
+    if "conditionPolicies" in data:
+        for policy in data["conditionPolicies"]:
+            raw_conditions.extend(policy.get("conditions", []))
+    elif "conditionDescriptors" in data:
+        raw_conditions = data["conditionDescriptors"]
+    elif "listingConditions" in data:
+        raw_conditions = data["listingConditions"]
+    elif "conditions" in data:
+        raw_conditions = data["conditions"]
+
+    result = []
+    seen: set = set()
+    for item in raw_conditions:
+        cid = str(item.get("conditionId", ""))
+        cenum = _CONDITION_ID_TO_ENUM.get(cid, "")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        result.append({
+            "conditionId": cid,
+            "conditionEnum": cenum,
+            "conditionDescription": item.get("conditionDescription", cenum),
+        })
+
+    return {"conditions": result}
+
+
 @router.get("/listings", response_model=list[EbayListingResponse])
 def get_listings(
     db: Session = Depends(get_db),
@@ -689,6 +762,7 @@ def publish_listing(
             listing,
             marketplace_id=connection.marketplace_id or "EBAY_IT",
             aspects=payload.aspects,
+            condition_override=payload.condition_override,
         )
         offer_id = EbayOfferService.create_offer(
             token,

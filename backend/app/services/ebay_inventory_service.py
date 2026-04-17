@@ -153,6 +153,7 @@ class EbayInventoryService:
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
         aspects: dict[str, list[str]] | None = None,
+        condition_override: str | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
@@ -163,7 +164,10 @@ class EbayInventoryService:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
         content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
-        condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+        if condition_override and condition_override.strip():
+            condition = condition_override.strip()
+        else:
+            condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
             "availability": {
