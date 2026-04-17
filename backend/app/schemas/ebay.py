@@ -52,6 +52,7 @@ class PublishRequest(BaseModel):
     auction_duration: Optional[str] = None
     auction_reserve_price: Optional[float] = None
     auction_buy_it_now_price: Optional[float] = None
+    aspects: Optional[dict[str, list[str]]] = None
 
 
 class PricingPreviewResponse(BaseModel):

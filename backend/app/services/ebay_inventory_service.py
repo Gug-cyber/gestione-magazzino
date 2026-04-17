@@ -152,6 +152,7 @@ class EbayInventoryService:
         product,
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
+        aspects: dict[str, list[str]] | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
@@ -181,6 +182,14 @@ class EbayInventoryService:
             payload["conditionDescription"] = (
                 _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
             )
+        if aspects:
+            sanitized_aspects = {
+                _sanitize_ascii_text(k): [_sanitize_ascii_text(v) for v in vals]
+                for k, vals in aspects.items()
+                if vals
+            }
+            if sanitized_aspects:
+                payload["product"]["aspects"] = sanitized_aspects
 
         EbayInventoryService._request_with_retry(
             "PUT",

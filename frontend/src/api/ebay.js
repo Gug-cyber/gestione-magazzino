@@ -15,4 +15,6 @@ export const ebayApi = {
     api.get(`/api/ebay/pricing/preview?net_price=${netPrice}&fee_percentage=${feePercentage}`),
   getCategories: (parentId = null, marketplaceId = 'EBAY_IT') =>
     api.get('/api/ebay/categories', { params: { parent_id: parentId, marketplace_id: marketplaceId } }),
+  getAspects: (categoryId, marketplaceId = 'EBAY_IT') =>
+    api.get('/api/ebay/aspects', { params: { category_id: categoryId, marketplace_id: marketplaceId } }),
 }
