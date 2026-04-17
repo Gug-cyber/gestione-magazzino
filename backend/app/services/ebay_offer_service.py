@@ -541,8 +541,8 @@ class EbayOfferService:
             EbayOfferService._request_with_retry(
                 "POST",
                 f"{EbayOfferService._base_url()}/sell/inventory/v1/offer/{offer_id}/withdraw",
-                headers=EbayOfferService._auth_header(token),
-                json={},
+                headers=EbayOfferService._offer_headers(token),
+                json={"reason": reason},
             )
             return
         except httpx.HTTPStatusError as exc:

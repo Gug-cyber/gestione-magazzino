@@ -205,8 +205,8 @@ def test_close_ebay_listing_api_fails_but_db_updated(db, monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.inventory_service.EbayOfferService.end_listing",
-        lambda token, offer_id, reason="OUT_OF_STOCK": (_ for _ in ()).throw(
-            Exception("eBay API error simulato")
+        lambda token, offer_id, reason="OUT_OF_STOCK": exec(
+            'raise Exception("eBay API error simulato")'
         ),
     )
 
