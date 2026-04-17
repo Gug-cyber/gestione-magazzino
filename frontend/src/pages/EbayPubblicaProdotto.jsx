@@ -54,6 +54,14 @@ function EbayPubblicaProdotto() {
     'Poor': '5000',
   }
 
+  const _LIKE_NEW_CONDITION_ID = '2750'
+
+  const _getBestGradedCondition = (conditions) => {
+    const likeNew = conditions.find(c => c.conditionId === _LIKE_NEW_CONDITION_ID)
+    const best = likeNew || conditions[0]
+    return best ? best.conditionEnum : ''
+  }
+
   useEffect(() => {
     if (!productId) return
     Promise.all([
@@ -107,7 +115,11 @@ function EbayPubblicaProdotto() {
         setIsTradingCardCategory(isTradingCard)
         if (product?.is_graded) {
           const gradedMatch = conditions.find(c => c.conditionEnum === 'GRADED')
-          setEbayCondition(gradedMatch ? 'GRADED' : 'USED_GOOD')
+          if (gradedMatch) {
+            setEbayCondition('GRADED')
+          } else {
+            setEbayCondition(_getBestGradedCondition(conditions))
+          }
         } else if (conditions.length > 0) {
           const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
           const match = conditions.find(c => c.conditionId === preferred)
@@ -125,7 +137,11 @@ function EbayPubblicaProdotto() {
         setAvailableConditions(fallback)
         if (product?.is_graded) {
           const gradedMatch = fallback.find(c => c.conditionEnum === 'GRADED')
-          setEbayCondition(gradedMatch ? 'GRADED' : 'USED_GOOD')
+          if (gradedMatch) {
+            setEbayCondition('GRADED')
+          } else {
+            setEbayCondition(_getBestGradedCondition(fallback))
+          }
         } else {
           const preferred = _conditionIdMap[product?.stato_conservazione] || '4000'
           const match = fallback.find(c => c.conditionId === preferred)
@@ -189,8 +205,16 @@ function EbayPubblicaProdotto() {
     if (product.is_graded && (!gradingService || !gradingGrade)) {
       return 'Inserisci Grading Service e Grade per le carte gradate'
     }
+    if (
+      selectedCategoryId &&
+      ebayCondition === 'GRADED' &&
+      availableConditions.length > 0 &&
+      !availableConditions.some(c => c.conditionEnum === 'GRADED')
+    ) {
+      return 'Condizione "Gradata" non valida per la categoria selezionata. Seleziona una condizione compatibile.'
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, gradingService, gradingGrade])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, gradingService, gradingGrade, ebayCondition, availableConditions])
 
   const handlePublish = async () => {
     setError('')
@@ -351,7 +375,7 @@ function EbayPubblicaProdotto() {
                   <div style={{ color: '#888', fontSize: 13 }}>Caricamento condizioni...</div>
                 ) : isTradingCardCategory ? (
                   <div style={{ display: 'grid', gap: 10, marginTop: 4 }}>
-                    {product?.is_graded && (
+                    {product?.is_graded && availableConditions.some(c => c.conditionEnum === 'GRADED') && (
                       <div
                         onClick={() => setEbayCondition('GRADED')}
                         style={{
@@ -405,7 +429,7 @@ function EbayPubblicaProdotto() {
                 ) : (
                   <>
                     <select value={ebayCondition} onChange={e => setEbayCondition(e.target.value)} style={{ width: '100%' }}>
-                      {product?.is_graded && (
+                      {product?.is_graded && availableConditions.some(c => c.conditionEnum === 'GRADED') && (
                         <option value="GRADED">Gradata (Graded)</option>
                       )}
                       {availableConditions.map(c => (
