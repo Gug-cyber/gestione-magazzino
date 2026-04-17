@@ -26,7 +26,6 @@ from ..models.prodotto import Prodotto
 from ..models.cliente import Cliente
 from ..limiter import limiter
 from ..services.notification_service import notification_service
-from ..services.google_drive_service import drive_service
 
 logger = logging.getLogger(__name__)
 
@@ -106,14 +105,15 @@ def _to_public(prodotto: Prodotto, request: Request) -> StoreProdottoPublic:
     prezzo_vendita = float(prodotto.prezzo_vendita) if prodotto.prezzo_vendita is not None else None
     foto_url = _build_foto_url(prodotto, request)
 
-    # Recupera immagini da Google Drive se disponibile
-    immagini: List[str] = []
-    if prodotto.google_drive_folder_id:
-        immagini = drive_service.list_images_in_folder(prodotto.google_drive_folder_id)
+    # Usa foto_aggiuntive come sorgente principale delle immagini
+    foto_aggiuntive: List[str] = list(prodotto.foto_aggiuntive or [])
 
-    # Fallback retrocompatibile: se nessuna immagine Drive ma esiste foto_url, usala
-    if not immagini and foto_url:
-        immagini = [foto_url]
+    # Costruisci la lista immagini: foto principale + foto aggiuntive
+    immagini: List[str] = []
+    if foto_url:
+        immagini = [foto_url] + foto_aggiuntive
+    elif foto_aggiuntive:
+        immagini = foto_aggiuntive
 
     return StoreProdottoPublic(
         id=prodotto.id,
