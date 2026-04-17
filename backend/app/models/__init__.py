@@ -17,3 +17,4 @@ from .store_settings import StoreSettings
 from .ebay_connection import EbayConnection
 from .ebay_listing import EbayListing
 from .ebay_sale import EbaySale
+from .ebay_order_event import EbayOrderEvent
