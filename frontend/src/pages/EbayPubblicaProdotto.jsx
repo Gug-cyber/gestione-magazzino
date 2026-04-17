@@ -489,13 +489,6 @@ function EbayPubblicaProdotto() {
                     <option value="CGC">CGC</option>
                     <option value="SGC">SGC</option>
                     <option value="ACE">ACE</option>
-                    <option value="TAG">TAG (Tech All-Stars Grading)</option>
-                    <option value="PCA">PCA (Professional Card Authenticators)</option>
-                    <option value="AiGrading">AiGrading</option>
-                    <option value="AGS">AGS (Ace Grading Services)</option>
-                    <option value="GMA">GMA (Global Magic Authentication)</option>
-                    <option value="HGA">HGA (Hybrid Grading Approach)</option>
-                    <option value="RCG">RCG (Rare Candy Grading)</option>
                   </select>
                 </label>
 
