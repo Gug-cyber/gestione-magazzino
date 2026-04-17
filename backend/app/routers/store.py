@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,28 @@ from ..services.notification_service import notification_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _sync_platforms_after_store_checkout(prodotto_ids: list[int]) -> None:
+    """Background task: sincronizza le piattaforme dopo un checkout store."""
+    from ..database import SessionLocal
+    from ..services.multi_platform_sync_service import MultiPlatformSyncService
+
+    db = SessionLocal()
+    try:
+        for pid in prodotto_ids:
+            try:
+                MultiPlatformSyncService.sync_after_order(db, pid)
+                db.commit()
+            except Exception as exc:
+                logger.error(
+                    "Errore sync piattaforme per prodotto_id=%s dopo checkout store: %s",
+                    pid,
+                    exc,
+                )
+                db.rollback()
+    finally:
+        db.close()
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +212,7 @@ def get_store_categorie(db: Session = Depends(get_db)):
 def store_checkout(
     request: Request,
     body: StoreCheckoutRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
@@ -259,6 +282,10 @@ def store_checkout(
         notification_service.send_new_order_notification(ordine)
     except Exception as e:
         logger.warning("Notifica ordine fallita (non critico): %s", e)
+
+    # Sincronizza stock e annunci su tutte le piattaforme in background
+    prodotto_ids = [r.prodotto_id for r in body.righe]
+    background_tasks.add_task(_sync_platforms_after_store_checkout, prodotto_ids)
 
     return StoreCheckoutResponse(
         ordine=OrdineResponse.model_validate(ordine),

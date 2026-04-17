@@ -23,7 +23,7 @@ def _sync_ebay_after_confirmation(ordine_id: int) -> None:
     """
     from sqlalchemy.orm import joinedload
     from ..models.ordine import Ordine, RigaOrdine
-    from ..services.inventory_service import InventoryService
+    from ..services.multi_platform_sync_service import MultiPlatformSyncService
 
     db = SessionLocal()
     try:
@@ -38,12 +38,11 @@ def _sync_ebay_after_confirmation(ordine_id: int) -> None:
         prodotto_ids = {r.prodotto_id for r in ordine.righe}
         for pid in prodotto_ids:
             try:
-                InventoryService.sync_ebay_quantity(db, pid)
-                InventoryService.close_ebay_listing_if_zero(db, pid)
+                MultiPlatformSyncService.sync_after_order(db, pid)
                 db.commit()
             except Exception as exc:
                 logger.error(
-                    "Errore sync eBay per prodotto_id=%s dopo conferma ordine_id=%s: %s",
+                    "Errore sync piattaforme per prodotto_id=%s dopo conferma ordine_id=%s: %s",
                     pid,
                     ordine_id,
                     exc,
