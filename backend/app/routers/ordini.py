@@ -1,17 +1,56 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from ..database import get_db
+from ..database import get_db, SessionLocal
 from ..schemas.ordine import OrdineCreate, OrdineUpdate, OrdineResponse, OrdineStatoUpdate, TrackingUpdateBody, OrdineUpdateFull
 from ..crud import ordine as crud
 from ..auth import get_current_active_user
 from ..crud.activity_log import log_activity
+from ..models.ordine import StatoOrdine
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _sync_ebay_after_confirmation(ordine_id: int) -> None:
+    """Background task: sincronizza la quantità eBay dopo la conferma di un ordine.
+
+    Crea la propria sessione DB separata per essere sicuro rispetto alla
+    sessione della request originale che potrebbe essere già chiusa.
+    """
+    from sqlalchemy.orm import joinedload
+    from ..models.ordine import Ordine, RigaOrdine
+    from ..services.inventory_service import InventoryService
+
+    db = SessionLocal()
+    try:
+        ordine = (
+            db.query(Ordine)
+            .options(joinedload(Ordine.righe).joinedload(RigaOrdine.prodotto))
+            .filter(Ordine.id == ordine_id)
+            .first()
+        )
+        if not ordine:
+            return
+        prodotto_ids = {r.prodotto_id for r in ordine.righe}
+        for pid in prodotto_ids:
+            try:
+                InventoryService.sync_ebay_quantity(db, pid)
+                InventoryService.close_ebay_listing_if_zero(db, pid)
+                db.commit()
+            except Exception as exc:
+                logger.error(
+                    "Errore sync eBay per prodotto_id=%s dopo conferma ordine_id=%s: %s",
+                    pid,
+                    ordine_id,
+                    exc,
+                )
+                db.rollback()
+    finally:
+        db.close()
 
 
 def _ordine_to_response(o) -> OrdineResponse:
@@ -91,6 +130,7 @@ def get_ordine(
 def update_ordine(
     ordine_id: int,
     ordine_update: OrdineUpdateFull,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -120,6 +160,8 @@ def update_ordine(
         )
     except Exception as e:
         logger.warning("log_activity failed: %s", e)
+    if ordine_update.stato == StatoOrdine.confermato and updated.stock_scalato:
+        background_tasks.add_task(_sync_ebay_after_confirmation, ordine_id)
     return _ordine_to_response(updated)
 
 
@@ -167,6 +209,7 @@ def update_tracking(
 def update_stato(
     ordine_id: int,
     stato_update: OrdineStatoUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -192,4 +235,6 @@ def update_stato(
         )
     except Exception as e:
         logger.warning("log_activity failed: %s", e)
+    if stato_update.stato == StatoOrdine.confermato and o.stock_scalato:
+        background_tasks.add_task(_sync_ebay_after_confirmation, ordine_id)
     return _ordine_to_response(o)

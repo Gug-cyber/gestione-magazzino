@@ -13,7 +13,7 @@ from ..models.ebay_listing import EbayListing
 from ..models.ebay_sale import EbaySale
 from .ebay_auth_service import EbayAuthService
 from .ebay_inventory_service import EbayInventoryService
-from .inventory_sync_service import InventorySyncService
+from .inventory_service import InventoryService
 from .pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
@@ -173,21 +173,17 @@ class EbayOrderSyncService:
         db.add(sale)
         db.flush()
 
-        InventorySyncService.decrement_stock(selected_listing.product_id, total_qty, db)
+        # Delega la gestione dello stock e l'idempotenza a InventoryService
+        InventoryService.handle_ebay_sale(
+            db,
+            ebay_order_id=order_id,
+            sku=selected_listing.ebay_item_id,
+            quantity=total_qty,
+        )
 
-        token = EbayAuthService.get_valid_token(connection, db)
-        if selected_listing.product and selected_listing.product.quantita > 0 and selected_listing.ebay_item_id:
-            EbayInventoryService.update_quantity(
-                token,
-                selected_listing.ebay_item_id,
-                selected_listing.product.quantita,
-                marketplace_id=connection.marketplace_id or "EBAY_IT",
-            )
-            selected_listing.quantity_published = selected_listing.product.quantita
-            selected_listing.status = "active"
-        else:
-            selected_listing.status = "out_of_stock"
-        selected_listing.last_sync_at = datetime.now(timezone.utc)
+        # Sincronizza la quantità eBay dopo il decremento
+        InventoryService.sync_ebay_quantity(db, selected_listing.product_id)
+        InventoryService.close_ebay_listing_if_zero(db, selected_listing.product_id)
 
         db.commit()
         logger.info(
