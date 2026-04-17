@@ -3,6 +3,12 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { prodottiAPI, getFotoUrl } from '../api/client'
 import { ebayApi } from '../api/ebay'
 
+const CONDITION_MAP_LOCAL = {
+  'Mint': 'NEW', 'Near Mint': 'NEW',
+  'Excellent': 'USED_EXCELLENT', 'Good': 'USED_EXCELLENT',
+  'Light Played': 'USED_GOOD', 'Played': 'USED_ACCEPTABLE', 'Poor': 'USED_ACCEPTABLE',
+}
+
 function EbayPubblicaProdotto() {
   const navigate = useNavigate()
   const { productId: paramId } = useParams()
@@ -37,6 +43,10 @@ function EbayPubblicaProdotto() {
   const [aspectValues, setAspectValues] = useState({})
   const [aspectsLoading, setAspectsLoading] = useState(false)
   const [aspectCustom, setAspectCustom] = useState({})
+
+  const [validConditions, setValidConditions] = useState([])
+  const [conditionOverride, setConditionOverride] = useState('')
+  const [conditionWarning, setConditionWarning] = useState(false)
 
   useEffect(() => {
     if (!productId) return
@@ -91,6 +101,9 @@ function EbayPubblicaProdotto() {
     setAspects([])
     setAspectValues({})
     setAspectCustom({})
+    setValidConditions([])
+    setConditionOverride('')
+    setConditionWarning(false)
 
     if (selectedCat.is_leaf) {
       setSelectedCategoryId(categoryId)
@@ -112,6 +125,27 @@ function EbayPubblicaProdotto() {
           setAspectValues({})
         })
         .finally(() => setAspectsLoading(false))
+      // Fetch valid conditions for this leaf category (non-blocking)
+      ebayApi.getCategoryConditions(categoryId, connection.marketplace_id || 'EBAY_IT')
+        .then(res => {
+          const conditions = res.data.conditions || []
+          setValidConditions(conditions)
+          if (conditions.length > 0) {
+            const mapped = CONDITION_MAP_LOCAL[product?.stato_conservazione] || ''
+            const isValid = conditions.some(c => c.conditionEnum === mapped)
+            if (mapped && isValid) {
+              setConditionOverride(mapped)
+              setConditionWarning(false)
+            } else {
+              setConditionOverride(conditions[0].conditionEnum)
+              setConditionWarning(!!mapped)
+            }
+          }
+        })
+        .catch(() => {
+          // Non-blocking: conditions failure should not block publishing
+          setValidConditions([])
+        })
       return
     }
 
@@ -126,7 +160,7 @@ function EbayPubblicaProdotto() {
         }
       })
       .catch(() => setCategoriesError('Impossibile caricare le sottocategorie eBay. Riprova più tardi.'))
-  }, [categoryPath, categoryLevels, connection])
+  }, [categoryPath, categoryLevels, connection, product])
 
   const validationMessage = useMemo(() => {
     if (!connection.connected) return 'Account eBay non collegato'
@@ -145,8 +179,11 @@ function EbayPubblicaProdotto() {
         return `Compila il campo obbligatorio: ${asp.name}`
       }
     }
+    if (validConditions.length > 0 && !conditionOverride) {
+      return 'Seleziona una condizione valida per questa categoria'
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, aspects, aspectValues])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, aspects, aspectValues, validConditions, conditionOverride])
 
   const handlePublish = async () => {
     setError('')
@@ -174,6 +211,7 @@ function EbayPubblicaProdotto() {
         auction_reserve_price: listingFormat === 'AUCTION' && auctionReservePrice ? Number(auctionReservePrice) : undefined,
         auction_buy_it_now_price: listingFormat === 'AUCTION' && auctionBuyItNow ? Number(auctionBuyItNow) : undefined,
         aspects: Object.keys(aspectsPayload).length > 0 ? aspectsPayload : undefined,
+        condition_override: conditionOverride || undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -280,6 +318,28 @@ function EbayPubblicaProdotto() {
                 </div>
               )}
             </div>
+
+            {/* Condition override section — shown only when eBay returns valid conditions for the category */}
+            {selectedCategoryId && validConditions.length > 0 && (
+              <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
+                <label style={{ display: 'grid', gap: 4 }}>
+                  <span style={{ fontWeight: 600 }}>Condizione per questa categoria</span>
+                  {conditionWarning && (
+                    <div style={{ color: 'var(--color-warning, #e67e22)', fontSize: 13 }}>
+                      ⚠ La condizione &quot;{product?.stato_conservazione}&quot; non è valida per questa categoria. Seleziona una condizione compatibile.
+                    </div>
+                  )}
+                  <select value={conditionOverride} onChange={e => setConditionOverride(e.target.value)}>
+                    {!conditionOverride && <option value="">— Seleziona condizione —</option>}
+                    {validConditions.map(c => (
+                      <option key={c.conditionEnum} value={c.conditionEnum}>
+                        {c.conditionDescription} ({c.conditionEnum})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
 
             {/* Aspects / Item Specifics section */}
             {selectedCategoryId && (
