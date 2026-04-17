@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _sync_platforms_after_store_checkout(prodotto_ids: list) -> None:
+def _sync_platforms_after_store_checkout(prodotto_ids: list[int]) -> None:
     """Background task: sincronizza le piattaforme dopo un checkout store."""
     from ..database import SessionLocal
     from ..services.multi_platform_sync_service import MultiPlatformSyncService
