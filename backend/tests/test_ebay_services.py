@@ -79,7 +79,7 @@ def test_inventory_item_payload_uses_only_public_photo_and_sets_condition_descri
     assert captured["method"] == "PUT"
     assert "Content-Language" not in headers
     assert payload["product"]["imageUrls"] == ["https://backend.example.com/uploads/carta.jpg"]
-    assert payload["condition"] == "USED_GOOD"
+    assert payload["condition"] == "USED_EXCELLENT"
     assert payload["conditionDescription"] == "Good"
     assert "sku" not in payload
 
@@ -1086,5 +1086,3 @@ def test_exchange_code_for_tokens_identity_username_fetch_is_best_effort(monkeyp
 
     assert connection.ebay_account_id is None
     assert db.saved.ebay_account_id is None
-
-

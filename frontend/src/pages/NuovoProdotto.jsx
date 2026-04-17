@@ -49,7 +49,6 @@ const emptyForm = {
   nome: '', descrizione: '', sku: '', barcode: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
   categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '',
-  is_graded: false, grading_service: '', grade: '',
 }
 
 function NuovoProdotto() {
@@ -100,9 +99,6 @@ function NuovoProdotto() {
       ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
       stato_conservazione: form.stato_conservazione || null,
       lingua: form.lingua || null,
-      is_graded: form.is_graded,
-      grading_service: form.is_graded ? (form.grading_service || null) : null,
-      grade: form.is_graded ? (form.grade || null) : null,
     }
     try {
       const res = await prodottiAPI.create(payload)
@@ -352,47 +348,6 @@ function NuovoProdotto() {
                   <option value="Poor">Poor</option>
                 </select>
               </div>
-
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_graded}
-                    onChange={e => setForm({ ...form, is_graded: e.target.checked, grading_service: '', grade: '' })}
-                  />
-                  <strong>Carta gradata</strong>
-                </label>
-              </div>
-
-              {form.is_graded && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">Grading Service</label>
-                    <select
-                      value={form.grading_service}
-                      onChange={e => setForm({ ...form, grading_service: e.target.value })}
-                      className="form-input"
-                    >
-                      <option value="">-- Seleziona --</option>
-                      <option value="PSA">PSA</option>
-                      <option value="BGS">BGS (Beckett)</option>
-                      <option value="CGC">CGC</option>
-                      <option value="SGC">SGC</option>
-                      <option value="ACE">ACE</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Grade</label>
-                    <input
-                      type="text"
-                      placeholder="es. 9.5"
-                      value={form.grade}
-                      onChange={e => setForm({ ...form, grade: e.target.value })}
-                      className="form-input"
-                    />
-                  </div>
-                </>
-              )}
 
               <div className="form-group">
                 <label className="form-label">Lingua</label>

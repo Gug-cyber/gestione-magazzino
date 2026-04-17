@@ -20,9 +20,6 @@ class ProdottoBase(BaseModel):
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
     google_drive_folder_id: Optional[str] = None
-    is_graded: bool = False
-    grading_service: Optional[str] = None
-    grade: Optional[str] = None
 
     @field_validator("quantita", "quantita_minima")
     @classmethod
@@ -58,9 +55,6 @@ class ProdottoUpdate(BaseModel):
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
     google_drive_folder_id: Optional[str] = None
-    is_graded: Optional[bool] = None
-    grading_service: Optional[str] = None
-    grade: Optional[str] = None
 
 
 class ProdottoResponse(ProdottoBase):

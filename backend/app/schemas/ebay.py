@@ -52,11 +52,6 @@ class PublishRequest(BaseModel):
     auction_duration: Optional[str] = None
     auction_reserve_price: Optional[float] = None
     auction_buy_it_now_price: Optional[float] = None
-    ebay_condition: Optional[str] = None
-    grading_service: Optional[str] = None
-    grade: Optional[str] = None
-    description_override: Optional[str] = None
-    item_game: Optional[str] = None  # item specific "Gioco" obbligatorio per trading card categories
 
 
 class PricingPreviewResponse(BaseModel):

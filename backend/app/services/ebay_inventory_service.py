@@ -12,29 +12,13 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 _CONDITION_MAP = {
-    "Mint": "USED_EXCELLENT",
-    "Near Mint": "USED_EXCELLENT",
+    "Mint": "NEW",
+    "Near Mint": "NEW",
     "Excellent": "USED_EXCELLENT",
-    "Good": "USED_GOOD",
+    "Good": "USED_EXCELLENT",
     "Light Played": "USED_GOOD",
     "Played": "USED_ACCEPTABLE",
     "Poor": "USED_ACCEPTABLE",
-}
-
-_VALID_EBAY_CONDITIONS = {
-    "NEW",
-    "LIKE_NEW",
-    "MANUFACTURER_REFURBISHED",
-    "SELLER_REFURBISHED",
-    "USED_EXCELLENT",
-    "USED_GOOD",
-    "USED_ACCEPTABLE",
-    "FOR_PARTS_OR_NOT_WORKING",
-    "GRADED",
-    # Trading card / collectibles category enums (e.g. category 183454 on EBAY_IT)
-    "VERY_GOOD",
-    "GOOD",
-    "ACCEPTABLE",
 }
 
 _MARKETPLACE_LANGUAGE_MAP = {
@@ -74,7 +58,7 @@ class EbayInventoryService:
         clean_headers = dict(headers) if headers else {}
         if json is not None and "content-type" not in {k.lower() for k in clean_headers}:
             clean_headers["Content-Type"] = "application/json"
-        logger.info("eBay inventory request header keys: %s", sorted(clean_headers.keys()))
+        logger.info("eBay inventory request header keys: %%s", sorted(clean_headers.keys()))
 
         session = requests.Session()
         session.headers.clear()
@@ -105,7 +89,7 @@ class EbayInventoryService:
                     error_body = response.text
                 except Exception:
                     error_body = "<unreadable>"
-                logger.error("eBay inventory_item error %s — body: %s", status, error_body)
+                logger.error("eBay inventory_item error %%s — body: %%s", status, error_body)
                 try:
                     error_data = _json.loads(error_body)
                     errors = error_data.get("errors", [])
@@ -168,56 +152,35 @@ class EbayInventoryService:
         product,
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
-        ebay_condition: str | None = None,
-        grading_service: str | None = None,
-        grade: str | None = None,
-        description_override: str | None = None,
-        item_game: str | None = None,
     ) -> None:
         title = _sanitize_ascii_text((product.nome or "").strip())
         if len(title) > 80:
             title = f"{title[:77]}..."
-        description = _sanitize_ascii_text((description_override or product.descrizione or product.nome or "").strip())
+        description = _sanitize_ascii_text((product.descrizione or "").strip())
         image_urls = EbayInventoryService._build_image_urls(product)
         if not image_urls:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
 
         content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
-        condition = (
-            ebay_condition if ebay_condition and ebay_condition in _VALID_EBAY_CONDITIONS
-            else _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
-        )
+        condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
-
-        product_payload: dict = {
-            "title": title,
-            "description": description,
-            "imageUrls": image_urls,
-        }
-
-        if grading_service or grade or item_game:
-            aspects: dict = {}
-            if grading_service:
-                aspects["Professional Grader"] = [grading_service]
-            if grade:
-                aspects["Grade"] = [grade]
-            if item_game:
-                aspects["Gioco"] = [item_game]  # required for trading card categories
-            if aspects:
-                product_payload["aspects"] = aspects
-
         payload = {
             "availability": {
                 "shipToLocationAvailability": {
                     "quantity": max(0, listing.quantity_published),
                 }
             },
-            "product": product_payload,
+            "product": {
+                "title": title,
+                "description": description,
+                "imageUrls": image_urls,
+            },
             "condition": condition,
         }
-        payload["conditionDescription"] = (
-            _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
-        )
+        if condition != "NEW":
+            payload["conditionDescription"] = (
+                _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
+            )
 
         EbayInventoryService._request_with_retry(
             "PUT",
