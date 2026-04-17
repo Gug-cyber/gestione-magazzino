@@ -422,6 +422,15 @@ _TRADING_CARD_CONDITION_MAP = {
 # Their presence in the policy's conditionId set identifies the policy type.
 _TRADING_CARD_INDICATOR_IDS = {"2750", "7000"}
 
+_TRADING_CARD_CONDITION_SUBTITLES = {
+    "2750": "Equiparabile a un pacchetto nuovo",
+    "3000": "Presenta segni di usura facilmente visibili",
+    "4000": "Presenta danni da moderati a elevati su tutta la superficie",
+    "5000": "È estremamente usurata e presenta difetti su tutta la superficie",
+    "6000": "Accettabile — con difetti evidenti",
+    "7000": "Danneggiate — solo per pezzi di ricambio",
+}
+
 
 def _get_condition_enum_for_policy(condition_id: str, all_condition_ids: list) -> str:
     """
@@ -486,6 +495,7 @@ def get_category_conditions(
             return _DEFAULT_CONDITIONS
 
         all_ids = [str(c.get("conditionId", "")) for c in item_conditions]
+        is_trading_card = bool(_TRADING_CARD_INDICATOR_IDS & set(all_ids))
         result = []
         for cond in item_conditions:
             condition_id = str(cond.get("conditionId", ""))
@@ -495,6 +505,7 @@ def get_category_conditions(
                 "conditionId": condition_id,
                 "conditionEnum": condition_enum,
                 "conditionDescription": condition_description,
+                "conditionSubtitle": _TRADING_CARD_CONDITION_SUBTITLES.get(condition_id) if is_trading_card else None,
             })
 
         logger.info(
