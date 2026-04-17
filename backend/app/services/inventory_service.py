@@ -167,14 +167,15 @@ class InventoryService:
                     product.quantita,
                     marketplace_id=listing.connection.marketplace_id or "EBAY_IT",
                 )
+                now = datetime.now(timezone.utc)
                 listing.quantity_published = product.quantita
-                listing.last_sync_at = datetime.now(timezone.utc)
+                listing.last_sync_at = now
                 logger.info(
                     "eBay quantity synced: prodotto_id=%s, sku=%s, quantity=%s, timestamp=%s",
                     prodotto_id,
                     listing.ebay_item_id,
                     product.quantita,
-                    datetime.now(timezone.utc).isoformat(),
+                    now.isoformat(),
                 )
             except Exception as exc:
                 logger.error(
@@ -216,13 +217,14 @@ class InventoryService:
             try:
                 token = EbayAuthService.get_valid_token(listing.connection, db)
                 EbayOfferService.end_listing(token, listing.ebay_offer_id, reason="OUT_OF_STOCK")
+                now = datetime.now(timezone.utc)
                 listing.status = "out_of_stock"
-                listing.last_sync_at = datetime.now(timezone.utc)
+                listing.last_sync_at = now
                 logger.info(
                     "eBay listing chiuso (stock=0): prodotto_id=%s, offer_id=%s, timestamp=%s",
                     prodotto_id,
                     listing.ebay_offer_id,
-                    datetime.now(timezone.utc).isoformat(),
+                    now.isoformat(),
                 )
             except Exception as exc:
                 logger.error(
