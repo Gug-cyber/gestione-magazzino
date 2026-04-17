@@ -42,6 +42,7 @@ function EbayPubblicaProdotto() {
   const [isTradingCardCategory, setIsTradingCardCategory] = useState(false)
   const [gradingService, setGradingService] = useState('')
   const [gradingGrade, setGradingGrade] = useState('')
+  const [itemGame, setItemGame] = useState('')
   const [descriptionOverride, setDescriptionOverride] = useState('')
 
   const _conditionIdMap = {
@@ -101,12 +102,14 @@ function EbayPubblicaProdotto() {
     if (!selectedCategoryId || !connection?.connected) {
       setAvailableConditions([])
       setIsTradingCardCategory(false)
+      setItemGame('')
       if (!product?.is_graded) setEbayCondition('')
       return
     }
     setConditionsLoading(true)
     setConditionsFromFallback(false)
     setIsTradingCardCategory(false)
+    setItemGame('')
     ebayApi.getCategoryConditions(selectedCategoryId, connection.marketplace_id || 'EBAY_IT')
       .then(res => {
         const conditions = res.data
@@ -213,8 +216,11 @@ function EbayPubblicaProdotto() {
     ) {
       return 'Condizione "Gradata" non valida per la categoria selezionata. Seleziona una condizione compatibile.'
     }
+    if (isTradingCardCategory && !itemGame) {
+      return 'Seleziona il gioco per le categorie di carte collezionabili'
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, gradingService, gradingGrade, ebayCondition, availableConditions])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, gradingService, gradingGrade, ebayCondition, availableConditions, isTradingCardCategory, itemGame])
 
   const handlePublish = async () => {
     setError('')
@@ -240,6 +246,7 @@ function EbayPubblicaProdotto() {
         grading_service: product?.is_graded ? gradingService : undefined,
         grade: product?.is_graded ? gradingGrade : undefined,
         description_override: descriptionOverride.trim() || undefined,
+        item_game: isTradingCardCategory && itemGame ? itemGame : undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -445,6 +452,27 @@ function EbayPubblicaProdotto() {
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {isTradingCardCategory && (
+              <div style={{ display: 'grid', gap: 4 }}>
+                <label style={{ fontWeight: 500 }}>
+                  Gioco <span style={{ color: 'var(--color-danger)', fontSize: 12 }}>* obbligatorio</span>
+                </label>
+                <select value={itemGame} onChange={e => setItemGame(e.target.value)} style={{ width: '100%' }}>
+                  <option value="">-- Seleziona il gioco --</option>
+                  <option value="Magic: The Gathering">Magic: The Gathering</option>
+                  <option value="Pokémon">Pokémon</option>
+                  <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
+                  <option value="Dragon Ball Super Card Game">Dragon Ball Super Card Game</option>
+                  <option value="One Piece Card Game">One Piece Card Game</option>
+                  <option value="Lorcana">Lorcana</option>
+                  <option value="Flesh and Blood">Flesh and Blood</option>
+                  <option value="Cardfight!! Vanguard">Cardfight!! Vanguard</option>
+                  <option value="Digimon Card Game">Digimon Card Game</option>
+                  <option value="Altro">Altro</option>
+                </select>
               </div>
             )}
 

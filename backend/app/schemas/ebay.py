@@ -56,6 +56,7 @@ class PublishRequest(BaseModel):
     grading_service: Optional[str] = None
     grade: Optional[str] = None
     description_override: Optional[str] = None
+    item_game: Optional[str] = None  # item specific "Gioco" obbligatorio per trading card categories
 
 
 class PricingPreviewResponse(BaseModel):

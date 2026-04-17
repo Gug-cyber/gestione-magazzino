@@ -777,6 +777,7 @@ def publish_listing(
             grading_service=payload.grading_service,
             grade=payload.grade,
             description_override=effective_description,
+            item_game=payload.item_game,
         )
         offer_id = EbayOfferService.create_offer(
             token,
