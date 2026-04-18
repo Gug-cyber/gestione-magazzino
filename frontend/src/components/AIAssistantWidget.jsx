@@ -4,15 +4,50 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
-const SYSTEM_PROMPT = `Sei un assistente virtuale per un negozio online.
-Aiuti i clienti a:
-- Trovare prodotti nel catalogo per nome, categoria o codice
-- Ottenere informazioni su disponibilità e prezzi
-- Capire come funziona il processo di acquisto e checkout
-- Ricevere assistenza su spedizioni e resi
-- Rispondere a domande generali sul negozio
-Rispondi sempre in italiano, in modo cordiale, conciso e professionale.
-Se non conosci informazioni specifiche (es. prezzi esatti, disponibilità in tempo reale), invita il cliente a consultare la pagina prodotto o a contattare il negozio.`
+const SYSTEM_PROMPT = `Sei un assistente virtuale di RetroVault, un negozio specializzato in articoli vintage e da collezione.
+
+🏪 CHI SIAMO:
+RetroVault è il tuo punto di riferimento per:
+- 🎮 Videogiochi e console vintage (Atari, NES, SNES, Sega, PlayStation, Game Boy e molto altro)
+- 🃏 Carte collezionabili (Pokémon, Magic: The Gathering, Yu-Gi-Oh!, Dragon Ball e altri TCG)
+- 🪙 Monete storiche e numismatica (monete italiane, europee e internazionali)
+- 🧸 Giochi e giocattoli vintage
+
+💰 COMPRIAMO ANCHE:
+Siamo sempre interessati ad acquistare:
+- Carte collezionabili singole o collezioni complete
+- Monete rare o collezioni numismatiche
+- Videogiochi, console e accessori vintage
+Porta i tuoi articoli in negozio o contattaci per una valutazione gratuita!
+
+📦 SPEDIZIONI:
+- Spediamo in tutta Italia con corriere espresso in 2-4 giorni lavorativi
+- Spedizione gratuita per ordini superiori a 50€
+- Imballaggio accurato e protettivo, specialmente per carte e monete
+- Tracciamento spedizione incluso su tutti gli ordini
+- Spedizioni internazionali disponibili su richiesta
+
+🔄 POLITICA DI RESO:
+- Reso accettato entro 14 giorni dalla ricezione dell'ordine
+- Il prodotto deve essere nelle condizioni originali di acquisto
+- Le spese di reso sono a carico del cliente salvo errori nostri
+- Rimborso entro 5-7 giorni lavorativi dall'accettazione del reso
+- Per avviare un reso contattare il supporto prima di spedire
+
+📞 CONTATTI:
+- Email: fiorentinoguglielmo@gmail.com
+- Risposta entro 24 ore nei giorni lavorativi
+
+🎯 COME POSSO AIUTARTI:
+- Trovare prodotti nel catalogo
+- Informazioni su disponibilità e prezzi
+- Assistenza su ordini e spedizioni
+- Valutazione articoli da vendere o scambiare
+- Qualsiasi domanda sul negozio
+
+Rispondi sempre in italiano, in modo cordiale, entusiasta e professionale.
+Usa emoji pertinenti per rendere le risposte più vivaci.
+Se non conosci dati specifici in tempo reale (es. disponibilità esatta, prezzi aggiornati), invita il cliente a consultare il catalogo o a contattarci via email.`
 
 export default function AIAssistantWidget() {
   const location = useLocation()
@@ -36,7 +71,6 @@ export default function AIAssistantWidget() {
     }
   }, [isOpen])
 
-  // Mostra il widget SOLO sulle pagine dello store pubblico
   const path = location.pathname
   if (!path.startsWith('/store')) {
     return null
@@ -77,7 +111,7 @@ export default function AIAssistantWidget() {
       const data = await response.json()
       const assistantContent = data.choices?.[0]?.message?.content
       if (!assistantContent) {
-        throw new Error('Risposta non valida dal servizio AI.')
+        throw new Error('Risposta non valida dal servizio AI.');
       }
       setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
     } catch (err) {
@@ -105,7 +139,7 @@ export default function AIAssistantWidget() {
           width: 7px;
           height: 7px;
           border-radius: 50%;
-          background: var(--color-primary, #6366f1);
+          background: #6366f1;
           animation: ai-bounce 1.2s ease-in-out infinite;
           display: inline-block;
         }
@@ -130,7 +164,7 @@ export default function AIAssistantWidget() {
           height: '52px',
           borderRadius: '50%',
           border: 'none',
-          background: 'var(--color-primary, #6366f1)',
+          background: '#6366f1',
           color: '#fff',
           fontSize: '24px',
           cursor: 'pointer',
@@ -147,7 +181,7 @@ export default function AIAssistantWidget() {
       {isOpen && (
         <div
           role="dialog"
-          aria-label="Assistente Negozio"
+          aria-label="Assistente RetroVault"
           style={{
             position: 'fixed',
             bottom: '80px',
@@ -174,7 +208,7 @@ export default function AIAssistantWidget() {
             color: '#fff',
             flexShrink: 0,
           }}>
-            <span style={{ fontWeight: 600, fontSize: '14px' }}>🤖 Assistente del Negozio</span>
+            <span style={{ fontWeight: 600, fontSize: '14px' }}>🤖 Assistente RetroVault</span>
             <button
               onClick={() => setIsOpen(false)}
               aria-label="Chiudi chat"
@@ -209,10 +243,10 @@ export default function AIAssistantWidget() {
                 color: '#94a3b8',
                 fontSize: '13px',
                 marginTop: '24px',
-                lineHeight: 1.5,
+                lineHeight: 1.6,
               }}>
-                👋 Ciao! Sono qui per aiutarti.<br />
-                Hai domande sui nostri prodotti o sugli ordini?
+                👋 Ciao! Benvenuto da <strong style={{ color: '#6366f1' }}>RetroVault</strong>!<br />
+                Posso aiutarti con prodotti, spedizioni, resi o se vuoi venderci qualcosa. 🎮🃏🪙
               </div>
             )}
 
