@@ -20,6 +20,7 @@ function ActivityLog() {
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   // Filters
   const [utenti, setUtenti] = useState([])
@@ -27,6 +28,12 @@ function ActivityLog() {
   const [filtroAzione, setFiltroAzione] = useState('')
   const [appliedUtente, setAppliedUtente] = useState('')
   const [appliedAzione, setAppliedAzione] = useState('')
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => {
     amministrazioneAPI.getUtenti()
@@ -74,7 +81,7 @@ function ActivityLog() {
 
   return (
     <div>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '20px', color: '#1a1a2e' }}>
+      <h1 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.5rem)', fontWeight: 700, marginBottom: '20px', color: '#1a1a2e' }}>
         📋 Log Attività
       </h1>
 
@@ -86,16 +93,17 @@ function ActivityLog() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
         marginBottom: '20px',
         display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
         flexWrap: 'wrap',
         gap: '12px',
-        alignItems: 'flex-end',
+        alignItems: isMobile ? 'stretch' : 'flex-end',
       }}>
-        <div>
+        <div style={{ width: isMobile ? '100%' : 'auto' }}>
           <label style={labelStyle}>Utente</label>
           <select
             value={filtroUtente}
             onChange={e => setFiltroUtente(e.target.value)}
-            style={selectStyle}
+            style={{ ...selectStyle, width: isMobile ? '100%' : '160px', fontSize: 16, minHeight: 44, boxSizing: 'border-box' }}
           >
             <option value="">Tutti</option>
             {utenti.map(u => (
@@ -103,19 +111,19 @@ function ActivityLog() {
             ))}
           </select>
         </div>
-        <div>
+        <div style={{ width: isMobile ? '100%' : 'auto' }}>
           <label style={labelStyle}>Azione</label>
           <input
             type="text"
             value={filtroAzione}
             onChange={e => setFiltroAzione(e.target.value)}
             placeholder="es. login, crea_prodotto..."
-            style={{ ...inputStyle, width: '200px' }}
+            style={{ ...inputStyle, width: isMobile ? '100%' : '200px', fontSize: 16, minHeight: 44, boxSizing: 'border-box' }}
             onKeyDown={e => e.key === 'Enter' && handleApply()}
           />
         </div>
-        <button onClick={handleApply} style={btnStyle}>🔍 Applica</button>
-        <button onClick={handleReset} style={{ ...btnStyle, background: '#546e7a' }}>↩️ Reset</button>
+        <button onClick={handleApply} style={{ ...btnStyle, minHeight: 44, width: isMobile ? '100%' : 'auto' }}>🔍 Applica</button>
+        <button onClick={handleReset} style={{ ...btnStyle, background: '#546e7a', minHeight: 44, width: isMobile ? '100%' : 'auto' }}>↩️ Reset</button>
       </div>
 
       {/* Error */}
@@ -125,7 +133,7 @@ function ActivityLog() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Content */}
       <div style={{ background: 'white', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
@@ -134,6 +142,25 @@ function ActivityLog() {
         ) : logs.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
             Nessun log trovato.
+          </div>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12 }}>
+            {logs.map((log) => {
+              const badge = getAzioneBadge(log.azione)
+              return (
+                <div key={log.id} style={{ background: 'white', borderRadius: 10, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, color: '#888' }}>{formatDate(log.eseguito_il)}</span>
+                    <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, background: badge.bg, color: badge.color, fontWeight: 600, fontSize: 12 }}>{log.azione}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#333', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div><strong>Utente:</strong> {log.username || '—'}</div>
+                    <div><strong>Entità:</strong> {log.entita || '—'} {log.entita_id != null ? `#${log.entita_id}` : ''}</div>
+                    {log.dettagli && <div style={{ color: '#555', fontSize: 12, marginTop: 2 }}>{log.dettagli}</div>}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -182,11 +209,11 @@ function ActivityLog() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
           <button
             onClick={() => setPage(p => Math.max(0, p - 1))}
             disabled={page === 0}
-            style={{ ...btnStyle, opacity: page === 0 ? 0.4 : 1 }}
+            style={{ ...btnStyle, opacity: page === 0 ? 0.4 : 1, minHeight: 44 }}
           >
             ‹ Prev
           </button>
@@ -196,7 +223,7 @@ function ActivityLog() {
           <button
             onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            style={{ ...btnStyle, opacity: page >= totalPages - 1 ? 0.4 : 1 }}
+            style={{ ...btnStyle, opacity: page >= totalPages - 1 ? 0.4 : 1, minHeight: 44 }}
           >
             Next ›
           </button>

@@ -15,6 +15,7 @@ function EbayPubblicaProdotto() {
   const [searchParams] = useSearchParams()
   const productId = paramId || searchParams.get('product_id')
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [product, setProduct] = useState(null)
   const [connection, setConnection] = useState({ connected: false })
   const [netPrice, setNetPrice] = useState('')
@@ -47,6 +48,12 @@ function EbayPubblicaProdotto() {
   const [validConditions, setValidConditions] = useState([])
   const [conditionOverride, setConditionOverride] = useState('')
   const [conditionWarning, setConditionWarning] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => {
     if (!productId) return
@@ -222,16 +229,28 @@ function EbayPubblicaProdotto() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div className="gm-card" style={{ padding: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Pubblica prodotto su eBay</h2>
-        <button className="gm-btn gm-btn-secondary" onClick={() => navigate(-1)}>← Indietro</button>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? '0 4px' : 0 }}>
+      <div className="gm-card" style={{ padding: isMobile ? 12 : 16 }}>
+        <h2 style={{ marginTop: 0, fontSize: isMobile ? 'clamp(1.1rem, 4vw, 1.4rem)' : undefined }}>Pubblica prodotto su eBay</h2>
+        <button
+          className="gm-btn gm-btn-secondary"
+          onClick={() => navigate(-1)}
+          style={{ minHeight: 44, width: isMobile ? '100%' : 'auto', marginBottom: isMobile ? 12 : 0, fontSize: isMobile ? 16 : undefined }}
+        >
+          ← Indietro
+        </button>
 
         {product && (
           <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {product.foto_url && <img src={getFotoUrl(product.foto_url)} alt={product.nome} style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8 }} />}
-              <div>
+            <div style={{ display: 'flex', gap: 12, alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row' }}>
+              {product.foto_url && (
+                <img
+                  src={getFotoUrl(product.foto_url)}
+                  alt={product.nome}
+                  style={{ width: isMobile ? '100%' : 88, height: isMobile ? 200 : 88, objectFit: 'cover', borderRadius: 8, maxWidth: 300 }}
+                />
+              )}
+              <div style={{ width: '100%' }}>
                 <div><strong>{product.nome}</strong></div>
                 <div>SKU: {product.sku}</div>
                 <div>Disponibile: {product.quantita}</div>
@@ -241,17 +260,33 @@ function EbayPubblicaProdotto() {
 
             <label style={{ display: 'grid', gap: 4 }}>
               Prezzo netto desiderato
-              <input type="number" step="0.01" value={netPrice} onChange={(e) => setNetPrice(e.target.value)} />
+              <input
+                type="number"
+                step="0.01"
+                value={netPrice}
+                onChange={(e) => setNetPrice(e.target.value)}
+                style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+              />
             </label>
 
             <label style={{ display: 'grid', gap: 4 }}>
               Fee eBay %
-              <input type="number" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
+              <input
+                type="number"
+                step="0.01"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+              />
             </label>
 
             <label style={{ display: 'grid', gap: 4 }}>
               Formato annuncio
-              <select value={listingFormat} onChange={e => setListingFormat(e.target.value)}>
+              <select
+                value={listingFormat}
+                onChange={e => setListingFormat(e.target.value)}
+                style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+              >
                 <option value="FIXED_PRICE">Prezzo fisso</option>
                 <option value="AUCTION">Asta</option>
               </select>
@@ -261,12 +296,23 @@ function EbayPubblicaProdotto() {
               <>
                 <label style={{ display: 'grid', gap: 4 }}>
                   Prezzo di partenza asta (€)
-                  <input type="number" step="0.01" min="0.01" value={auctionStartPrice} onChange={e => setAuctionStartPrice(e.target.value)} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={auctionStartPrice}
+                    onChange={e => setAuctionStartPrice(e.target.value)}
+                    style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+                  />
                 </label>
 
                 <label style={{ display: 'grid', gap: 4 }}>
                   Durata asta
-                  <select value={auctionDuration} onChange={e => setAuctionDuration(e.target.value)}>
+                  <select
+                    value={auctionDuration}
+                    onChange={e => setAuctionDuration(e.target.value)}
+                    style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+                  >
                     <option value="DAYS_3">3 giorni</option>
                     <option value="DAYS_5">5 giorni</option>
                     <option value="DAYS_7">7 giorni</option>
@@ -276,12 +322,28 @@ function EbayPubblicaProdotto() {
 
                 <label style={{ display: 'grid', gap: 4 }}>
                   Prezzo di riserva (€) — opzionale
-                  <input type="number" step="0.01" min="0" value={auctionReservePrice} onChange={e => setAuctionReservePrice(e.target.value)} placeholder="Lascia vuoto per nessuna riserva" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={auctionReservePrice}
+                    onChange={e => setAuctionReservePrice(e.target.value)}
+                    placeholder="Lascia vuoto per nessuna riserva"
+                    style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+                  />
                 </label>
 
                 <label style={{ display: 'grid', gap: 4 }}>
                   Compralo subito (€) — opzionale
-                  <input type="number" step="0.01" min="0" value={auctionBuyItNow} onChange={e => setAuctionBuyItNow(e.target.value)} placeholder="Lascia vuoto per disabilitare" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={auctionBuyItNow}
+                    onChange={e => setAuctionBuyItNow(e.target.value)}
+                    placeholder="Lascia vuoto per disabilitare"
+                    style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+                  />
                 </label>
               </>
             )}
@@ -296,7 +358,7 @@ function EbayPubblicaProdotto() {
                   key={levelIdx}
                   value={categoryPath[levelIdx]?.id || ''}
                   onChange={e => handleCategorySelect(levelIdx, e.target.value)}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', fontSize: 16, minHeight: 44, boxSizing: 'border-box' }}
                 >
                   <option value="">— Seleziona {levelIdx === 0 ? 'categoria' : 'sottocategoria'} —</option>
                   {cats.map(cat => (
@@ -319,7 +381,7 @@ function EbayPubblicaProdotto() {
               )}
             </div>
 
-            {/* Condition override section — shown only when eBay returns valid conditions for the category */}
+            {/* Condition override section */}
             {selectedCategoryId && validConditions.length > 0 && (
               <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
                 <label style={{ display: 'grid', gap: 4 }}>
@@ -329,7 +391,11 @@ function EbayPubblicaProdotto() {
                       ⚠ La condizione &quot;{product?.stato_conservazione}&quot; non è valida per questa categoria. Seleziona una condizione compatibile.
                     </div>
                   )}
-                  <select value={conditionOverride} onChange={e => setConditionOverride(e.target.value)}>
+                  <select
+                    value={conditionOverride}
+                    onChange={e => setConditionOverride(e.target.value)}
+                    style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+                  >
                     {!conditionOverride && <option value="">— Seleziona condizione —</option>}
                     {validConditions.map(c => (
                       <option key={c.conditionEnum} value={c.conditionEnum}>
@@ -373,6 +439,7 @@ function EbayPubblicaProdotto() {
                                   setAspectValues(prev => ({ ...prev, [asp.name]: val }))
                                 }
                               }}
+                              style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
                             >
                               <option value="">— Seleziona —</option>
                               {asp.values.map(v => (
@@ -386,6 +453,7 @@ function EbayPubblicaProdotto() {
                                 value={aspectValues[asp.name] || ''}
                                 onChange={e => setAspectValues(prev => ({ ...prev, [asp.name]: e.target.value }))}
                                 placeholder={`Inserisci ${asp.name}`}
+                                style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
                               />
                             )}
                           </>
@@ -395,6 +463,7 @@ function EbayPubblicaProdotto() {
                             value={aspectValues[asp.name] || ''}
                             onChange={e => setAspectValues(prev => ({ ...prev, [asp.name]: e.target.value }))}
                             placeholder={`Inserisci ${asp.name}`}
+                            style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
                           />
                         )}
                       </label>
@@ -417,6 +486,7 @@ function EbayPubblicaProdotto() {
                 value={listingFormat === 'AUCTION' ? 1 : quantity}
                 disabled={listingFormat === 'AUCTION'}
                 onChange={(e) => setQuantity(e.target.value)}
+                style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
               />
               {listingFormat === 'AUCTION' && (
                 <span style={{ color: '#888', fontSize: 12 }}>Le aste supportano solo quantità 1</span>
@@ -445,6 +515,7 @@ function EbayPubblicaProdotto() {
                 value={shippingCost}
                 disabled={freeShipping}
                 onChange={(e) => setShippingCost(e.target.value)}
+                style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
               />
             </label>
 
@@ -461,7 +532,12 @@ function EbayPubblicaProdotto() {
             {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
             {success && <div style={{ color: 'var(--color-success)' }}>{success}</div>}
 
-            <button className="gm-btn gm-btn-primary" onClick={handlePublish} disabled={saving || !!validationMessage}>
+            <button
+              className="gm-btn gm-btn-primary"
+              onClick={handlePublish}
+              disabled={saving || !!validationMessage}
+              style={{ minHeight: 44, width: '100%', fontSize: isMobile ? 16 : undefined }}
+            >
               {saving ? 'Pubblicazione...' : 'Pubblica su eBay'}
             </button>
           </div>

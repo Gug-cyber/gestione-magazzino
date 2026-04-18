@@ -113,6 +113,7 @@ function TabFlags() {
     <div>
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <div className="gm-card" style={{ padding: 0, overflow: 'hidden', marginBottom: '24px' }}>
+        <div style={{ overflowX: 'auto' }}>
         <table className="gm-table" style={{ width: '100%' }}>
           <thead>
             <tr>
@@ -144,6 +145,7 @@ function TabFlags() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {channelFlags.length > 0 && (
@@ -1358,6 +1360,7 @@ function TabFooter() {
       </div>
 
       <div className="gm-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
         <table className="gm-table" style={{ width: '100%' }}>
           <thead>
             <tr>
@@ -1410,6 +1413,7 @@ function TabFooter() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Edit modal */}
@@ -1531,7 +1535,8 @@ export default function ControlPanel() {
         border: '1px solid var(--color-border)',
         borderRadius: '10px',
         padding: '4px',
-        flexWrap: 'wrap',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}>
         {TABS.map(tab => (
           <button
