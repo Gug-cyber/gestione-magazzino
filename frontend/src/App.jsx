@@ -51,6 +51,7 @@ import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import StoreFooterPage from './pages/store/StoreFooterPage'
 import ControlPanel from './pages/ControlPanel'
 import { storeAPI } from './api/store'
+import AIAssistantWidget from './components/AIAssistantWidget'
 function AppLayout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
@@ -296,6 +297,7 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
+          <AIAssistantWidget />
         </BrowserRouter>
         </FeatureFlagsProvider>
       </AuthProvider>
