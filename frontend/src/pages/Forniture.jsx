@@ -12,12 +12,15 @@ import styles from './Forniture.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'ricevuto', 'annullato']
 
+const SCAN_ERROR_TIMEOUT_MS = 4000
+const FOCUS_DELAY_MS = 60
+
 function BarcodeInputPanel({ onConfirm, onCancel, onOpenCamera, scanError, clearScanError }) {
   const [value, setValue] = useState('')
   const inputRef = useRef(null)
 
   useEffect(() => {
-    const t = setTimeout(() => { if (inputRef.current) inputRef.current.focus() }, 60)
+    const t = setTimeout(() => { if (inputRef.current) inputRef.current.focus() }, FOCUS_DELAY_MS)
     return () => clearTimeout(t)
   }, [])
 
@@ -258,7 +261,7 @@ export default function Forniture() {
             .catch(() => {
               setScanError(`Prodotto non trovato per il codice: "${value}"`)
               if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
-              scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+              scanErrorTimerRef.current = setTimeout(() => setScanError(''), SCAN_ERROR_TIMEOUT_MS)
             })
           return
         }
@@ -275,7 +278,7 @@ export default function Forniture() {
       } else {
         setScanError(`Prodotto non trovato per il codice: "${value}"`)
         if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
-        scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
+        scanErrorTimerRef.current = setTimeout(() => setScanError(''), SCAN_ERROR_TIMEOUT_MS)
       }
     } else {
       setSearch(value)
