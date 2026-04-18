@@ -284,9 +284,7 @@ function StepScansione({ fornitoreNome, onBack, onConferma }) {
 
   useExternalScanner({
     onScan: (value) => {
-      if (!showScanner && !lookingUp) {
-        lookupAndAdd(value)
-      }
+      lookupAndAdd(value)
     },
     enabled: !showScanner && !lookingUp,
   })

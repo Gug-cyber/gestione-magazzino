@@ -351,7 +351,7 @@ function Prodotti() {
               color: showScanner ? '#c62828' : '#2e7d32',
             }}
           >
-            <span style={{ fontSize: '0.85rem' }}>{showScanner ? '●' : '●'}</span>
+            <span style={{ fontSize: '0.85rem' }}>●</span>
             {showScanner ? 'Scanner in pausa' : '🔌 Scanner attivo'}
           </span>
           <button onClick={() => navigate('/prodotti/nuovo')} className={styles.addBtn}>

@@ -54,7 +54,7 @@ export default function NuovoOrdine() {
     return sum + qty * price
   }, 0)
 
-  const handleRigaChange = (index, field, value) => {
+  const handleRigaChange = useCallback((index, field, value) => {
     setRighe(prev => prev.map((r, i) => {
       if (i !== index) return r
       const next = { ...r, [field]: value }
@@ -66,7 +66,7 @@ export default function NuovoOrdine() {
       }
       return next
     }))
-  }
+  }, [prodotti])
 
   const addRiga = () => setRighe([...righe, { ...emptyRiga }])
 
@@ -109,7 +109,7 @@ export default function NuovoOrdine() {
       scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
     }
     setScannerRigaIndex(null)
-  }, [prodotti])
+  }, [prodotti, handleRigaChange])
 
   const handleScan = (value) => {
     setShowScanner(false)
