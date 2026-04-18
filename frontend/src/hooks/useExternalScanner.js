@@ -16,6 +16,13 @@ function useExternalScanner({ onScan, enabled = true, minLength = 3 } = {}) {
   const bufferRef = useRef('')
   const lastKeyTimeRef = useRef(0)
   const resetTimerRef = useRef(null)
+  // Ref per onScan: aggiornata ad ogni render senza causare re-subscription
+  const onScanRef = useRef(onScan)
+
+  // Mantieni sempre il ref aggiornato all'ultima versione della callback
+  useEffect(() => {
+    onScanRef.current = onScan
+  })
 
   useEffect(() => {
     if (!enabled) return
@@ -48,7 +55,7 @@ function useExternalScanner({ onScan, enabled = true, minLength = 3 } = {}) {
         resetBuffer()
         if (code.length >= minLength) {
           e.preventDefault()
-          onScan(code)
+          onScanRef.current(code)
         }
         return
       }
@@ -75,7 +82,7 @@ function useExternalScanner({ onScan, enabled = true, minLength = 3 } = {}) {
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
       resetBuffer()
     }
-  }, [enabled, onScan, minLength])
+  }, [enabled, minLength])
 }
 
 export default useExternalScanner
