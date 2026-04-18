@@ -2,19 +2,21 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI } from '../api/client'
 import { PRIMARY_COLOR } from '../constants/colors'
+import useExternalScanner from '../hooks/useExternalScanner'
 
 /**
  * Barra di ricerca rapida prodotti con autocomplete e pulsante scanner.
  *
  * Props:
- *   onSelect      - callback(prodotto) chiamata quando l'utente seleziona un prodotto.
- *                   Se non fornita, naviga automaticamente a /prodotti/:id
- *   placeholder   - testo placeholder (default "Cerca prodotto per nome, SKU...")
- *   showScanner   - se true, mostra pulsante 📷 per aprire scanner (default true)
- *   onScannerOpen - callback per aprire lo scanner esterno
- *   autoFocus     - se true, focus automatico sull'input (default false)
+ *   onSelect              - callback(prodotto) chiamata quando l'utente seleziona un prodotto.
+ *                           Se non fornita, naviga automaticamente a /prodotti/:id
+ *   placeholder           - testo placeholder (default "Cerca prodotto per nome, SKU...")
+ *   showScanner           - se true, mostra pulsante 📷 per aprire scanner (default true)
+ *   onScannerOpen         - callback per aprire lo scanner esterno
+ *   autoFocus             - se true, focus automatico sull'input (default false)
+ *   enableExternalScanner - se true, intercetta input da scanner HID e popola il campo automaticamente (default false)
  */
-function RicercaRapidaProdotto({ onSelect, placeholder, showScanner = true, onScannerOpen, autoFocus = false }) {
+function RicercaRapidaProdotto({ onSelect, placeholder, showScanner = true, onScannerOpen, autoFocus = false, enableExternalScanner = false }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -65,6 +67,13 @@ function RicercaRapidaProdotto({ onSelect, placeholder, showScanner = true, onSc
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => search(q), 300)
   }
+
+  const handleExternalScan = useCallback((code) => {
+    setQuery(code)
+    search(code)
+  }, [search])
+
+  useExternalScanner({ onScan: handleExternalScan, enabled: enableExternalScanner })
 
   const handleSelect = (prodotto) => {
     setQuery(prodotto.nome)

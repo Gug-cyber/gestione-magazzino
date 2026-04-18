@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prodottiAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import RicercaRapidaProdotto from '../components/RicercaRapidaProdotto'
+import useExternalScanner from '../hooks/useExternalScanner'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import '../styles/shared.css'
 
@@ -12,10 +13,17 @@ function ScannerBarcode() {
   const [manualInput, setManualInput] = useState('')
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState('')
+  const [lastExternalCode, setLastExternalCode] = useState('')
+  const searchingRef = useRef(false)
 
-  const lookupBarcode = async (value) => {
-    if (!value || searching) return
-    setSearching(true)
+  const setSearchingWithRef = (val) => {
+    searchingRef.current = val
+    setSearching(val)
+  }
+
+  const lookupBarcode = useCallback(async (value) => {
+    if (!value || searchingRef.current) return
+    setSearchingWithRef(true)
     setError('')
 
     const toItems = (data) => Array.isArray(data) ? data : (data?.items || [])
@@ -35,7 +43,7 @@ function ScannerBarcode() {
     } catch (err) {
       if (err.response?.status !== 404) {
         setError(`Errore durante la ricerca: ${err.message}`)
-        setSearching(false)
+        setSearchingWithRef(false)
         return
       }
     }
@@ -70,8 +78,18 @@ function ScannerBarcode() {
     } catch { /* continue */ }
 
     setError(`Nessun prodotto trovato per il codice: "${value}". Verifica che il barcode sia stato generato correttamente.`)
-    setSearching(false)
-  }
+    setSearchingWithRef(false)
+  }, [navigate])
+
+  const handleExternalScan = useCallback((code) => {
+    setLastExternalCode(code)
+    lookupBarcode(code)
+  }, [lookupBarcode])
+
+  useExternalScanner({
+    onScan: handleExternalScan,
+    enabled: !showScanner,
+  })
 
   const handleScan = (value) => {
     setShowScanner(false)
@@ -123,6 +141,27 @@ function ScannerBarcode() {
           </svg>
           Apri Scanner QR
         </button>
+      </div>
+
+      {/* External Hardware Scanner */}
+      <div className="card mb-6">
+        <h2 className="section-title-sm">
+          🔌 Scanner hardware (USB / Bluetooth)
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '16px', lineHeight: '1.5' }}>
+          Collega lo scanner al dispositivo e puntalo sul codice a barre o QR. Non serve fare nulla di speciale: il sistema rileva automaticamente l'input dello scanner.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <span style={{ color: showScanner ? '#c62828' : '#2e7d32', fontSize: '1.1rem' }}>●</span>
+          <span style={{ fontSize: '0.9rem', color: showScanner ? '#c62828' : '#2e7d32', fontWeight: 600 }}>
+            {showScanner ? 'Scanner in pausa (modale aperta)' : 'Scanner attivo — in ascolto...'}
+          </span>
+        </div>
+        {lastExternalCode && (
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Ultimo codice letto: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1a237e' }}>{lastExternalCode}</span>
+          </div>
+        )}
       </div>
 
       {/* Quick Search */}
