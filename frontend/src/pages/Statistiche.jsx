@@ -260,7 +260,7 @@ function TabCanali({ summary, loadingS, channelFlags }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">🌐 Distribuzione visite per canale</h3>

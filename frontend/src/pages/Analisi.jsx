@@ -348,6 +348,7 @@ function TabSpese() {
   const [form, setForm] = useState(formVuoto)
   const [editId, setEditId] = useState(null)
   const [errore, setErrore] = useState(null)
+  const isMobile = useIsMobile()
 
   const caricaSpese = async () => {
     setLoading(true)
@@ -490,6 +491,38 @@ function TabSpese() {
           <p className="text-muted" style={{ padding: '20px', textAlign: 'center' }}>Caricamento...</p>
         ) : spese.length === 0 ? (
           <p className="text-muted" style={{ padding: '20px', textAlign: 'center' }}>Nessuna spesa registrata.</p>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {spese.map((sp) => (
+              <div key={sp.id} style={{ border: '1px solid var(--border-primary)', borderRadius: 10, padding: 14, background: 'var(--bg-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{sp.descrizione}</div>
+                  <div style={{ fontWeight: 700, color: 'var(--warning)', fontSize: 16 }}>€{parseFloat(sp.importo).toFixed(2)}</div>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div><strong>Categoria:</strong> {sp.categoria || '—'}</div>
+                  <div><strong>Data:</strong> {sp.data ? new Date(sp.data).toLocaleDateString('it-IT') : '—'}</div>
+                  <div>
+                    <strong>Ricorrente:</strong>{' '}
+                    {sp.ricorrente ? <span className="badge badge-success">Si</span> : <span className="badge badge-gray">No</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button className="btn-icon btn-icon-blue" onClick={() => handleEdit(sp)} title="Modifica" style={{ minHeight: 44, flex: 1 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
+                  <button className="btn-icon btn-icon-red" onClick={() => handleDelete(sp.id)} title="Elimina" style={{ minHeight: 44, flex: 1 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="table-wrapper">
             <table className="data-table">
@@ -820,7 +853,7 @@ export default function Analisi() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px', overflowX: 'auto' }}>
         {tabs.map((t) => (
           <button
             key={t.key}

@@ -21,6 +21,7 @@ const btnPrimary = {
   cursor: 'pointer',
   fontWeight: 600,
   fontSize: '14px',
+  minHeight: '44px',
 }
 
 const btnSecondary = {
@@ -32,6 +33,7 @@ const btnSecondary = {
   cursor: 'pointer',
   fontWeight: 600,
   fontSize: '14px',
+  minHeight: '44px',
 }
 
 const CONDITIONS = ['NM', 'EX', 'GD', 'LP', 'PO']
@@ -198,32 +200,32 @@ export default function CardTrader() {
         {tokenConfigured && (
           <div style={{ marginTop: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '4px', fontWeight: 600 }}>
-                  Confidenza minima (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={minConfidence}
-                  onChange={(e) => setMinConfidence(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
-                  style={{ width: '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '4px', fontWeight: 600 }}>
-                  Max richieste
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="200"
-                  value={maxRequests}
-                  onChange={(e) => setMaxRequests(parseInt(e.target.value) || 50)}
-                  style={{ width: '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
-                />
-              </div>
+                  <div style={{ width: isMobile ? '100%' : 'auto' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '4px', fontWeight: 600 }}>
+                      Confidenza minima (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={minConfidence}
+                      onChange={(e) => setMinConfidence(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                      style={{ width: isMobile ? '100%' : '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', minHeight: '44px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ width: isMobile ? '100%' : 'auto' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '4px', fontWeight: 600 }}>
+                      Max richieste
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="200"
+                      value={maxRequests}
+                      onChange={(e) => setMaxRequests(parseInt(e.target.value) || 50)}
+                      style={{ width: isMobile ? '100%' : '80px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', minHeight: '44px', boxSizing: 'border-box' }}
+                    />
+                  </div>
               <button
                 style={autoPopulateLoading ? { ...btnPrimary, opacity: 0.6, cursor: 'not-allowed' } : btnPrimary}
                 onClick={handleAutoPopulate}
@@ -540,7 +542,9 @@ const inputStyle = {
   padding: '7px 10px',
   borderRadius: '6px',
   border: '1px solid #ccc',
-  fontSize: '14px',
+  fontSize: '16px',
   minWidth: '140px',
   width: '100%',
+  minHeight: '44px',
+  boxSizing: 'border-box',
 }

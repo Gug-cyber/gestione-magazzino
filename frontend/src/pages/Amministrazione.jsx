@@ -38,6 +38,7 @@ export default function Amministrazione() {
   const [submitting, setSubmitting] = useState(false)
   const [roleEdits, setRoleEdits] = useState({})
   const [roleSuccess, setRoleSuccess] = useState({})
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   const [datiAzienda, setDatiAzienda] = useState({
     ragione_sociale: '', partita_iva: '', codice_fiscale: '', indirizzo: '', citta: '', cap: '',
@@ -48,6 +49,12 @@ export default function Amministrazione() {
   const [datiError, setDatiError] = useState('')
   const [datiSuccess, setDatiSuccess] = useState('')
   const [datiSubmitting, setDatiSubmitting] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => {
     if (!user?.is_admin) {
@@ -224,7 +231,7 @@ export default function Amministrazione() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px', overflowX: 'auto' }}>
         {[
           { key: 'utenti', label: 'Gestione Utenti', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg> },
           { key: 'dati-azienda', label: 'Dati Azienda', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01M9 18v.01" /></svg> },
@@ -312,6 +319,64 @@ export default function Amministrazione() {
           <div className="card">
             {loading ? (
               <div className="loading-state">Caricamento...</div>
+            ) : isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}>
+                {utenti.length === 0 ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nessun utente trovato</div>
+                ) : utenti.map((u) => (
+                  <div key={u.id} style={{ border: '1px solid var(--border-primary)', borderRadius: 10, padding: 14, background: 'var(--bg-primary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{u.username}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>ID #{u.id} · {formatDate(u.created_at)}</div>
+                      </div>
+                      {u.is_active ? (
+                        <span className="badge badge-success">Attivo</span>
+                      ) : (
+                        <span className="badge badge-danger">Disattivato</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>{u.email}</div>
+                    <div style={{ marginBottom: 10 }}>{getRoleBadge(u.ruolo)}</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+                      <select
+                        value={roleEdits[u.id] || u.ruolo || 'operatore'}
+                        onChange={e => setRoleEdits(prev => ({ ...prev, [u.id]: e.target.value }))}
+                        disabled={u.id === user?.id}
+                        className="form-input"
+                        style={{ flex: 1, fontSize: 16, minHeight: 44, opacity: u.id === user?.id ? 0.6 : 1 }}
+                      >
+                        {ROLES.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      {u.id !== user?.id && (
+                        <button
+                          onClick={() => handleSaveRole(u.id)}
+                          className={roleSuccess[u.id] ? 'btn-success' : 'btn-primary'}
+                          style={{ minHeight: 44, padding: '0 16px' }}
+                        >
+                          {roleSuccess[u.id] ? 'OK' : 'Salva'}
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => openEdit(u)} className="btn-secondary" style={{ minHeight: 44, flex: 1, fontSize: 14 }}>
+                        ✏️ Modifica
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u)}
+                        disabled={u.id === user?.id}
+                        className={u.id === user?.id ? 'btn-icon btn-icon-disabled' : 'btn-danger'}
+                        style={{ minHeight: 44, flex: 1, fontSize: 14 }}
+                        title="Elimina"
+                      >
+                        🗑️ Elimina
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="table-wrapper">
                 <table className="data-table">

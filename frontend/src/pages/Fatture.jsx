@@ -29,10 +29,17 @@ export default function Fatture() {
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   const [filterCliente, setFilterCliente] = useState('')
   const [filterDataDa, setFilterDataDa] = useState('')
   const [filterDataA, setFilterDataA] = useState('')
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   const PAGE_SIZE = 50
   const totalPages = Math.max(1, Math.ceil(totalFatture / PAGE_SIZE))
@@ -326,12 +333,50 @@ export default function Fatture() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table / Cards */}
       <div className="card">
         {loading ? (
           <div className="loading-state">Caricamento...</div>
         ) : fattureFiltrate.length === 0 ? (
           <div className="loading-state">Nessuna fattura trovata</div>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}>
+            {fattureFiltrate.map((f) => (
+              <div key={f.id} style={{ border: '1px solid var(--border-primary)', borderRadius: 10, padding: 14, background: 'var(--bg-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{f.numero_fattura}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(f.data_fattura)}</div>
+                  </div>
+                  <span className={`badge ${f.tipo === 'attiva' ? 'badge-success' : 'badge-danger'}`}>
+                    {f.tipo === 'attiva' ? 'Attiva' : 'Passiva'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{f.cliente}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+                  {formatCurrency(f.importo)}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <span
+                    onClick={() => handleTogglePagata(f)}
+                    title="Clicca per cambiare stato"
+                    className={`badge ${f.pagata ? 'badge-success' : 'badge-warning'}`}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {f.pagata ? 'Pagata' : 'Da pagare'}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <button onClick={() => openEditModal(f)} className="btn-secondary" style={{ minHeight: 44, fontSize: 14 }}>✏️ Modifica</button>
+                  <button onClick={() => handleTogglePagata(f)} className="btn-secondary" style={{ minHeight: 44, fontSize: 14 }}>
+                    {f.pagata ? '↩ Da pagare' : '✓ Pagata'}
+                  </button>
+                  <button onClick={() => handleDownload(f)} className="btn-secondary" style={{ minHeight: 44, fontSize: 14 }}>⬇️ PDF</button>
+                  <button onClick={() => handleDelete(f)} className="btn-danger" style={{ minHeight: 44, fontSize: 14 }}>🗑️ Elimina</button>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="table-wrapper">
             <table className="data-table">
