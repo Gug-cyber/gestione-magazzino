@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ordiniAPI, prodottiAPI, clientiAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { CORRIERI } from '../constants/corrieri'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { normalizeSkuForCode39 } from '../utils/formatters'
+import useExternalScanner from '../hooks/useExternalScanner'
 import '../styles/shared.css'
 
 const emptyRiga = { prodotto_id: '', quantita: 1, prezzo_unitario: '' }
@@ -54,7 +55,7 @@ export default function NuovoOrdine() {
   }, 0)
 
   const handleRigaChange = (index, field, value) => {
-    const updated = righe.map((r, i) => {
+    setRighe(prev => prev.map((r, i) => {
       if (i !== index) return r
       const next = { ...r, [field]: value }
       if (field === 'prodotto_id') {
@@ -64,8 +65,7 @@ export default function NuovoOrdine() {
         }
       }
       return next
-    })
-    setRighe(updated)
+    }))
   }
 
   const addRiga = () => setRighe([...righe, { ...emptyRiga }])
@@ -75,9 +75,7 @@ export default function NuovoOrdine() {
     setRighe(righe.filter((_, i) => i !== index))
   }
 
-  const handleScan = (value) => {
-    setShowScanner(false)
-    if (scannerRigaIndex === null) return
+  const handleScanWithIndex = useCallback((value, rigaIndex) => {
     let prodotto = null
     if (/^prodotto:\d+$/i.test(value)) {
       const id = parseInt(value.split(':')[1])
@@ -86,7 +84,7 @@ export default function NuovoOrdine() {
         prodottiAPI.getById(id)
           .then(res => {
             if (!res.data?.id) throw new Error('not found')
-            handleRigaChange(scannerRigaIndex, 'prodotto_id', String(res.data.id))
+            handleRigaChange(rigaIndex, 'prodotto_id', String(res.data.id))
           })
           .catch(() => {
             setScanError(`Prodotto non trovato per il codice: "${value}"`)
@@ -104,14 +102,35 @@ export default function NuovoOrdine() {
       )
     }
     if (prodotto) {
-      handleRigaChange(scannerRigaIndex, 'prodotto_id', String(prodotto.id))
+      handleRigaChange(rigaIndex, 'prodotto_id', String(prodotto.id))
     } else {
       setScanError(`Prodotto non trovato per il codice: "${value}"`)
       if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
       scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
     }
     setScannerRigaIndex(null)
+  }, [prodotti])
+
+  const handleScan = (value) => {
+    setShowScanner(false)
+    if (scannerRigaIndex === null) return
+    handleScanWithIndex(value, scannerRigaIndex)
   }
+
+  const handleExternalScan = useCallback((value) => {
+    const emptyIndex = righe.findIndex(r => !r.prodotto_id)
+    const targetIndex = emptyIndex !== -1 ? emptyIndex : righe.length
+    if (emptyIndex === -1) {
+      setRighe(prev => [...prev, { ...emptyRiga }])
+    }
+    setScannerRigaIndex(targetIndex)
+    handleScanWithIndex(value, targetIndex)
+  }, [righe, handleScanWithIndex])
+
+  useExternalScanner({
+    onScan: handleExternalScan,
+    enabled: !showScanner,
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -225,14 +244,29 @@ export default function NuovoOrdine() {
 
           {/* Prodotti */}
           <div className="card section-card">
-            <h2 className="section-title">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                <line x1="12" y1="22.08" x2="12" y2="12"/>
-              </svg>
-              Prodotti
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              <h2 className="section-title" style={{ margin: 0 }}>
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                  <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                Prodotti
+              </h2>
+              <span
+                title={showScanner ? 'Scanner hardware in pausa (modale aperta)' : 'Scanner hardware attivo — punta lo scanner su un barcode per aggiungere il prodotto'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: '0.78rem', fontWeight: 600, padding: '4px 9px',
+                  borderRadius: 6,
+                  backgroundColor: showScanner ? '#fce4ec' : '#e8f5e9',
+                  color: showScanner ? '#c62828' : '#2e7d32',
+                }}
+              >
+                <span>●</span>
+                {showScanner ? 'Scanner in pausa' : '🔌 Scanner attivo'}
+              </span>
+            </div>
 
             {scanError && <div className="error-banner">{scanError}</div>}
 

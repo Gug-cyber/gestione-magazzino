@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { fornitoriAPI, fornitureAPI, prodottiAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import CreazioneRapidaProdotto from '../components/CreazioneRapidaProdotto'
+import useExternalScanner from '../hooks/useExternalScanner'
 
 // ─── Shared styles ───────────────────────────────────────────────────────────
 
@@ -281,6 +282,15 @@ function StepScansione({ fornitoreNome, onBack, onConferma }) {
 
   const totalePezzi = righe.reduce((s, r) => s + r.quantita, 0)
 
+  useExternalScanner({
+    onScan: (value) => {
+      if (!showScanner && !lookingUp) {
+        lookupAndAdd(value)
+      }
+    },
+    enabled: !showScanner && !lookingUp,
+  })
+
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
       {/* Sticky header */}
@@ -380,8 +390,9 @@ function StepScansione({ fornitoreNome, onBack, onConferma }) {
             </div>
           )}
           {!lookingUp && !scanStatus && (
-            <div style={{ marginTop: 10, padding: '10px 14px', backgroundColor: '#f5f5f5', borderRadius: 8, fontSize: '0.85rem', color: '#888' }}>
-              📱 In attesa di scansione…
+            <div style={{ marginTop: 10, padding: '10px 14px', backgroundColor: '#e8f5e9', borderRadius: 8, fontSize: '0.85rem', color: '#2e7d32', fontWeight: 600 }}>
+              <span style={{ marginRight: 6 }}>●</span>
+              🔌 Scanner hardware attivo — oppure scansiona con webcam
             </div>
           )}
         </div>

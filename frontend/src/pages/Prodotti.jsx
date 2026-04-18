@@ -9,6 +9,7 @@ import { STATO_CONSERVAZIONE_COLORS } from '../constants/colors'
 import styles from './Prodotti.module.css'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { lowStockProducts, stagnantProducts, lowMarginProducts, productsWithMissingPricing } from '../utils/alertHelpers'
+import useExternalScanner from '../hooks/useExternalScanner'
 
 const PAGE_SIZE = 50
 
@@ -207,6 +208,20 @@ function Prodotti() {
     setPage(1)
   }
 
+  useExternalScanner({
+    onScan: (value) => {
+      if (/^prodotto:\d+$/i.test(value)) {
+        navigate(`/prodotti/${value.split(':')[1]}`)
+        return
+      }
+      const normalized = normalizeSkuForCode39(value)
+      pendingScanAlertRef.current = normalized
+      setSearchInput(normalized)
+      handleSearchSubmit(normalized)
+    },
+    enabled: !showScanner,
+  })
+
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -326,6 +341,19 @@ function Prodotti() {
           >
             📷 Scanner
           </button>
+          <span
+            title={showScanner ? 'Scanner hardware in pausa (modale aperta)' : 'Scanner hardware attivo — in ascolto…'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontSize: '0.8rem', fontWeight: 600, padding: '5px 10px',
+              borderRadius: 6,
+              backgroundColor: showScanner ? '#fce4ec' : '#e8f5e9',
+              color: showScanner ? '#c62828' : '#2e7d32',
+            }}
+          >
+            <span style={{ fontSize: '0.85rem' }}>{showScanner ? '●' : '●'}</span>
+            {showScanner ? 'Scanner in pausa' : '🔌 Scanner attivo'}
+          </span>
           <button onClick={() => navigate('/prodotti/nuovo')} className={styles.addBtn}>
             + Aggiungi Prodotto
           </button>
