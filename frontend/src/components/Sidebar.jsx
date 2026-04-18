@@ -297,7 +297,8 @@ function NavLinks({ onLinkClick }) {
                     fontWeight: '400',
                     fontSize: '14px',
                     transition: 'all 150ms ease',
-                    borderLeft: '2px solid transparent',
+                    borderLeft: '3px solid transparent',
+                    outline: 'none',
                   }}
                 >
                   <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'inherit' }}>
@@ -318,22 +319,24 @@ function NavLinks({ onLinkClick }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  padding: '10px 16px',
+                  padding: '9px 14px',
+                  paddingLeft: '13px',
                   marginLeft: '8px',
                   marginRight: '8px',
                   marginBottom: '2px',
                   color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
                   textDecoration: 'none',
                   backgroundColor: isActive
-                    ? 'var(--color-primary-glow)'
+                    ? 'rgba(99, 120, 255, 0.12)'
                     : hoveredTo === to
                       ? 'var(--color-surface-hover)'
                       : 'transparent',
                   borderRadius: '8px',
-                  fontWeight: isActive ? '500' : '400',
+                  fontWeight: isActive ? '600' : '400',
                   fontSize: '14px',
                   transition: 'all 150ms ease',
-                  borderLeft: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  borderLeft: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
+                  outline: 'none',
                 })}
               >
                 <span style={{ 
