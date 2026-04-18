@@ -386,7 +386,7 @@
   border-radius: var(--border-radius-xl);
   padding: 28px;
   width: 90%;
-  max-width: 700px;
+  max-width: 720px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
@@ -489,22 +489,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   background-color: var(--color-surface-hover);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-border-hover);
   border-radius: var(--border-radius);
-  height: 36px;
+  height: 40px;
   padding: 0 16px;
   cursor: pointer;
   font-size: var(--font-size-sm);
   margin-bottom: 16px;
   transition: all var(--transition-fast);
+  font-weight: 500;
 }
 
 .addRigaBtn:hover {
   background-color: var(--color-surface-active);
-  border-color: var(--color-border-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
 }
 
 .totaleFornitura {
@@ -649,6 +651,140 @@
 
 .trackingEmpty {
   color: var(--color-text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RIGA CARD — Voci Fornitura redesign
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.rigaCard {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: border-color var(--transition-fast);
+}
+
+.rigaCard:hover {
+  border-color: var(--color-border-hover);
+}
+
+.rigaTop {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.rigaBottom {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.rigaFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rigaFieldLabel {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.rigaSubtotale {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-success);
+  white-space: nowrap;
+  padding: 0 4px;
+  min-width: 80px;
+}
+
+.scanBarcodeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.scanBarcodeBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
+  background: var(--color-surface-active);
+}
+
+.newProductBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.newProductBtn:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: var(--color-success);
+}
+
+.deleteRigaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+  padding: 0;
+  margin-left: auto;
+}
+
+.deleteRigaBtn:hover:not(:disabled) {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
+}
+
+.deleteRigaBtn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

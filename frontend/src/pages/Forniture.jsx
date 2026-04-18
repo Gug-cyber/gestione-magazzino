@@ -12,6 +12,139 @@ import styles from './Forniture.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'ricevuto', 'annullato']
 
+function BarcodeInputPanel({ onConfirm, onCancel, onOpenCamera, scanError, clearScanError }) {
+  const [value, setValue] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => { if (inputRef.current) inputRef.current.focus() }, 60)
+    return () => clearTimeout(t)
+  }, [])
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (value.trim()) onConfirm(value.trim())
+    } else if (e.key === 'Escape') {
+      onCancel()
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1200,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--border-radius-lg, 10px)',
+        padding: '28px',
+        maxWidth: '440px',
+        width: '90%',
+        boxShadow: 'var(--shadow-lg)',
+      }}>
+        <h3 style={{ margin: '0 0 4px', color: 'var(--color-text)', fontSize: '1rem', fontWeight: 600 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '6px' }}>
+            <rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/>
+            <rect x="3" y="16" width="5" height="5"/>
+            <path d="M21 16h-3a2 2 0 00-2 2v3M21 21v.01M12 7v3a2 2 0 01-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1a2 2 0 012 2v1"/>
+          </svg>
+          Scansiona barcode / QR
+        </h3>
+        <p style={{ margin: '0 0 16px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+          Scansiona con scanner USB oppure digita il codice manualmente — o apri la webcam
+        </p>
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={e => { setValue(e.target.value); if (clearScanError) clearScanError() }}
+          onKeyDown={handleKeyDown}
+          placeholder="Barcode / SKU / QR code..."
+          style={{
+            display: 'block', width: '100%', boxSizing: 'border-box',
+            height: '44px', padding: '0 14px',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--border-radius, 6px)',
+            background: 'var(--color-bg-elevated)',
+            color: 'var(--color-text)',
+            fontSize: '1rem',
+            marginBottom: '10px',
+            outline: 'none',
+          }}
+          autoComplete="off"
+        />
+        {scanError && (
+          <div style={{
+            color: 'var(--color-danger)', fontSize: '0.85rem',
+            padding: '8px 12px', background: 'var(--color-danger-bg)',
+            border: '1px solid var(--color-danger-border)',
+            borderRadius: 'var(--border-radius, 6px)',
+            marginBottom: '12px',
+          }}>
+            {scanError}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => { if (value.trim()) onConfirm(value.trim()) }}
+            disabled={!value.trim()}
+            style={{
+              flex: 1, height: '40px',
+              background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)',
+              color: '#fff', border: 'none',
+              borderRadius: 'var(--border-radius, 6px)',
+              cursor: value.trim() ? 'pointer' : 'not-allowed',
+              fontWeight: 500, fontSize: '0.875rem',
+              opacity: value.trim() ? 1 : 0.5,
+              transition: 'opacity 0.15s',
+            }}
+          >
+            Conferma
+          </button>
+          <button
+            type="button"
+            onClick={onOpenCamera}
+            style={{
+              flex: 1, height: '40px',
+              background: 'var(--color-surface-hover)',
+              color: 'var(--color-text)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--border-radius, 6px)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              fontSize: '0.875rem', fontWeight: 500,
+              transition: 'border-color 0.15s',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+            Webcam
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              height: '40px', padding: '0 16px',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--border-radius, 6px)',
+              cursor: 'pointer', fontSize: '0.875rem',
+            }}
+          >
+            Annulla
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const PAGE_SIZE = 50
 const emptyRiga = { tipo_voce: 'prodotto', prodotto_id: '', descrizione: '', quantita: 1, prezzo_unitario: 0 }
 const emptyNuovoProdottoForm = {
@@ -120,13 +253,13 @@ export default function Forniture() {
             .then(res => {
               if (!res.data?.id) throw new Error('not found')
               handleRigaChange(scannerRigaIndex, 'prodotto_id', String(res.data.id))
+              setScannerRigaIndex(null)
             })
             .catch(() => {
               setScanError(`Prodotto non trovato per il codice: "${value}"`)
               if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
               scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
             })
-            .finally(() => setScannerRigaIndex(null))
           return
         }
       }
@@ -138,12 +271,12 @@ export default function Forniture() {
       }
       if (prodotto) {
         handleRigaChange(scannerRigaIndex, 'prodotto_id', String(prodotto.id))
+        setScannerRigaIndex(null)
       } else {
         setScanError(`Prodotto non trovato per il codice: "${value}"`)
         if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current)
         scanErrorTimerRef.current = setTimeout(() => setScanError(''), 4000)
       }
-      setScannerRigaIndex(null)
     } else {
       setSearch(value)
       fetchForniture({ search: value, page: 1 })
@@ -517,86 +650,151 @@ export default function Forniture() {
                   <input value={form.tracking_number} onChange={e => setForm(prev => ({ ...prev, tracking_number: e.target.value }))} placeholder="Numero tracking..." className={styles.formInput} />
                 </div>
               </div>
-              <h3 className={styles.modalSubTitle}>Voci Fornitura</h3>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '8px 0 20px' }} />
+              <h3 className={styles.modalSubTitle}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '6px' }}>
+                  <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                  <rect x="9" y="3" width="6" height="4" rx="1" ry="1"/>
+                </svg>
+                Voci Fornitura
+              </h3>
               {scanError && <div className={styles.modalError}>{scanError}</div>}
               {form.righe.map((riga, i) => (
-                <div key={i} className={styles.rigaRow} style={{ flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
+                <div key={i} className={styles.rigaCard}>
+                  {/* Top row: tipo voce + prodotto/descrizione + action buttons */}
+                  <div className={styles.rigaTop}>
                     <select
                       value={riga.tipo_voce || 'prodotto'}
                       onChange={e => handleRigaChange(i, 'tipo_voce', e.target.value)}
                       className={styles.formSelect}
-                      style={{ flex: '0 0 auto', width: '220px', backgroundColor: riga.tipo_voce === 'packaging' ? '#fff8e1' : undefined }}
+                      style={{ flex: '0 0 auto', minWidth: '180px' }}
                     >
                       <option value="prodotto">📦 Prodotto magazzino</option>
                       <option value="packaging">🏷️ Packaging / Logistica</option>
+                      <option value="altro">📋 Altro costo</option>
                     </select>
-                    {riga.tipo_voce === 'packaging' ? (
+                    {riga.tipo_voce === 'packaging' || riga.tipo_voce === 'altro' ? (
                       <input
                         value={riga.descrizione}
                         onChange={e => handleRigaChange(i, 'descrizione', e.target.value)}
-                        placeholder="Descrizione (es. Nastro adesivo, DHL Express...)"
+                        placeholder={riga.tipo_voce === 'packaging' ? 'Es. Nastro adesivo, DHL Express...' : 'Descrizione costo...'}
                         className={styles.formInput}
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, minWidth: 0 }}
                         required
                       />
                     ) : (
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <select value={riga.prodotto_id} onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)} className={styles.formSelect} style={{ flex: 1, minWidth: 0 }}>
-                            <option value="">— Seleziona prodotto —</option>
-                            {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => { setScannerRigaIndex(i); setShowScanner(true) }}
-                            title="Scansiona QR / barcode per selezionare prodotto"
-                            style={{ padding: '6px 10px', backgroundColor: '#e3f2fd', border: '1px solid #90caf9', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#1565c0' }}
-                          >
-                            📷
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNuovoProdottoRigaIndex(i)
-                              setNuovoProdottoForm({ ...emptyNuovoProdottoForm })
-                              setSkuGenerato('')
-                              setNuovoProdottoError('')
-                            }}
-                            style={{ padding: '6px 10px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', color: '#2e7d32' }}
-                            title="Crea nuovo prodotto"
-                          >
-                            ＋ Nuovo
-                          </button>
-                        </div>
-                        {riga.prodotto_id && (() => {
-                          const sel = prodotti.find(p => String(p.id) === String(riga.prodotto_id))
-                          return sel ? (
-                            <div style={{ fontSize: '0.78rem', color: '#555', fontFamily: 'monospace', paddingLeft: '4px' }}>
-                              SKU: {sel.sku} | Disp: {sel.quantita}
-                            </div>
-                          ) : null
-                        })()}
-                        {nuovoProdottoRigaIndex === i && (
-                          <div style={{ fontSize: '0.8rem', color: '#2e7d32', fontStyle: 'italic' }}>
-                            Compilare il form nel pannello sopra...
-                          </div>
-                        )}
-                      </div>
+                      <select
+                        value={riga.prodotto_id}
+                        onChange={e => handleRigaChange(i, 'prodotto_id', e.target.value)}
+                        className={styles.formSelect}
+                        style={{ flex: 1, minWidth: 0 }}
+                      >
+                        <option value="">— Seleziona prodotto —</option>
+                        {prodotti.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
                     )}
-                    <input type="number" min="1" value={riga.quantita} onChange={e => handleRigaChange(i, 'quantita', e.target.value)} placeholder="Qtà" className={styles.formInput} style={{ width: '70px', flex: '0 0 auto' }} />
-                    <input type="number" min="0" step="0.01" value={riga.prezzo_unitario} onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)} placeholder="Prezzo" className={styles.formInput} style={{ width: '90px', flex: '0 0 auto' }} />
-                    <button type="button" onClick={() => removeRiga(i)} disabled={form.righe.length === 1} className={styles.removeRigaBtn} style={{ opacity: form.righe.length === 1 ? 0.3 : 1, cursor: form.righe.length === 1 ? 'not-allowed' : 'pointer' }}>🗑️</button>
+                    {riga.tipo_voce !== 'packaging' && riga.tipo_voce !== 'altro' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setScannerRigaIndex(i); setScanError('') }}
+                          className={styles.scanBarcodeBtn}
+                          title="Scansiona barcode o QR per trovare il prodotto"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 5v-2h6v2H3zm12-2v2h6v-2h-6zM3 19v2h6v-2H3zm12 2v-2h6v2h-6zM5 8H1v8h4V8zm14 0h-4v8h4V8zM9 3H7v2h2V3zm2 0h-2v2h2V3zm2 0h-2v2h2V3zm2 2h-2V3h-2v2h2zm-6 4H7v6h2V9zm6 0h-2v6h2V9z"/>
+                          </svg>
+                          Scansiona
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNuovoProdottoRigaIndex(i)
+                            setNuovoProdottoForm({ ...emptyNuovoProdottoForm })
+                            setSkuGenerato('')
+                            setNuovoProdottoError('')
+                          }}
+                          className={styles.newProductBtn}
+                          title="Crea nuovo prodotto"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Nuovo
+                        </button>
+                      </>
+                    )}
                   </div>
-                  {riga.tipo_voce === 'packaging' && (
-                    <div style={{ fontSize: '0.8rem', color: '#e65100', backgroundColor: '#fff3e0', padding: '4px 8px', borderRadius: '4px', width: '100%' }}>
+                  {/* Product SKU/availability info */}
+                  {riga.tipo_voce !== 'packaging' && riga.tipo_voce !== 'altro' && riga.prodotto_id && (() => {
+                    const sel = prodotti.find(p => String(p.id) === String(riga.prodotto_id))
+                    return sel ? (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', marginBottom: '10px', paddingLeft: '2px' }}>
+                        SKU: {sel.sku} · Disponibile: {sel.quantita}
+                      </div>
+                    ) : null
+                  })()}
+                  {/* Packaging/altro warning */}
+                  {(riga.tipo_voce === 'packaging' || riga.tipo_voce === 'altro') && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '10px', paddingLeft: '2px' }}>
                       ⚠️ Questa voce verrà registrata come costo e non influenzerà le giacenze
                     </div>
                   )}
+                  {/* Bottom row: qty + price + subtotal + delete */}
+                  <div className={styles.rigaBottom}>
+                    <div className={styles.rigaFieldGroup}>
+                      <label className={styles.rigaFieldLabel}>Quantità</label>
+                      <input
+                        type="number" min="1"
+                        value={riga.quantita}
+                        onChange={e => handleRigaChange(i, 'quantita', e.target.value)}
+                        className={styles.formInput}
+                        style={{ width: '88px' }}
+                      />
+                    </div>
+                    <div className={styles.rigaFieldGroup}>
+                      <label className={styles.rigaFieldLabel}>Prezzo unitario (€)</label>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={riga.prezzo_unitario}
+                        onChange={e => handleRigaChange(i, 'prezzo_unitario', e.target.value)}
+                        placeholder="0.00"
+                        className={styles.formInput}
+                        style={{ width: '120px' }}
+                      />
+                    </div>
+                    <div className={styles.rigaFieldGroup}>
+                      <label className={styles.rigaFieldLabel}>Subtotale</label>
+                      <div className={styles.rigaSubtotale}>
+                        {formatCurrency(Number(riga.quantita) * Number(riga.prezzo_unitario))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeRiga(i)}
+                      disabled={form.righe.length === 1}
+                      className={styles.deleteRigaBtn}
+                      title="Rimuovi riga"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3,6 5,6 21,6" />
+                        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
-              <button type="button" onClick={addRiga} className={styles.addRigaBtn}>+ Aggiungi Riga</button>
-              <div className={styles.totaleFornitura}>Totale: {formatCurrency(totaleFornitura)}</div>
+              <button type="button" onClick={addRiga} className={styles.addRigaBtn} style={{ width: '100%', justifyContent: 'center' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Aggiungi Riga
+              </button>
+              <div className={styles.totaleFornitura}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--color-text-muted)', marginRight: '8px' }}>Totale fornitura:</span>
+                {formatCurrency(totaleFornitura)}
+              </div>
               <div className={styles.modalActions}>
                 <button type="button" onClick={closeModal} className={styles.cancelBtn}>Annulla</button>
                 <button type="submit" disabled={submitting} className={styles.submitBtn}>{submitting ? 'Salvataggio...' : 'Crea Fornitura'}</button>
@@ -815,6 +1013,15 @@ export default function Forniture() {
             </div>
           </div>
         </div>
+      )}
+      {scannerRigaIndex !== null && !showScanner && (
+        <BarcodeInputPanel
+          onConfirm={(value) => handleScan(value)}
+          onCancel={() => { setScannerRigaIndex(null); setScanError('') }}
+          onOpenCamera={() => setShowScanner(true)}
+          scanError={scanError}
+          clearScanError={() => setScanError('')}
+        />
       )}
       {showScanner && (
         <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
