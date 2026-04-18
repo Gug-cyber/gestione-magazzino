@@ -52,6 +52,7 @@ def count_prodotti(
     categoria_id: Optional[int] = None,
     ubicazione_id: Optional[int] = None,
     stato_conservazione: Optional[str] = None,
+    disponibili_only: bool = False,
 ) -> int:
     query = db.query(Prodotto)
     if search:
@@ -65,6 +66,8 @@ def count_prodotti(
         query = query.filter(Prodotto.ubicazione_id == ubicazione_id)
     if stato_conservazione:
         query = query.filter(Prodotto.stato_conservazione == stato_conservazione)
+    if disponibili_only:
+        query = query.filter(Prodotto.quantita > 0)
     return query.count()
 
 
