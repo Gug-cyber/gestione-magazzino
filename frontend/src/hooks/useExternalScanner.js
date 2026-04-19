@@ -27,8 +27,8 @@ function useExternalScanner({ onScan, enabled = true, minLength = 3 } = {}) {
   useEffect(() => {
     if (!enabled) return
 
-    const SCANNER_INTERVAL_MS = 50   // Max ms tra caratteri consecutivi da scanner
-    const RESET_TIMEOUT_MS = 100     // Ms di silenzio dopo cui resettiamo il buffer
+    const SCANNER_INTERVAL_MS = 80   // Max ms tra caratteri consecutivi da scanner
+    const RESET_TIMEOUT_MS = 150     // Ms di silenzio dopo cui resettiamo il buffer
 
     const resetBuffer = () => {
       bufferRef.current = ''

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 /* TEMPORANEAMENTE DISABILITATO - CardMarket e CardTrader API issues */
 // import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
@@ -12,6 +12,8 @@ import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 import QRCode from 'qrcode'
 import styles from './DettaglioProdotto.module.css'
 import { flattenCategorieTree } from '../utils/categorieUtils'
+import { normalizeSkuForCode39 } from '../utils/formatters'
+import useExternalScanner from '../hooks/useExternalScanner'
 
 const CONDIZIONE_MAP = {
   'Near Mint': 'NM', 'Mint': 'NM', 'Quasi Perfetto': 'NM',
@@ -141,6 +143,58 @@ function DettaglioProdotto() {
   const fotoAggiuntiveInputRef = useRef(null)
   const [uploadingFotoAggiuntiva, setUploadingFotoAggiuntiva] = useState(false)
   const [fotoAggiuntiveError, setFotoAggiuntiveError] = useState('')
+
+  // --- Scanner hardware: intercetta scansioni anche dalla pagina dettaglio ---
+  const scanProcessingRef = useRef(false)
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => { isMountedRef.current = false }
+  }, [])
+
+  const handleExternalScan = useCallback(async (value) => {
+    if (scanProcessingRef.current) return
+    scanProcessingRef.current = true
+    try {
+      // Formato QR personalizzato "prodotto:123"
+      if (/^prodotto:\d+$/i.test(value)) {
+        navigate(`/prodotti/${value.split(':')[1]}`)
+        return
+      }
+      // Cerca per barcode
+      try {
+        const res = await prodottiAPI.lookupByBarcode(value)
+        if (res.data?.id) {
+          navigate(`/prodotti/${res.data.id}`)
+          return
+        }
+      } catch (err) {
+        if (err.response?.status !== 404) {
+          console.error('Errore lookup barcode:', err)
+          return
+        }
+      }
+      // Fallback: cerca per SKU
+      const normalized = normalizeSkuForCode39(value)
+      const res2 = await prodottiAPI.getAll({ search: normalized, limit: 5 })
+      if (!isMountedRef.current) return
+      const items = Array.isArray(res2.data) ? res2.data : (res2.data?.items || [])
+      if (items.length === 1) {
+        navigate(`/prodotti/${items[0].id}`)
+        return
+      }
+      const exact = items.find(p => p.barcode === value || p.sku === value || p.sku === normalized)
+      if (exact) {
+        navigate(`/prodotti/${exact.id}`)
+      }
+    } finally {
+      if (isMountedRef.current) {
+        scanProcessingRef.current = false
+      }
+    }
+  }, [navigate])
+
+  useExternalScanner({ onScan: handleExternalScan, enabled: true })
 
   const [ebayData, setEbayData] = useState(null)
   const [ebayLoading, setEbayLoading] = useState(false)
