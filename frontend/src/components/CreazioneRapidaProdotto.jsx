@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { prodottiAPI, categorieAPI } from '../api/client'
+import { flattenCategorieTree } from '../utils/categorieUtils'
 
 const inputStyle = {
   width: '100%',
@@ -40,8 +41,8 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
   const [error, setError] = useState('')
 
   useEffect(() => {
-    categorieAPI.getAll()
-      .then(r => setCategorie(r.data))
+    categorieAPI.getTree()
+      .then(r => setCategorie(r.data || []))
       .catch(() => {})
   }, [])
 
@@ -163,8 +164,10 @@ export default function CreazioneRapidaProdotto({ barcode = '', onSuccess, onClo
               onChange={e => set('categoria_id', e.target.value)}
             >
               <option value="">— Seleziona categoria —</option>
-              {categorie.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
+              {flattenCategorieTree(categorie).map(c => (
+                <option key={c.id} value={c.id}>
+                  {'\u00a0\u00a0'.repeat(c.level)}{c.nome}
+                </option>
               ))}
             </select>
           </label>

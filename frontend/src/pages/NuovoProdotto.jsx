@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import JsBarcode from 'jsbarcode'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { generateSKU } from '../utils/skuGenerator'
+import { flattenCategorieTree } from '../utils/categorieUtils'
 import '../styles/shared.css'
 
 function BarcodeCanvas({ value, canvasRef: extRef }) {
@@ -76,8 +77,8 @@ function NuovoProdotto() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [c, u] = await Promise.all([categorieAPI.getAll(), ubicazioniAPI.getAll()])
-        setCategorie(c.data)
+        const [c, u] = await Promise.all([categorieAPI.getTree(), ubicazioniAPI.getAll()])
+        setCategorie(c.data || [])
         setUbicazioni(u.data)
       } catch {
         setError('Errore nel caricamento dei dati')
@@ -365,7 +366,11 @@ function NuovoProdotto() {
                 <label className="form-label">Categoria</label>
                 <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })} className="form-input">
                   <option value="">-- Nessuna --</option>
-                  {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  {flattenCategorieTree(categorie).map(c => (
+                    <option key={c.id} value={c.id}>
+                      {'\u00a0\u00a0'.repeat(c.level)}{c.nome}
+                    </option>
+                  ))}
                 </select>
               </div>
 

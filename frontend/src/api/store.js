@@ -11,6 +11,7 @@ export const storeAPI = {
   getProdotti: (params) => storeClient.get('/api/store/prodotti', { params }),
   getProdotto: (id) => storeClient.get(`/api/store/prodotti/${id}`),
   getCategorie: () => storeClient.get('/api/store/categorie'),
+  getCategorieTree: () => storeClient.get('/api/store/categorie/tree'),
   checkout: (data) => storeClient.post('/api/store/checkout', data),
   getFlagsPublici: () => storeClient.get('/api/store/feature-flags'),
   getBannersPublici: () => storeClient.get('/api/store/banners'),
