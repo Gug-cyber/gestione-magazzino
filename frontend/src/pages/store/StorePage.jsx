@@ -21,7 +21,7 @@ function findLabelInTree(nodes, id) {
 
 function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
   const [open, setOpen] = useState(false)
-  const [expandedId, setExpandedId] = useState(null)
+  const [expandedIds, setExpandedIds] = useState(new Set())
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -41,7 +41,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
 
   function renderNode(node, depth = 0) {
     const hasChildren = node.figli && node.figli.length > 0
-    const isExpanded = expandedId === String(node.id)
+    const isExpanded = expandedIds.has(String(node.id))
     const isSelected = String(node.id) === value
     const pl = 14 + depth * 16
 
@@ -50,7 +50,15 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
         <div key={node.id}>
           <button
             type="button"
-            onClick={() => setExpandedId(prev => prev === String(node.id) ? null : String(node.id))}
+            onClick={() => setExpandedIds(prev => {
+              const next = new Set(prev)
+              if (next.has(String(node.id))) {
+                next.delete(String(node.id))
+              } else {
+                next.add(String(node.id))
+              }
+              return next
+            })}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -121,7 +129,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Seleziona categoria"
-        onClick={() => { setExpandedId(null); setOpen(prev => !prev) }}
+        onClick={() => { setExpandedIds(new Set()); setOpen(prev => !prev) }}
         style={{
           width: '100%',
           display: 'flex',
