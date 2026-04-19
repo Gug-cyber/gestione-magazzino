@@ -75,7 +75,7 @@ export default function NuovoOrdine() {
     setRighe(righe.filter((_, i) => i !== index))
   }
 
-  const handleScanWithIndex = useCallback((value, rigaIndex) => {
+  const handleScanWithIndex = useCallback(async (value, rigaIndex) => {
     let prodotto = null
     if (/^prodotto:\d+$/i.test(value)) {
       const id = parseInt(value.split(':')[1])
@@ -100,6 +100,12 @@ export default function NuovoOrdine() {
       prodotto = prodotti.find(p =>
         p.barcode === value || p.sku === value || p.sku === normalized
       )
+    }
+    if (!prodotto) {
+      try {
+        const res = await prodottiAPI.lookupByBarcode(value)
+        if (res.data?.id) prodotto = res.data
+      } catch (_) {}
     }
     if (prodotto) {
       handleRigaChange(rigaIndex, 'prodotto_id', String(prodotto.id))

@@ -56,6 +56,8 @@ function useExternalScanner({ onScan, enabled = true, minLength = 3 } = {}) {
         if (code.length >= minLength) {
           e.preventDefault()
           onScanRef.current(code)
+        } else if (code.length > 0) {
+          e.preventDefault()
         }
         return
       }

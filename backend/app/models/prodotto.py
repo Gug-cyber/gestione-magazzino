@@ -21,7 +21,7 @@ class Prodotto(Base):
     lingua = Column(String(50), nullable=True)
     foto_path = Column(String(255), nullable=True)
     foto_aggiuntive = Column(JSON, nullable=True)
-    barcode = Column(String(100), nullable=True, index=True)
+    barcode = Column(String(100), nullable=True, index=True, unique=True)
     barcode_generated_at = Column(DateTime(timezone=True), nullable=True)
     cardtrader_blueprint_id = Column(Integer, nullable=True)
     google_drive_folder_id = Column(String(255), nullable=True)
