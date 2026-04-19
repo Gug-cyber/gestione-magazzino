@@ -8,19 +8,20 @@ import { trackPageView } from '../../utils/analytics'
 
 const PAGE_LIMIT = 40
 
-function flattenTree(nodes, level = 0) {
-  const result = []
+function findLabelInTree(nodes, id) {
   for (const node of nodes) {
-    result.push({ value: String(node.id), label: node.nome, level })
+    if (String(node.id) === id) return node.nome
     if (node.figli && node.figli.length > 0) {
-      result.push(...flattenTree(node.figli, level + 1))
+      const found = findLabelInTree(node.figli, id)
+      if (found) return found
     }
   }
-  return result
+  return null
 }
 
 function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
   const [open, setOpen] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -34,10 +35,84 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [open])
 
-  const flatOptions = flattenTree(treeOptions)
   const selectedLabel = value
-    ? (flatOptions.find(o => o.value === value)?.label || allLabel)
+    ? (findLabelInTree(treeOptions, value) || allLabel)
     : allLabel
+
+  function renderNode(node, depth = 0) {
+    const hasChildren = node.figli && node.figli.length > 0
+    const isExpanded = expandedId === String(node.id)
+    const isSelected = String(node.id) === value
+    const pl = 14 + depth * 16
+
+    if (hasChildren) {
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            onClick={() => setExpandedId(prev => prev === String(node.id) ? null : String(node.id))}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              padding: `9px 14px 9px ${pl}px`,
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: depth === 0 ? '11px' : '13px',
+              fontWeight: 600,
+              textTransform: depth === 0 ? 'uppercase' : 'none',
+              letterSpacing: depth === 0 ? '0.06em' : 'normal',
+              color: 'var(--color-text-secondary)',
+              textAlign: 'left',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)' }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+          >
+            <span>{node.nome}</span>
+            <span style={{
+              fontSize: '10px',
+              opacity: 0.5,
+              marginLeft: 8,
+              display: 'inline-block',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.18s',
+            }}>▼</span>
+          </button>
+          {isExpanded && node.figli.map(child => renderNode(child, depth + 1))}
+        </div>
+      )
+    }
+
+    return (
+      <button
+        key={node.id}
+        type="button"
+        role="option"
+        aria-selected={isSelected}
+        onClick={() => { onChange(String(node.id)); setOpen(false) }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          width: '100%',
+          padding: `9px 14px 9px ${pl}px`,
+          backgroundColor: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '14px',
+          color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+          textAlign: 'left',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+      >
+        <span style={{ width: '14px', flexShrink: 0 }}>{isSelected ? '✓' : ''}</span>
+        {node.nome}
+      </button>
+    )
+  }
 
   return (
     <div ref={containerRef} className="store-category-dropdown" style={{ position: 'relative', flex: '1 1 160px' }}>
@@ -46,7 +121,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Seleziona categoria"
-        onClick={() => setOpen(prev => !prev)}
+        onClick={() => { setExpandedId(null); setOpen(prev => !prev) }}
         style={{
           width: '100%',
           display: 'flex',
@@ -82,8 +157,8 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
             border: '1px solid var(--color-border)',
             borderRadius: '8px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            maxHeight: '360px',
             overflowY: 'auto',
-            maxHeight: '320px',
           }}
         >
           {/* "All categories" option */}
@@ -113,47 +188,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
             {allLabel}
           </button>
 
-          {flatOptions.map(opt => {
-            const isSelected = opt.value === value
-            const paddingLeft = 14 + opt.level * 16
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => { onChange(opt.value); setOpen(false) }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  paddingTop: '8px',
-                  paddingBottom: opt.level === 0 ? '4px' : '8px',
-                  paddingLeft,
-                  paddingRight: '14px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: opt.level === 0 ? '11px' : '14px',
-                  fontWeight: opt.level === 0 ? 700 : 400,
-                  textTransform: opt.level === 0 ? 'uppercase' : 'none',
-                  letterSpacing: opt.level === 0 ? '0.06em' : 'normal',
-                  color: isSelected
-                    ? 'var(--color-primary)'
-                    : opt.level === 0
-                      ? 'var(--color-text-secondary)'
-                      : 'var(--color-text)',
-                  textAlign: 'left',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
-              >
-                <span style={{ width: '14px', flexShrink: 0 }}>{isSelected ? '✓' : ''}</span>
-                {opt.label}
-              </button>
-            )
-          })}
+          {treeOptions.map(node => renderNode(node, 0))}
         </div>
       )}
     </div>
