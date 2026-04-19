@@ -10,10 +10,10 @@
   align-items: center;
   justify-content: center;
   padding: 14px 24px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 1rem;
   font-weight: 600;
-  background-color: #1a237e;
+  background-color: var(--color-primary);
   color: #fff;
   min-height: 48px;
   width: 100%;
@@ -21,8 +21,13 @@
   touch-action: manipulation;
 }
 
+.toggleBtn:hover,
+.toggleBtn:focus {
+  background-color: var(--color-primary-hover);
+}
+
 .toggleBtn:active {
-  background-color: #283593;
+  background-color: var(--color-primary-hover);
   transform: scale(0.98);
 }
 
@@ -32,7 +37,7 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: #000;
 }
 
@@ -57,7 +62,7 @@
   width: 60%;
   height: 40%;
   border: 2px solid rgba(255, 255, 255, 0.8);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .reticlePulse {
@@ -65,9 +70,9 @@
 }
 
 .reticleDetected {
-  border-color: #4caf50;
+  border-color: var(--color-success);
   animation: none;
-  box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
 }
 
 /* ── Mode selector ── */
@@ -84,9 +89,9 @@
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
-  border: 2px solid #1a237e;
-  background: white;
-  color: #1a237e;
+  border: 2px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary-light);
   cursor: pointer;
   transition: all 0.2s;
   min-height: 36px;
@@ -94,7 +99,7 @@
 }
 
 .modeBtnActive {
-  background: #1a237e;
+  background: var(--color-primary);
   color: white;
 }
 
@@ -120,7 +125,7 @@
   left: 5%;
   right: 5%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #ff1744, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-error), transparent);
   animation: scanLineMove 1.5s ease-in-out infinite;
   z-index: 2;
 }
@@ -174,21 +179,23 @@
 
 /* ── Feedback banners ── */
 .feedbackSuccess {
-  background: #e8f5e9;
-  color: #2e7d32;
-  padding: 10px 14px;
-  border-radius: 8px;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   line-height: 1.4;
+  border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
 .feedbackError {
-  background: #ffebee;
-  color: #c62828;
-  padding: 10px 14px;
-  border-radius: 8px;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   line-height: 1.4;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* ── Manual input ── */
@@ -200,7 +207,7 @@
 
 .manualLabel {
   font-size: 0.85rem;
-  color: #555;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
@@ -214,23 +221,29 @@
   flex: 1;
   min-width: 0;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 1rem;
-  border: 1.5px solid #ddd;
+  border: 1px solid var(--color-border);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   min-height: 48px;
-  background: #fff;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .input:focus {
-  border-color: #1a237e;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .confirmBtn {
   padding: 12px 20px;
-  border-radius: 8px;
-  background: #1a237e;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
   color: #fff;
   font-size: 1rem;
   font-weight: 600;
@@ -240,7 +253,29 @@
   white-space: nowrap;
 }
 
+.confirmBtn:hover,
+.confirmBtn:focus {
+  background-color: var(--color-primary-hover);
+}
+
 .confirmBtn:active {
-  background-color: #283593;
+  background-color: var(--color-primary-hover);
   transform: scale(0.97);
+}
+
+/* ── Responsive adjustments ── */
+@media (max-width: 360px) {
+  .toggleBtn {
+    padding: 12px 18px;
+    font-size: 0.95rem;
+  }
+
+  .modeBtn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .confirmBtn {
+    padding: 12px 16px;
+  }
 }
