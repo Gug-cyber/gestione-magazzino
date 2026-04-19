@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from ..database import get_db
-from ..schemas.categoria import CategoriaCreate, CategoriaUpdate, CategoriaResponse
+from ..schemas.categoria import CategoriaCreate, CategoriaUpdate, CategoriaResponse, CategoriaTree
 from ..crud import categoria as crud
 from ..auth import get_current_active_user
 
@@ -10,8 +10,14 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[CategoriaResponse])
-def get_categorie(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+def get_categorie(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     return crud.get_categorie(db, skip=skip, limit=limit)
+
+
+@router.get("/tree", response_model=List[CategoriaTree])
+def get_categorie_tree(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
+    """Restituisce l'albero completo delle categorie con figli annidati."""
+    return crud.build_tree(db)
 
 
 @router.get("/{categoria_id}", response_model=CategoriaResponse)

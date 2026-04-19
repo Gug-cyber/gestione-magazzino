@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from ..models.categoria import Categoria
 from ..schemas.categoria import CategoriaCreate, CategoriaUpdate
 from typing import List, Optional
@@ -8,8 +8,27 @@ def get_categoria(db: Session, categoria_id: int) -> Optional[Categoria]:
     return db.query(Categoria).filter(Categoria.id == categoria_id).first()
 
 
-def get_categorie(db: Session, skip: int = 0, limit: int = 100) -> List[Categoria]:
+def get_categorie(db: Session, skip: int = 0, limit: int = 1000) -> List[Categoria]:
     return db.query(Categoria).offset(skip).limit(limit).all()
+
+
+def get_categorie_radice(db: Session) -> List[Categoria]:
+    """Restituisce solo le categorie senza padre (livello 1)."""
+    return db.query(Categoria).filter(Categoria.parent_id.is_(None)).all()
+
+
+def get_figli(db: Session, parent_id: int) -> List[Categoria]:
+    return db.query(Categoria).filter(Categoria.parent_id == parent_id).all()
+
+
+def build_tree(db: Session) -> List[Categoria]:
+    """Restituisce le radici con i figli già caricati (eager loading a 3 livelli)."""
+    return (
+        db.query(Categoria)
+        .filter(Categoria.parent_id.is_(None))
+        .options(selectinload(Categoria.figli).selectinload(Categoria.figli))
+        .all()
+    )
 
 
 def create_categoria(db: Session, categoria: CategoriaCreate) -> Categoria:
