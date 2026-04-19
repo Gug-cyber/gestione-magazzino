@@ -69,6 +69,10 @@ function ScannerBarcode() {
           navigate(`/prodotti/${exact.id}`)
           return
         }
+        // Più risultati ma nessuna corrispondenza esatta → mostra errore e sblocca
+        setError(`Trovati ${items.length} prodotti per "${value}" ma nessuna corrispondenza esatta. Usa la ricerca manuale.`)
+        setSearchingWithRef(false)
+        return
       }
     } catch { /* continue */ }
 
@@ -83,7 +87,7 @@ function ScannerBarcode() {
 
   useExternalScanner({
     onScan: handleExternalScan,
-    enabled: !showScanner,
+    enabled: !showScanner && !searching,
   })
 
   const handleScan = (value) => {
@@ -147,9 +151,9 @@ function ScannerBarcode() {
           Collega lo scanner al dispositivo e puntalo sul codice a barre o QR. Non serve fare nulla di speciale: il sistema rileva automaticamente l'input dello scanner.
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <span style={{ color: showScanner ? '#c62828' : '#2e7d32', fontSize: '1.1rem' }}>●</span>
-          <span style={{ fontSize: '0.9rem', color: showScanner ? '#c62828' : '#2e7d32', fontWeight: 600 }}>
-            {showScanner ? 'Scanner in pausa (modale aperta)' : 'Scanner attivo — in ascolto...'}
+          <span style={{ color: (showScanner || searching) ? '#c62828' : '#2e7d32', fontSize: '1.1rem' }}>●</span>
+          <span style={{ fontSize: '0.9rem', color: (showScanner || searching) ? '#c62828' : '#2e7d32', fontWeight: 600 }}>
+            {showScanner ? 'Scanner in pausa (modale aperta)' : searching ? 'Scanner in pausa (ricerca in corso...)' : 'Scanner attivo — in ascolto...'}
           </span>
         </div>
         {lastExternalCode && (
