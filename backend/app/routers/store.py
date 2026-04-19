@@ -172,19 +172,40 @@ def get_store_prodotti(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     categoria_id: Optional[int] = Query(None),
+    include_descendants: bool = Query(False),
     search: Optional[str] = Query(None),
     disponibili_only: bool = Query(True),
     db: Session = Depends(get_db),
 ):
     """Restituisce la lista prodotti pubblica (senza dati sensibili)."""
-    prodotti = crud_prodotti.get_prodotti(
-        db,
-        skip=skip,
-        limit=limit,
-        search=search,
-        categoria_id=categoria_id,
-        disponibili_only=disponibili_only,
-    )
+    # Se include_descendants è True, espandi la categoria ai discendenti
+    if include_descendants and categoria_id is not None:
+        descendant_ids = crud_categorie.get_descendant_ids(db, categoria_id)
+        all_ids = [categoria_id] + descendant_ids
+        from ..models.prodotto import Prodotto as ProdottoModel
+        query = db.query(ProdottoModel).filter(ProdottoModel.categoria_id.in_(all_ids))
+        if search:
+            term = f"%{search}%"
+            from sqlalchemy import or_
+            query = query.filter(
+                or_(
+                    ProdottoModel.nome.ilike(term),
+                    ProdottoModel.sku.ilike(term),
+                    ProdottoModel.descrizione.ilike(term),
+                )
+            )
+        if disponibili_only:
+            query = query.filter(ProdottoModel.quantita > 0)
+        prodotti = query.order_by(ProdottoModel.nome).offset(skip).limit(limit).all()
+    else:
+        prodotti = crud_prodotti.get_prodotti(
+            db,
+            skip=skip,
+            limit=limit,
+            search=search,
+            categoria_id=categoria_id,
+            disponibili_only=disponibili_only,
+        )
     return [_to_public(p, request) for p in prodotti]
 
 
@@ -204,13 +225,17 @@ def get_store_prodotto(
 @router.get("/categorie/tree", response_model=List[CategoriaTree])
 def get_store_categorie_tree(db: Session = Depends(get_db)):
     """Restituisce l'albero completo delle categorie (pubblico, no auth)."""
-    return crud_categorie.build_tree(db)
+    from ..routers.categorie import _to_tree
+    roots = crud_categorie.build_tree(db, only_active=True, show_in_store=True)
+    return [_to_tree(r) for r in roots]
 
 
 @router.get("/categorie", response_model=List[CategoriaResponse])
 def get_store_categorie(db: Session = Depends(get_db)):
     """Restituisce tutte le categorie."""
-    return crud_categorie.get_categorie(db)
+    from ..routers.categorie import _to_response
+    cats = crud_categorie.get_categorie(db, only_active=True, show_in_store=True)
+    return [_to_response(c) for c in cats]
 
 
 @router.post("/checkout", response_model=StoreCheckoutResponse)
