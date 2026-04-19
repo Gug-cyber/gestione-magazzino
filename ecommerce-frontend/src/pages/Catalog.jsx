@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import strapiAPI from '../api/strapi';
+import storeAPI from '../api/store';
 import ProductGrid from '../components/ProductGrid.jsx';
 import Filters from '../components/Filters.jsx';
 import SearchBar from '../components/SearchBar.jsx';
@@ -13,25 +13,34 @@ export default function Catalog() {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [currentSort, setCurrentSort] = useState('newest');
-  const categoria = searchParams.get('categoria');
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['products', search, categoria],
+  const categoriaId = searchParams.get('categoria_id') ? parseInt(searchParams.get('categoria_id')) : null;
+  const disponibile = searchParams.get('disponibile') === 'true';
+  const prezzoMin = searchParams.get('prezzo_min') ? parseFloat(searchParams.get('prezzo_min')) : null;
+  const prezzoMax = searchParams.get('prezzo_max') ? parseFloat(searchParams.get('prezzo_max')) : null;
+
+  const { data: prodotti, isLoading } = useQuery({
+    queryKey: ['products', search, categoriaId, disponibile],
     queryFn: () => {
-      const filters = { publishedAt: { $notNull: true } };
-      if (search) {
-        filters.title = { $containsi: search };
-      }
-      if (categoria) {
-        filters['category'] = { slug: { $eq: categoria } };
-      }
-      return strapiAPI.getProducts({
-        filters,
-        pagination: { limit: 24 },
-        sort: ['createdAt:desc'],
-      });
+      const params = {};
+      if (search) params.search = search;
+      if (categoriaId != null) params.categoria_id = categoriaId;
+      if (disponibile) params.disponibili_only = true;
+      return storeAPI.getStoreProdotti(params);
     },
   });
+
+  const filteredProducts = useMemo(() => {
+    if (!prodotti) return [];
+    let result = prodotti;
+    if (prezzoMin != null) result = result.filter(p => p.prezzo_vendita != null && p.prezzo_vendita >= prezzoMin);
+    if (prezzoMax != null) result = result.filter(p => p.prezzo_vendita != null && p.prezzo_vendita <= prezzoMax);
+    if (currentSort === 'price-asc') result = [...result].sort((a, b) => (a.prezzo_vendita || 0) - (b.prezzo_vendita || 0));
+    else if (currentSort === 'price-desc') result = [...result].sort((a, b) => (b.prezzo_vendita || 0) - (a.prezzo_vendita || 0));
+    else if (currentSort === 'name-asc') result = [...result].sort((a, b) => a.nome.localeCompare(b.nome));
+    else if (currentSort === 'name-desc') result = [...result].sort((a, b) => b.nome.localeCompare(a.nome));
+    return result;
+  }, [prodotti, prezzoMin, prezzoMax, currentSort]);
 
   const handleSearch = (value) => {
     setSearch(value);
@@ -53,10 +62,9 @@ export default function Catalog() {
   const handleSort = (value) => {
     setCurrentSort(value);
     setSortOpen(false);
-    // Sorting logic would be implemented here
   };
 
-  const productCount = data?.data?.length || 0;
+  const productCount = filteredProducts.length;
 
   return (
     <div className="catalog-page">
@@ -140,7 +148,7 @@ export default function Catalog() {
               <p>Prova a modificare i filtri o la ricerca</p>
             </div>
           ) : (
-            <ProductGrid products={data?.data || []} />
+            <ProductGrid products={filteredProducts} />
           )}
         </div>
       </div>

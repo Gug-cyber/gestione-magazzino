@@ -10,9 +10,11 @@ const SUCCESS_STATE_DURATION = 2000;
 
 export default function ProductCard({ product }) {
   // Modalità ibrida: backend Python (prodotto flat) o Strapi (prodotto con attributes)
+  // Auto-detect: se il prodotto ha 'nome' è formato backend, altrimenti Strapi
+  const isBackend = USE_BACKEND_STORE || product.nome !== undefined;
   let imageUrl, title, quantity, discount, categoryName, productLink;
 
-  if (USE_BACKEND_STORE) {
+  if (isBackend) {
     imageUrl = product.immagini?.[0] || product.foto_url || null;
     title = product.nome;
     quantity = product.quantita;
@@ -71,10 +73,10 @@ export default function ProductCard({ product }) {
   const stockStatus = getStockStatus();
 
   // Prezzo: entrambe le modalità lo supportano, con nomi campo diversi
-  const price = USE_BACKEND_STORE
+  const price = isBackend
     ? product.prezzo_vendita
     : product.attributes?.price;
-  const originalPrice = USE_BACKEND_STORE ? null : product.attributes?.original_price;
+  const originalPrice = isBackend ? null : product.attributes?.original_price;
 
   return (
     <Link to={productLink} className={`product-card${shake ? ' shake' : ''}`}>
@@ -98,7 +100,7 @@ export default function ProductCard({ product }) {
               <span className="discount-badge">-{discount}%</span>
             )}
           </div>
-          {!USE_BACKEND_STORE && product.attributes?.condition && (
+          {!isBackend && product.attributes?.condition && (
             <span className="condition-badge">{product.attributes.condition}</span>
           )}
         </div>
