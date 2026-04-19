@@ -43,4 +43,7 @@ def downgrade() -> None:
     if bind.dialect.name == "postgresql":
         op.execute("DROP INDEX IF EXISTS ix_prodotti_barcode")
         op.create_index("ix_prodotti_barcode", "prodotti", ["barcode"], unique=False)
-    # SQLite: leave existing index unchanged on downgrade
+    else:
+        # SQLite: migration 0007 already created ix_prodotti_barcode as UNIQUE.
+        # This migration added no new indexes on SQLite, so there is nothing to undo.
+        pass
