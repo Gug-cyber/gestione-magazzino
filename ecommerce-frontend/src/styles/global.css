@@ -853,6 +853,30 @@ button {
   color: #fff;
 }
 
+/* Hierarchical category levels */
+.filter-item.category-level-1 {
+  color: var(--color-accent);
+  font-weight: bold;
+}
+
+.filter-item.category-level-2 {
+  color: #10b981;
+  padding-left: 1.25rem;
+}
+
+.filter-item.category-level-3 {
+  color: #f59e0b;
+  padding-left: 2.5rem;
+}
+
+.category-expand-toggle {
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 /* Price Range Filter */
 .price-range {
   display: flex;

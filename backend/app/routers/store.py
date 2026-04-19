@@ -19,7 +19,7 @@ from ..schemas.store_settings import StoreSettingsResponse, StoreSettingsPublicR
 from ..schemas.footer_page import FooterPageResponse
 from ..schemas.ordine import OrdineCreate, RigaOrdineCreate, OrdineResponse, OrdineUpdate, StatoOrdineSchema
 from ..schemas.cliente import ClienteCreate
-from ..schemas.categoria import CategoriaResponse
+from ..schemas.categoria import CategoriaResponse, CategoriaTree
 from ..schemas.banner import BannerResponse
 from ..schemas.promozione import PromozioneResponse
 from ..models.prodotto import Prodotto
@@ -199,6 +199,12 @@ def get_store_prodotto(
     if not prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
     return _to_public(prodotto, request)
+
+
+@router.get("/categorie/tree", response_model=List[CategoriaTree])
+def get_store_categorie_tree(db: Session = Depends(get_db)):
+    """Restituisce l'albero completo delle categorie (pubblico, no auth)."""
+    return crud_categorie.build_tree(db)
 
 
 @router.get("/categorie", response_model=List[CategoriaResponse])

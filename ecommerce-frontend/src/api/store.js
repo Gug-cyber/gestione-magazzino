@@ -24,6 +24,16 @@ export const storeAPI = {
     const response = await backendClient.get(`/prodotti/${id}/immagini`);
     return response.data;
   },
+
+  getCategorieTree: async () => {
+    const response = await backendClient.get('/categorie/tree');
+    return response.data;
+  },
+
+  getCategorie: async () => {
+    const response = await backendClient.get('/categorie');
+    return response.data;
+  },
 };
 
 export default storeAPI;

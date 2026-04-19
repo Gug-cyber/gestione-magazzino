@@ -1,28 +1,39 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import strapiAPI from '../api/strapi';
+import storeAPI from '../api/store';
 
 export default function Filters({ onClose, isMobile = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentCategory = searchParams.get('categoria');
+  const currentCategoryId = searchParams.get('categoria_id') ? parseInt(searchParams.get('categoria_id')) : null;
   const [onlyAvailable, setOnlyAvailable] = useState(searchParams.get('disponibile') === 'true');
   const [priceMin, setPriceMin] = useState(searchParams.get('prezzo_min') || '');
   const [priceMax, setPriceMax] = useState(searchParams.get('prezzo_max') || '');
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [expandedCategories, setExpandedCategories] = useState(new Set());
 
-  const { data: categories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: strapiAPI.getCategories,
+  const { data: categorieTree } = useQuery({
+    queryKey: ['categorieTree'],
+    queryFn: storeAPI.getCategorieTree,
   });
 
-  const handleCategoryClick = (slug) => {
+  const handleCategoryClick = (id) => {
     setSearchParams((prev) => {
-      if (slug) prev.set('categoria', slug);
-      else prev.delete('categoria');
+      if (id != null) prev.set('categoria_id', String(id));
+      else prev.delete('categoria_id');
       return prev;
     });
     if (isMobile && onClose) onClose();
+  };
+
+  const toggleExpand = (id, e) => {
+    e.stopPropagation();
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const handleAvailabilityToggle = () => {
@@ -59,7 +70,7 @@ export default function Filters({ onClose, isMobile = false }) {
     }));
   };
 
-  const hasActiveFilters = currentCategory || onlyAvailable || priceMin || priceMax;
+  const hasActiveFilters = currentCategoryId != null || onlyAvailable || priceMin || priceMax;
 
   return (
     <div className="filters">
@@ -90,24 +101,63 @@ export default function Filters({ onClose, isMobile = false }) {
         <ul className="filter-list">
           <li>
             <button
-              className={`filter-item ${!currentCategory ? 'active' : ''}`}
+              className={`filter-item ${currentCategoryId == null ? 'active' : ''}`}
               onClick={() => handleCategoryClick(null)}
             >
               <span>Tutte le categorie</span>
             </button>
           </li>
-          {categories?.data?.map((cat) => (
-            <li key={cat.id}>
-              <button
-                className={`filter-item ${currentCategory === cat.attributes.slug ? 'active' : ''}`}
-                onClick={() => handleCategoryClick(cat.attributes.slug)}
-              >
-                <span>{cat.attributes.name}</span>
-                {cat.attributes.products?.data?.length > 0 && (
-                  <span className="filter-count">{cat.attributes.products.data.length}</span>
-                )}
-              </button>
-            </li>
+          {categorieTree?.map((cat) => (
+            <React.Fragment key={cat.id}>
+              <li>
+                <button
+                  className={`filter-item category-level-1 ${currentCategoryId === cat.id ? 'active' : ''}`}
+                  onClick={() => handleCategoryClick(cat.id)}
+                >
+                  <span>{cat.nome}</span>
+                  {cat.figli?.length > 0 && (
+                    <span
+                      className="category-expand-toggle"
+                      onClick={(e) => toggleExpand(cat.id, e)}
+                      aria-label={expandedCategories.has(cat.id) ? 'Comprimi' : 'Espandi'}
+                    >
+                      {expandedCategories.has(cat.id) ? '▾' : '▸'}
+                    </span>
+                  )}
+                </button>
+              </li>
+              {expandedCategories.has(cat.id) && cat.figli?.map((sub) => (
+                <React.Fragment key={sub.id}>
+                  <li>
+                    <button
+                      className={`filter-item category-level-2 ${currentCategoryId === sub.id ? 'active' : ''}`}
+                      onClick={() => handleCategoryClick(sub.id)}
+                    >
+                      <span>{sub.nome}</span>
+                      {sub.figli?.length > 0 && (
+                        <span
+                          className="category-expand-toggle"
+                          onClick={(e) => toggleExpand(sub.id, e)}
+                          aria-label={expandedCategories.has(sub.id) ? 'Comprimi' : 'Espandi'}
+                        >
+                          {expandedCategories.has(sub.id) ? '▾' : '▸'}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                  {expandedCategories.has(sub.id) && sub.figli?.map((tipo) => (
+                    <li key={tipo.id}>
+                      <button
+                        className={`filter-item category-level-3 ${currentCategoryId === tipo.id ? 'active' : ''}`}
+                        onClick={() => handleCategoryClick(tipo.id)}
+                      >
+                        <span>{tipo.nome}</span>
+                      </button>
+                    </li>
+                  ))}
+                </React.Fragment>
+              ))}
+            </React.Fragment>
           ))}
         </ul>
       </div>
