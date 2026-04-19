@@ -188,7 +188,13 @@ function Prodotti() {
       }
       const totalCount = parseInt(resp.headers['x-total-count'] ?? '0', 10)
       setTotal(isNaN(totalCount) ? resp.data.length : totalCount)
-      // If this fetch was triggered by a barcode scan and returned no results, alert the user
+      // If this fetch was triggered by a barcode scan, handle the result count
+      if (pendingScanAlertRef.current !== null && resp.data.length === 1) {
+        const singleId = resp.data[0].id
+        pendingScanAlertRef.current = null
+        navigate(`/prodotti/${singleId}`)
+        return
+      }
       if (pendingScanAlertRef.current !== null && resp.data.length === 0) {
         alert(`⚠️ Nessun prodotto trovato con SKU: ${pendingScanAlertRef.current}\n\nVerifica che il codice a barre corrisponda esattamente allo SKU salvato.`)
       }
@@ -197,7 +203,7 @@ function Prodotti() {
       pendingScanAlertRef.current = null
       setError('Errore nel caricamento dei dati')
     }
-  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, isFilterActive, alertFilter])
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, isFilterActive, alertFilter, navigate])
 
   useEffect(() => {
     fetchProdotti(search, page)
