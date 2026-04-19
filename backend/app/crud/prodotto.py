@@ -33,7 +33,8 @@ def get_prodotti(
     if search:
         term = f"%{search}%"
         query = query.filter(
-            Prodotto.nome.ilike(term) | Prodotto.sku.ilike(term) | Prodotto.descrizione.ilike(term)
+            Prodotto.nome.ilike(term) | Prodotto.sku.ilike(term) |
+            Prodotto.descrizione.ilike(term) | Prodotto.barcode.ilike(term)
         )
     if categoria_id:
         query = query.filter(Prodotto.categoria_id == categoria_id)
@@ -58,7 +59,8 @@ def count_prodotti(
     if search:
         term = f"%{search}%"
         query = query.filter(
-            Prodotto.nome.ilike(term) | Prodotto.sku.ilike(term) | Prodotto.descrizione.ilike(term)
+            Prodotto.nome.ilike(term) | Prodotto.sku.ilike(term) |
+            Prodotto.descrizione.ilike(term) | Prodotto.barcode.ilike(term)
         )
     if categoria_id:
         query = query.filter(Prodotto.categoria_id == categoria_id)

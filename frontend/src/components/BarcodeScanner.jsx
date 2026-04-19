@@ -97,6 +97,15 @@ function BarcodeScanner({ onScan, onClose }) {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Restart scanner when scan mode changes (if already scanning)
+  useEffect(() => {
+    if (scanning) {
+      stopScanning()
+      successHandledRef.current = false
+      startScanning(selectedCamera)
+    }
+  }, [scanMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const startScanning = async (cameraId) => {
     if (!mountedRef.current) return
 
@@ -111,16 +120,15 @@ function BarcodeScanner({ onScan, onClose }) {
       // Check torch availability from stream
       if (scanMode === 'barcode' || scanMode === 'auto') {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
+          const testStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' },
           })
-          streamRef.current = stream
-          const track = stream.getVideoTracks()[0]
+          const track = testStream.getVideoTracks()[0]
           if (track?.getCapabilities?.().torch) {
             setTorchAvailable(true)
           }
-          // Close this test stream
-          stream.getTracks().forEach(t => t.stop())
+          // Close this test stream — do NOT assign to streamRef.current
+          testStream.getTracks().forEach(t => t.stop())
         } catch {
           // Ignore torch check errors
         }

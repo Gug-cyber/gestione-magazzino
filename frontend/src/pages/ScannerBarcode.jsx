@@ -30,6 +30,7 @@ function ScannerBarcode() {
 
     if (/^prodotto:\d+$/i.test(value)) {
       const id = value.split(':')[1]
+      setSearchingWithRef(false)
       navigate(`/prodotti/${id}`)
       return
     }
@@ -37,6 +38,7 @@ function ScannerBarcode() {
     try {
       const res = await prodottiAPI.lookupByBarcode(value)
       if (res.data?.id) {
+        setSearchingWithRef(false)
         navigate(`/prodotti/${res.data.id}`)
         return
       }
@@ -48,20 +50,12 @@ function ScannerBarcode() {
       }
     }
 
-    try {
-      const res2 = await prodottiAPI.getAll({ barcode: value, limit: 1 })
-      const items = toItems(res2.data)
-      if (items.length > 0) {
-        navigate(`/prodotti/${items[0].id}`)
-        return
-      }
-    } catch { /* continue */ }
-
     const normalized = normalizeSkuForCode39(value)
     try {
-      const res3 = await prodottiAPI.getAll({ search: normalized, limit: 5 })
-      const items = toItems(res3.data)
+      const res2 = await prodottiAPI.getAll({ search: normalized, limit: 5 })
+      const items = toItems(res2.data)
       if (items.length === 1) {
+        setSearchingWithRef(false)
         navigate(`/prodotti/${items[0].id}`)
         return
       } else if (items.length > 1) {
@@ -71,6 +65,7 @@ function ScannerBarcode() {
           p.sku === normalized
         )
         if (exact) {
+          setSearchingWithRef(false)
           navigate(`/prodotti/${exact.id}`)
           return
         }

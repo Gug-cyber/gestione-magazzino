@@ -209,11 +209,18 @@ function Prodotti() {
   }
 
   useExternalScanner({
-    onScan: (value) => {
+    onScan: async (value) => {
       if (/^prodotto:\d+$/i.test(value)) {
         navigate(`/prodotti/${value.split(':')[1]}`)
         return
       }
+      try {
+        const prodotto = await prodottiAPI.lookupByBarcode(value)
+        if (prodotto?.data?.id) {
+          navigate(`/prodotti/${prodotto.data.id}`)
+          return
+        }
+      } catch (_) {}
       const normalized = normalizeSkuForCode39(value)
       pendingScanAlertRef.current = normalized
       setSearchInput(normalized)
