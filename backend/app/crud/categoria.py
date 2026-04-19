@@ -94,11 +94,11 @@ def get_categorie(
 ) -> List[Categoria]:
     query = db.query(Categoria)
     if only_active is True:
-        query = query.filter(Categoria.is_active == True)
+        query = query.filter(Categoria.is_active.is_(True))
     if show_in_store is True:
-        query = query.filter(Categoria.show_in_store == True)
+        query = query.filter(Categoria.show_in_store.is_(True))
     if show_in_warehouse is True:
-        query = query.filter(Categoria.show_in_warehouse == True)
+        query = query.filter(Categoria.show_in_warehouse.is_(True))
     return query.order_by(Categoria.sort_order, Categoria.nome).offset(skip).limit(limit).all()
 
 
@@ -125,11 +125,11 @@ def build_tree(
         .order_by(Categoria.sort_order, Categoria.nome)
     )
     if only_active is True:
-        query = query.filter(Categoria.is_active == True)
+        query = query.filter(Categoria.is_active.is_(True))
     if show_in_store is True:
-        query = query.filter(Categoria.show_in_store == True)
+        query = query.filter(Categoria.show_in_store.is_(True))
     if show_in_warehouse is True:
-        query = query.filter(Categoria.show_in_warehouse == True)
+        query = query.filter(Categoria.show_in_warehouse.is_(True))
     return query.all()
 
 

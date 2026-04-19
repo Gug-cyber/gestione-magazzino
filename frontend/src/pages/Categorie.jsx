@@ -90,9 +90,9 @@ function CategoriaNode({ categoria, livello, onEdit, onDelete, onAddChild, onReo
         <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '9999px', background: '#f3f4f6', color: '#6b7280', flexShrink: 0 }} title="Visibilità">
           {categoria.show_in_store && categoria.show_in_warehouse ? '🏪📦' : categoria.show_in_store ? '🏪' : categoria.show_in_warehouse ? '📦' : '—'}
         </span>
-        {!categoria.is_active && (
+          {!categoria.is_active && (
           <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '9999px', background: '#fee2e2', color: '#ef4444', flexShrink: 0 }}>
-            Disattiva
+            Disattivata
           </span>
         )}
 
