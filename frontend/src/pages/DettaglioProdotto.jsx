@@ -11,6 +11,7 @@ import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { STATO_CONSERVAZIONE_COLORS, PRIMARY_COLOR } from '../constants/colors'
 import QRCode from 'qrcode'
 import styles from './DettaglioProdotto.module.css'
+import { flattenCategorieTree } from '../utils/categorieUtils'
 
 const CONDIZIONE_MAP = {
   'Near Mint': 'NM', 'Mint': 'NM', 'Quasi Perfetto': 'NM',
@@ -190,8 +191,8 @@ function DettaglioProdotto() {
 
   useEffect(() => {
     loadScheda()
-    Promise.all([categorieAPI.getAll(), ubicazioniAPI.getAll()])
-      .then(([c, u]) => { setCategorie(c.data); setUbicazioni(u.data) })
+    Promise.all([categorieAPI.getTree(), ubicazioniAPI.getAll()])
+      .then(([c, u]) => { setCategorie(c.data || []); setUbicazioni(u.data) })
       .catch(() => {})
     ebayApi.getConnectionStatus()
       .then((res) => setEbayConnected(Boolean(res.data?.connected)))
@@ -524,7 +525,11 @@ function DettaglioProdotto() {
               <select value={form.categoria_id} onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
                 style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}>
                 <option value="">-- Nessuna --</option>
-                {categorie.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                {flattenCategorieTree(categorie).map(c => (
+                  <option key={c.id} value={c.id}>
+                    {'\u00a0\u00a0'.repeat(c.level)}{c.nome}
+                  </option>
+                ))}
               </select>
             </label>
 

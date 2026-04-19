@@ -8,7 +8,18 @@ import { trackPageView } from '../../utils/analytics'
 
 const PAGE_LIMIT = 40
 
-function CategoryDropdown({ value, onChange, options }) {
+function flattenTree(nodes, level = 0) {
+  const result = []
+  for (const node of nodes) {
+    result.push({ value: String(node.id), label: node.nome, level })
+    if (node.figli && node.figli.length > 0) {
+      result.push(...flattenTree(node.figli, level + 1))
+    }
+  }
+  return result
+}
+
+function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
 
@@ -23,7 +34,10 @@ function CategoryDropdown({ value, onChange, options }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [open])
 
-  const selectedLabel = (options.find(o => o.value === value) || options[0])?.label || 'Tutte le categorie'
+  const flatOptions = flattenTree(treeOptions)
+  const selectedLabel = value
+    ? (flatOptions.find(o => o.value === value)?.label || allLabel)
+    : allLabel
 
   return (
     <div ref={containerRef} className="store-category-dropdown" style={{ position: 'relative', flex: '1 1 160px' }}>
@@ -68,11 +82,40 @@ function CategoryDropdown({ value, onChange, options }) {
             border: '1px solid var(--color-border)',
             borderRadius: '8px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-            overflow: 'hidden',
+            overflowY: 'auto',
+            maxHeight: '320px',
           }}
         >
-          {options.map(opt => {
+          {/* "All categories" option */}
+          <button
+            type="button"
+            role="option"
+            aria-selected={!value}
+            onClick={() => { onChange(''); setOpen(false) }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              width: '100%',
+              padding: '10px 14px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid var(--color-border)',
+              cursor: 'pointer',
+              fontSize: '14px',
+              color: !value ? 'var(--color-primary)' : 'var(--color-text)',
+              textAlign: 'left',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)' }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+          >
+            <span style={{ width: '14px', flexShrink: 0 }}>{!value ? '✓' : ''}</span>
+            {allLabel}
+          </button>
+
+          {flatOptions.map(opt => {
             const isSelected = opt.value === value
+            const paddingLeft = 14 + opt.level * 16
             return (
               <button
                 key={opt.value}
@@ -85,12 +128,22 @@ function CategoryDropdown({ value, onChange, options }) {
                   alignItems: 'center',
                   gap: '8px',
                   width: '100%',
-                  padding: '10px 14px',
+                  paddingTop: '8px',
+                  paddingBottom: opt.level === 0 ? '4px' : '8px',
+                  paddingLeft,
+                  paddingRight: '14px',
                   backgroundColor: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
-                  fontSize: '14px',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontSize: opt.level === 0 ? '11px' : '14px',
+                  fontWeight: opt.level === 0 ? 700 : 400,
+                  textTransform: opt.level === 0 ? 'uppercase' : 'none',
+                  letterSpacing: opt.level === 0 ? '0.06em' : 'normal',
+                  color: isSelected
+                    ? 'var(--color-primary)'
+                    : opt.level === 0
+                      ? 'var(--color-text-secondary)'
+                      : 'var(--color-text)',
                   textAlign: 'left',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)' }}
@@ -111,7 +164,7 @@ export default function StorePage() {
   const { addItem } = useCart()
   const { t } = useLanguage()
   const [prodotti, setProdotti] = useState([])
-  const [categorie, setCategorie] = useState([])
+  const [categorieTree, setCategorieTree] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
@@ -176,6 +229,7 @@ export default function StorePage() {
         const prodRes = await storeAPI.getProdotti({
           search: search || undefined,
           categoria_id: categoriaId || undefined,
+          include_descendants: categoriaId ? true : undefined,
           disponibili_only: disponibiliOnly,
           limit: PAGE_LIMIT,
           skip,
@@ -186,8 +240,8 @@ export default function StorePage() {
           setHasMore(newProdotti.length === PAGE_LIMIT)
         }
         if (page === 1) {
-          const catRes = await storeAPI.getCategorie()
-          if (!cancelled) setCategorie(catRes.data)
+          const catRes = await storeAPI.getCategorieTree()
+          if (!cancelled) setCategorieTree(catRes.data || [])
         }
       } catch (err) {
         if (!cancelled) setError('error_loading_products')
@@ -378,7 +432,8 @@ export default function StorePage() {
           <CategoryDropdown
             value={categoriaId}
             onChange={val => setCategoriaId(val)}
-            options={[{ value: '', label: t('filter_all_categories') }, ...categorie.map(c => ({ value: String(c.id), label: c.nome }))]}
+            treeOptions={categorieTree}
+            allLabel={t('filter_all_categories')}
           />
 
           <div className="store-filter-checks" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
