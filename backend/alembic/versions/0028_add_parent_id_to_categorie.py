@@ -26,7 +26,15 @@ def upgrade() -> None:
     if "parent_id" not in columns:
         op.add_column(
             "categorie",
-            sa.Column("parent_id", sa.Integer(), sa.ForeignKey("categorie.id", ondelete="CASCADE"), nullable=True),
+            sa.Column("parent_id", sa.Integer(), nullable=True),
+        )
+        op.create_foreign_key(
+            "fk_categorie_parent_id",
+            "categorie",
+            "categorie",
+            ["parent_id"],
+            ["id"],
+            ondelete="CASCADE",
         )
         op.create_index("ix_categorie_parent_id", "categorie", ["parent_id"], unique=False)
 
@@ -40,4 +48,5 @@ def downgrade() -> None:
     if "ix_categorie_parent_id" in indexes:
         op.drop_index("ix_categorie_parent_id", table_name="categorie")
     if "parent_id" in columns:
+        op.drop_constraint("fk_categorie_parent_id", "categorie", type_="foreignkey")
         op.drop_column("categorie", "parent_id")
