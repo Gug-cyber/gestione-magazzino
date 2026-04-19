@@ -33,8 +33,13 @@ export default function Catalog() {
   const filteredProducts = useMemo(() => {
     if (!prodotti) return [];
     let result = prodotti;
-    if (prezzoMin != null) result = result.filter(p => p.prezzo_vendita != null && p.prezzo_vendita >= prezzoMin);
-    if (prezzoMax != null) result = result.filter(p => p.prezzo_vendita != null && p.prezzo_vendita <= prezzoMax);
+    if (prezzoMin != null || prezzoMax != null) {
+      result = result.filter(p =>
+        p.prezzo_vendita != null &&
+        (prezzoMin == null || p.prezzo_vendita >= prezzoMin) &&
+        (prezzoMax == null || p.prezzo_vendita <= prezzoMax)
+      );
+    }
     if (currentSort === 'price-asc') result = [...result].sort((a, b) => (a.prezzo_vendita || 0) - (b.prezzo_vendita || 0));
     else if (currentSort === 'price-desc') result = [...result].sort((a, b) => (b.prezzo_vendita || 0) - (a.prezzo_vendita || 0));
     else if (currentSort === 'name-asc') result = [...result].sort((a, b) => a.nome.localeCompare(b.nome));

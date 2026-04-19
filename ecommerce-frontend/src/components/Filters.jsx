@@ -111,15 +111,14 @@ export default function Filters({ onClose, isMobile = false }) {
             <React.Fragment key={cat.id}>
               <li>
                 <button
-                  className={`filter-item ${currentCategoryId === cat.id ? 'active' : ''}`}
+                  className={`filter-item category-level-1 ${currentCategoryId === cat.id ? 'active' : ''}`}
                   onClick={() => handleCategoryClick(cat.id)}
-                  style={{ color: 'var(--color-accent)', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
                 >
                   <span>{cat.nome}</span>
                   {cat.figli?.length > 0 && (
                     <span
+                      className="category-expand-toggle"
                       onClick={(e) => toggleExpand(cat.id, e)}
-                      style={{ cursor: 'pointer', padding: '0 4px', fontSize: '12px', lineHeight: 1 }}
                       aria-label={expandedCategories.has(cat.id) ? 'Comprimi' : 'Espandi'}
                     >
                       {expandedCategories.has(cat.id) ? '▾' : '▸'}
@@ -131,15 +130,14 @@ export default function Filters({ onClose, isMobile = false }) {
                 <React.Fragment key={sub.id}>
                   <li>
                     <button
-                      className={`filter-item ${currentCategoryId === sub.id ? 'active' : ''}`}
+                      className={`filter-item category-level-2 ${currentCategoryId === sub.id ? 'active' : ''}`}
                       onClick={() => handleCategoryClick(sub.id)}
-                      style={{ color: '#10b981', paddingLeft: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
                     >
                       <span>{sub.nome}</span>
                       {sub.figli?.length > 0 && (
                         <span
+                          className="category-expand-toggle"
                           onClick={(e) => toggleExpand(sub.id, e)}
-                          style={{ cursor: 'pointer', padding: '0 4px', fontSize: '12px', lineHeight: 1 }}
                           aria-label={expandedCategories.has(sub.id) ? 'Comprimi' : 'Espandi'}
                         >
                           {expandedCategories.has(sub.id) ? '▾' : '▸'}
@@ -150,9 +148,8 @@ export default function Filters({ onClose, isMobile = false }) {
                   {expandedCategories.has(sub.id) && sub.figli?.map((tipo) => (
                     <li key={tipo.id}>
                       <button
-                        className={`filter-item ${currentCategoryId === tipo.id ? 'active' : ''}`}
+                        className={`filter-item category-level-3 ${currentCategoryId === tipo.id ? 'active' : ''}`}
                         onClick={() => handleCategoryClick(tipo.id)}
-                        style={{ color: '#f59e0b', paddingLeft: '2.5rem' }}
                       >
                         <span>{tipo.nome}</span>
                       </button>
