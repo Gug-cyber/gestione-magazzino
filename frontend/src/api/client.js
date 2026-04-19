@@ -72,6 +72,7 @@ export const prodottiAPI = {
 
 export const categorieAPI = {
   getAll: () => client.get('/api/categorie/'),
+  getTree: () => client.get('/api/categorie/tree'),
   getById: (id) => client.get(`/api/categorie/${id}`),
   create: (data) => client.post('/api/categorie/', data),
   update: (id, data) => client.put(`/api/categorie/${id}`, data),

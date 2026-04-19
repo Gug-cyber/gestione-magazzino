@@ -8,8 +8,22 @@ def get_categoria(db: Session, categoria_id: int) -> Optional[Categoria]:
     return db.query(Categoria).filter(Categoria.id == categoria_id).first()
 
 
-def get_categorie(db: Session, skip: int = 0, limit: int = 100) -> List[Categoria]:
+def get_categorie(db: Session, skip: int = 0, limit: int = 1000) -> List[Categoria]:
     return db.query(Categoria).offset(skip).limit(limit).all()
+
+
+def get_categorie_radice(db: Session) -> List[Categoria]:
+    """Restituisce solo le categorie senza padre (livello 1)."""
+    return db.query(Categoria).filter(Categoria.parent_id.is_(None)).all()
+
+
+def get_figli(db: Session, parent_id: int) -> List[Categoria]:
+    return db.query(Categoria).filter(Categoria.parent_id == parent_id).all()
+
+
+def build_tree(db: Session) -> List[Categoria]:
+    """Restituisce le radici con i figli già caricati (lazy loading SQLAlchemy)."""
+    return get_categorie_radice(db)
 
 
 def create_categoria(db: Session, categoria: CategoriaCreate) -> Categoria:
