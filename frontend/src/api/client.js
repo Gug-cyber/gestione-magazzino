@@ -71,12 +71,16 @@ export const prodottiAPI = {
 }
 
 export const categorieAPI = {
-  getAll: () => client.get('/api/categorie/'),
-  getTree: () => client.get('/api/categorie/tree'),
+  getAll: (params = {}) => client.get('/api/categorie/', { params }),
+  getTree: (params = {}) => client.get('/api/categorie/tree', { params }),
   getById: (id) => client.get(`/api/categorie/${id}`),
+  getBreadcrumb: (id) => client.get(`/api/categorie/${id}/breadcrumb`),
+  getDescendants: (id) => client.get(`/api/categorie/${id}/descendants`),
   create: (data) => client.post('/api/categorie/', data),
   update: (id, data) => client.put(`/api/categorie/${id}`, data),
   delete: (id) => client.delete(`/api/categorie/${id}`),
+  reorder: (id, data) => client.post(`/api/categorie/${id}/reorder`, data),
+  validate: () => client.get('/api/categorie/validate'),
 }
 
 export const movimentiAPI = {
