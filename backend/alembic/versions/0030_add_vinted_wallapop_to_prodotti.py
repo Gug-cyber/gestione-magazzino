@@ -25,12 +25,12 @@ def upgrade() -> None:
     if "su_vinted" not in existing_columns:
         op.add_column(
             "prodotti",
-            sa.Column("su_vinted", sa.Boolean(), nullable=True, server_default="false"),
+            sa.Column("su_vinted", sa.Boolean(), nullable=False, server_default="false"),
         )
     if "su_wallapop" not in existing_columns:
         op.add_column(
             "prodotti",
-            sa.Column("su_wallapop", sa.Boolean(), nullable=True, server_default="false"),
+            sa.Column("su_wallapop", sa.Boolean(), nullable=False, server_default="false"),
         )
 
 
