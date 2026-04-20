@@ -50,6 +50,7 @@ const emptyForm = {
   nome: '', descrizione: '', sku: '', barcode: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
   categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '',
+  su_vinted: false, su_wallapop: false,
 }
 
 function NuovoProdotto() {
@@ -380,6 +381,29 @@ function NuovoProdotto() {
                   <option value="">-- Nessuna --</option>
                   {ubicazioni.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                 </select>
+              </div>
+            </div>
+
+            {/* Piattaforme annunci */}
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label className="form-label">Piattaforme annunci</label>
+              <div style={{ display: 'flex', gap: '20px', marginTop: '4px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.su_vinted}
+                    onChange={(e) => setForm({ ...form, su_vinted: e.target.checked })}
+                  />
+                  <span style={{ fontSize: '0.9rem' }}>Vinted</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.su_wallapop}
+                    onChange={(e) => setForm({ ...form, su_wallapop: e.target.checked })}
+                  />
+                  <span style={{ fontSize: '0.9rem' }}>Wallapop</span>
+                </label>
               </div>
             </div>
 

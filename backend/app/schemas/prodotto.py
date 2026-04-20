@@ -20,6 +20,8 @@ class ProdottoBase(BaseModel):
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
     google_drive_folder_id: Optional[str] = None
+    su_vinted: bool = False
+    su_wallapop: bool = False
 
     @field_validator("quantita", "quantita_minima")
     @classmethod
@@ -55,6 +57,8 @@ class ProdottoUpdate(BaseModel):
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
     google_drive_folder_id: Optional[str] = None
+    su_vinted: Optional[bool] = None
+    su_wallapop: Optional[bool] = None
 
 
 class ProdottoResponse(ProdottoBase):
