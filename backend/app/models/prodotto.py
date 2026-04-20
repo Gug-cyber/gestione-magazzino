@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -21,6 +21,8 @@ class Prodotto(Base):
     lingua = Column(String(50), nullable=True)
     foto_path = Column(String(255), nullable=True)
     foto_aggiuntive = Column(JSON, nullable=True)
+    su_vinted = Column(Boolean, nullable=False, default=False)
+    su_wallapop = Column(Boolean, nullable=False, default=False)
     barcode = Column(String(100), nullable=True, index=True, unique=True)
     barcode_generated_at = Column(DateTime(timezone=True), nullable=True)
     cardtrader_blueprint_id = Column(Integer, nullable=True)

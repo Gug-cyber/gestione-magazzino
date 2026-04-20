@@ -353,6 +353,8 @@ function DettaglioProdotto() {
       stato_conservazione: p.stato_conservazione || '',
       lingua: p.lingua || '',
       cardtrader_blueprint_id: p.cardtrader_blueprint_id || '',
+      su_vinted: p.su_vinted ?? false,
+      su_wallapop: p.su_wallapop ?? false,
     })
     setFormError('')
     setShowEditForm(true)
@@ -597,6 +599,26 @@ function DettaglioProdotto() {
             </label>
           </div>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', justifyContent: 'center', marginTop: 8 }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Piattaforme annunci</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!form.su_vinted}
+                onChange={(e) => setForm({ ...form, su_vinted: e.target.checked })}
+              />
+              <span style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Vinted</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!form.su_wallapop}
+                onChange={(e) => setForm({ ...form, su_wallapop: e.target.checked })}
+              />
+              <span style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Wallapop</span>
+            </label>
+          </div>
+
           {/* CardTrader Blueprint ID — nascosto */}
           <div style={{ display: 'none', gridColumn: '1 / -1', marginTop: 8 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -698,6 +720,23 @@ function DettaglioProdotto() {
               <div style={infoRowStyle}>
                 <span style={labelStyle}>Conservazione</span>
                 <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />
+              </div>
+            )}
+            {(prodotto.su_vinted || prodotto.su_wallapop) && (
+              <div style={infoRowStyle}>
+                <span style={labelStyle}>Pubblicato su</span>
+                <span style={{ display: 'flex', gap: 6 }}>
+                  {prodotto.su_vinted && (
+                    <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
+                      Vinted
+                    </span>
+                  )}
+                  {prodotto.su_wallapop && (
+                    <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
+                      Wallapop
+                    </span>
+                  )}
+                </span>
               </div>
             )}
           </div>
