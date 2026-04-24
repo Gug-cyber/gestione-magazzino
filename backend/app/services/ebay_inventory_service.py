@@ -15,10 +15,14 @@ _CONDITION_MAP = {
     "Mint": "NEW",
     "Near Mint": "NEW",
     "Excellent": "USED_EXCELLENT",
-    "Good": "USED_EXCELLENT",
+    "Good": "USED_GOOD",          # corrected from USED_EXCELLENT — more broadly accepted across categories
     "Light Played": "USED_GOOD",
     "Played": "USED_ACCEPTABLE",
     "Poor": "USED_ACCEPTABLE",
+    # Additional values for broader compatibility
+    "Like New": "LIKE_NEW",
+    "Very Good": "USED_EXCELLENT",
+    "Acceptable": "USED_ACCEPTABLE",
 }
 
 _MARKETPLACE_LANGUAGE_MAP = {
@@ -208,6 +212,23 @@ class EbayInventoryService:
         return _MARKETPLACE_LANGUAGE_MAP.get(normalized_marketplace_id, _DEFAULT_CONTENT_LANGUAGE)
 
     @staticmethod
+    def _put_inventory_item_with_fallback(url: str, headers: dict, payload: dict) -> None:
+        """PUT inventory item; if eBay returns 400 and conditionDescription is in the payload,
+        retry once without it — many categories (e.g. toys, action figures) do not accept it."""
+        try:
+            EbayInventoryService._request_with_retry("PUT", url, headers=headers, json=payload)
+        except _EbayRequestHTTPException as exc:
+            if exc.ebay_status == 400 and "conditionDescription" in payload:
+                logger.warning(
+                    "eBay PUT inventory_item returned 400 — retrying without conditionDescription "
+                    "(category may not support it)"
+                )
+                payload_no_desc = {k: v for k, v in payload.items() if k != "conditionDescription"}
+                EbayInventoryService._request_with_retry("PUT", url, headers=headers, json=payload_no_desc)
+            else:
+                raise
+
+    @staticmethod
     def create_or_update_inventory_item(
         token: str,
         sku: str,
@@ -216,7 +237,22 @@ class EbayInventoryService:
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
         aspects: dict[str, list[str]] | None = None,
         condition_override: str | None = None,
+        category_id: str | None = None,
     ) -> None:
+        """Create or update an eBay inventory item for the given product/listing.
+
+        Args:
+            token: OAuth bearer token for the eBay seller account.
+            sku: eBay inventory item SKU.
+            product: product ORM object with nome, descrizione, stato_conservazione etc.
+            listing: EbayListing ORM object (mutable — ebay_item_id/last_sync_at are set).
+            marketplace_id: eBay marketplace (e.g. "EBAY_IT").
+            aspects: explicit item specifics provided by the user; merged with auto-generated ones.
+            condition_override: raw eBay condition string (e.g. "USED_GOOD") that overrides the
+                automatic mapping from product.stato_conservazione.
+            category_id: eBay leaf category ID. Reserved for future category-aware condition
+                validation; currently accepted but not yet used in inventory item logic.
+        """
         title = (product.nome or "").strip()
         if len(title) > 80:
             title = f"{title[:77]}..."
@@ -262,15 +298,14 @@ class EbayInventoryService:
             if sanitized_aspects:
                 payload["product"]["aspects"] = sanitized_aspects
 
-        EbayInventoryService._request_with_retry(
-            "PUT",
+        EbayInventoryService._put_inventory_item_with_fallback(
             url,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
                 "Content-Language": content_language,
             },
-            json=payload,
+            payload=payload,
         )
         listing.ebay_item_id = sku
         listing.last_sync_at = datetime.now(timezone.utc)
