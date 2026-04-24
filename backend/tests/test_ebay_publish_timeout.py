@@ -104,10 +104,15 @@ def test_publish_listing_uses_default_shipping_cost_when_not_provided(client, au
         price,
         quantity,
         marketplace_id,
-        listing,
+        listing_db,
         description,
         shipping_cost,
         category_id=None,
+        listing_format=None,
+        auction_start_price=None,
+        auction_duration=None,
+        auction_reserve_price=None,
+        auction_buy_it_now_price=None,
     ):
         captured["shipping_cost"] = shipping_cost
         return "OFFER-1"

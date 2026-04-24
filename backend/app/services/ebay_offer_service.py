@@ -374,6 +374,10 @@ class EbayOfferService:
         currency = _MARKETPLACE_CURRENCY_MAP.get(normalized_marketplace, "EUR")
 
         if not category_id:
+            logger.warning(
+                "eBay create_offer: category_id non fornito — impossibile pubblicare senza una "
+                "categoria foglia valida (ogni categoria eBay ha condizioni e aspect diversi)"
+            )
             raise HTTPException(
                 status_code=400,
                 detail="Categoria eBay obbligatoria. Seleziona una categoria foglia valida prima di pubblicare l'annuncio.",

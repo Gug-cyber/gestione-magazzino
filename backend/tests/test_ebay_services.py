@@ -77,14 +77,14 @@ def test_inventory_item_payload_uses_only_public_photo_and_sets_condition_descri
     payload = captured["payload"]
     headers = captured["headers"]
     assert captured["method"] == "PUT"
-    assert "Content-Language" not in headers
+    assert headers.get("Content-Language") == "de-DE"
     assert payload["product"]["imageUrls"] == ["https://backend.example.com/uploads/carta.jpg"]
-    assert payload["condition"] == "USED_EXCELLENT"
+    assert payload["condition"] == "USED_GOOD"
     assert payload["conditionDescription"] == "Good"
     assert "sku" not in payload
 
 
-def test_inventory_item_does_not_send_content_language_header_for_unknown_marketplace(monkeypatch):
+def test_inventory_item_sends_default_content_language_for_unknown_marketplace(monkeypatch):
     captured = {}
 
     def _mock_request(method, url, **kwargs):
@@ -110,10 +110,11 @@ def test_inventory_item_does_not_send_content_language_header_for_unknown_market
         marketplace_id="EBAY_UNKNOWN",
     )
 
-    assert "Content-Language" not in captured["headers"]
+    # Unknown marketplaces fall back to the default Content-Language "it-IT"
+    assert captured["headers"].get("Content-Language") == "it-IT"
 
 
-def test_inventory_item_sanitizes_non_ascii_payload_fields(monkeypatch):
+def test_inventory_item_preserves_utf8_in_title_and_description(monkeypatch):
     captured = {}
 
     def _mock_request(method, url, **kwargs):
@@ -134,51 +135,63 @@ def test_inventory_item_sanitizes_non_ascii_payload_fields(monkeypatch):
     EbayInventoryService.create_or_update_inventory_item("token", "SKU-1", product, listing)
 
     payload = captured["payload"]
-    assert payload["product"]["title"] == "Caffe Pokemon aeiou"
-    assert payload["product"]["description"] == "Descrizione con accenti: aeiou e simbolo TM"
-    assert payload["conditionDescription"] == "Usato"
+    # Title and description are preserved as UTF-8 (no ASCII stripping)
+    assert payload["product"]["title"] == "Caffè Pokémon àèìòù"
+    assert payload["product"]["description"] == "Descrizione con accenti: àèìòù e simbolo ™"
+    assert payload["conditionDescription"] == "Usàto"
 
 
-def test_update_quantity_does_not_send_content_language_header(monkeypatch):
+def test_update_quantity_makes_get_then_put(monkeypatch):
     calls = []
 
     def _mock_request(method, url, **kwargs):
         calls.append((method, kwargs["headers"]))
+        if method == "GET":
+            return {"availability": {"shipToLocationAvailability": {"quantity": 10}}}
         return SimpleNamespace()
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
 
     EbayInventoryService.update_quantity("token", "SKU-1", 5, marketplace_id="EBAY_US")
 
-    assert len(calls) == 1
-    method, headers = calls[0]
-    assert method == "PATCH"
-    assert headers["Authorization"] == "Bearer token"
-    assert headers["Content-Type"] == "application/json"
-    assert "Content-Language" not in headers
+    assert len(calls) == 2
+    get_method, get_headers = calls[0]
+    assert get_method == "GET"
+    assert get_headers == {"Authorization": "Bearer token"}
+    assert "Content-Language" not in get_headers
+
+    put_method, put_headers = calls[1]
+    assert put_method == "PUT"
+    assert put_headers["Authorization"] == "Bearer token"
+    assert put_headers["Content-Type"] == "application/json"
+    assert put_headers["Content-Language"] == "en-US"
 
 
-def test_update_quantity_fallback_put_does_not_send_content_language(monkeypatch):
+def test_update_quantity_merges_quantity_into_existing_item(monkeypatch):
+    """update_quantity fetches the existing item (GET) and updates only the quantity before PUT."""
     calls = []
 
     def _mock_request(method, url, **kwargs):
-        calls.append((method, kwargs["headers"]))
-        if method == "PATCH":
-            raise ebay_inventory_service_module._EbayRequestHTTPException(
-                ebay_status=405,
-                detail="Errore creazione inventory eBay: 405",
-            )
+        calls.append((method, kwargs.get("json")))
+        if method == "GET":
+            return {
+                "condition": "USED_GOOD",
+                "product": {"title": "Articolo esistente"},
+                "availability": {"shipToLocationAvailability": {"quantity": 10}},
+            }
         return SimpleNamespace()
 
     monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
 
-    EbayInventoryService.update_quantity("token", "SKU-1", 5, marketplace_id="EBAY_US")
+    EbayInventoryService.update_quantity("token", "SKU-1", 3, marketplace_id="EBAY_IT")
 
-    assert [method for method, _ in calls] == ["PATCH", "PUT"]
-    for _, headers in calls:
-        assert headers["Authorization"] == "Bearer token"
-        assert headers["Content-Type"] == "application/json"
-        assert "Content-Language" not in headers
+    assert [method for method, _ in calls] == ["GET", "PUT"]
+    _, put_payload = calls[1]
+    # PUT payload must preserve existing product data
+    assert put_payload["product"]["title"] == "Articolo esistente"
+    assert put_payload["condition"] == "USED_GOOD"
+    # And update only the quantity
+    assert put_payload["availability"]["shipToLocationAvailability"]["quantity"] == 3
 
 
 def test_publish_request_shipping_cost_default_is_590_and_optional():
@@ -216,6 +229,7 @@ def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
         listing_db=listing_db,
         description="Descrizione prodotto reale",
         shipping_cost=Decimal("4.5"),
+        category_id="19077",
     )
 
     assert offer_id == "OFFER-1"
@@ -250,6 +264,7 @@ def test_create_offer_sanitizes_description_and_maps_currency(monkeypatch):
         marketplace_id="EBAY_GB",
         listing_db=listing_db,
         description="<p>Descrizione <b>valida</b></p>\n\n\nDettagli",
+        category_id="9355",
     )
 
     assert captured["payload"]["listingDescription"] == "Descrizione valida\n\nDettagli"
@@ -287,6 +302,7 @@ def test_create_offer_auction_format(monkeypatch):
         auction_duration="DAYS_7",
         auction_reserve_price=5.00,
         auction_buy_it_now_price=15.00,
+        category_id="45101",
     )
 
     assert offer_id == "OFFER-AUCTION-1"
@@ -329,6 +345,7 @@ def test_create_offer_auction_format_minimal(monkeypatch):
         description="Moneta",
         listing_format="AUCTION",
         auction_start_price=1.00,
+        category_id="45101",
     )
 
     payload = captured["payload"]
@@ -365,13 +382,12 @@ def test_create_offer_uses_only_offer_api_headers(monkeypatch):
         marketplace_id="EBAY_IT",
         listing_db=listing_db,
         description="Descrizione",
+        category_id="19077",
     )
 
-    assert captured["headers"] == {
-        "Authorization": "Bearer token",
-        "Content-Type": "application/json",
-    }
-    assert "Content-Language" not in captured["headers"]
+    assert captured["headers"]["Authorization"] == "Bearer token"
+    assert captured["headers"]["Content-Type"] == "application/json"
+    assert captured["headers"].get("Content-Language") == "it-IT"
 
 
 def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, caplog):
@@ -404,6 +420,7 @@ def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, c
             marketplace_id="EBAY_IT",
             listing_db=listing_db,
             description="Descrizione",
+            category_id="19077",
         )
 
     assert exc_info.value.detail == "Errore creazione offer eBay: 400 (INVALID_FIELD_VALUE)"
@@ -468,9 +485,8 @@ def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
             return None
 
     class _DummyClient:
-        def __init__(self, timeout, transport=None):
+        def __init__(self, timeout):
             self.timeout = timeout
-            captured["transport"] = transport
 
         def __enter__(self):
             return self
@@ -491,10 +507,9 @@ def test_request_with_retry_does_not_inject_extra_headers(monkeypatch):
 
     assert captured["kwargs"]["headers"] == headers
     assert "Content-Language" not in captured["kwargs"]["headers"]
-    assert isinstance(captured["transport"], ebay_offer_service_module._NoContentLanguageTransport)
 
 
-def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
+def test_request_with_retry_passes_headers_through(monkeypatch):
     captured = {}
 
     class _DummyResponse:
@@ -505,7 +520,7 @@ def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeyp
             return None
 
     class _DummyClient:
-        def __init__(self, timeout, transport=None):
+        def __init__(self, timeout):
             self.timeout = timeout
 
         def __enter__(self):
@@ -526,10 +541,12 @@ def test_request_with_retry_removes_content_language_from_kwargs_headers(monkeyp
         headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
     )
 
-    assert captured["kwargs"]["headers"] == {"Authorization": "Bearer token"}
+    # Headers are passed as-is (no stripping at transport level)
+    assert captured["kwargs"]["headers"]["Authorization"] == "Bearer token"
+    assert captured["kwargs"]["headers"].get("Content-Language") == "it-IT"
 
 
-def test_offer_request_with_retry_serializes_non_ascii_json_without_content_language(monkeypatch):
+def test_offer_request_with_retry_serializes_non_ascii_json(monkeypatch):
     captured = {}
 
     class _DummyResponse:
@@ -540,7 +557,7 @@ def test_offer_request_with_retry_serializes_non_ascii_json_without_content_lang
             return None
 
     class _DummyClient:
-        def __init__(self, timeout, transport=None):
+        def __init__(self, timeout):
             self.timeout = timeout
 
         def __enter__(self):
@@ -559,41 +576,17 @@ def test_offer_request_with_retry_serializes_non_ascii_json_without_content_lang
     EbayOfferService._request_with_retry(
         "POST",
         "https://api.example.com/test",
-        headers={"Authorization": "Bearer token", "content-language": "it-IT"},
+        headers={"Authorization": "Bearer token"},
         json=payload,
     )
 
     headers = captured["kwargs"]["headers"]
-    assert "content-language" not in {key.lower() for key in headers}
     assert headers["Content-Type"] == "application/json"
     assert captured["kwargs"]["content"] == json.dumps(payload, ensure_ascii=True).encode("ascii")
     assert "json" not in captured["kwargs"]
 
 
-def test_offer_transport_removes_content_language(monkeypatch):
-    captured = {}
-
-    def _fake_parent_handle_request(self, request):
-        captured["headers"] = request.headers
-        return httpx.Response(200, request=request)
-
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", _fake_parent_handle_request)
-
-    request = httpx.Request(
-        "PUT",
-        "https://api.example.com/test",
-        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
-        content=b"{}",
-    )
-
-    response = ebay_offer_service_module._NoContentLanguageTransport().handle_request(request)
-
-    assert response.status_code == 200
-    assert "content-language" not in {key.lower() for key in captured["headers"]}
-    assert captured["headers"]["Authorization"] == "Bearer token"
-
-
-def test_inventory_request_with_retry_removes_content_language_from_kwargs_headers(monkeypatch):
+def test_inventory_request_with_retry_passes_headers_through(monkeypatch):
     captured = {}
 
     class _DummyResponse:
@@ -617,23 +610,22 @@ def test_inventory_request_with_retry_removes_content_language_from_kwargs_heade
     monkeypatch.setattr("app.services.ebay_inventory_service.requests.Session.request", _dummy_request)
 
     EbayInventoryService._request_with_retry(
-        "GET",
+        "PUT",
         "https://api.example.com/test",
         headers={
             "Authorization": "Bearer token",
             "Content-Language": "it-IT",
-            "Accept-Language": "it-IT",
         },
     )
 
+    # Headers are passed as-is (no stripping in _request_with_retry)
     assert captured["headers"]["Authorization"] == "Bearer token"
     normalized_headers = {key.lower(): value for key, value in captured["headers"].items()}
-    assert "content-language" not in normalized_headers
-    assert "accept-language" not in normalized_headers
+    assert normalized_headers["content-language"] == "it-IT"
     assert captured["timeout"] == 30
 
 
-def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_language(monkeypatch):
+def test_inventory_request_with_retry_serializes_non_ascii_json(monkeypatch):
     captured = {}
 
     class _DummyResponse:
@@ -658,13 +650,14 @@ def test_inventory_request_with_retry_serializes_non_ascii_json_without_content_
     EbayInventoryService._request_with_retry(
         "PUT",
         "https://api.example.com/test",
-        headers={"Authorization": "Bearer token", "content-language": "it-IT"},
+        headers={"Authorization": "Bearer token", "Content-Language": "it-IT"},
         json=payload,
     )
 
     headers = captured["headers"]
     normalized_headers = {key.lower(): value for key, value in headers.items()}
-    assert "content-language" not in normalized_headers
+    # Content-Language is passed as-is (no stripping in _request_with_retry)
+    assert normalized_headers["content-language"] == "it-IT"
     assert normalized_headers["content-type"] == "application/json"
     assert captured["data"] == json.dumps(payload, ensure_ascii=True).encode("ascii")
     assert captured["timeout"] == 30
@@ -714,6 +707,125 @@ def test_inventory_item_propagates_ebay_error_message_on_400(monkeypatch):
     assert exc_info.value.detail == (
         "Errore creazione inventory eBay: 400 (Invalid value for header Content-Language.)"
     )
+
+
+def test_put_inventory_item_with_fallback_retries_without_condition_description_on_400(monkeypatch, caplog):
+    """When PUT returns 400 and conditionDescription is in payload, retry without it."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        payload = kwargs.get("json", {})
+        calls.append(dict(payload))
+        if len(calls) == 1:
+            raise ebay_inventory_service_module._EbayRequestHTTPException(
+                ebay_status=400,
+                detail="Errore creazione inventory eBay: 400 (invalid condition)",
+            )
+        return None  # second attempt succeeds
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    payload = {"condition": "USED_GOOD", "conditionDescription": "Good"}
+    EbayInventoryService._put_inventory_item_with_fallback(
+        "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+        headers={"Authorization": "Bearer token"},
+        payload=payload,
+    )
+
+    assert len(calls) == 2
+    assert "conditionDescription" in calls[0]
+    assert "conditionDescription" not in calls[1]
+    assert any("retrying without conditionDescription" in msg for msg in caplog.messages)
+
+
+def test_put_inventory_item_with_fallback_reraises_non_400_error(monkeypatch):
+    """Errors other than 400 are re-raised immediately (no retry)."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        calls.append(kwargs.get("json", {}))
+        raise ebay_inventory_service_module._EbayRequestHTTPException(
+            ebay_status=422,
+            detail="Errore creazione inventory eBay: 422",
+        )
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    with pytest.raises(ebay_inventory_service_module._EbayRequestHTTPException) as exc_info:
+        EbayInventoryService._put_inventory_item_with_fallback(
+            "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+            headers={"Authorization": "Bearer token"},
+            payload={"condition": "USED_GOOD", "conditionDescription": "Good"},
+        )
+
+    assert exc_info.value.ebay_status == 422
+    assert len(calls) == 1  # no retry
+
+
+def test_put_inventory_item_with_fallback_reraises_400_without_condition_description(monkeypatch):
+    """A 400 without conditionDescription in payload is re-raised without retry."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        calls.append(kwargs.get("json", {}))
+        raise ebay_inventory_service_module._EbayRequestHTTPException(
+            ebay_status=400,
+            detail="Errore creazione inventory eBay: 400",
+        )
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    with pytest.raises(ebay_inventory_service_module._EbayRequestHTTPException):
+        EbayInventoryService._put_inventory_item_with_fallback(
+            "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+            headers={"Authorization": "Bearer token"},
+            payload={"condition": "NEW"},  # no conditionDescription
+        )
+
+    assert len(calls) == 1  # no retry since no conditionDescription
+
+
+def test_create_or_update_inventory_item_accepts_category_id_parameter(monkeypatch):
+    """category_id parameter is accepted without error (for future category-aware validation)."""
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Action Figure Dragon Ball",
+        descrizione="Personaggio in ottime condizioni",
+        stato_conservazione="Near Mint",
+        foto_path="https://img.example.com/fig.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    # Should not raise even with category_id provided
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-TOY-1",
+        product,
+        listing,
+        marketplace_id="EBAY_IT",
+        category_id="19077",
+    )
+
+    payload = captured["payload"]
+    assert payload["condition"] == "NEW"
+    assert "conditionDescription" not in payload
+
+
+def test_condition_map_good_maps_to_used_good():
+    """'Good' condition should map to USED_GOOD (widely accepted across categories incl. toys)."""
+    from app.services.ebay_inventory_service import _CONDITION_MAP
+    assert _CONDITION_MAP["Good"] == "USED_GOOD"
+    assert _CONDITION_MAP["Like New"] == "LIKE_NEW"
+    assert _CONDITION_MAP["Very Good"] == "USED_EXCELLENT"
+    assert _CONDITION_MAP["Acceptable"] == "USED_ACCEPTABLE"
 
 
 def test_policy_cache_ttl_expiration(monkeypatch):
@@ -857,6 +969,7 @@ def test_create_offer_deletes_and_recreates_stale_offer_when_location_not_confir
         marketplace_id="EBAY_IT",
         listing_db=listing_db,
         description="Descrizione",
+        category_id="19077",
     )
 
     assert offer_id == "NEW-OFFER-1"
@@ -906,6 +1019,7 @@ def test_create_offer_falls_back_to_update_when_delete_fails_and_location_not_co
         marketplace_id="EBAY_IT",
         listing_db=listing_db,
         description="Descrizione",
+        category_id="19077",
     )
 
     assert offer_id == "STALE-OFFER-2"
@@ -955,6 +1069,7 @@ def test_create_offer_deletes_and_recreates_stale_offer_when_location_confirmed(
         marketplace_id="EBAY_IT",
         listing_db=listing_db,
         description="Descrizione",
+        category_id="19077",
     )
 
     assert offer_id == "NEW-OFFER-3"

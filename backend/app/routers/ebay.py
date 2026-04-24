@@ -771,6 +771,7 @@ def publish_listing(
             marketplace_id=connection.marketplace_id or "EBAY_IT",
             aspects=payload.aspects,
             condition_override=payload.condition_override,
+            category_id=payload.ebay_category_id,
         )
         offer_id = EbayOfferService.create_offer(
             token,
