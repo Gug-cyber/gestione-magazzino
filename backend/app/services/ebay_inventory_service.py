@@ -237,8 +237,22 @@ class EbayInventoryService:
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
         aspects: dict[str, list[str]] | None = None,
         condition_override: str | None = None,
-        category_id: str | None = None,  # noqa: ARG002 — reserved for future category-aware validation
+        category_id: str | None = None,
     ) -> None:
+        """Create or update an eBay inventory item for the given product/listing.
+
+        Args:
+            token: OAuth bearer token for the eBay seller account.
+            sku: eBay inventory item SKU.
+            product: product ORM object with nome, descrizione, stato_conservazione etc.
+            listing: EbayListing ORM object (mutable — ebay_item_id/last_sync_at are set).
+            marketplace_id: eBay marketplace (e.g. "EBAY_IT").
+            aspects: explicit item specifics provided by the user; merged with auto-generated ones.
+            condition_override: raw eBay condition string (e.g. "USED_GOOD") that overrides the
+                automatic mapping from product.stato_conservazione.
+            category_id: eBay leaf category ID. Reserved for future category-aware condition
+                validation; currently accepted but not yet used in inventory item logic.
+        """
         title = (product.nome or "").strip()
         if len(title) > 80:
             title = f"{title[:77]}..."

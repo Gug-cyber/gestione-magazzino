@@ -786,7 +786,11 @@ def test_put_inventory_item_with_fallback_reraises_400_without_condition_descrip
 
 
 def test_create_or_update_inventory_item_accepts_category_id_parameter(monkeypatch):
-    """category_id parameter is accepted without error (for future category-aware validation)."""
+    """category_id parameter is accepted without error (reserved for future category-aware validation).
+
+    TODO: once category-aware condition validation is implemented, this test should also assert
+    that the category_id is used to fetch/validate valid conditions for the given category.
+    """
     captured = {}
 
     def _mock_request(method, url, **kwargs):
