@@ -538,10 +538,14 @@ def update_connection_settings(
 def get_item_aspects(
     category_id: str = Query(...),
     marketplace_id: str = Query("EBAY_IT"),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """Return required/recommended item aspects for a given eBay leaf category."""
-    token = _get_access_token()
+    connection = _get_connection(db)
+    if not connection or connection.status != "active":
+        return {"aspects": []}
+    token = EbayAuthService.get_valid_token(connection, db)
     env = _get_ebay_env()
     base = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
     url = f"{base}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_aspects_for_category"
@@ -612,10 +616,14 @@ _CONDITION_ID_TO_ENUM: dict[str, str] = {
 def get_category_conditions(
     category_id: str = Query(...),
     marketplace_id: str = Query("EBAY_IT"),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """Return valid listing conditions for a given eBay leaf category."""
-    token = _get_access_token()
+    connection = _get_connection(db)
+    if not connection or connection.status != "active":
+        return {"conditions": []}
+    token = EbayAuthService.get_valid_token(connection, db)
     env = _get_ebay_env()
     base = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
     url = f"{base}/sell/metadata/v1/marketplace/{marketplace_id}/get_listing_conditions_by_category"
