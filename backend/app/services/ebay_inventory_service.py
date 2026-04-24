@@ -37,6 +37,25 @@ _DEFAULT_CONTENT_LANGUAGE = "it-IT"
 def _sanitize_ascii_text(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
 
+def _build_auto_aspects(product) -> dict[str, list[str]]:
+    """Auto-generate common eBay aspects from product data as fallback for required aspects."""
+    auto: dict[str, list[str]] = {}
+    nome = (product.nome or "").strip()
+    if nome:
+        auto["Titolo videogioco"] = [nome]
+        auto["Titolo"] = [nome]
+        auto["Nome"] = [nome]
+        auto["Title"] = [nome]
+    marca = getattr(product, "marca", None) or getattr(product, "brand", None)
+    if marca and str(marca).strip():
+        auto["Marca"] = [str(marca).strip()]
+        auto["Brand"] = [str(marca).strip()]
+    modello = getattr(product, "modello", None) or getattr(product, "model", None)
+    if modello and str(modello).strip():
+        auto["Modello"] = [str(modello).strip()]
+        auto["Model"] = [str(modello).strip()]
+    return auto
+
 class _EbayRequestHTTPException(HTTPException):
     def __init__(self, ebay_status: int, detail: str):
         super().__init__(status_code=502, detail=detail)
@@ -188,10 +207,13 @@ class EbayInventoryService:
             payload["conditionDescription"] = (
                 (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
             )
-        if aspects:
+        # Auto-generate aspects from product data; explicit user aspects take precedence
+        auto_aspects = _build_auto_aspects(product)
+        merged_aspects = {**auto_aspects, **(aspects or {})}
+        if merged_aspects:
             sanitized_aspects = {
                 _sanitize_ascii_text(k): [_sanitize_ascii_text(v) for v in vals]
-                for k, vals in aspects.items()
+                for k, vals in merged_aspects.items()
                 if vals
             }
             if sanitized_aspects:
