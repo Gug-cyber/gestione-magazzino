@@ -58,7 +58,7 @@ class EbayInventoryService:
         clean_headers = dict(headers) if headers else {}
         if json is not None and "content-type" not in {k.lower() for k in clean_headers}:
             clean_headers["Content-Type"] = "application/json"
-        logger.info("eBay inventory request header keys: %%s", sorted(clean_headers.keys()))
+        logger.info("eBay inventory request header keys: %s", sorted(clean_headers.keys()))
 
         session = requests.Session()
         session.headers.clear()
@@ -89,7 +89,7 @@ class EbayInventoryService:
                     error_body = response.text
                 except Exception:
                     error_body = "<unreadable>"
-                logger.error("eBay inventory_item error %%s — body: %%s", status, error_body)
+                logger.error("eBay inventory_item error %s — body: %s", status, error_body)
                 try:
                     error_data = _json.loads(error_body)
                     errors = error_data.get("errors", [])
@@ -155,10 +155,12 @@ class EbayInventoryService:
         aspects: dict[str, list[str]] | None = None,
         condition_override: str | None = None,
     ) -> None:
-        title = _sanitize_ascii_text((product.nome or "").strip())
+        title = (product.nome or "").strip()
         if len(title) > 80:
             title = f"{title[:77]}..."
-        description = _sanitize_ascii_text((product.descrizione or "").strip())
+        description = (product.descrizione or "").strip()
+        if len(description) > 4000:  # eBay API max description length
+            description = description[:3997] + "..."
         image_urls = EbayInventoryService._build_image_urls(product)
         if not image_urls:
             raise HTTPException(status_code=400, detail="Il prodotto non ha immagini pubbliche utilizzabili")
@@ -184,7 +186,7 @@ class EbayInventoryService:
         }
         if condition != "NEW":
             payload["conditionDescription"] = (
-                _sanitize_ascii_text((product.stato_conservazione or "").strip()) or "Usato in buone condizioni"
+                (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
             )
         if aspects:
             sanitized_aspects = {
@@ -226,37 +228,38 @@ class EbayInventoryService:
 
     @staticmethod
     def update_quantity(token: str, sku: str, new_quantity: int, marketplace_id: str = _DEFAULT_MARKETPLACE_ID) -> None:
-        url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
-        payload = {
-            "availability": {
-                "shipToLocationAvailability": {
-                    "quantity": max(0, int(new_quantity)),
-                }
-            }
+        base_url = EbayInventoryService._base_url()
+        url = f"{base_url}/sell/inventory/v1/inventory_item/{sku}"
+        content_language = EbayInventoryService._content_language_for_marketplace(marketplace_id)
+        auth_headers = {"Authorization": f"Bearer {token}"}
+        put_headers = {
+            **auth_headers,
+            "Content-Type": "application/json",
+            "Content-Language": content_language,
         }
+
+        # Step 1: recupera l'item esistente per non sovrascrivere dati del prodotto
+        existing: dict = {}
         try:
-            EbayInventoryService._request_with_retry(
-                "PATCH",
-                url,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
+            result = EbayInventoryService._request_with_retry("GET", url, headers=auth_headers)
+            if result:
+                existing = result
         except HTTPException as exc:
             status = getattr(exc, "ebay_status", None)
-            if status == 405:
-                EbayInventoryService._request_with_retry(
-                    "PUT",
-                    url,
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
+            if status == 404:
+                logger.warning("eBay inventory_item %s non trovato (404) — skip update quantità", sku)
                 return
+            raise
+
+        # Step 2: aggiorna solo la quantità e fai PUT completo
+        existing.setdefault("availability", {}).setdefault(
+            "shipToLocationAvailability", {}
+        )["quantity"] = max(0, int(new_quantity))
+
+        try:
+            EbayInventoryService._request_with_retry("PUT", url, headers=put_headers, json=existing)
+        except HTTPException as exc:
+            status = getattr(exc, "ebay_status", None)
             if status is None:
                 raise
             raise HTTPException(status_code=502, detail=f"Errore update quantità eBay: {status}")
