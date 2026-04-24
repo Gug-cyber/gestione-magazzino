@@ -37,24 +37,67 @@ _DEFAULT_CONTENT_LANGUAGE = "it-IT"
 def _sanitize_ascii_text(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
 
+
+def _get_category_chain(product) -> list[str]:
+    """Risale la gerarchia di categorie e restituisce i nomi dal più specifico al più generico."""
+    names: list[str] = []
+    categoria = getattr(product, "categoria", None)
+    visited: set[int] = set()
+    while categoria is not None:
+        cat_id = getattr(categoria, "id", None)
+        if cat_id in visited:
+            break
+        if cat_id is not None:
+            visited.add(cat_id)
+        nome = (getattr(categoria, "nome", None) or "").strip()
+        if nome:
+            names.append(nome)
+        categoria = getattr(categoria, "parent", None)
+    return names
+
+
 def _build_auto_aspects(product) -> dict[str, list[str]]:
-    """Auto-generate common eBay aspects from product data as fallback for required aspects."""
+    """Auto-genera gli aspect eBay dai dati del prodotto (titolo, categoria/piattaforma, marca, modello)."""
     auto: dict[str, list[str]] = {}
+
+    # Titolo / nome prodotto
     nome = (product.nome or "").strip()
     if nome:
         auto["Titolo videogioco"] = [nome]
         auto["Titolo"] = [nome]
         auto["Nome"] = [nome]
         auto["Title"] = [nome]
+
+    # Piattaforma: risale la gerarchia di categorie
+    # La categoria foglia è tipicamente la piattaforma (es. "PlayStation 4", "Nintendo Switch", "PC")
+    # Il parent è tipicamente il genere (es. "Videogiochi")
+    category_chain = _get_category_chain(product)
+    if category_chain:
+        # La categoria più specifica (foglia) viene usata come Piattaforma
+        piattaforma = category_chain[0]
+        auto["Piattaforma"] = [piattaforma]
+        auto["Platform"] = [piattaforma]
+        logger.debug("eBay auto-aspect Piattaforma='%s' dalla categoria del prodotto", piattaforma)
+
+        # Se c'è anche il parent, usalo come categoria generica (es. "Videogiochi")
+        if len(category_chain) > 1:
+            genere = category_chain[1]
+            auto["Genere"] = [genere]
+
+    # Marca / brand
     marca = getattr(product, "marca", None) or getattr(product, "brand", None)
     if marca and str(marca).strip():
         auto["Marca"] = [str(marca).strip()]
         auto["Brand"] = [str(marca).strip()]
+
+    # Modello
     modello = getattr(product, "modello", None) or getattr(product, "model", None)
     if modello and str(modello).strip():
         auto["Modello"] = [str(modello).strip()]
         auto["Model"] = [str(modello).strip()]
+
     return auto
+
 
 class _EbayRequestHTTPException(HTTPException):
     def __init__(self, ebay_status: int, detail: str):
@@ -207,7 +250,7 @@ class EbayInventoryService:
             payload["conditionDescription"] = (
                 (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
             )
-        # Auto-generate aspects from product data; explicit user aspects take precedence
+        # Auto-genera aspect dai dati del prodotto; gli aspect espliciti dell'utente hanno precedenza
         auto_aspects = _build_auto_aspects(product)
         merged_aspects = {**auto_aspects, **(aspects or {})}
         if merged_aspects:
