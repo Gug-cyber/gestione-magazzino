@@ -4,6 +4,7 @@ import { fornitoriAPI, prodottiAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { useIsMobile } from '../hooks/useIsMobile'
+import useExternalScanner from '../hooks/useExternalScanner'
 import '../styles/shared.css'
 
 export default function NuovaFornitura() {
@@ -31,6 +32,14 @@ export default function NuovaFornitura() {
   const [showScannerSku, setShowScannerSku] = useState(false)
   const [qtaManuale, setQtaManuale] = useState(1)
   const [prezzoManuale, setPrezzoManuale] = useState(0)
+
+  // Scanner fisico → popola campo SKU
+  useExternalScanner({
+    onScan: (code) => {
+      setSkuManuale(normalizeSkuForCode39(code))
+    },
+    enabled: !showScannerSku,
+  })
 
   useEffect(() => {
     fornitoriAPI.getAll()

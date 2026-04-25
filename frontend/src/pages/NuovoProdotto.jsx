@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, ubicazioniAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { useIsMobile } from '../hooks/useIsMobile'
+import useExternalScanner from '../hooks/useExternalScanner'
 import JsBarcode from 'jsbarcode'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { generateSKU } from '../utils/skuGenerator'
@@ -68,6 +69,16 @@ function NuovoProdotto() {
   const [showScanner, setShowScanner] = useState(false)
   const [skuManuale, setSkuManuale] = useState(false)
   const barcodeCanvasRef = useRef(null)
+
+  // Lettore barcode fisico (USB HID / Bluetooth) → popola il campo SKU
+  useExternalScanner({
+    onScan: (code) => {
+      const normalized = normalizeSkuForCode39(code)
+      setSkuManuale(true)
+      setForm(f => ({ ...f, sku: normalized, barcode: code }))
+    },
+    enabled: !showScanner,
+  })
 
   useEffect(() => {
     if (skuManuale) return
