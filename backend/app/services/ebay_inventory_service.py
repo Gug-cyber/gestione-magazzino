@@ -37,6 +37,10 @@ _CONDITION_FALLBACK: dict[str, str] = {
     "USED_GOOD": "USED_ACCEPTABLE",
 }
 
+# Maximum number of PUT attempts in _put_inventory_item_with_fallback
+# (initial attempt + up to 2 fallbacks: conditionDescription removal and condition downgrade)
+_MAX_FALLBACK_ATTEMPTS = 3
+
 _MARKETPLACE_LANGUAGE_MAP = {
     "EBAY_IT": "it-IT",
     "EBAY_DE": "de-DE",
@@ -233,13 +237,12 @@ class EbayInventoryService:
            has a fallback in _CONDITION_FALLBACK, retry with the more permissive condition.
         """
         current_payload = dict(payload)
-        max_attempts = 3
-        for attempt in range(max_attempts):
+        for attempt in range(_MAX_FALLBACK_ATTEMPTS):
             try:
                 EbayInventoryService._request_with_retry("PUT", url, headers=headers, json=current_payload)
                 return
             except _EbayRequestHTTPException as exc:
-                if exc.ebay_status != 400 or attempt >= max_attempts - 1:
+                if exc.ebay_status != 400 or attempt >= _MAX_FALLBACK_ATTEMPTS - 1:
                     raise
                 error_lower = (exc.detail or "").lower()
 

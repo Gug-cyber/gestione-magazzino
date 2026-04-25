@@ -389,7 +389,7 @@ function EbayPubblicaProdotto() {
             {selectedCategoryId && conditionLoadError && (
               <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
                 <div style={{ color: 'var(--color-warning, #e67e22)', fontSize: 13 }}>
-                  ⚠ Impossibile verificare le condizioni valide per questa categoria. Verrà usato &quot;USED_GOOD&quot; come fallback.
+                  ⚠ Impossibile verificare le condizioni valide per questa categoria. Verrà usato &quot;{conditionOverride}&quot; come fallback.
                 </div>
               </div>
             )}
