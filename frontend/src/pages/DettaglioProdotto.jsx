@@ -143,6 +143,27 @@ function DettaglioProdotto() {
   const fotoAggiuntiveInputRef = useRef(null)
   const [uploadingFotoAggiuntiva, setUploadingFotoAggiuntiva] = useState(false)
   const [fotoAggiuntiveError, setFotoAggiuntiveError] = useState('')
+  const [fotoRotazioni, setFotoRotazioni] = useState({})
+
+  const ruotaFoto = (idx, verso) => {
+    setFotoRotazioni(prev => {
+      const corrente = prev[idx] || 0
+      const nuova = (corrente + (verso === 'destra' ? 90 : -90) + 360) % 360
+      return { ...prev, [idx]: nuova }
+    })
+  }
+
+  const salvaRotazione = async (idx) => {
+    const gradi = fotoRotazioni[idx] || 0
+    if (gradi === 0) return
+    try {
+      await prodottiAPI.ruotaFotoAggiuntiva(id, idx, gradi)
+      setFotoRotazioni(prev => { const n = { ...prev }; delete n[idx]; return n })
+      loadScheda()
+    } catch (err) {
+      setFotoAggiuntiveError('Errore nel salvataggio della rotazione')
+    }
+  }
 
   // --- Scanner hardware: intercetta scansioni anche dalla pagina dettaglio ---
   const scanProcessingRef = useRef(false)
@@ -1030,11 +1051,11 @@ function DettaglioProdotto() {
         {(prodotto.foto_aggiuntive || []).length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 12 }}>
             {(prodotto.foto_aggiuntive || []).map((url, idx) => (
-              <div key={idx} style={{ position: 'relative' }}>
+              <div key={idx} style={{ position: 'relative', overflow: 'hidden' }}>
                 <img
                   src={url}
                   alt={`Foto aggiuntiva ${idx + 1}`}
-                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, border: '2px solid var(--color-border)', display: 'block' }}
+                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, border: '2px solid var(--color-border)', display: 'block', transform: `rotate(${fotoRotazioni[idx] || 0}deg)`, transition: 'transform 0.3s ease' }}
                   onError={e => { e.currentTarget.style.opacity = '0.3' }}
                 />
                 <button
@@ -1050,6 +1071,25 @@ function DettaglioProdotto() {
                   title="Rimuovi foto"
                   style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.65)', color: 'white', border: 'none', borderRadius: 4, width: 22, height: 22, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                 >✕</button>
+                <div style={{ position: 'absolute', bottom: 4, left: 4, display: 'flex', gap: 2 }}>
+                  <button
+                    onClick={() => ruotaFoto(idx, 'sinistra')}
+                    title="Ruota a sinistra"
+                    style={{ background: 'rgba(0,0,0,0.65)', color: 'white', border: 'none', borderRadius: 4, width: 22, height: 22, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  >↺</button>
+                  <button
+                    onClick={() => ruotaFoto(idx, 'destra')}
+                    title="Ruota a destra"
+                    style={{ background: 'rgba(0,0,0,0.65)', color: 'white', border: 'none', borderRadius: 4, width: 22, height: 22, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  >↻</button>
+                  {(fotoRotazioni[idx] || 0) !== 0 && (
+                    <button
+                      onClick={() => salvaRotazione(idx)}
+                      title="Salva rotazione"
+                      style={{ background: 'rgba(34,197,94,0.85)', color: 'white', border: 'none', borderRadius: 4, width: 22, height: 22, cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                    >💾</button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

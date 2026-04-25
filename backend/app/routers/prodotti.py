@@ -6,7 +6,7 @@ import uuid
 import cloudinary
 import cloudinary.uploader
 from datetime import datetime as dt_datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Query, Body
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -554,6 +554,53 @@ def remove_foto_aggiuntiva(
         raise HTTPException(status_code=404, detail="Foto aggiuntiva non trovata all'indice specificato")
     existing.pop(index)
     db_prodotto.foto_aggiuntive = existing
+    flag_modified(db_prodotto, "foto_aggiuntive")
+    db.commit()
+    db.refresh(db_prodotto)
+    d = ProdottoResponse.model_validate(db_prodotto).model_dump()
+    d["foto_url"] = _build_foto_url(db_prodotto, request)
+    return d
+
+
+@router.post("/{prodotto_id}/foto-aggiuntive/{index}/ruota", response_model=ProdottoResponse)
+async def ruota_foto_aggiuntiva(
+    prodotto_id: int,
+    index: int,
+    request: Request,
+    gradi: int = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Ruota permanentemente una foto aggiuntiva modificandone l'URL Cloudinary."""
+    import re
+    db_prodotto = crud.get_prodotto(db, prodotto_id)
+    if not db_prodotto:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+
+    foto_aggiuntive = list(db_prodotto.foto_aggiuntive or [])
+    if index < 0 or index >= len(foto_aggiuntive):
+        raise HTTPException(status_code=404, detail="Foto non trovata")
+
+    if gradi not in [90, 180, 270, -90, -180, -270]:
+        raise HTTPException(status_code=400, detail="Gradi non validi. Usare 90, 180, 270 (o i valori negativi corrispondenti)")
+
+    gradi_norm = gradi % 360
+
+    old_url = foto_aggiuntive[index]
+
+    # Rimuovi eventuali trasformazioni di rotazione precedenti nell'URL
+    # Gestisce sia parametri standalone (a_90/) che concatenati (a_90, o ,a_90)
+    url_clean = re.sub(r',a_-?\d+|a_-?\d+,?', '', old_url)
+    # Rimuovi eventuali segmenti di trasformazione vuoti risultanti (doppie slash, escluso il protocollo)
+    url_clean = re.sub(r'(?<!:)//', '/', url_clean)
+
+    if gradi_norm != 0:
+        new_url = url_clean.replace('/upload/', f'/upload/a_{gradi_norm}/')
+    else:
+        new_url = url_clean
+
+    foto_aggiuntive[index] = new_url
+    db_prodotto.foto_aggiuntive = foto_aggiuntive
     flag_modified(db_prodotto, "foto_aggiuntive")
     db.commit()
     db.refresh(db_prodotto)
