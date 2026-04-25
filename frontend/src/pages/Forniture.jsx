@@ -346,6 +346,7 @@ export default function Forniture() {
         nome: nuovoProdottoForm.nome.trim(),
         descrizione: nuovoProdottoForm.descrizione.trim() || null,
         sku: skuFinale.trim(),
+        barcode: nuovoProdottoForm.barcode ? nuovoProdottoForm.barcode.trim() || null : null,
         stato_conservazione: nuovoProdottoForm.stato_conservazione || null,
         lingua: nuovoProdottoForm.lingua || null,
         categoria_id: nuovoProdottoForm.categoria_id ? parseInt(nuovoProdottoForm.categoria_id) : null,

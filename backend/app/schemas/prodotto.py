@@ -23,6 +23,13 @@ class ProdottoBase(BaseModel):
     su_vinted: bool = False
     su_wallapop: bool = False
 
+    @field_validator("barcode")
+    @classmethod
+    def empty_barcode_to_none(cls, v):
+        if v is not None and v.strip() == '':
+            return None
+        return v
+
     @field_validator("quantita", "quantita_minima")
     @classmethod
     def quantita_non_negativa(cls, v):
