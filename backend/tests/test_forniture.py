@@ -215,6 +215,21 @@ def test_packaging_row_non_carica_magazzino(client, auth_headers):
     assert resp_prodotto.json()["quantita"] == 5  # solo riga prodotto caricata
 
 
+def test_create_fornitura_non_carica_stock(client, auth_headers):
+    """Verifica che la sola creazione di una fornitura (bozza) NON modifichi lo stock."""
+    prodotto = _crea_prodotto(client, auth_headers, sku="FOR-TEST-NOCREATE", quantita=5)
+    prodotto_id = prodotto["id"]
+
+    # Crea fornitura ma NON portarla a ricevuto
+    resp = _crea_fornitura(client, auth_headers, prodotto_id, quantita=3)
+    assert resp.status_code == 201
+    assert resp.json()["stato"] == "bozza"
+
+    # Lo stock NON deve essere cambiato
+    resp_prodotto = client.get(f"/api/prodotti/{prodotto_id}", headers=auth_headers)
+    assert resp_prodotto.json()["quantita"] == 5  # invariato
+
+
 def test_analisi_packaging_endpoint(client, auth_headers):
     """Verifica che l'endpoint /analisi/packaging risponda correttamente."""
     resp = client.get("/api/analisi/packaging", headers=auth_headers)
