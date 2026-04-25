@@ -184,6 +184,7 @@ export default function Forniture() {
   const [categorie, setCategorie] = useState([])
   const [ubicazioni, setUbicazioni] = useState([])
   const [showScanner, setShowScanner] = useState(false)
+  const [showScannerForniture, setShowScannerForniture] = useState(false)
   const [scannerRigaIndex, setScannerRigaIndex] = useState(null)
   const [scanError, setScanError] = useState('')
   const scanErrorTimerRef = useRef(null)
@@ -923,20 +924,45 @@ export default function Forniture() {
               <div className={styles.formField} style={{ gridColumn: '1 / -1' }}>
                 <label>SKU generato automaticamente</label>
                 {!nuovoProdottoForm.skuManuale ? (
-                  <input
-                    value={skuGenerato}
-                    readOnly
-                    placeholder="Verrà generato da nome, stato e lingua..."
-                    className={styles.formInput}
-                    style={{ backgroundColor: '#f5f5f5', color: skuGenerato ? '#1b5e20' : '#999', fontWeight: skuGenerato ? 600 : 400 }}
-                  />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      value={skuGenerato}
+                      readOnly
+                      placeholder="Verrà generato da nome, stato e lingua..."
+                      className={styles.formInput}
+                      style={{ flex: 1, backgroundColor: '#f5f5f5', color: skuGenerato ? '#1b5e20' : '#999', fontWeight: skuGenerato ? 600 : 400 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowScannerForniture(true)}
+                      title="Scansiona barcode o QR code"
+                      style={{ padding: '6px 10px', background: '#1a237e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M3 5v14M7 5v14M11 5v14M15 5v8M19 5v8"/>
+                      </svg>
+                    </button>
+                  </div>
                 ) : (
-                  <input
-                    value={nuovoProdottoForm.skuManualeValore}
-                    onChange={e => setNuovoProdottoForm(prev => ({ ...prev, skuManualeValore: e.target.value }))}
-                    placeholder="Inserisci SKU manuale..."
-                    className={styles.formInput}
-                  />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      value={nuovoProdottoForm.skuManualeValore}
+                      onChange={e => setNuovoProdottoForm(prev => ({ ...prev, skuManualeValore: e.target.value }))}
+                      placeholder="Inserisci SKU manuale..."
+                      className={styles.formInput}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowScannerForniture(true)}
+                      title="Scansiona barcode o QR code"
+                      style={{ padding: '6px 10px', background: '#1a237e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M3 5v14M7 5v14M11 5v14M15 5v8M19 5v8"/>
+                      </svg>
+                    </button>
+                  </div>
                 )}
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
                   <input
@@ -1029,6 +1055,16 @@ export default function Forniture() {
       )}
       {showScanner && (
         <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
+      )}
+      {showScannerForniture && (
+        <BarcodeScanner
+          onScan={(value) => {
+            const normalized = normalizeSkuForCode39(value)
+            setNuovoProdottoForm(prev => ({ ...prev, skuManuale: true, skuManualeValore: normalized }))
+            setShowScannerForniture(false)
+          }}
+          onClose={() => setShowScannerForniture(false)}
+        />
       )}
     </div>
   )
