@@ -785,6 +785,130 @@ def test_put_inventory_item_with_fallback_reraises_400_without_condition_descrip
     assert len(calls) == 1  # no retry since no conditionDescription
 
 
+def test_put_inventory_item_with_fallback_retries_with_fallback_condition_on_condition_error(monkeypatch, caplog):
+    """When PUT returns 400 with a condition-related error and no conditionDescription,
+    retry with the next condition in the fallback chain."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        payload = kwargs.get("json", {})
+        calls.append(dict(payload))
+        if len(calls) == 1:
+            raise ebay_inventory_service_module._EbayRequestHTTPException(
+                ebay_status=400,
+                detail="Errore creazione inventory eBay: 400 (invalid item condition information)",
+            )
+        return None  # second attempt succeeds
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    payload = {"condition": "USED_EXCELLENT"}
+    EbayInventoryService._put_inventory_item_with_fallback(
+        "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+        headers={"Authorization": "Bearer token"},
+        payload=payload,
+    )
+
+    assert len(calls) == 2
+    assert calls[0]["condition"] == "USED_EXCELLENT"
+    assert calls[1]["condition"] == "USED_GOOD"
+    assert any("USED_EXCELLENT" in msg and "USED_GOOD" in msg for msg in caplog.messages)
+
+
+def test_put_inventory_item_with_fallback_condition_chain_new_to_used_excellent(monkeypatch, caplog):
+    """NEW condition should fall back to USED_EXCELLENT on a condition error."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        payload = kwargs.get("json", {})
+        calls.append(dict(payload))
+        if len(calls) == 1:
+            raise ebay_inventory_service_module._EbayRequestHTTPException(
+                ebay_status=400,
+                detail="Errore creazione inventory eBay: 400 (invalid item condition)",
+            )
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    EbayInventoryService._put_inventory_item_with_fallback(
+        "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+        headers={"Authorization": "Bearer token"},
+        payload={"condition": "NEW"},
+    )
+
+    assert len(calls) == 2
+    assert calls[1]["condition"] == "USED_EXCELLENT"
+
+
+def test_put_inventory_item_with_fallback_removes_condition_description_before_condition_fallback(monkeypatch, caplog):
+    """When payload has conditionDescription, remove it first; if still 400 with condition error,
+    then apply condition fallback (3 attempts total)."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        payload = kwargs.get("json", {})
+        calls.append(dict(payload))
+        raise ebay_inventory_service_module._EbayRequestHTTPException(
+            ebay_status=400,
+            detail="Errore creazione inventory eBay: 400 (invalid item condition information)",
+        )
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    with pytest.raises(ebay_inventory_service_module._EbayRequestHTTPException):
+        EbayInventoryService._put_inventory_item_with_fallback(
+            "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+            headers={"Authorization": "Bearer token"},
+            payload={"condition": "USED_EXCELLENT", "conditionDescription": "Molto buono"},
+        )
+
+    # Attempt 1: full payload (conditionDescription present)
+    # Attempt 2: without conditionDescription (condition error → condition fallback)
+    # Attempt 3: with fallback condition USED_GOOD, still fails → re-raise
+    assert len(calls) == 3
+    assert "conditionDescription" in calls[0]
+    assert "conditionDescription" not in calls[1]
+    assert calls[1]["condition"] == "USED_EXCELLENT"
+    assert calls[2]["condition"] == "USED_GOOD"
+    assert "conditionDescription" not in calls[2]
+
+
+def test_put_inventory_item_with_fallback_no_condition_fallback_when_no_fallback_available(monkeypatch):
+    """USED_ACCEPTABLE has no further fallback — 400 condition error is re-raised immediately."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        calls.append(kwargs.get("json", {}))
+        raise ebay_inventory_service_module._EbayRequestHTTPException(
+            ebay_status=400,
+            detail="Errore creazione inventory eBay: 400 (invalid item condition)",
+        )
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    with pytest.raises(ebay_inventory_service_module._EbayRequestHTTPException):
+        EbayInventoryService._put_inventory_item_with_fallback(
+            "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+            headers={"Authorization": "Bearer token"},
+            payload={"condition": "USED_ACCEPTABLE"},  # no fallback for this
+        )
+
+    assert len(calls) == 1  # re-raised immediately, no retry
+
+
+def test_condition_fallback_map_entries():
+    """Verify the _CONDITION_FALLBACK map has the expected entries."""
+    fb = ebay_inventory_service_module._CONDITION_FALLBACK
+    assert fb["NEW"] == "USED_EXCELLENT"
+    assert fb["NEW_OTHER"] == "USED_EXCELLENT"
+    assert fb["NEW_WITH_DEFECTS"] == "USED_GOOD"
+    assert fb["LIKE_NEW"] == "USED_EXCELLENT"
+    assert fb["USED_EXCELLENT"] == "USED_GOOD"
+    assert fb["USED_GOOD"] == "USED_ACCEPTABLE"
+    assert "USED_ACCEPTABLE" not in fb  # terminal condition
+
+
 def test_create_or_update_inventory_item_accepts_category_id_parameter(monkeypatch):
     """category_id parameter is accepted without error (reserved for future category-aware validation).
 

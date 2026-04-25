@@ -25,6 +25,18 @@ _CONDITION_MAP = {
     "Acceptable": "USED_ACCEPTABLE",
 }
 
+# Condition fallback chain for 400 "invalid condition for category" errors.
+# When eBay rejects a condition as invalid for the selected category, the PUT is
+# retried with the next (more permissive) condition in this chain.
+_CONDITION_FALLBACK: dict[str, str] = {
+    "NEW": "USED_EXCELLENT",
+    "NEW_OTHER": "USED_EXCELLENT",
+    "NEW_WITH_DEFECTS": "USED_GOOD",
+    "LIKE_NEW": "USED_EXCELLENT",
+    "USED_EXCELLENT": "USED_GOOD",
+    "USED_GOOD": "USED_ACCEPTABLE",
+}
+
 _MARKETPLACE_LANGUAGE_MAP = {
     "EBAY_IT": "it-IT",
     "EBAY_DE": "de-DE",
@@ -213,19 +225,47 @@ class EbayInventoryService:
 
     @staticmethod
     def _put_inventory_item_with_fallback(url: str, headers: dict, payload: dict) -> None:
-        """PUT inventory item; if eBay returns 400 and conditionDescription is in the payload,
-        retry once without it — many categories (e.g. toys, action figures) do not accept it."""
-        try:
-            EbayInventoryService._request_with_retry("PUT", url, headers=headers, json=payload)
-        except _EbayRequestHTTPException as exc:
-            if exc.ebay_status == 400 and "conditionDescription" in payload:
-                logger.warning(
-                    "eBay PUT inventory_item returned 400 — retrying without conditionDescription "
-                    "(category may not support it)"
-                )
-                payload_no_desc = {k: v for k, v in payload.items() if k != "conditionDescription"}
-                EbayInventoryService._request_with_retry("PUT", url, headers=headers, json=payload_no_desc)
-            else:
+        """PUT inventory item with progressive fallback logic for 400 errors (max 3 attempts):
+
+        1. If eBay returns 400 and conditionDescription is in the payload, retry without it —
+           many categories (e.g. toys, action figures) do not accept conditionDescription.
+        2. If eBay returns 400 with a condition-related error message and the current condition
+           has a fallback in _CONDITION_FALLBACK, retry with the more permissive condition.
+        """
+        current_payload = dict(payload)
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                EbayInventoryService._request_with_retry("PUT", url, headers=headers, json=current_payload)
+                return
+            except _EbayRequestHTTPException as exc:
+                if exc.ebay_status != 400 or attempt >= max_attempts - 1:
+                    raise
+                error_lower = (exc.detail or "").lower()
+
+                # Fallback 1: remove conditionDescription if present (category may not support it)
+                if "conditionDescription" in current_payload:
+                    logger.warning(
+                        "eBay PUT inventory_item returned 400 — retrying without conditionDescription "
+                        "(category may not support it)"
+                    )
+                    current_payload = {k: v for k, v in current_payload.items() if k != "conditionDescription"}
+                    continue
+
+                # Fallback 2: if error mentions condition, escalate to a more permissive condition
+                if "condition" in error_lower or "condizione" in error_lower:
+                    original_condition = current_payload.get("condition", "")
+                    fallback_condition = _CONDITION_FALLBACK.get(original_condition)
+                    if fallback_condition:
+                        logger.warning(
+                            "eBay PUT inventory_item returned 400 with condition error — "
+                            "retrying with fallback condition %s → %s",
+                            original_condition,
+                            fallback_condition,
+                        )
+                        current_payload = {**current_payload, "condition": fallback_condition}
+                        continue
+
                 raise
 
     @staticmethod
