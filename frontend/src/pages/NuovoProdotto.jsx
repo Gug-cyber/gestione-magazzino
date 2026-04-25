@@ -93,6 +93,7 @@ function NuovoProdotto() {
     setError('')
     const payload = {
       ...form,
+      barcode: form.barcode ? form.barcode.trim() || null : null,
       quantita: parseInt(form.quantita),
       quantita_minima: parseInt(form.quantita_minima),
       prezzo_acquisto: form.prezzo_acquisto ? parseFloat(form.prezzo_acquisto) : null,
