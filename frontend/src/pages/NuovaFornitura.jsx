@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fornitoriAPI, prodottiAPI } from '../api/client'
 import BarcodeScanner from '../components/BarcodeScanner'
+import { normalizeSkuForCode39 } from '../utils/formatters'
 import { useIsMobile } from '../hooks/useIsMobile'
 import '../styles/shared.css'
 
@@ -27,6 +28,7 @@ export default function NuovaFornitura() {
 
   const [nomeManuale, setNomeManuale] = useState('')
   const [skuManuale, setSkuManuale] = useState('')
+  const [showScannerSku, setShowScannerSku] = useState(false)
   const [qtaManuale, setQtaManuale] = useState(1)
   const [prezzoManuale, setPrezzoManuale] = useState(0)
 
@@ -348,8 +350,30 @@ export default function NuovaFornitura() {
 
             <div style={{ marginBottom: '12px' }}>
               <label className="form-label">SKU (opzionale)</label>
-              <input type="text" value={skuManuale} onChange={e => setSkuManuale(e.target.value)} placeholder="es. SKU-001" className="form-input" />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="text" value={skuManuale} onChange={e => setSkuManuale(e.target.value)} placeholder="es. SKU-001 oppure scansiona →" className="form-input" style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={() => setShowScannerSku(true)}
+                  title="Scansiona barcode o QR code"
+                  style={{ padding: '8px 12px', background: '#1a237e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M3 5v14M7 5v14M11 5v14M15 5v8M19 5v8"/>
+                  </svg>
+                </button>
+              </div>
             </div>
+
+            {showScannerSku && (
+              <BarcodeScanner
+                onScan={(value) => {
+                  setSkuManuale(normalizeSkuForCode39(value))
+                  setShowScannerSku(false)
+                }}
+                onClose={() => setShowScannerSku(false)}
+              />
+            )}
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
               <div style={{ flex: 1 }}>
