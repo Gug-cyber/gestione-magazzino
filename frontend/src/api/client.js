@@ -61,6 +61,8 @@ export const prodottiAPI = {
   },
   removeFotoAggiuntiva: (id, index) =>
     client.delete(`/api/prodotti/${id}/foto-aggiuntive/${index}`),
+  ruotaFotoAggiuntiva: (id, index, gradi) =>
+    client.post(`/api/prodotti/${id}/foto-aggiuntive/${index}/ruota`, { gradi }),
   generateBarcode: (id) => client.post(`/api/prodotti/${id}/barcode`),
   deleteBarcode: (id) => client.delete(`/api/prodotti/${id}/barcode`),
   lookupByBarcode: (barcodeValue) => client.get(`/api/prodotti/barcode/${encodeURIComponent(barcodeValue)}`),
