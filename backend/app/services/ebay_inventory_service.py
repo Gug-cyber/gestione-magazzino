@@ -281,6 +281,7 @@ class EbayInventoryService:
         aspects: dict[str, list[str]] | None = None,
         condition_override: str | None = None,
         category_id: str | None = None,
+        skip_condition_description: bool = False,
     ) -> None:
         """Create or update an eBay inventory item for the given product/listing.
 
@@ -295,6 +296,10 @@ class EbayInventoryService:
                 automatic mapping from product.stato_conservazione.
             category_id: eBay leaf category ID. Reserved for future category-aware condition
                 validation; currently accepted but not yet used in inventory item logic.
+            skip_condition_description: when True, omit the conditionDescription field from the
+                inventory item payload. Some eBay categories (e.g. Action Figures) reject
+                conditionDescription at publish time even though the PUT succeeds; set this flag
+                on retry attempts to work around those category restrictions.
         """
         title = (product.nome or "").strip()
         if len(title) > 80:
@@ -325,7 +330,7 @@ class EbayInventoryService:
             },
             "condition": condition,
         }
-        if condition != "NEW":
+        if condition != "NEW" and not skip_condition_description:
             payload["conditionDescription"] = (
                 (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
             )

@@ -29,6 +29,10 @@ from ..schemas.ebay import (
 )
 from ..services.ebay_auth_service import EbayAuthService
 from ..services.ebay_inventory_service import EbayInventoryService
+from ..services.ebay_inventory_service import (
+    _CONDITION_MAP as _INV_CONDITION_MAP,
+    _CONDITION_FALLBACK as _INV_CONDITION_FALLBACK,
+)
 from ..services.ebay_offer_service import EbayOfferService
 from ..services.ebay_order_sync_service import EbayOrderSyncService
 from ..services.inventory_sync_service import InventorySyncService
@@ -789,7 +793,55 @@ def publish_listing(
             auction_reserve_price=payload.auction_reserve_price,
             auction_buy_it_now_price=payload.auction_buy_it_now_price,
         )
-        ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
+        # Compute the effective condition used so we can fall back if publish rejects it
+        current_condition = (payload.condition_override or "").strip() or _INV_CONDITION_MAP.get(
+            product.stato_conservazione, "USED_GOOD"
+        )
+        skip_cond_desc = False
+        max_publish_attempts = 4  # initial + up to 3 retries
+        ebay_listing_id = None
+        for publish_attempt in range(max_publish_attempts):
+            try:
+                ebay_listing_id = EbayOfferService.publish_offer(token, offer_id)
+                break
+            except HTTPException as pub_exc:
+                detail_lower = (pub_exc.detail or "").lower()
+                is_condition_error = "condition" in detail_lower or "condizione" in detail_lower
+                if not is_condition_error or publish_attempt >= max_publish_attempts - 1:
+                    raise pub_exc
+                # Step 1: retry without conditionDescription (many categories don't accept it)
+                if not skip_cond_desc:
+                    skip_cond_desc = True
+                    logger.warning(
+                        "publish_offer failed with condition error — retrying inventory item "
+                        "without conditionDescription (condition=%s, category=%s)",
+                        current_condition,
+                        payload.ebay_category_id,
+                    )
+                else:
+                    # Step 2: escalate to a more permissive condition in the fallback chain
+                    fallback_condition = _INV_CONDITION_FALLBACK.get(current_condition)
+                    if not fallback_condition:
+                        raise pub_exc
+                    logger.warning(
+                        "publish_offer still failing — escalating condition %s → %s (category=%s)",
+                        current_condition,
+                        fallback_condition,
+                        payload.ebay_category_id,
+                    )
+                    current_condition = fallback_condition
+                # Update the inventory item with the adjusted condition/settings and retry publish
+                EbayInventoryService.create_or_update_inventory_item(
+                    token,
+                    product.sku,
+                    product,
+                    listing,
+                    marketplace_id=connection.marketplace_id or "EBAY_IT",
+                    aspects=payload.aspects,
+                    condition_override=current_condition,
+                    category_id=payload.ebay_category_id,
+                    skip_condition_description=skip_cond_desc,
+                )
 
         listing.ebay_item_id = product.sku
         listing.ebay_offer_id = offer_id

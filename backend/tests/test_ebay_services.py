@@ -947,6 +947,106 @@ def test_create_or_update_inventory_item_accepts_category_id_parameter(monkeypat
     assert "conditionDescription" not in payload
 
 
+def test_create_or_update_inventory_item_skip_condition_description_flag(monkeypatch):
+    """When skip_condition_description=True, conditionDescription must be omitted even for non-NEW conditions."""
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Action Figure Dragon Ball",
+        descrizione="Personaggio usato",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/fig.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-TOY-2",
+        product,
+        listing,
+        marketplace_id="EBAY_IT",
+        skip_condition_description=True,
+    )
+
+    payload = captured["payload"]
+    assert payload["condition"] == "USED_GOOD"
+    assert "conditionDescription" not in payload
+
+
+def test_create_or_update_inventory_item_condition_description_present_by_default(monkeypatch):
+    """By default (skip_condition_description=False), conditionDescription is included for non-NEW conditions."""
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Figura usata",
+        descrizione="Descrizione prodotto",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/fig.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-TOY-3",
+        product,
+        listing,
+        marketplace_id="EBAY_IT",
+    )
+
+    payload = captured["payload"]
+    assert payload["condition"] == "USED_GOOD"
+    assert "conditionDescription" in payload
+    assert payload["conditionDescription"] == "Good"
+
+
+def test_create_or_update_inventory_item_skip_condition_description_with_condition_override(monkeypatch):
+    """skip_condition_description works together with condition_override."""
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Action Figure",
+        descrizione="Dettagli prodotto",
+        stato_conservazione="Like New",
+        foto_path="https://img.example.com/fig.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-TOY-4",
+        product,
+        listing,
+        marketplace_id="EBAY_IT",
+        condition_override="USED_EXCELLENT",
+        skip_condition_description=True,
+    )
+
+    payload = captured["payload"]
+    assert payload["condition"] == "USED_EXCELLENT"
+    assert "conditionDescription" not in payload
+
+
 def test_condition_map_good_maps_to_used_good():
     """'Good' condition should map to USED_GOOD (widely accepted across categories incl. toys)."""
     from app.services.ebay_inventory_service import _CONDITION_MAP
