@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import List, Optional
 from ..database import get_db
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate, ProdottoResponse
@@ -342,7 +342,14 @@ def get_prodotto(prodotto_id: int, request: Request, db: Session = Depends(get_d
 def create_prodotto(prodotto: ProdottoCreate, request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     if crud.get_prodotto_by_sku(db, prodotto.sku):
         raise HTTPException(status_code=400, detail="SKU già esistente")
-    db_prodotto = crud.create_prodotto(db, prodotto)
+    try:
+        db_prodotto = crud.create_prodotto(db, prodotto)
+    except IntegrityError:
+        logger.exception("IntegrityError durante la creazione del prodotto")
+        raise HTTPException(status_code=400, detail="SKU già esistente o errore di integrità del database")
+    except (SQLAlchemyError, RuntimeError):
+        logger.exception("Errore DB durante la creazione del prodotto")
+        raise HTTPException(status_code=500, detail="Errore interno del server durante la creazione del prodotto")
     try:
         log_activity(db, azione="crea_prodotto", utente_id=current_user.id, username=current_user.username, entita="prodotto", entita_id=db_prodotto.id, dettagli=db_prodotto.nome)
     except Exception as e:
@@ -358,7 +365,14 @@ def update_prodotto(prodotto_id: int, prodotto: ProdottoUpdate, request: Request
         existing = crud.get_prodotto_by_sku(db, prodotto.sku)
         if existing and existing.id != prodotto_id:
             raise HTTPException(status_code=400, detail="SKU già utilizzato da un altro prodotto")
-    db_prodotto = crud.update_prodotto(db, prodotto_id, prodotto)
+    try:
+        db_prodotto = crud.update_prodotto(db, prodotto_id, prodotto)
+    except IntegrityError:
+        logger.exception("IntegrityError durante l'aggiornamento del prodotto %s", prodotto_id)
+        raise HTTPException(status_code=400, detail="SKU già esistente o errore di integrità del database")
+    except (SQLAlchemyError, RuntimeError):
+        logger.exception("Errore DB durante l'aggiornamento del prodotto %s", prodotto_id)
+        raise HTTPException(status_code=500, detail="Errore interno del server durante l'aggiornamento del prodotto")
     if not db_prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
     try:

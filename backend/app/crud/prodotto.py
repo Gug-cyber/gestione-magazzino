@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from ..models.prodotto import Prodotto
 from ..models.movimento import Movimento, TipoMovimento
 from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate
@@ -80,7 +81,14 @@ def get_prodotti_sotto_scorta(db: Session) -> List[Prodotto]:
 def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
     db_prodotto = Prodotto(**prodotto.model_dump())
     db.add(db_prodotto)
-    db.flush()  # get the id without committing yet
+    try:
+        db.flush()  # get the id without committing yet
+    except IntegrityError:
+        db.rollback()
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise RuntimeError(f"Errore DB durante la creazione del prodotto: {e}") from e
 
     if db_prodotto.quantita > 0:
         movimento = Movimento(
@@ -92,7 +100,15 @@ def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
         )
         db.add(movimento)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise RuntimeError(f"Errore DB durante il salvataggio del prodotto: {e}") from e
+
     db.refresh(db_prodotto)
     return db_prodotto
 
@@ -103,7 +119,14 @@ def update_prodotto(db: Session, prodotto_id: int, prodotto: ProdottoUpdate) -> 
         return None
     for field, value in prodotto.model_dump(exclude_unset=True).items():
         setattr(db_prodotto, field, value)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise RuntimeError(f"Errore DB durante l'aggiornamento del prodotto: {e}") from e
     db.refresh(db_prodotto)
     return db_prodotto
 
