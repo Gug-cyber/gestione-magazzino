@@ -8,6 +8,7 @@ import { formatDate, formatCurrency } from '../utils/formatters'
 import { generateSKU, STATO_MAP, LINGUA_MAP } from '../utils/skuGenerator'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import BarcodeScanner from '../components/BarcodeScanner'
+import useExternalScanner from '../hooks/useExternalScanner'
 import styles from './Forniture.module.css'
 
 const STATI = ['bozza', 'confermato', 'spedito', 'ricevuto', 'annullato']
@@ -190,6 +191,15 @@ export default function Forniture() {
   const scanErrorTimerRef = useRef(null)
 
   useEffect(() => () => { if (scanErrorTimerRef.current) clearTimeout(scanErrorTimerRef.current) }, [])
+
+  // Scanner fisico → popola SKU nel modal nuovo prodotto (solo quando il modal è aperto)
+  useExternalScanner({
+    onScan: (code) => {
+      const normalized = normalizeSkuForCode39(code)
+      setNuovoProdottoForm(prev => ({ ...prev, skuManuale: true, skuManualeValore: normalized }))
+    },
+    enabled: nuovoProdottoRigaIndex !== null && !showScannerForniture,
+  })
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
