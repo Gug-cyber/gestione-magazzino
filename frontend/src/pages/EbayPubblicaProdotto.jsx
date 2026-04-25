@@ -48,6 +48,7 @@ function EbayPubblicaProdotto() {
   const [validConditions, setValidConditions] = useState([])
   const [conditionOverride, setConditionOverride] = useState('')
   const [conditionWarning, setConditionWarning] = useState(false)
+  const [conditionLoadError, setConditionLoadError] = useState(false)
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -111,6 +112,7 @@ function EbayPubblicaProdotto() {
     setValidConditions([])
     setConditionOverride('')
     setConditionWarning(false)
+    setConditionLoadError(false)
 
     if (selectedCat.is_leaf) {
       setSelectedCategoryId(categoryId)
@@ -150,8 +152,10 @@ function EbayPubblicaProdotto() {
           }
         })
         .catch(() => {
-          // Non-blocking: conditions failure should not block publishing
+          // Conditions could not be loaded: set a safe fallback and warn the user
           setValidConditions([])
+          setConditionLoadError(true)
+          setConditionOverride('USED_GOOD')
         })
       return
     }
@@ -382,6 +386,13 @@ function EbayPubblicaProdotto() {
             </div>
 
             {/* Condition override section */}
+            {selectedCategoryId && conditionLoadError && (
+              <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
+                <div style={{ color: 'var(--color-warning, #e67e22)', fontSize: 13 }}>
+                  ⚠ Impossibile verificare le condizioni valide per questa categoria. Verrà usato &quot;{conditionOverride}&quot; come fallback.
+                </div>
+              </div>
+            )}
             {selectedCategoryId && validConditions.length > 0 && (
               <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
                 <label style={{ display: 'grid', gap: 4 }}>
