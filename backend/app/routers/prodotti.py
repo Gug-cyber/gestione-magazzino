@@ -582,14 +582,17 @@ async def ruota_foto_aggiuntiva(
         raise HTTPException(status_code=404, detail="Foto non trovata")
 
     if gradi not in [90, 180, 270, -90, -180, -270]:
-        raise HTTPException(status_code=400, detail="Gradi non validi. Usare 90, 180 o 270")
+        raise HTTPException(status_code=400, detail="Gradi non validi. Usare 90, 180, 270 (o i valori negativi corrispondenti)")
 
     gradi_norm = gradi % 360
 
     old_url = foto_aggiuntive[index]
 
     # Rimuovi eventuali trasformazioni di rotazione precedenti nell'URL
-    url_clean = re.sub(r'a_-?\d+/', '', old_url)
+    # Gestisce sia parametri standalone (a_90/) che concatenati (a_90, o ,a_90)
+    url_clean = re.sub(r',a_-?\d+|a_-?\d+,?', '', old_url)
+    # Rimuovi eventuali segmenti di trasformazione vuoti risultanti (doppie slash, escluso il protocollo)
+    url_clean = re.sub(r'(?<!:)//', '/', url_clean)
 
     if gradi_norm != 0:
         new_url = url_clean.replace('/upload/', f'/upload/a_{gradi_norm}/')
