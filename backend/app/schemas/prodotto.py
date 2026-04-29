@@ -22,6 +22,7 @@ class ProdottoBase(BaseModel):
     google_drive_folder_id: Optional[str] = None
     su_vinted: bool = False
     su_wallapop: bool = False
+    non_vendibile: bool = False
 
     @field_validator("barcode")
     @classmethod
@@ -66,6 +67,7 @@ class ProdottoUpdate(BaseModel):
     google_drive_folder_id: Optional[str] = None
     su_vinted: Optional[bool] = None
     su_wallapop: Optional[bool] = None
+    non_vendibile: Optional[bool] = None
 
 
 class ProdottoResponse(ProdottoBase):

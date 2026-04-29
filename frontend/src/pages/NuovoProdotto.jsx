@@ -51,7 +51,7 @@ const emptyForm = {
   nome: '', descrizione: '', sku: '', barcode: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
   categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '',
-  su_vinted: false, su_wallapop: false,
+  su_vinted: false, su_wallapop: false, non_vendibile: false,
 }
 
 function NuovoProdotto() {
@@ -400,7 +400,7 @@ function NuovoProdotto() {
             <div className="form-group" style={{ marginTop: '16px' }}>
               <label className="form-label">Piattaforme annunci</label>
               <div style={{ display: 'flex', gap: '20px', marginTop: '4px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
                   <input
                     type="checkbox"
                     checked={!!form.su_vinted}
@@ -408,13 +408,28 @@ function NuovoProdotto() {
                   />
                   <span style={{ fontSize: '0.9rem' }}>Vinted</span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
                   <input
                     type="checkbox"
                     checked={!!form.su_wallapop}
                     onChange={(e) => setForm({ ...form, su_wallapop: e.target.checked })}
                   />
                   <span style={{ fontSize: '0.9rem' }}>Wallapop</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Visibilità */}
+            <div className="form-group" style={{ marginTop: '12px' }}>
+              <label className="form-label">Visibilità</label>
+              <div style={{ marginTop: '4px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content', backgroundColor: form.non_vendibile ? '#fff3e0' : 'transparent', border: form.non_vendibile ? '1px solid #fb8c00' : '1px solid transparent', borderRadius: 6, padding: '4px 8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.non_vendibile}
+                    onChange={(e) => setForm({ ...form, non_vendibile: e.target.checked })}
+                  />
+                  <span style={{ fontSize: '0.9rem', color: form.non_vendibile ? '#e65100' : undefined, fontWeight: form.non_vendibile ? 600 : 400 }}>🚫 Non vendibile (solo magazzino)</span>
                 </label>
               </div>
             </div>
