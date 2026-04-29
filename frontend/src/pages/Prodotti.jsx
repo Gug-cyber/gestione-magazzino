@@ -50,6 +50,7 @@ function Prodotti() {
       barcode: true,
       conservazione: true,
       lingua: true,
+      inVendita: true,
       etichetta: true,
     }
   })
@@ -61,6 +62,7 @@ function Prodotti() {
   const [filterDisponibilita, setFilterDisponibilita] = useState('all')
   const [filterPrezzo, setFilterPrezzo] = useState('all')
   const [filterCategoria, setFilterCategoria] = useState('all')
+  const [filterVendita, setFilterVendita] = useState('all')
   const [categorie, setCategorie] = useState([])
 
   useEffect(() => {
@@ -107,6 +109,7 @@ function Prodotti() {
     { key: 'barcode', label: 'Barcode' },
     { key: 'conservazione', label: 'Conservazione' },
     { key: 'lingua', label: 'Lingua' },
+    { key: 'inVendita', label: 'In Vendita' },
     { key: 'etichetta', label: 'Etichetta' },
   ]
 
@@ -143,10 +146,20 @@ function Prodotti() {
       filtered = filtered.filter(p => p.categoria_id === parseInt(filterCategoria))
     }
 
-    return filtered
-  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria])
+    if (filterVendita === 'vinted') {
+      filtered = filtered.filter(p => p.su_vinted)
+    } else if (filterVendita === 'wallapop') {
+      filtered = filtered.filter(p => p.su_wallapop)
+    } else if (filterVendita === 'any') {
+      filtered = filtered.filter(p => p.su_vinted || p.su_wallapop)
+    } else if (filterVendita === 'none') {
+      filtered = filtered.filter(p => !p.su_vinted && !p.su_wallapop)
+    }
 
-  const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all'
+    return filtered
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, filterVendita])
+
+  const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all' || filterVendita !== 'all'
 
   const prodottiFiltrati = useMemo(() => {
     const base = applyFilters(isFilterActive ? allProdotti : prodotti)
@@ -165,6 +178,7 @@ function Prodotti() {
     setFilterDisponibilita('all')
     setFilterPrezzo('all')
     setFilterCategoria('all')
+    setFilterVendita('all')
     setPage(1)
   }
 
@@ -462,6 +476,20 @@ function Prodotti() {
             ))}
           </select>
         </div>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>In Vendita:</label>
+          <select
+            value={filterVendita}
+            onChange={e => setFilterVendita(e.target.value)}
+            className={styles.filterSelect}
+          >
+            <option value="all">Tutti</option>
+            <option value="any">Pubblicati (qualsiasi)</option>
+            <option value="vinted">Su Vinted</option>
+            <option value="wallapop">Su Wallapop</option>
+            <option value="none">Non pubblicati</option>
+          </select>
+        </div>
         {isFilterActive && (
           <button onClick={resetFilters} className={styles.resetFiltersBtn}>
             ✕ Reset filtri
@@ -564,6 +592,19 @@ function Prodotti() {
                   <span className={styles.cardValue}>{p.lingua}</span>
                 </div>
               )}
+              {(p.su_vinted || p.su_wallapop) && (
+                <div className={styles.cardRow}>
+                  <span className={styles.cardLabel}>In Vendita</span>
+                  <span style={{ display: 'flex', gap: 4 }}>
+                    {p.su_vinted && (
+                      <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>Vinted</span>
+                    )}
+                    {p.su_wallapop && (
+                      <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>Wallapop</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -598,6 +639,7 @@ function Prodotti() {
                 {visibleColumns.barcode && <th className={styles.th}>Barcode</th>}
                 {visibleColumns.conservazione && <th className={styles.th}>Conservazione</th>}
                 {visibleColumns.lingua && <th className={styles.th}>Lingua</th>}
+                {visibleColumns.inVendita && <th className={styles.th}>In Vendita</th>}
                 <th className={styles.th}>Azioni</th>
                 {visibleColumns.etichetta && <th className={styles.th}>Etichetta</th>}
               </tr>
@@ -659,6 +701,21 @@ function Prodotti() {
                     </td>
                   )}
                   {visibleColumns.lingua && <td className={styles.td}>{p.lingua || '—'}</td>}
+                  {visibleColumns.inVendita && (
+                    <td className={styles.td}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {p.su_vinted && (
+                          <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Vinted</span>
+                        )}
+                        {p.su_wallapop && (
+                          <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Wallapop</span>
+                        )}
+                        {!p.su_vinted && !p.su_wallapop && (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   <td className={styles.td}>
                     <button
                       onClick={() => navigate(`/prodotti/${p.id}`)}
