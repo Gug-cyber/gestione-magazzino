@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, getFotoUrl } from '../api/client'
+import { ebayApi } from '../api/ebay'
 import BarcodeScanner from '../components/BarcodeScanner'
 import PrintBarcodeModal from '../components/PrintBarcodeModal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -64,6 +65,7 @@ function Prodotti() {
   const [filterCategoria, setFilterCategoria] = useState('all')
   const [filterVendita, setFilterVendita] = useState('all')
   const [categorie, setCategorie] = useState([])
+  const [ebayActiveProductIds, setEbayActiveProductIds] = useState(new Set())
 
   useEffect(() => {
     localStorage.setItem('prodottiVisibleColumns', JSON.stringify(visibleColumns))
@@ -76,6 +78,19 @@ function Prodotti() {
         console.error('Failed to load categories:', err)
         setCategorie([])
       })
+  }, [])
+
+  useEffect(() => {
+    ebayApi.getListings()
+      .then(res => {
+        const ids = new Set(
+          (res.data || [])
+            .filter(l => l.status === 'active')
+            .map(l => Number(l.product_id))
+        )
+        setEbayActiveProductIds(ids)
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -150,14 +165,16 @@ function Prodotti() {
       filtered = filtered.filter(p => p.su_vinted)
     } else if (filterVendita === 'wallapop') {
       filtered = filtered.filter(p => p.su_wallapop)
+    } else if (filterVendita === 'ebay') {
+      filtered = filtered.filter(p => ebayActiveProductIds.has(Number(p.id)))
     } else if (filterVendita === 'any') {
-      filtered = filtered.filter(p => p.su_vinted || p.su_wallapop)
+      filtered = filtered.filter(p => p.su_vinted || p.su_wallapop || ebayActiveProductIds.has(Number(p.id)))
     } else if (filterVendita === 'none') {
-      filtered = filtered.filter(p => !p.su_vinted && !p.su_wallapop)
+      filtered = filtered.filter(p => !p.su_vinted && !p.su_wallapop && !ebayActiveProductIds.has(Number(p.id)))
     }
 
     return filtered
-  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, filterVendita])
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, filterVendita, ebayActiveProductIds])
 
   const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all' || filterVendita !== 'all'
 
@@ -487,6 +504,7 @@ function Prodotti() {
             <option value="any">Pubblicati (qualsiasi)</option>
             <option value="vinted">Su Vinted</option>
             <option value="wallapop">Su Wallapop</option>
+            <option value="ebay">Su eBay</option>
             <option value="none">Non pubblicati</option>
           </select>
         </div>
@@ -592,15 +610,18 @@ function Prodotti() {
                   <span className={styles.cardValue}>{p.lingua}</span>
                 </div>
               )}
-              {(p.su_vinted || p.su_wallapop) && (
+              {(p.su_vinted || p.su_wallapop || ebayActiveProductIds.has(Number(p.id))) && (
                 <div className={styles.cardRow}>
                   <span className={styles.cardLabel}>In Vendita</span>
                   <span style={{ display: 'flex', gap: 4 }}>
                     {p.su_vinted && (
-                      <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>Vinted</span>
+                      <span title="Vinted" style={{ backgroundColor: '#00b3a4', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>V</span>
                     )}
                     {p.su_wallapop && (
-                      <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>Wallapop</span>
+                      <span title="Wallapop" style={{ backgroundColor: '#e8400c', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>W</span>
+                    )}
+                    {ebayActiveProductIds.has(Number(p.id)) && (
+                      <span title="eBay" style={{ backgroundColor: '#e53238', color: 'white', padding: '1px 6px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600 }}>E</span>
                     )}
                   </span>
                 </div>
@@ -705,12 +726,15 @@ function Prodotti() {
                     <td className={styles.td}>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {p.su_vinted && (
-                          <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Vinted</span>
+                          <span title="Vinted" style={{ backgroundColor: '#00b3a4', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>V</span>
                         )}
                         {p.su_wallapop && (
-                          <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Wallapop</span>
+                          <span title="Wallapop" style={{ backgroundColor: '#e8400c', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>W</span>
                         )}
-                        {!p.su_vinted && !p.su_wallapop && (
+                        {ebayActiveProductIds.has(Number(p.id)) && (
+                          <span title="eBay" style={{ backgroundColor: '#e53238', color: 'white', padding: '2px 7px', borderRadius: 10, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>E</span>
+                        )}
+                        {!p.su_vinted && !p.su_wallapop && !ebayActiveProductIds.has(Number(p.id)) && (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>
                         )}
                       </div>
