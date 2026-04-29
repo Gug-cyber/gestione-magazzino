@@ -23,6 +23,7 @@ class Prodotto(Base):
     foto_aggiuntive = Column(JSON, nullable=True)
     su_vinted = Column(Boolean, nullable=False, default=False)
     su_wallapop = Column(Boolean, nullable=False, default=False)
+    non_vendibile = Column(Boolean, nullable=False, default=False)
     barcode = Column(String(100), nullable=True, index=True, unique=True)
     barcode_generated_at = Column(DateTime(timezone=True), nullable=True)
     cardtrader_blueprint_id = Column(Integer, nullable=True)

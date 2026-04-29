@@ -376,6 +376,7 @@ function DettaglioProdotto() {
       cardtrader_blueprint_id: p.cardtrader_blueprint_id || '',
       su_vinted: p.su_vinted ?? false,
       su_wallapop: p.su_wallapop ?? false,
+      non_vendibile: p.non_vendibile ?? false,
     })
     setFormError('')
     setShowEditForm(true)
@@ -621,8 +622,18 @@ function DettaglioProdotto() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', justifyContent: 'center', marginTop: 8 }}>
+            {/* Visibilità */}
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Visibilità</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content', backgroundColor: form.non_vendibile ? '#fff3e0' : 'transparent', border: form.non_vendibile ? '1px solid #fb8c00' : '1px solid transparent', borderRadius: 6, padding: '4px 8px' }}>
+              <input
+                type="checkbox"
+                checked={!!form.non_vendibile}
+                onChange={(e) => setForm({ ...form, non_vendibile: e.target.checked })}
+              />
+              <span style={{ fontSize: '0.9rem', color: form.non_vendibile ? '#e65100' : 'var(--color-text)', fontWeight: form.non_vendibile ? 600 : 400 }}>🚫 Non vendibile (solo magazzino)</span>
+            </label>
             <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Piattaforme annunci</span>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
               <input
                 type="checkbox"
                 checked={!!form.su_vinted}
@@ -630,7 +641,7 @@ function DettaglioProdotto() {
               />
               <span style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Vinted</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
               <input
                 type="checkbox"
                 checked={!!form.su_wallapop}
@@ -757,6 +768,14 @@ function DettaglioProdotto() {
                       Wallapop
                     </span>
                   )}
+                </span>
+              </div>
+            )}
+            {prodotto.non_vendibile && (
+              <div style={infoRowStyle}>
+                <span style={labelStyle}>Visibilità</span>
+                <span style={{ backgroundColor: '#fb8c00', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
+                  🚫 Non vendibile
                 </span>
               </div>
             )}
