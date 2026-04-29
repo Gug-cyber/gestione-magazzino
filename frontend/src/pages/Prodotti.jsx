@@ -36,13 +36,7 @@ function Prodotti() {
   const pendingScanAlertRef = useRef(null)
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
-    try {
-      const saved = localStorage.getItem('prodottiVisibleColumns')
-      if (saved) return JSON.parse(saved)
-    } catch {
-      // ignore parse errors
-    }
-    return {
+    const defaults = {
       foto: true,
       quantita: true,
       qMin: true,
@@ -54,6 +48,13 @@ function Prodotti() {
       inVendita: true,
       etichetta: true,
     }
+    try {
+      const saved = localStorage.getItem('prodottiVisibleColumns')
+      if (saved) return { ...defaults, ...JSON.parse(saved) }
+    } catch {
+      // ignore parse errors
+    }
+    return defaults
   })
 
   const [showColumnFilter, setShowColumnFilter] = useState(false)
