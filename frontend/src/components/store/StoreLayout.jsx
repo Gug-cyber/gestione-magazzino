@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { storeAPI } from '../../api/store'
+import '../../styles/store-theme.css'
 
 // ─── SVG Social Icons ────────────────────────────────────────────────────────
 
@@ -120,14 +121,16 @@ function StoreFooter() {
   const servizioPages = bySection('servizio')
 
   return (
-    <footer style={{
-      backgroundColor: storeSettings?.footer_bg_color || 'var(--color-bg-elevated)',
-      borderTop: '2px solid var(--color-border)',
-      color: storeSettings?.footer_text_color || 'var(--color-text)',
-      fontFamily: storeSettings?.footer_font_family || undefined,
-      fontSize: storeSettings?.footer_font_size ? `${storeSettings.footer_font_size}px` : undefined,
-      marginTop: '48px',
-    }}>
+    <footer 
+      className="store-footer"
+      style={{
+        background: storeSettings?.footer_bg_color || 'linear-gradient(to bottom, #f1f5f9, #e2e8f0)',
+        borderTop: '1px solid var(--store-border, #e2e8f0)',
+        color: storeSettings?.footer_text_color || 'var(--store-text, #0f172a)',
+        fontFamily: storeSettings?.footer_font_family || undefined,
+        fontSize: storeSettings?.footer_font_size ? `${storeSettings.footer_font_size}px` : undefined,
+        marginTop: '48px',
+      }}>
       {/* Main 4-column area */}
       <div style={{
         maxWidth: '1200px',
@@ -224,12 +227,12 @@ function StoreFooter() {
 
       {/* Bottom bar */}
       <div style={{
-        borderTop: '1px solid var(--color-border)',
-        backgroundColor: 'var(--color-bg)',
-        padding: '16px 24px',
+        borderTop: '1px solid var(--store-border, #e2e8f0)',
+        backgroundColor: '#ffffff',
+        padding: '20px 24px',
         textAlign: 'center',
-        fontSize: '12px',
-        color: 'var(--color-text-secondary)',
+        fontSize: '13px',
+        color: 'var(--store-text-muted, #94a3b8)',
       }}>
         © {new Date().getFullYear()} {storeSettings?.store_nome || 'TCG Store'} — Tutti i diritti riservati
       </div>
@@ -336,13 +339,14 @@ export default function StoreLayout({ children }) {
   const showSidebars = isWide && (leftBanners.length > 0 || rightBanners.length > 0)
 
   const navLinkStyle = (path) => ({
-    color: location.pathname === path ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+    color: location.pathname === path ? 'var(--store-primary)' : 'var(--store-text-secondary)',
     textDecoration: 'none',
-    fontWeight: location.pathname === path ? '600' : '400',
+    fontWeight: location.pathname === path ? '600' : '500',
     fontSize: '14px',
-    padding: '6px 10px',
-    borderRadius: '6px',
-    transition: 'color 150ms ease',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    transition: 'all 150ms ease',
+    backgroundColor: location.pathname === path ? 'var(--store-primary-bg)' : 'transparent',
   })
 
   const sidebarStyle = {
@@ -358,35 +362,39 @@ export default function StoreLayout({ children }) {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      color: 'var(--color-text)',
-      fontFamily: 'var(--font-family)',
-      ...(storeSettings?.store_sfondo_url ? {
-        backgroundImage: `url(${storeSettings.store_sfondo_url})`,
-        backgroundSize: 'cover',
-        backgroundAttachment: 'fixed',
-        backgroundPosition: 'center',
-        backgroundColor: 'transparent',
-      } : {
-        backgroundColor: 'var(--color-bg)',
-      }),
-    }}>
-      {/* Navbar */}
-      <nav style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        backgroundColor: 'var(--color-bg-elevated)',
-        borderBottom: '1px solid var(--color-border)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-        padding: '0 24px',
-        height: '64px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
+    <div 
+      className="store-theme"
+      style={{
+        minHeight: '100vh',
+        color: 'var(--color-text)',
+        fontFamily: 'var(--font-family)',
+        ...(storeSettings?.store_sfondo_url ? {
+          backgroundImage: `url(${storeSettings.store_sfondo_url})`,
+          backgroundSize: 'cover',
+          backgroundAttachment: 'fixed',
+          backgroundPosition: 'center',
+          backgroundColor: 'transparent',
+        } : {
+          backgroundColor: 'var(--store-bg)',
+        }),
       }}>
+      {/* Navbar */}
+      <nav 
+        className="store-navbar"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          background: 'linear-gradient(to bottom, #ffffff, #fafbfc)',
+          borderBottom: '1px solid var(--store-border)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          padding: '0 24px',
+          height: '64px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+        }}>
         <Link to="/store" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {storeSettings?.store_logo_url ? (
             <img

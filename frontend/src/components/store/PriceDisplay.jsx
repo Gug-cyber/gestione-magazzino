@@ -36,7 +36,7 @@ export default function PriceDisplay({
       <p style={{ 
         margin: 0, 
         fontSize: '15px', 
-        color: 'var(--color-text-muted)', 
+        color: '#94a3b8', 
         fontStyle: 'italic',
         display: 'flex',
         alignItems: 'center',
@@ -60,21 +60,21 @@ export default function PriceDisplay({
             <span style={{
               fontSize: mainSize,
               fontWeight: '800',
-              color: 'var(--color-success)',
+              color: '#059669',
               letterSpacing: '-0.5px',
               lineHeight: '1',
-              textShadow: isCard ? 'none' : '0 2px 4px rgba(34, 197, 94, 0.15)',
+              textShadow: isCard ? 'none' : '0 2px 4px rgba(5, 150, 105, 0.12)',
             }}>
               €{scontato.toFixed(2)}
             </span>
             <span style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
               color: '#fff',
               borderRadius: '8px',
               padding: badgePad,
               fontSize: badgeFont,
               fontWeight: '700',
-              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+              boxShadow: '0 2px 8px rgba(5, 150, 105, 0.35)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
@@ -88,7 +88,7 @@ export default function PriceDisplay({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <span style={{ 
               fontSize: strikeSize, 
-              color: 'var(--color-text-muted)', 
+              color: '#94a3b8', 
               textDecoration: 'line-through',
               opacity: 0.7,
             }}>
@@ -97,11 +97,11 @@ export default function PriceDisplay({
             {!isCard && risparmio && (
               <span style={{
                 fontSize: '13px',
-                color: 'var(--color-success)',
+                color: '#059669',
                 fontWeight: '600',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                padding: '4px 10px',
-                borderRadius: '6px',
+                backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                padding: '5px 12px',
+                borderRadius: '8px',
               }}>
                 Risparmi €{risparmio}
               </span>
@@ -112,7 +112,7 @@ export default function PriceDisplay({
         <span style={{
           fontSize: mainSize,
           fontWeight: '800',
-          color: 'var(--color-text)',
+          color: '#0f172a',
           letterSpacing: '-0.5px',
           lineHeight: '1',
         }}>
