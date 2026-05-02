@@ -1,7 +1,7 @@
 import { useLanguage } from '../../context/LanguageContext'
 
 /**
- * StockBadge — dot + text availability indicator
+ * StockBadge — dot + text availability indicator with enhanced styling
  * Props:
  *   quantita       – number (0 = out of stock)
  *   in_esaurimento – boolean (low stock flag from backend)
@@ -10,36 +10,111 @@ import { useLanguage } from '../../context/LanguageContext'
 export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   const { t } = useLanguage()
   if (quantita === 0) {
-    return <DotBadge dotColor="var(--color-danger)">{t('stock_out')}</DotBadge>
+    return (
+      <StatusBadge 
+        color="var(--color-danger)" 
+        bgColor="rgba(239, 68, 68, 0.1)"
+        icon="x"
+      >
+        {t('stock_out')}
+      </StatusBadge>
+    )
   }
   if (in_esaurimento && quantita > 0) {
-    return <DotBadge dotColor="var(--color-warning)">{t('stock_low')}</DotBadge>
+    return (
+      <StatusBadge 
+        color="var(--color-warning)" 
+        bgColor="rgba(245, 158, 11, 0.1)"
+        icon="alert"
+        pulse
+      >
+        {t('stock_low')}
+      </StatusBadge>
+    )
   }
   if (quantita > 0 && quantita <= soglia) {
-    return <DotBadge dotColor="var(--color-info)">{t('stock_only_n', quantita)}</DotBadge>
+    return (
+      <StatusBadge 
+        color="var(--color-info, #3b82f6)" 
+        bgColor="rgba(59, 130, 246, 0.1)"
+        icon="clock"
+      >
+        {t('stock_only_n', quantita)}
+      </StatusBadge>
+    )
   }
-  return <DotBadge dotColor="var(--color-success)">{t('stock_available')}</DotBadge>
+  return (
+    <StatusBadge 
+      color="var(--color-success)" 
+      bgColor="rgba(34, 197, 94, 0.1)"
+      icon="check"
+    >
+      {t('stock_available')}
+    </StatusBadge>
+  )
 }
 
-function DotBadge({ dotColor, children }) {
+function StatusBadge({ color, bgColor, icon, pulse, children }) {
+  const icons = {
+    check: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    ),
+    x: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+    ),
+    alert: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    ),
+    clock: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    ),
+  }
+
   return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '7px',
-      fontSize: '14px',
-      fontWeight: '500',
-      color: 'var(--color-text-secondary)',
-    }}>
+    <>
+      {pulse && (
+        <style>{`
+          @keyframes pulseStock {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+          }
+        `}</style>
+      )}
       <span style={{
-        width: '8px',
-        height: '8px',
-        borderRadius: '50%',
-        backgroundColor: dotColor,
-        flexShrink: 0,
-        boxShadow: `0 0 0 3px color-mix(in srgb, ${dotColor} 20%, transparent)`,
-      }} />
-      {children}
-    </span>
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: '14px',
+        fontWeight: '600',
+        color: color,
+        backgroundColor: bgColor,
+        padding: '8px 14px',
+        borderRadius: '10px',
+        border: `1px solid ${color}`,
+        animation: pulse ? 'pulseStock 2s ease-in-out infinite' : 'none',
+      }}>
+        <span style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+        }}>
+          {icons[icon]}
+        </span>
+        {children}
+      </span>
+    </>
   )
 }
