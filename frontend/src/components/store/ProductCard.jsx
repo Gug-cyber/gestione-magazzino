@@ -51,7 +51,7 @@ function OverlayBadge({ isEsaurito, inEsaurimento, soloN, quantita, promo, t, is
     return (
       <span style={{ 
         ...base, 
-        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)',
       }}>
         NUOVO
       </span>
@@ -388,24 +388,24 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  padding: '12px 16px',
-                  backgroundColor: 'var(--color-primary)',
+                  padding: '14px 16px',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '10px',
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  fontSize: '14px',
                   fontWeight: '600',
-                  transition: 'background-color 200ms ease, transform 150ms ease, box-shadow 200ms ease',
-                  boxShadow: '0 2px 8px rgba(var(--color-primary-rgb, 59, 130, 246), 0.3)',
+                  transition: 'all 200ms ease',
+                  boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.02)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(var(--color-primary-rgb, 59, 130, 246), 0.4)'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(5, 150, 105, 0.45)'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(var(--color-primary-rgb, 59, 130, 246), 0.3)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(5, 150, 105, 0.35)'
                 }}
               >
                 <CartIcon />

@@ -12,8 +12,9 @@ export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   if (quantita === 0) {
     return (
       <StatusBadge 
-        color="var(--color-danger)" 
-        bgColor="rgba(239, 68, 68, 0.1)"
+        color="#dc2626" 
+        bgColor="rgba(220, 38, 38, 0.08)"
+        borderColor="rgba(220, 38, 38, 0.25)"
         icon="x"
       >
         {t('stock_out')}
@@ -23,8 +24,9 @@ export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   if (in_esaurimento && quantita > 0) {
     return (
       <StatusBadge 
-        color="var(--color-warning)" 
-        bgColor="rgba(245, 158, 11, 0.1)"
+        color="#d97706" 
+        bgColor="rgba(217, 119, 6, 0.08)"
+        borderColor="rgba(217, 119, 6, 0.25)"
         icon="alert"
         pulse
       >
@@ -35,8 +37,9 @@ export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   if (quantita > 0 && quantita <= soglia) {
     return (
       <StatusBadge 
-        color="var(--color-info, #3b82f6)" 
-        bgColor="rgba(59, 130, 246, 0.1)"
+        color="#ea580c" 
+        bgColor="rgba(234, 88, 12, 0.08)"
+        borderColor="rgba(234, 88, 12, 0.25)"
         icon="clock"
       >
         {t('stock_only_n', quantita)}
@@ -45,8 +48,9 @@ export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   }
   return (
     <StatusBadge 
-      color="var(--color-success)" 
-      bgColor="rgba(34, 197, 94, 0.1)"
+      color="#16a34a" 
+      bgColor="rgba(22, 163, 74, 0.08)"
+      borderColor="rgba(22, 163, 74, 0.25)"
       icon="check"
     >
       {t('stock_available')}
@@ -54,7 +58,7 @@ export default function StockBadge({ quantita, in_esaurimento, soglia = 3 }) {
   )
 }
 
-function StatusBadge({ color, bgColor, icon, pulse, children }) {
+function StatusBadge({ color, bgColor, borderColor, icon, pulse, children }) {
   const icons = {
     check: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -103,7 +107,7 @@ function StatusBadge({ color, bgColor, icon, pulse, children }) {
         backgroundColor: bgColor,
         padding: '8px 14px',
         borderRadius: '10px',
-        border: `1px solid ${color}`,
+        border: `1px solid ${borderColor || color}`,
         animation: pulse ? 'pulseStock 2s ease-in-out infinite' : 'none',
       }}>
         <span style={{ 
