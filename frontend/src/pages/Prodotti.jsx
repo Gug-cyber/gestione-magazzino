@@ -71,7 +71,7 @@ function Prodotti() {
       qMin: true,
       prezzoAcquisto: true,
       prezzoVendita: true,
-      barcode: true,
+      barcode: false,
       conservazione: true,
       lingua: true,
       inVendita: true,
@@ -615,8 +615,8 @@ function Prodotti() {
               </div>
               <div className={styles.cardRow}>
                 <span className={styles.cardLabel}>Quantità</span>
-                <span className={p.quantita < p.quantita_minima ? styles.qtyLow : styles.qtyOk}>
-                  {p.quantita} {p.quantita < p.quantita_minima ? '⚠️' : ''}
+                <span className={(p.quantita === 0 || (p.quantita_minima !== null && p.quantita < p.quantita_minima)) ? styles.qtyLow : styles.qtyOk}>
+                  {p.quantita} {(p.quantita_minima !== null && p.quantita < p.quantita_minima) ? '⚠️' : ''}
                 </span>
               </div>
               <div className={styles.cardRow}>
@@ -735,7 +735,7 @@ function Prodotti() {
                   )}
                   <td className={styles.td}>{p.nome}</td>
                   {visibleColumns.quantita && (
-                    <td className={`${styles.td} ${p.quantita < p.quantita_minima ? styles.qtyLow : styles.qtyOk}`}>
+                    <td className={`${styles.td} ${(p.quantita === 0 || (p.quantita_minima !== null && p.quantita < p.quantita_minima)) ? styles.qtyLow : styles.qtyOk}`}>
                       {p.quantita}
                     </td>
                   )}
