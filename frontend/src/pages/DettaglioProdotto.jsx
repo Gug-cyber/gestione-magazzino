@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 /* TEMPORANEAMENTE DISABILITATO - CardMarket e CardTrader API issues */
 // import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
 import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI } from '../api/client'
@@ -125,6 +125,8 @@ const PAGE_SIZE = 20
 function DettaglioProdotto() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const fromPage = location.state?.fromPage
   const [scheda, setScheda] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -410,7 +412,7 @@ function DettaglioProdotto() {
     if (!window.confirm('Eliminare questo prodotto?')) return
     try {
       await prodottiAPI.delete(id)
-      navigate('/prodotti')
+      navigate('/prodotti', { state: { returnPage: fromPage || 1 } })
     } catch (err) {
       setError(err.response?.data?.detail || 'Errore durante l\'eliminazione')
     }
@@ -443,7 +445,7 @@ function DettaglioProdotto() {
     return (
       <div style={{ padding: '48px', textAlign: 'center' }}>
         <p style={{ color: '#c62828', fontSize: '1.1rem' }}>{error}</p>
-        <button onClick={() => navigate('/prodotti')} style={btnStyle(PRIMARY_COLOR)}>← Torna ai Prodotti</button>
+        <button onClick={() => navigate('/prodotti', { state: { returnPage: fromPage || 1 } })} style={btnStyle(PRIMARY_COLOR)}>← Torna ai Prodotti</button>
       </div>
     )
   }
@@ -497,7 +499,7 @@ function DettaglioProdotto() {
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <button onClick={() => navigate('/prodotti')} style={btnStyle('#546e7a')}>← Torna ai Prodotti</button>
+        <button onClick={() => navigate('/prodotti', { state: { returnPage: fromPage || 1 } })} style={btnStyle('#546e7a')}>← Torna ai Prodotti</button>
         <h1 style={{ color: 'var(--color-text)', margin: 0, flex: 1, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{prodotto.nome}</h1>
         {ebayListingAttivo && (
           <span style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>
