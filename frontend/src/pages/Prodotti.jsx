@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { prodottiAPI, categorieAPI, getFotoUrl } from '../api/client'
 import { ebayApi } from '../api/ebay'
 import BarcodeScanner from '../components/BarcodeScanner'
@@ -11,18 +11,47 @@ import styles from './Prodotti.module.css'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { lowStockProducts, stagnantProducts, lowMarginProducts, productsWithMissingPricing } from '../utils/alertHelpers'
 import useExternalScanner from '../hooks/useExternalScanner'
+import { flattenCategorieTree } from '../utils/categorieUtils'
 
 const PAGE_SIZE = 50
 
+/**
+ * Recursively collects all descendant category IDs from a category tree for the given target ID.
+ * Includes the target category itself plus all its children and grandchildren.
+ * @param {Array} nodes - Array of category tree nodes with { id, figli? } structure
+ * @param {number} targetId - The ID of the root category to collect descendants for
+ * @returns {Set<number>} Set of all matching IDs (target + all descendants)
+ */
+function getAllDescendantIds(nodes, targetId) {
+  const result = new Set()
+  function collect(nodeList) {
+    for (const node of nodeList) {
+      if (node.id === targetId) {
+        function addAll(n) {
+          result.add(n.id)
+          if (n.figli) n.figli.forEach(addAll)
+        }
+        addAll(node)
+        return true
+      }
+      if (node.figli && collect(node.figli)) return true
+    }
+    return false
+  }
+  collect(nodes)
+  return result
+}
+
 function Prodotti() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const alertFilter = searchParams.get('alert')
   const isMobile = useIsMobile()
   const [prodotti, setProdotti] = useState([])
   const [allProdotti, setAllProdotti] = useState([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(() => location.state?.returnPage || 1)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -65,7 +94,7 @@ function Prodotti() {
   const [filterPrezzo, setFilterPrezzo] = useState('all')
   const [filterCategoria, setFilterCategoria] = useState('all')
   const [filterVendita, setFilterVendita] = useState('all')
-  const [categorie, setCategorie] = useState([])
+  const [categorieTree, setCategorieTree] = useState([])
   const [ebayActiveProductIds, setEbayActiveProductIds] = useState(new Set())
 
   useEffect(() => {
@@ -73,11 +102,11 @@ function Prodotti() {
   }, [visibleColumns])
 
   useEffect(() => {
-    categorieAPI.getAll()
-      .then(res => setCategorie(res.data || []))
+    categorieAPI.getTree()
+      .then(res => setCategorieTree(res.data || []))
       .catch(err => {
         console.error('Failed to load categories:', err)
-        setCategorie([])
+        setCategorieTree([])
       })
   }, [])
 
@@ -159,7 +188,8 @@ function Prodotti() {
     }
 
     if (filterCategoria !== 'all') {
-      filtered = filtered.filter(p => p.categoria_id === parseInt(filterCategoria))
+      const descendantIds = getAllDescendantIds(categorieTree, parseInt(filterCategoria))
+      filtered = filtered.filter(p => descendantIds.has(p.categoria_id))
     }
 
     if (filterVendita === 'vinted') {
@@ -175,7 +205,7 @@ function Prodotti() {
     }
 
     return filtered
-  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, filterVendita, ebayActiveProductIds])
+  }, [filterBarcode, filterDisponibilita, filterPrezzo, filterCategoria, filterVendita, ebayActiveProductIds, categorieTree])
 
   const isFilterActive = filterBarcode !== 'all' || filterDisponibilita !== 'all' || filterPrezzo !== 'all' || filterCategoria !== 'all' || filterVendita !== 'all'
 
@@ -489,8 +519,8 @@ function Prodotti() {
             className={styles.filterSelect}
           >
             <option value="all">Tutte</option>
-            {categorie.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.nome}</option>
+            {flattenCategorieTree(categorieTree).map(c => (
+              <option key={c.id} value={c.id}>{'\u00a0\u00a0'.repeat(c.level)}{c.nome}</option>
             ))}
           </select>
         </div>
@@ -579,7 +609,7 @@ function Prodotti() {
                   </div>
                 </div>
                 <div className={styles.cardActions}>
-                  <button onClick={() => navigate(`/prodotti/${p.id}`)} className={styles.actionBtn} title="Scheda dettaglio">🔍</button>
+                  <button onClick={() => navigate(`/prodotti/${p.id}`, { state: { fromPage: page } })} className={styles.actionBtn} title="Scheda dettaglio">🔍</button>
                   <button onClick={() => openPrintLabel(p)} className={styles.actionBtn} title="Stampa etichetta">🖨️</button>
                 </div>
               </div>
@@ -743,7 +773,7 @@ function Prodotti() {
                   )}
                   <td className={styles.td}>
                     <button
-                      onClick={() => navigate(`/prodotti/${p.id}`)}
+                      onClick={() => navigate(`/prodotti/${p.id}`, { state: { fromPage: page } })}
                       className={styles.actionBtn}
                       title="Scheda dettaglio"
                     >🔍</button>
