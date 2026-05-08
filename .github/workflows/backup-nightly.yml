@@ -2,7 +2,10 @@ name: 🗄️ Backup Notturno DB
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # ogni notte alle 02:00 UTC
+    # Ogni notte alle 04:00 UTC.
+    # Il giorno 1 del mese viene eseguito DOPO backup-monthly.yml (03:00 UTC)
+    # garantendo l'ordine corretto: prima backup applicativo, poi backup DB.
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,9 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Installa postgresql-client
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
-
       - name: Esegui pg_dump
         env:
           # Configurare in GitHub → Settings → Secrets and variables → Actions
