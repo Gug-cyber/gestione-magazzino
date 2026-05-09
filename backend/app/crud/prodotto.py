@@ -2,10 +2,44 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from ..models.prodotto import Prodotto
+from ..models.manual_listing import ManualListing
 from ..models.movimento import Movimento, TipoMovimento
-from ..schemas.prodotto import ProdottoCreate, ProdottoUpdate
+from ..schemas.prodotto import (
+    MANUAL_LISTING_STATUSES,
+    ProdottoCreate,
+    ProdottoUpdate,
+)
 from ..barcode_utils import generate_barcode_value
 from typing import List, Optional
+
+
+def _sync_manual_listings(db_prodotto: Prodotto, manual_listings_data: List[dict]) -> None:
+    by_platform = {listing.platform: listing for listing in (db_prodotto.manual_listings or [])}
+
+    for raw in manual_listings_data:
+        listing_data = dict(raw)
+        platform = listing_data.pop("platform")
+        listing_data.pop("id", None)
+
+        listing = by_platform.get(platform)
+        if listing is None:
+            listing = ManualListing(product_id=db_prodotto.id, platform=platform)
+            db_prodotto.manual_listings.append(listing)
+            by_platform[platform] = listing
+
+        for field, value in listing_data.items():
+            setattr(listing, field, value)
+
+        if listing.active and not listing.status:
+            listing.status = "da_pubblicare"
+        elif not listing.active and not listing.status:
+            listing.status = "non_pubblicare"
+
+        if listing.status not in MANUAL_LISTING_STATUSES:
+            listing.status = "non_pubblicare"
+
+    db_prodotto.su_vinted = bool(by_platform.get("vinted") and by_platform["vinted"].active)
+    db_prodotto.su_wallapop = bool(by_platform.get("wallapop") and by_platform["wallapop"].active)
 
 
 def get_prodotto(db: Session, prodotto_id: int) -> Optional[Prodotto]:
@@ -79,7 +113,9 @@ def get_prodotti_sotto_scorta(db: Session) -> List[Prodotto]:
 
 
 def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
-    db_prodotto = Prodotto(**prodotto.model_dump())
+    prodotto_data = prodotto.model_dump()
+    manual_listings_data = prodotto_data.pop("manual_listings", None)
+    db_prodotto = Prodotto(**prodotto_data)
     db.add(db_prodotto)
     try:
         db.flush()  # get the id without committing yet
@@ -100,6 +136,9 @@ def create_prodotto(db: Session, prodotto: ProdottoCreate) -> Prodotto:
         )
         db.add(movimento)
 
+    if manual_listings_data:
+        _sync_manual_listings(db_prodotto, manual_listings_data)
+
     try:
         db.commit()
     except IntegrityError:
@@ -117,8 +156,15 @@ def update_prodotto(db: Session, prodotto_id: int, prodotto: ProdottoUpdate) -> 
     db_prodotto = get_prodotto(db, prodotto_id)
     if not db_prodotto:
         return None
-    for field, value in prodotto.model_dump(exclude_unset=True).items():
+    update_data = prodotto.model_dump(exclude_unset=True)
+    manual_listings_data = update_data.pop("manual_listings", None)
+
+    for field, value in update_data.items():
         setattr(db_prodotto, field, value)
+
+    if manual_listings_data is not None:
+        _sync_manual_listings(db_prodotto, manual_listings_data)
+
     try:
         db.commit()
     except IntegrityError:

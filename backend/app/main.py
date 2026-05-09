@@ -49,6 +49,7 @@ from .models import ebay_connection as _ebay_connection_model  # noqa: F401 – 
 from .models import ebay_listing as _ebay_listing_model  # noqa: F401 – ensures ebay_listings table is created
 from .models import ebay_sale as _ebay_sale_model  # noqa: F401 – ensures ebay_sales table is created
 from .models import ebay_order_event as _ebay_order_event_model  # noqa: F401 – ensures ebay_order_events table is created
+from .models import manual_listing as _manual_listing_model  # noqa: F401 – ensures manual_listings table is created
 
 load_dotenv()
 

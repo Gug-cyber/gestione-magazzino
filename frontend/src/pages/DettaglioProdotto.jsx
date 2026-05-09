@@ -27,6 +27,48 @@ const LINGUA_MAP = {
   'Francese': 'fr', 'Spagnolo': 'es', 'Portoghese': 'pt',
   'Giapponese': 'ja', 'Cinese': 'zh-hans', 'Coreano': 'ko', 'Russo': 'ru',
 }
+const MANUAL_LISTING_PLATFORMS = ['vinted', 'wallapop']
+const MANUAL_LISTING_LABELS = {
+  non_pubblicare: 'Non pubblicare',
+  da_pubblicare: 'Da pubblicare',
+  pubblicato: 'Pubblicato',
+  venduto: 'Venduto',
+  rimosso: 'Rimosso',
+  da_controllare: 'Da controllare',
+}
+const MANUAL_LISTING_COLORS = {
+  non_pubblicare: { bg: '#2f3640', color: '#d2dae2' },
+  da_pubblicare: { bg: '#5a4fcf', color: '#f5f3ff' },
+  pubblicato: { bg: '#1f8f4a', color: '#ecfff3' },
+  venduto: { bg: '#5f6b7a', color: '#eef2f7' },
+  rimosso: { bg: '#8b3f3f', color: '#ffecec' },
+  da_controllare: { bg: '#c17000', color: '#fff4dd' },
+}
+
+const isValidHttpUrl = (value) => {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const getDefaultManualListing = (platform, prodotto) => {
+  const active = platform === 'vinted' ? Boolean(prodotto?.su_vinted) : Boolean(prodotto?.su_wallapop)
+  return {
+    id: null,
+    platform,
+    active,
+    status: active ? 'da_pubblicare' : 'non_pubblicare',
+    platform_price: '',
+    listing_url: '',
+    published_at: null,
+    sold_at: null,
+    removed_at: null,
+    notes: '',
+  }
+}
 
 function QuantitaChart({ storico }) {
   if (!storico || storico.length === 0) {
@@ -363,6 +405,8 @@ function DettaglioProdotto() {
 
   const handleEditOpen = () => {
     const p = scheda.prodotto
+    const existingManualListings = Array.isArray(p.manual_listings) ? p.manual_listings : []
+    const manualListingsByPlatform = new Map(existingManualListings.map((listing) => [listing.platform, listing]))
     setForm({
       nome: p.nome || '',
       descrizione: p.descrizione || '',
@@ -379,6 +423,19 @@ function DettaglioProdotto() {
       su_vinted: p.su_vinted ?? false,
       su_wallapop: p.su_wallapop ?? false,
       non_vendibile: p.non_vendibile ?? false,
+      manual_listings: MANUAL_LISTING_PLATFORMS.map((platform) => {
+        const fallback = getDefaultManualListing(platform, p)
+        const existing = manualListingsByPlatform.get(platform)
+        if (!existing) return fallback
+        return {
+          ...fallback,
+          ...existing,
+          status: existing.status || (existing.active ? 'da_pubblicare' : 'non_pubblicare'),
+          platform_price: existing.platform_price ?? '',
+          listing_url: existing.listing_url ?? '',
+          notes: existing.notes ?? '',
+        }
+      }),
     })
     setFormError('')
     setShowEditForm(true)
@@ -387,6 +444,16 @@ function DettaglioProdotto() {
   const handleSave = async (e) => {
     e.preventDefault()
     setFormError('')
+    const manualListings = Array.isArray(form.manual_listings) ? form.manual_listings : []
+
+    const invalidUrl = manualListings.find((listing) => listing.listing_url && !isValidHttpUrl(listing.listing_url))
+    if (invalidUrl) {
+      setFormError(`URL non valido per ${invalidUrl.platform === 'vinted' ? 'Vinted' : 'Wallapop'}`)
+      return
+    }
+
+    const vintedListing = manualListings.find((listing) => listing.platform === 'vinted')
+    const wallapopListing = manualListings.find((listing) => listing.platform === 'wallapop')
     const payload = {
       ...form,
       quantita: parseInt(form.quantita),
@@ -398,6 +465,20 @@ function DettaglioProdotto() {
       stato_conservazione: form.stato_conservazione || null,
       lingua: form.lingua || null,
       cardtrader_blueprint_id: form.cardtrader_blueprint_id ? parseInt(form.cardtrader_blueprint_id) : null,
+      su_vinted: Boolean(vintedListing?.active),
+      su_wallapop: Boolean(wallapopListing?.active),
+      manual_listings: manualListings.map((listing) => ({
+        id: listing.id || null,
+        platform: listing.platform,
+        active: Boolean(listing.active),
+        status: listing.status || (listing.active ? 'da_pubblicare' : 'non_pubblicare'),
+        platform_price: listing.platform_price === '' || listing.platform_price == null ? null : parseFloat(listing.platform_price),
+        listing_url: listing.listing_url?.trim() || null,
+        published_at: listing.published_at || null,
+        sold_at: listing.sold_at || null,
+        removed_at: listing.removed_at || null,
+        notes: listing.notes?.trim() || null,
+      })),
     }
     try {
       await prodottiAPI.update(id, payload)
@@ -453,6 +534,25 @@ function DettaglioProdotto() {
   if (!scheda) return <div style={{ padding: '48px', textAlign: 'center', color: '#888' }}>Dati non disponibili</div>
 
   const { prodotto, movimenti, storico_quantita, prodotti_correlati, stats } = scheda
+
+  const manualListingsForView = Array.isArray(prodotto.manual_listings) && prodotto.manual_listings.length > 0
+    ? prodotto.manual_listings
+    : MANUAL_LISTING_PLATFORMS.map((platform) => getDefaultManualListing(platform, prodotto))
+  const activeManualPlatforms = manualListingsForView.filter((listing) => listing.active).map((listing) => listing.platform)
+
+  const updateManualListingForm = (platform, changes) => {
+    setForm((prev) => {
+      const currentListings = Array.isArray(prev.manual_listings) && prev.manual_listings.length > 0
+        ? prev.manual_listings
+        : MANUAL_LISTING_PLATFORMS.map((p) => getDefaultManualListing(p, scheda?.prodotto))
+      return {
+        ...prev,
+        manual_listings: currentListings.map((listing) => (
+          listing.platform === platform ? { ...listing, ...changes } : listing
+        )),
+      }
+    })
+  }
 
   const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -634,23 +734,142 @@ function DettaglioProdotto() {
               />
               <span style={{ fontSize: '0.9rem', color: form.non_vendibile ? '#e65100' : 'var(--color-text)', fontWeight: form.non_vendibile ? 600 : 400 }}>🚫 Non vendibile (solo magazzino)</span>
             </label>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Piattaforme annunci</span>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
-              <input
-                type="checkbox"
-                checked={!!form.su_vinted}
-                onChange={(e) => setForm({ ...form, su_vinted: e.target.checked })}
-              />
-              <span style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Vinted</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
-              <input
-                type="checkbox"
-                checked={!!form.su_wallapop}
-                onChange={(e) => setForm({ ...form, su_wallapop: e.target.checked })}
-              />
-              <span style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Wallapop</span>
-            </label>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Piattaforme annunci manuali</span>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {(() => {
+                const manualListings = Array.isArray(form.manual_listings)
+                  ? form.manual_listings
+                  : MANUAL_LISTING_PLATFORMS.map((platform) => getDefaultManualListing(platform, scheda?.prodotto))
+                const quantitaCorrente = Number(form.quantita ?? 0)
+                const pubblicatiCount = manualListings.filter((listing) => listing.status === 'pubblicato').length
+                return (
+                  <>
+                    {quantitaCorrente === 0 && (
+                      <div style={{ background: 'rgba(255, 152, 0, 0.12)', border: '1px solid rgba(255, 152, 0, 0.35)', color: '#ffcc80', borderRadius: 8, padding: '8px 10px', fontSize: '0.82rem' }}>
+                        Prodotto non disponibile: controlla eventuali annunci manuali ancora attivi.
+                      </div>
+                    )}
+                    {quantitaCorrente === 1 && pubblicatiCount > 1 && (
+                      <div style={{ background: 'rgba(244, 67, 54, 0.12)', border: '1px solid rgba(244, 67, 54, 0.35)', color: '#ffcdd2', borderRadius: 8, padding: '8px 10px', fontSize: '0.82rem' }}>
+                        Attenzione: prodotto singolo pubblicato su più piattaforme.
+                      </div>
+                    )}
+                    {manualListings.map((listing) => {
+                      const platformLabel = listing.platform === 'vinted' ? 'Vinted' : 'Wallapop'
+                      const status = listing.status || (listing.active ? 'da_pubblicare' : 'non_pubblicare')
+                      const statusColors = MANUAL_LISTING_COLORS[status] || MANUAL_LISTING_COLORS.non_pubblicare
+                      const listingUrl = listing.listing_url?.trim() || ''
+                      return (
+                        <div key={listing.platform} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius)', padding: 12, display: 'grid', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                            <strong style={{ color: 'var(--color-text)', fontSize: '0.95rem' }}>{platformLabel}</strong>
+                            <span style={{ background: statusColors.bg, color: statusColors.color, borderRadius: 999, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              {MANUAL_LISTING_LABELS[status] || status}
+                            </span>
+                          </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(listing.active)}
+                              onChange={(e) => {
+                                const active = e.target.checked
+                                updateManualListingForm(listing.platform, {
+                                  active,
+                                  status: active ? (listing.status || 'da_pubblicare') : (listing.status || 'non_pubblicare'),
+                                })
+                              }}
+                            />
+                            <span style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Attivo</span>
+                          </label>
+                          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr' }}>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Stato annuncio</span>
+                              <select
+                                value={status}
+                                onChange={(e) => updateManualListingForm(listing.platform, { status: e.target.value })}
+                                style={{ padding: 8, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: '0.9rem' }}
+                              >
+                                {Object.entries(MANUAL_LISTING_LABELS).map(([value, label]) => (
+                                  <option key={value} value={value}>{label}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Prezzo piattaforma</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={listing.platform_price ?? ''}
+                                onChange={(e) => updateManualListingForm(listing.platform, { platform_price: e.target.value })}
+                                placeholder={form.prezzo_vendita ? `Suggerito: €${Number(form.prezzo_vendita).toFixed(2)}` : 'Prezzo vendita prodotto'}
+                                style={{ padding: 8, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: '0.9rem' }}
+                              />
+                            </label>
+                          </div>
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Link annuncio</span>
+                            <input
+                              type="url"
+                              value={listing.listing_url ?? ''}
+                              onChange={(e) => updateManualListingForm(listing.platform, { listing_url: e.target.value })}
+                              placeholder="https://..."
+                              style={{ padding: 8, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: '0.9rem' }}
+                            />
+                          </label>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                            Data pubblicazione: {listing.published_at ? new Date(listing.published_at).toLocaleString() : '—'}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            <button
+                              type="button"
+                              className="gm-btn gm-btn-secondary gm-btn-sm"
+                              onClick={() => {
+                                if (!listingUrl || !isValidHttpUrl(listingUrl)) {
+                                  setFormError(`Inserisci un link valido prima di segnare pubblicato su ${platformLabel}`)
+                                  return
+                                }
+                                updateManualListingForm(listing.platform, {
+                                  status: 'pubblicato',
+                                  published_at: new Date().toISOString(),
+                                })
+                              }}
+                            >
+                              Segna pubblicato
+                            </button>
+                            {listingUrl && (
+                              <a href={listingUrl} target="_blank" rel="noreferrer" className="gm-btn gm-btn-secondary gm-btn-sm" style={{ textDecoration: 'none' }}>
+                                Apri annuncio
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              className="gm-btn gm-btn-secondary gm-btn-sm"
+                              onClick={() => updateManualListingForm(listing.platform, {
+                                status: 'venduto',
+                                sold_at: new Date().toISOString(),
+                              })}
+                            >
+                              Segna venduto
+                            </button>
+                            <button
+                              type="button"
+                              className="gm-btn gm-btn-danger gm-btn-sm"
+                              onClick={() => updateManualListingForm(listing.platform, {
+                                status: 'rimosso',
+                                removed_at: new Date().toISOString(),
+                              })}
+                            >
+                              Rimuovi / Archivia annuncio
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </>
+                )
+              })()}
+            </div>
           </div>
 
           {/* CardTrader Blueprint ID — nascosto */}
@@ -756,16 +975,16 @@ function DettaglioProdotto() {
                 <StatoBadge value={prodotto.stato_conservazione} colors={STATO_CONSERVAZIONE_COLORS} />
               </div>
             )}
-            {(prodotto.su_vinted || prodotto.su_wallapop) && (
+            {activeManualPlatforms.length > 0 && (
               <div style={infoRowStyle}>
                 <span style={labelStyle}>Pubblicato su</span>
                 <span style={{ display: 'flex', gap: 6 }}>
-                  {prodotto.su_vinted && (
+                  {activeManualPlatforms.includes('vinted') && (
                     <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
                       Vinted
                     </span>
                   )}
-                  {prodotto.su_wallapop && (
+                  {activeManualPlatforms.includes('wallapop') && (
                     <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
                       Wallapop
                     </span>

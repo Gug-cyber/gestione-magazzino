@@ -33,3 +33,4 @@ class Prodotto(Base):
 
     categoria = relationship("Categoria", backref="prodotti")
     ubicazione = relationship("Ubicazione", backref="prodotti")
+    manual_listings = relationship("ManualListing", back_populates="product", cascade="all, delete-orphan")
