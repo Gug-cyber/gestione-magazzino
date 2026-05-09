@@ -978,17 +978,39 @@ function DettaglioProdotto() {
             {activeManualPlatforms.length > 0 && (
               <div style={infoRowStyle}>
                 <span style={labelStyle}>Pubblicato su</span>
-                <span style={{ display: 'flex', gap: 6 }}>
-                  {activeManualPlatforms.includes('vinted') && (
-                    <span style={{ backgroundColor: '#00b3a4', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
-                      Vinted
-                    </span>
-                  )}
-                  {activeManualPlatforms.includes('wallapop') && (
-                    <span style={{ backgroundColor: '#e8400c', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
-                      Wallapop
-                    </span>
-                  )}
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                  {manualListingsForView
+                    .filter((listing) => listing.active)
+                    .map((listing) => {
+                      const platformLabel = listing.platform === 'vinted' ? 'Vinted' : 'Wallapop'
+                      const platformColor = listing.platform === 'vinted' ? '#00b3a4' : '#e8400c'
+                      const listingUrl = listing.listing_url?.trim() || ''
+                      const publishedAt = listing.published_at
+                      return (
+                        <span key={listing.platform} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ backgroundColor: platformColor, color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
+                              {platformLabel}
+                            </span>
+                            {listingUrl && (
+                              <a
+                                href={listingUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ fontSize: '0.75rem', color: platformColor, textDecoration: 'none', fontWeight: 600 }}
+                              >
+                                Apri →
+                              </a>
+                            )}
+                          </span>
+                          {publishedAt && (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                              Pubbl. {new Date(publishedAt).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })}
                 </span>
               </div>
             )}
