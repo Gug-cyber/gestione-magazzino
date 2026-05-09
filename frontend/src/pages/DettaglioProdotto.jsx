@@ -472,7 +472,7 @@ function DettaglioProdotto() {
         platform: listing.platform,
         active: Boolean(listing.active),
         status: listing.status || (listing.active ? 'da_pubblicare' : 'non_pubblicare'),
-        platform_price: listing.platform_price === '' || listing.platform_price == null ? null : parseFloat(listing.platform_price),
+        platform_price: listing.platform_price === '' || listing.platform_price === null || listing.platform_price === undefined ? null : parseFloat(listing.platform_price),
         listing_url: listing.listing_url?.trim() || null,
         published_at: listing.published_at || null,
         sold_at: listing.sold_at || null,
