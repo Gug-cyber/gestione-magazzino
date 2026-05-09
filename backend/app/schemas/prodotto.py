@@ -43,7 +43,7 @@ class ManualListingBase(BaseModel):
         if value == "":
             return None
         parsed = urlparse(value)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        if parsed.scheme != "https" or not parsed.netloc:
             raise ValueError("URL annuncio non valido")
         return value
 
