@@ -985,9 +985,10 @@ function DettaglioProdotto() {
                       const platformLabel = listing.platform === 'vinted' ? 'Vinted' : 'Wallapop'
                       const platformColor = listing.platform === 'vinted' ? '#00b3a4' : '#e8400c'
                       const listingUrl = listing.listing_url?.trim() || ''
-                      const publishedAt = listing.published_at
+                      const publishedAtDate = listing.published_at ? new Date(listing.published_at) : null
+                      const hasValidPublishedAt = publishedAtDate && !Number.isNaN(publishedAtDate.getTime())
                       return (
-                        <span key={listing.platform} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <span key={`${listing.platform}-${listing.id ?? 'manual'}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ backgroundColor: platformColor, color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
                               {platformLabel}
@@ -1003,9 +1004,9 @@ function DettaglioProdotto() {
                               </a>
                             )}
                           </span>
-                          {publishedAt && (
+                          {hasValidPublishedAt && (
                             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                              Pubbl. {new Date(publishedAt).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              Pubbl. {publishedAtDate.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
                         </span>
