@@ -981,14 +981,14 @@ function DettaglioProdotto() {
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                   {manualListingsForView
                     .filter((listing) => listing.active)
-                    .map((listing) => {
+                    .map((listing, index) => {
                       const platformLabel = listing.platform === 'vinted' ? 'Vinted' : 'Wallapop'
                       const platformColor = listing.platform === 'vinted' ? '#00b3a4' : '#e8400c'
                       const listingUrl = listing.listing_url?.trim() || ''
                       const publishedAtDate = listing.published_at ? new Date(listing.published_at) : null
                       const hasValidPublishedAt = publishedAtDate && !Number.isNaN(publishedAtDate.getTime())
                       return (
-                        <span key={`${listing.platform}-${listing.id ?? 'manual'}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <span key={`${listing.platform}-${listing.id ?? index}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ backgroundColor: platformColor, color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600 }}>
                               {platformLabel}
