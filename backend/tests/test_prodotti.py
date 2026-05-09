@@ -192,3 +192,64 @@ def test_get_foto_prodotto_valid_bearer_header(client, auth_headers, db):
     # Usa l'header Authorization dalla fixture auth_headers (token valido)
     resp = client.get(f"/api/prodotti/{prodotto_id}/foto", headers=auth_headers)
     assert resp.status_code == 404  # file non trovato, ma autenticazione OK
+
+
+def test_update_manual_listings_on_prodotto(client, auth_headers):
+    """Verifica salvataggio annunci manuali Vinted/Wallapop nel PUT prodotto."""
+    created = _crea_prodotto(client, auth_headers, sku="MANUAL-001", quantita=1)
+    assert created.status_code == 201
+    prodotto_id = created.json()["id"]
+
+    payload = {
+        "manual_listings": [
+            {
+                "platform": "vinted",
+                "active": True,
+                "status": "pubblicato",
+                "platform_price": 12.5,
+                "listing_url": "https://www.vinted.it/items/123",
+                "published_at": "2026-05-09T10:00:00Z",
+            },
+            {
+                "platform": "wallapop",
+                "active": False,
+                "status": None,
+                "platform_price": None,
+                "listing_url": None,
+            },
+        ]
+    }
+    resp_update = client.put(f"/api/prodotti/{prodotto_id}", json=payload, headers=auth_headers)
+    assert resp_update.status_code == 200
+    data = resp_update.json()
+    assert data["su_vinted"] is True
+    assert data["su_wallapop"] is False
+    assert len(data["manual_listings"]) == 2
+
+    listings = {item["platform"]: item for item in data["manual_listings"]}
+    assert listings["vinted"]["status"] == "pubblicato"
+    assert float(listings["vinted"]["platform_price"]) == 12.5
+    assert listings["vinted"]["listing_url"] == "https://www.vinted.it/items/123"
+    assert listings["wallapop"]["status"] == "non_pubblicare"
+
+
+def test_update_manual_listing_rejects_invalid_url(client, auth_headers):
+    """Verifica validazione URL per il link annuncio manuale."""
+    created = _crea_prodotto(client, auth_headers, sku="MANUAL-002")
+    assert created.status_code == 201
+    prodotto_id = created.json()["id"]
+
+    resp = client.put(
+        f"/api/prodotti/{prodotto_id}",
+        json={
+            "manual_listings": [
+                {
+                    "platform": "vinted",
+                    "active": True,
+                    "listing_url": "not-a-valid-url",
+                }
+            ]
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 422
