@@ -1,21 +1,19 @@
 import copy
 import logging
 import os
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
-import httpx
-from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models.ebay_listing import EbayListing
+from ..models.ebay_order_event import EbayOrderEvent
 from ..models.ebay_sale import EbaySale
-from .ebay_auth_service import EbayAuthService
-from .ebay_inventory_service import EbayInventoryService
-from .inventory_service import InventoryService
-from .multi_platform_sync_service import MultiPlatformSyncService
+from .ebay_api import EbayApiClient
+from .magazzino import MagazzinoService
 from .pricing_service import PricingService
+from .telegram_notify import send_ebay_order_notification
 
 logger = logging.getLogger(__name__)
 
@@ -31,40 +29,6 @@ _PII_KEYS = {
 
 
 class EbayOrderSyncService:
-    @staticmethod
-    def _base_url() -> str:
-        env = os.getenv("EBAY_ENV", "PRODUCTION").upper().strip()
-        if env == "SANDBOX":
-            return "https://api.sandbox.ebay.com"
-        return "https://api.ebay.com"
-
-    @staticmethod
-    def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
-        delay = 1
-        for attempt in range(3):
-            try:
-                with httpx.Client(timeout=20.0) as client:
-                    response = client.request(method, url, **kwargs)
-                if response.status_code == 429 and attempt < 2:
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                response.raise_for_status()
-                return response
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 429 and attempt < 2:
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                raise
-            except httpx.RequestError as exc:
-                if attempt < 2:
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                raise HTTPException(status_code=502, detail=f"Errore rete eBay: {exc}")
-        raise HTTPException(status_code=429, detail="Rate limit eBay raggiunto")
-
     @staticmethod
     def sanitize_order_data(order_dict: dict):
         def _sanitize(value):
@@ -83,31 +47,12 @@ class EbayOrderSyncService:
 
     @staticmethod
     def sync_recent_orders(connection, db: Session) -> dict:
-        token = EbayAuthService.get_valid_token(connection, db)
-        now = datetime.now(timezone.utc)
-        start = now - timedelta(hours=24)
-        filter_value = f"creationdate:[{start.isoformat()}..{now.isoformat()}]"
+        lookback_hours = max(1, int(os.getenv("EBAY_SALES_POLL_LOOKBACK_HOURS", "24")))
+        orders = EbayApiClient.list_recent_orders(connection, db, lookback_hours=lookback_hours)
+        return EbayOrderSyncService.process_orders(orders, connection, db)
 
-        try:
-            response = EbayOrderSyncService._request_with_retry(
-                "GET",
-                f"{EbayOrderSyncService._base_url()}/sell/fulfillment/v1/order",
-                headers={"Authorization": f"Bearer {token}"},
-                params={"filter": filter_value, "limit": 100},
-            )
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 401:
-                token = EbayAuthService.refresh_access_token(connection, db).access_token
-                response = EbayOrderSyncService._request_with_retry(
-                    "GET",
-                    f"{EbayOrderSyncService._base_url()}/sell/fulfillment/v1/order",
-                    headers={"Authorization": f"Bearer {token}"},
-                    params={"filter": filter_value, "limit": 100},
-                )
-            else:
-                raise HTTPException(status_code=502, detail=f"Errore sync ordini eBay: {exc.response.status_code}")
-
-        orders = response.json().get("orders", [])
+    @staticmethod
+    def process_orders(orders: list[dict], connection, db: Session) -> dict:
         processed = 0
         skipped = 0
         for order in orders:
@@ -137,6 +82,8 @@ class EbayOrderSyncService:
         total_qty = 0
         gross_amount = Decimal("0")
         selected_listing = None
+        righe_ordine: list[dict] = []
+        product_ids: set[int] = set()
         for item in line_items:
             sku = item.get("sku")
             qty = int(item.get("quantity") or 0)
@@ -148,13 +95,41 @@ class EbayOrderSyncService:
                 continue
             selected_listing = listing
             total_qty += qty
+            product_ids.add(listing.product_id)
             line_total = item.get("lineItemCost", {})
             line_total_value = line_total.get("value")
             if line_total_value is not None:
                 gross_amount += Decimal(str(line_total_value))
+                prezzo_unitario = float(Decimal(str(line_total_value)) / Decimal(qty))
+            else:
+                prezzo_unitario = float((listing.product.prezzo_vendita if listing.product else 0) or 0)
+                gross_amount += Decimal(str(prezzo_unitario)) * Decimal(qty)
+            righe_ordine.append(
+                {
+                    "prodotto_id": listing.product_id,
+                    "quantita": qty,
+                    "prezzo_unitario": prezzo_unitario,
+                }
+            )
 
-        if not selected_listing or total_qty <= 0:
+        if not selected_listing or total_qty <= 0 or not righe_ordine:
             return "skipped"
+
+        event = EbayOrderEvent(
+            ebay_order_id=order_id,
+            sku=selected_listing.ebay_item_id,
+            quantity=total_qty,
+        )
+        db.add(event)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            logger.info("Evento ordine eBay già registrato: %s", order_id)
+            return "skipped"
+
+        ordine = MagazzinoService.create_ebay_internal_order(db, order_id, righe_ordine)
+        MagazzinoService.sync_stock_after_ebay_sale(db, product_ids)
 
         fee_percentage = Decimal(str(selected_listing.fee_percentage or connection.fee_percentage or 0))
         fee_amount = PricingService.calculate_fee_amount(gross_amount, fee_percentage)
@@ -172,25 +147,15 @@ class EbayOrderSyncService:
             sold_at=datetime.now(timezone.utc),
         )
         db.add(sale)
-        db.flush()
-
-        # Delega la gestione dello stock e l'idempotenza a InventoryService
-        InventoryService.handle_ebay_sale(
-            db,
-            ebay_order_id=order_id,
-            sku=selected_listing.ebay_item_id,
-            quantity=total_qty,
-        )
-
-        # Sincronizza stock e annunci su tutte le piattaforme dopo il decremento
-        MultiPlatformSyncService.sync_after_order(db, selected_listing.product_id)
 
         db.commit()
+        send_ebay_order_notification(ordine)
         logger.info(
-            "Ordine eBay processato: order_id=%s sku=%s qty=%s gross=%s",
+            "Ordine eBay processato: order_id=%s sku=%s qty=%s gross=%s numero_ordine=%s",
             order_id,
             selected_listing.ebay_item_id,
             total_qty,
             gross_amount,
+            ordine.numero_ordine,
         )
         return "processed"

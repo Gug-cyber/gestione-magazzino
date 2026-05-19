@@ -190,8 +190,30 @@ pytest
 | `DATABASE_URL` | `postgresql://magazzino:magazzino@db:5432/magazzino` | URL del database |
 | `APP_ENV` | `production` | Ambiente (`production` / `development`) |
 | `UPLOAD_DIR` | `/app/uploads` | Directory per i file caricati |
+| `EBAY_WEBHOOK_SECRET` | (vuoto) | Secret condiviso per proteggere `POST /api/ebay/webhook/orders` |
+| `EBAY_SALES_POLLING_ENABLED` | `false` | Abilita polling automatico ordini eBay come fallback al webhook |
+| `EBAY_SALES_POLL_INTERVAL_SECONDS` | `120` | Intervallo di polling ordini eBay (secondi) |
+| `EBAY_SALES_POLL_LOOKBACK_HOURS` | `24` | Finestra temporale usata nelle chiamate Fulfillment API |
+| `TELEGRAM_BOT_TOKEN` | (vuoto) | Token bot Telegram per notifica ordini |
+| `TELEGRAM_CHAT_ID` | (vuoto) | Chat ID destinatario Telegram (preconfigurato nel codice tramite env) |
 
 > ⚠️ In produzione il server **non si avvia** se `SECRET_KEY` è quella di default o ha meno di 32 caratteri.
+
+### Flusso vendite eBay → Magazzino
+
+- **Webhook**: `POST /api/ebay/webhook/orders` (consigliato, protetto da `EBAY_WEBHOOK_SECRET` se impostato)
+- **Fallback polling**: thread automatico opzionale all'avvio (`EBAY_SALES_POLLING_ENABLED=true`)
+- Per ogni vendita rilevata:
+  1. creazione ordine interno (senza dati intestatario),
+  2. scalatura stock,
+  3. chiusura annunci eBay residui a stock zero,
+  4. notifica Telegram ordine.
+
+Moduli principali backend:
+- `backend/app/services/ebay_api.py`
+- `backend/app/services/magazzino.py`
+- `backend/app/services/telegram_notify.py`
+- `backend/app/services/ebay_sales_handler.py`
 
 ## 🗄️ Backup DB via GitHub Actions
 

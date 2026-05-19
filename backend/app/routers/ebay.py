@@ -35,6 +35,7 @@ from ..services.ebay_inventory_service import (
 )
 from ..services.ebay_offer_service import EbayOfferService
 from ..services.ebay_order_sync_service import EbayOrderSyncService
+from ..services.ebay_sales_handler import process_webhook_payload
 from ..services.inventory_sync_service import InventorySyncService
 from ..services.pricing_service import PricingService
 
@@ -924,6 +925,32 @@ def sync_orders(
     if not connection:
         raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
     return EbayOrderSyncService.sync_recent_orders(connection, db)
+
+
+@router.post("/webhook/orders")
+async def ebay_orders_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    connection = _get_connection(db)
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
+
+    configured_secret = os.getenv("EBAY_WEBHOOK_SECRET", "").strip()
+    if configured_secret:
+        incoming_secret = (
+            request.headers.get("x-ebay-webhook-secret", "").strip()
+            or request.headers.get("x-webhook-secret", "").strip()
+        )
+        if incoming_secret != configured_secret:
+            raise HTTPException(status_code=401, detail="Secret webhook non valida")
+
+    try:
+        payload: dict = await request.json()
+    except Exception:
+        payload = {}
+
+    return process_webhook_payload(connection, db, payload)
 
 
 @router.get("/sales", response_model=list[EbaySaleResponse])

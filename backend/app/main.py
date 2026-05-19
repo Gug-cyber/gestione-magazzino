@@ -137,6 +137,8 @@ app.include_router(backup_router.router)
 def startup():
     from .migrations import run_migrations
     run_migrations(engine)
+    from .services.ebay_sales_handler import start_ebay_sales_polling
+    start_ebay_sales_polling()
 
     from .crud.utente import get_utenti, create_utente
     from .schemas.utente import UtenteCreate
