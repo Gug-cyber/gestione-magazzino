@@ -28,6 +28,9 @@ class Prodotto(Base):
     barcode_generated_at = Column(DateTime(timezone=True), nullable=True)
     cardtrader_blueprint_id = Column(Integer, nullable=True)
     google_drive_folder_id = Column(String(255), nullable=True)
+    # Timestamp impostato automaticamente quando la quantità scende a zero (per via di un ordine/vendita).
+    # Usato per la cancellazione automatica dopo 10 giorni se il prodotto è collegato a un ordine.
+    data_scarico = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

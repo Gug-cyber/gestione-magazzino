@@ -15,7 +15,7 @@ class Movimento(Base):
     __tablename__ = "movimenti"
 
     id = Column(Integer, primary_key=True, index=True)
-    prodotto_id = Column(Integer, ForeignKey("prodotti.id"), nullable=False)
+    prodotto_id = Column(Integer, ForeignKey("prodotti.id", ondelete="SET NULL"), nullable=True)
     tipo = Column(Enum(TipoMovimento), nullable=False)
     quantita = Column(Integer, nullable=False)
     note = Column(String(500), nullable=True)

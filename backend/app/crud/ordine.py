@@ -241,6 +241,9 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                         f"disponibili {prodotto.quantita}, richiesti {riga.quantita}",
                     )
                 prodotto.quantita -= riga.quantita
+                # Marca il prodotto per la cancellazione automatica se la quantità è zero
+                if prodotto.quantita == 0:
+                    prodotto.data_scarico = datetime.now(timezone.utc)
                 db.add(Movimento(
                     prodotto_id=riga.prodotto_id,
                     tipo=TipoMovimento.scarico,
@@ -283,6 +286,9 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                 )
                 if prodotto:
                     prodotto.quantita += riga.quantita
+                    # Ripristina il flag di scarico: il prodotto non è più a zero
+                    if prodotto.quantita > 0:
+                        prodotto.data_scarico = None
                     movimento = Movimento(
                         prodotto_id=riga.prodotto_id,
                         tipo=TipoMovimento.carico,
@@ -411,6 +417,8 @@ def delete_ordine(db: Session, ordine_id: int) -> bool:
             )
             if prodotto:
                 prodotto.quantita += riga.quantita
+                if prodotto.quantita > 0:
+                    prodotto.data_scarico = None
     db.delete(ordine)
     db.commit()
     return True

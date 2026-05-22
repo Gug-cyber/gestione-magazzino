@@ -44,7 +44,7 @@ class RigaOrdine(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ordine_id = Column(Integer, ForeignKey("ordini.id"), nullable=False)
-    prodotto_id = Column(Integer, ForeignKey("prodotti.id"), nullable=False)
+    prodotto_id = Column(Integer, ForeignKey("prodotti.id", ondelete="SET NULL"), nullable=True)
     quantita = Column(Integer, nullable=False)
     prezzo_unitario = Column(Float, nullable=False)
     subtotale = Column(Float, nullable=False)

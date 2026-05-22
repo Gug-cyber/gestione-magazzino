@@ -140,6 +140,9 @@ def startup():
     from .services.ebay_sales_handler import start_ebay_sales_polling
     start_ebay_sales_polling()
 
+    from .tasks.product_cleanup_scheduler import start_product_cleanup_scheduler
+    start_product_cleanup_scheduler()
+
     from .crud.utente import get_utenti, create_utente
     from .schemas.utente import UtenteCreate
     import secrets

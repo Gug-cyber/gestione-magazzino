@@ -199,6 +199,10 @@ def update_fornitura(db: Session, fornitura_id: int, update: FornituraUpdate) ->
                 prodotto = db.query(Prodotto).filter(Prodotto.id == riga.prodotto_id).first()
                 if prodotto:
                     prodotto.quantita += riga.quantita
+                    # Se il prodotto era marcato per cancellazione (data_scarico impostata) e ora
+                    # ha di nuovo delle unità in magazzino, azzeriamo il flag
+                    if prodotto.quantita > 0:
+                        prodotto.data_scarico = None
                     movimento = Movimento(
                         prodotto_id=riga.prodotto_id,
                         tipo=TipoMovimento.carico,
