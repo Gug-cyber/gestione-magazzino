@@ -109,6 +109,8 @@ class InventoryService:
             )
 
         product.quantita -= quantity
+        if product.quantita == 0:
+            product.data_scarico = datetime.now(timezone.utc)
         movement = Movimento(
             prodotto_id=product.id,
             tipo=TipoMovimento.scarico,

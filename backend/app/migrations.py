@@ -167,6 +167,11 @@ COLUMN_MIGRATIONS = [
         "column": "categoria_id",
         "definition": "INTEGER",
     },
+    {
+        "table": "prodotti",
+        "column": "data_scarico",
+        "definition": "TIMESTAMP WITH TIME ZONE",
+    },
 ]
 
 # SQL statements to run after column migrations (idempotent)
@@ -285,10 +290,18 @@ def run_migrations(engine) -> None:
 def run_nullable_migrations(db) -> None:
     """Rimuove eventuali vincoli NOT NULL da colonne che devono diventare nullable."""
     from sqlalchemy.exc import OperationalError, ProgrammingError
-    try:
-        db.execute(text("ALTER TABLE righe_fornitura ALTER COLUMN prodotto_id DROP NOT NULL"))
-        db.commit()
-        logger.info("Nullable migration applied: righe_fornitura.prodotto_id")
-    except (OperationalError, ProgrammingError) as exc:
-        db.rollback()
-        logger.info("Nullable migration skipped (already nullable or not applicable): %s", exc)
+
+    _nullable_ops = [
+        ("righe_fornitura", "prodotto_id"),
+        ("movimenti", "prodotto_id"),
+        ("righe_ordine", "prodotto_id"),
+    ]
+
+    for table, column in _nullable_ops:
+        try:
+            db.execute(text(f"ALTER TABLE {table} ALTER COLUMN {column} DROP NOT NULL"))
+            db.commit()
+            logger.info("Nullable migration applied: %s.%s", table, column)
+        except (OperationalError, ProgrammingError) as exc:
+            db.rollback()
+            logger.info("Nullable migration skipped (already nullable or not applicable): %s", exc)
