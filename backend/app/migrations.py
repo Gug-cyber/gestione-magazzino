@@ -200,6 +200,10 @@ POST_COLUMN_SQL = [
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_ebay_sales_order_id ON ebay_sales(ebay_order_id)",
     # Unique index per prodotto/connessione su listings attivi
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_ebay_listings_product_active ON ebay_listings(product_id, connection_id) WHERE status = 'active'",
+    # Backfill data_scarico: prodotti già a zero stock prima del deploy della
+    # migration 0033/0034 hanno data_scarico=NULL e non verrebbero mai cancellati
+    # dallo scheduler. Impostare la data corrente li rende candidati dopo 10 giorni.
+    "UPDATE prodotti SET data_scarico = CURRENT_TIMESTAMP WHERE quantita = 0 AND data_scarico IS NULL",
 ] 
 
 
