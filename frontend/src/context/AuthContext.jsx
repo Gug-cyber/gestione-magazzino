@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import client from '../api/client'
+import { complete2FALogin } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -36,6 +37,23 @@ export function AuthProvider({ children }) {
     const res = await client.post('/api/auth/login', params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
+    if (res.data?.requires_2fa) {
+      return {
+        requires2FA: true,
+        temporaryToken: res.data.temporary_token,
+      }
+    }
+    const { access_token } = res.data
+    localStorage.setItem('token', access_token)
+    client.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+    setToken(access_token)
+    const meRes = await client.get('/api/auth/me')
+    setUser(meRes.data)
+    return { requires2FA: false }
+  }
+
+  const verifyTwoFactorLogin = async (temporaryToken, otpCode) => {
+    const res = await complete2FALogin(temporaryToken, otpCode)
     const { access_token } = res.data
     localStorage.setItem('token', access_token)
     client.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
@@ -52,7 +70,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser, token, isAuthenticated: !!token && !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, setUser, token, isAuthenticated: !!token && !!user, isLoading, login, verifyTwoFactorLogin, logout }}>
       {children}
     </AuthContext.Provider>
   )

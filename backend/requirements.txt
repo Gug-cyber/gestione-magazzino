@@ -25,4 +25,7 @@ schedule==1.2.2
 slowapi==0.1.9
 google-api-python-client==2.131.0
 google-auth==2.29.0
+pyotp==2.9.0
+qrcode==7.4.2
+Pillow==12.2.0
 # Force reinstall cache - 2026-04-15

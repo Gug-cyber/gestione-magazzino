@@ -1,21 +1,36 @@
 import logging
 import os
+import io
+import base64
 from typing import List
+import pyotp
+import qrcode
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from joserfc.errors import JoseError
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime, timezone
 from ..database import get_db
 from ..schemas.utente import (
-    Token, UtenteCreate, UtenteResponse, UtenteUpdateProfilo,
+    LoginResponse, Token, UtenteCreate, UtenteResponse, UtenteUpdateProfilo,
     ForgotUsernameRequest, ForgotUsernameResponse,
     ForgotPasswordRequest, ForgotPasswordResponse,
     ResetPasswordRequest, UtenteCreateAdmin, UtenteAdminUpdate,
+    TwoFactorDisableRequest, TwoFactorLoginRequest,
+    TwoFactorSetupResponse, TwoFactorVerifySetupRequest,
 )
 from ..crud import utente as crud
 from ..crud import reset_token as crud_token
 from ..crud.activity_log import log_activity
-from ..auth import create_access_token, get_current_active_user, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    TWO_FACTOR_TEMP_TOKEN_EXPIRE_MINUTES,
+    create_access_token,
+    decode_token_claims,
+    get_current_active_user,
+    get_password_hash,
+    verify_password,
+)
 from ..limiter import limiter
 
 logger = logging.getLogger(__name__)
@@ -24,7 +39,22 @@ from ..email_utils import send_forgot_username_email, send_reset_password_email
 router = APIRouter()
 
 
-@router.post("/login", response_model=Token)
+def _normalize_otp_code(code: str) -> str:
+    return "".join(ch for ch in code if ch.isdigit())
+
+
+def _build_qr_code_data_url(otpauth_uri: str) -> str:
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(otpauth_uri)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{encoded}"
+
+
+@router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):  # noqa: ARG001 – request is required by slowapi for rate limiting
     utente = crud.authenticate_utente(db, form_data.username, form_data.password)
@@ -36,8 +66,20 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         )
     if not utente.is_active:
         raise HTTPException(status_code=400, detail="Utente non attivo")
+    if utente.totp_enabled and utente.totp_secret:
+        temporary_token = create_access_token(
+            data={
+                "sub": utente.username,
+                "token_type": "2fa_pending",
+            },
+            expires_delta=timedelta(minutes=TWO_FACTOR_TEMP_TOKEN_EXPIRE_MINUTES),
+        )
+        return {
+            "requires_2fa": True,
+            "temporary_token": temporary_token,
+        }
     access_token = create_access_token(
-        data={"sub": utente.username, "ruolo": utente.ruolo or "operatore"},
+        data={"sub": utente.username, "ruolo": utente.ruolo or "operatore", "token_type": "access"},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     try:
@@ -45,6 +87,110 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
     except Exception as e:
         logger.warning("log_activity failed: %s", e)
     return {"access_token": access_token, "token_type": "bearer"}  # nosec B105 – "bearer" is the standard OAuth2 token type, not a password
+
+
+@router.post("/2fa/setup", response_model=TwoFactorSetupResponse)
+def setup_two_factor(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    secret = pyotp.random_base32()
+    current_user.totp_secret = secret
+    current_user.totp_enabled = False
+    db.commit()
+    otpauth_uri = pyotp.TOTP(secret).provisioning_uri(
+        name=current_user.username,
+        issuer_name="Gestione Magazzino",
+    )
+    return {"qr_code_data_url": _build_qr_code_data_url(otpauth_uri)}
+
+
+@router.post("/2fa/verify-setup")
+def verify_two_factor_setup(
+    body: TwoFactorVerifySetupRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    if not current_user.totp_secret:
+        raise HTTPException(status_code=400, detail="Configura prima il 2FA")
+    otp_code = _normalize_otp_code(body.otp_code)
+    if len(otp_code) != 6:
+        raise HTTPException(status_code=400, detail="Codice OTP non valido")
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(otp_code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Codice OTP non valido o scaduto")
+    current_user.totp_enabled = True
+    db.commit()
+    return {"message": "2FA attivato correttamente"}
+
+
+@router.post("/2fa/disable")
+def disable_two_factor(
+    body: TwoFactorDisableRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    if not current_user.totp_enabled:
+        raise HTTPException(status_code=400, detail="2FA non attivo")
+    if not body.password and not body.otp_code:
+        raise HTTPException(status_code=400, detail="Inserisci password o codice OTP per confermare")
+
+    if body.password:
+        if not verify_password(body.password, current_user.hashed_password):
+            raise HTTPException(status_code=400, detail="Password non corretta")
+    elif body.otp_code:
+        otp_code = _normalize_otp_code(body.otp_code)
+        if len(otp_code) != 6:
+            raise HTTPException(status_code=400, detail="Codice OTP non valido")
+        if not current_user.totp_secret:
+            raise HTTPException(status_code=400, detail="Segreto 2FA non configurato")
+        totp = pyotp.TOTP(current_user.totp_secret)
+        if not totp.verify(otp_code, valid_window=1):
+            raise HTTPException(status_code=400, detail="Codice OTP non valido o scaduto")
+
+    current_user.totp_enabled = False
+    current_user.totp_secret = None
+    db.commit()
+    return {"message": "2FA disabilitato"}
+
+
+@router.post("/2fa/login", response_model=Token)
+def two_factor_login(
+    body: TwoFactorLoginRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        claims = decode_token_claims(body.temporary_token)
+    except JoseError:
+        raise HTTPException(status_code=401, detail="Token temporaneo non valido o scaduto")
+
+    if claims.get("token_type") != "2fa_pending":
+        raise HTTPException(status_code=401, detail="Token temporaneo non valido o scaduto")
+    username = claims.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Token temporaneo non valido o scaduto")
+
+    utente = crud.get_utente_by_username(db, username)
+    if not utente or not utente.is_active:
+        raise HTTPException(status_code=401, detail="Token temporaneo non valido o scaduto")
+    if not utente.totp_enabled or not utente.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA non attivo per questo utente")
+
+    otp_code = _normalize_otp_code(body.otp_code)
+    if len(otp_code) != 6:
+        raise HTTPException(status_code=400, detail="Codice OTP non valido")
+    if not pyotp.TOTP(utente.totp_secret).verify(otp_code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Codice OTP non valido o scaduto")
+
+    access_token = create_access_token(
+        data={"sub": utente.username, "ruolo": utente.ruolo or "operatore", "token_type": "access"},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    try:
+        log_activity(db, azione="login", utente_id=utente.id, username=utente.username)
+    except Exception as e:
+        logger.warning("log_activity failed: %s", e)
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/register", response_model=UtenteResponse, status_code=201)

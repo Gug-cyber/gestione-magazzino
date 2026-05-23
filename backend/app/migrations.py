@@ -153,6 +153,16 @@ COLUMN_MIGRATIONS = [
         "definition": "BOOLEAN DEFAULT FALSE",
     },
     {
+        "table": "utenti",
+        "column": "totp_secret",
+        "definition": "VARCHAR(255)",
+    },
+    {
+        "table": "utenti",
+        "column": "totp_enabled",
+        "definition": "BOOLEAN DEFAULT FALSE",
+    },
+    {
         "table": "banner",
         "column": "posizione",
         "definition": "VARCHAR(50) DEFAULT 'top'",
