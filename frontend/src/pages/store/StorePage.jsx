@@ -123,7 +123,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
   }
 
   return (
-    <div ref={containerRef} className="store-category-dropdown" style={{ position: 'relative', flex: '1 1 160px' }}>
+    <div ref={containerRef} className="store-category-dropdown" style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
       <button
         type="button"
         aria-haspopup="listbox"
@@ -135,7 +135,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '10px 14px',
+          padding: '10px 12px',
           backgroundColor: 'var(--color-bg)',
           border: '1px solid var(--color-border)',
           borderRadius: '8px',
@@ -144,10 +144,11 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
           cursor: 'pointer',
           outline: 'none',
           textAlign: 'left',
+          minWidth: 0,
         }}
       >
-        <span>{selectedLabel}</span>
-        <span style={{ marginLeft: '8px', opacity: 0.6, fontSize: '12px' }}>▾</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedLabel}</span>
+        <span style={{ marginLeft: '6px', opacity: 0.6, fontSize: '12px', flexShrink: 0 }}>▾</span>
       </button>
 
       {open && (
@@ -340,7 +341,7 @@ export default function StorePage() {
       <div className="animate-fade-in">
         {/* Banners con animazione */}
         {showBanners && (
-          <div style={{ marginBottom: '32px', position: 'relative' }}>
+          <div style={{ marginBottom: '16px', position: 'relative' }}>
             <style>{`
               @keyframes bannerSlideIn {
                 from { opacity: 0; transform: scale(0.98); }
@@ -582,29 +583,34 @@ export default function StorePage() {
           @media (max-width: 640px) {
             .store-product-grid {
               grid-template-columns: repeat(2, 1fr) !important;
-              gap: 12px !important;
+              gap: 10px !important;
             }
             .store-filters {
-              flex-direction: column !important;
-              gap: 6px !important;
+              padding: 12px !important;
+              gap: 10px !important;
+              margin-bottom: 16px !important;
+              border-radius: 12px !important;
             }
             .store-filters input[type="text"] {
-              flex: none !important;
-              width: 100% !important;
+              padding: 10px 10px 10px 38px !important;
+              font-size: 14px !important;
             }
             .store-filters .store-filter-checks {
               display: flex;
               flex-wrap: wrap;
               gap: 8px;
-              margin-top: 2px;
+              margin-top: 0;
             }
-            .store-filters label {
-              font-size: 14px !important;
-              padding: 4px 0;
+            .store-filters .store-filter-checks label {
+              font-size: 12px !important;
+              padding: 6px 10px !important;
             }
             .store-category-dropdown {
-              width: 100% !important;
-              flex: none !important;
+              flex: 1 1 auto !important;
+            }
+            .store-category-dropdown > button {
+              padding: 10px 12px !important;
+              font-size: 13px !important;
             }
             .store-category-dropdown-menu {
               left: 0 !important;
@@ -612,24 +618,52 @@ export default function StorePage() {
               width: 100% !important;
               max-width: 100% !important;
             }
+            .store-mobile-filters-row {
+              display: flex !important;
+              gap: 8px !important;
+            }
+            .store-search-wrapper {
+              flex: 2 !important;
+            }
+          }
+          @media (max-width: 400px) {
+            .store-product-grid {
+              gap: 8px !important;
+            }
+            .store-filters {
+              padding: 10px !important;
+              gap: 8px !important;
+              margin-bottom: 12px !important;
+            }
+            .store-filters .store-filter-checks label {
+              font-size: 11px !important;
+              padding: 5px 8px !important;
+              gap: 4px !important;
+            }
+            .store-filters .store-filter-checks label span:first-of-type {
+              width: 14px !important;
+              height: 14px !important;
+            }
           }
         `}</style>
         <div className="store-filters" style={{
           display: 'flex',
           flexWrap: 'wrap',
           gap: '12px',
-          marginBottom: '28px',
-          padding: '18px 22px',
+          marginBottom: '20px',
+          padding: '14px 16px',
           backgroundColor: '#ffffff',
-          borderRadius: '16px',
+          borderRadius: '12px',
           border: '1px solid var(--color-border)',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          alignItems: 'center',
         }}>
-          <div style={{ 
-            flex: '1 1 200px', 
+          <div className="store-search-wrapper" style={{ 
+            flex: '1 1 180px', 
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
+            minWidth: 0,
           }}>
             <svg 
               width="18" 
@@ -656,10 +690,10 @@ export default function StorePage() {
               onChange={e => setSearch(e.target.value)}
               style={{
                 width: '100%',
-                padding: '12px 14px 12px 44px',
+                padding: '10px 12px 10px 40px',
                 backgroundColor: 'var(--color-bg)',
                 border: '1px solid var(--color-border)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 color: 'var(--color-text)',
                 fontSize: '14px',
                 outline: 'none',
@@ -683,20 +717,21 @@ export default function StorePage() {
             allLabel={t('filter_all_categories')}
           />
 
-          <div className="store-filter-checks" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+          <div className="store-filter-checks" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
             <label style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '8px', 
+              gap: '6px', 
               cursor: 'pointer', 
               fontSize: '13px', 
               color: disponibiliOnly ? '#0891b2' : '#475569',
               fontWeight: disponibiliOnly ? '600' : '500',
-              padding: '10px 16px',
-              borderRadius: '10px',
+              padding: '8px 12px',
+              borderRadius: '8px',
               backgroundColor: disponibiliOnly ? 'rgba(8, 145, 178, 0.08)' : 'transparent',
               border: `1px solid ${disponibiliOnly ? '#0891b2' : '#e2e8f0'}`,
               transition: 'all 200ms ease',
+              whiteSpace: 'nowrap',
             }}>
               <input
                 type="checkbox"
@@ -705,18 +740,19 @@ export default function StorePage() {
                 style={{ display: 'none' }}
               />
               <span style={{
-                width: '18px',
-                height: '18px',
-                borderRadius: '5px',
+                width: '16px',
+                height: '16px',
+                borderRadius: '4px',
                 border: `2px solid ${disponibiliOnly ? '#0891b2' : '#cbd5e1'}`,
                 backgroundColor: disponibiliOnly ? '#0891b2' : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 200ms ease',
+                flexShrink: 0,
               }}>
                 {disponibiliOnly && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 )}
@@ -727,16 +763,17 @@ export default function StorePage() {
             <label style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '8px', 
+              gap: '6px', 
               cursor: 'pointer', 
               fontSize: '13px', 
               color: offerteSolo ? '#059669' : '#475569',
               fontWeight: offerteSolo ? '600' : '500',
-              padding: '10px 16px',
-              borderRadius: '10px',
+              padding: '8px 12px',
+              borderRadius: '8px',
               backgroundColor: offerteSolo ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
               border: `1px solid ${offerteSolo ? '#059669' : '#e2e8f0'}`,
               transition: 'all 200ms ease',
+              whiteSpace: 'nowrap',
             }}>
               <input
                 type="checkbox"
@@ -745,18 +782,19 @@ export default function StorePage() {
                 style={{ display: 'none' }}
               />
               <span style={{
-                width: '18px',
-                height: '18px',
-                borderRadius: '5px',
+                width: '16px',
+                height: '16px',
+                borderRadius: '4px',
                 border: `2px solid ${offerteSolo ? '#059669' : '#cbd5e1'}`,
                 backgroundColor: offerteSolo ? '#059669' : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 200ms ease',
+                flexShrink: 0,
               }}>
                 {offerteSolo && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 )}
