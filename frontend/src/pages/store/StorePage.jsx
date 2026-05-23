@@ -161,7 +161,7 @@ function CategoryDropdown({ value, onChange, treeOptions, allLabel }) {
             top: 'calc(100% + 4px)',
             left: 0,
             right: 0,
-            zIndex: 100,
+            zIndex: 999,
             backgroundColor: 'var(--color-bg)',
             border: '1px solid var(--color-border)',
             borderRadius: '8px',
@@ -764,8 +764,8 @@ export default function StorePage() {
             />
           </div>
 
-          <div className="store-mobile-chip-row">
-            <div className="store-mobile-category-chip">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+            <div className="store-mobile-category-chip" style={{ position: 'relative', zIndex: 200, flexShrink: 0 }}>
               <CategoryDropdown
                 value={categoriaId}
                 onChange={val => setCategoriaId(val)}
@@ -774,22 +774,24 @@ export default function StorePage() {
               />
             </div>
 
-            <button
-              onClick={() => setDisponibiliOnly(!disponibiliOnly)}
-              className={`store-mobile-chip is-available ${disponibiliOnly ? 'is-active' : ''}`}
-            >
-              <span className="store-mobile-chip-check">✓</span>
-              {t('filter_available_only')}
-            </button>
+            <div className="store-mobile-chip-row" style={{ flex: '1 1 0', minWidth: 0 }}>
+              <button
+                onClick={() => setDisponibiliOnly(!disponibiliOnly)}
+                className={`store-mobile-chip is-available ${disponibiliOnly ? 'is-active' : ''}`}
+              >
+                <span className="store-mobile-chip-check">✓</span>
+                {t('filter_available_only')}
+              </button>
 
-            <button
-              onClick={() => setOfferteSolo(!offerteSolo)}
-              className={`store-mobile-chip is-offers ${offerteSolo ? 'is-active' : ''}`}
-            >
-              <span>🏷️</span>
-              Offerte
-              <span className="store-mobile-chip-check">✓</span>
-            </button>
+              <button
+                onClick={() => setOfferteSolo(!offerteSolo)}
+                className={`store-mobile-chip is-offers ${offerteSolo ? 'is-active' : ''}`}
+              >
+                <span>🏷️</span>
+                Offerte
+                <span className="store-mobile-chip-check">✓</span>
+              </button>
+            </div>
           </div>
         </div>
         
