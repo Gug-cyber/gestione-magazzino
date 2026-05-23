@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { updateProfilo, activityLogAPI } from '../api/client'
+import { updateProfilo, activityLogAPI, setup2FA, verify2FASetup, disable2FA } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import useLogoSettings from '../hooks/useLogoSettings'
 import { getAzioneBadge } from '../utils/formatters'
@@ -116,6 +116,11 @@ function Profilo() {
   const [nuovaPassword, setNuovaPassword] = useState('')
   const [confermaPassword, setConfermaPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState(null)
+  const [twoFactorMsg, setTwoFactorMsg] = useState(null)
+  const [twoFactorQrCode, setTwoFactorQrCode] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [disablePassword, setDisablePassword] = useState('')
+  const [disableOtp, setDisableOtp] = useState('')
 
   const [logoMsg, setLogoMsg] = useState(null)
   const [customTitle, setCustomTitle] = useState(portalTitle === DEFAULT_TITLE ? '' : portalTitle)
@@ -180,6 +185,50 @@ function Profilo() {
       setConfermaPassword('')
     } catch (err) {
       setPasswordMsg({ type: 'error', text: err.response?.data?.detail || 'Errore durante il cambio password' })
+    }
+  }
+
+  const handleSetupTwoFactor = async () => {
+    setTwoFactorMsg(null)
+    try {
+      const res = await setup2FA()
+      setTwoFactorQrCode(res.data.qr_code_data_url)
+      setMsgWithAutoDismiss(setTwoFactorMsg, { type: 'success', text: 'QR code generato. Scansiona e inserisci il codice OTP.' })
+    } catch (err) {
+      setTwoFactorMsg({ type: 'error', text: err.response?.data?.detail || 'Errore durante la configurazione 2FA' })
+    }
+  }
+
+  const handleVerifyTwoFactorSetup = async (e) => {
+    e.preventDefault()
+    setTwoFactorMsg(null)
+    try {
+      await verify2FASetup(twoFactorCode)
+      setUser(prev => ({ ...prev, totp_enabled: true }))
+      setTwoFactorCode('')
+      setTwoFactorQrCode('')
+      setMsgWithAutoDismiss(setTwoFactorMsg, { type: 'success', text: '2FA attivato correttamente.' })
+    } catch (err) {
+      setTwoFactorMsg({ type: 'error', text: err.response?.data?.detail || 'Codice OTP non valido' })
+    }
+  }
+
+  const handleDisableTwoFactor = async () => {
+    setTwoFactorMsg(null)
+    if (!disablePassword && !disableOtp) {
+      setTwoFactorMsg({ type: 'error', text: 'Inserisci password o codice OTP per confermare.' })
+      return
+    }
+    try {
+      const payload = disablePassword ? { password: disablePassword } : { otp_code: disableOtp }
+      await disable2FA(payload)
+      setUser(prev => ({ ...prev, totp_enabled: false }))
+      setDisablePassword('')
+      setDisableOtp('')
+      setTwoFactorQrCode('')
+      setMsgWithAutoDismiss(setTwoFactorMsg, { type: 'success', text: '2FA disabilitato.' })
+    } catch (err) {
+      setTwoFactorMsg({ type: 'error', text: err.response?.data?.detail || 'Errore durante la disabilitazione del 2FA' })
     }
   }
 
@@ -382,8 +431,9 @@ function Profilo() {
 
         {/* Sicurezza tab */}
         {activeTab === 'sicurezza' && (
-          <form onSubmit={handleCambiaPassword}>
-            <div style={{ marginBottom: '20px' }}>
+          <div>
+            <form onSubmit={handleCambiaPassword}>
+              <div style={{ marginBottom: '20px' }}>
               <label className="form-label">Password attuale</label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -489,15 +539,75 @@ function Profilo() {
                 </button>
               </div>
             </div>
-            {passwordMsg && (
-              <div className={passwordMsg.type === 'success' ? 'success-msg' : 'error-banner'} style={{ marginBottom: '16px' }}>
-                {passwordMsg.text}
-              </div>
-            )}
-            <button type="submit" className="btn-primary">
-              <LockIcon /> Cambia password
-            </button>
-          </form>
+              {passwordMsg && (
+                <div className={passwordMsg.type === 'success' ? 'success-msg' : 'error-banner'} style={{ marginBottom: '16px' }}>
+                  {passwordMsg.text}
+                </div>
+              )}
+              <button type="submit" className="btn-primary">
+                <LockIcon /> Cambia password
+              </button>
+            </form>
+
+            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-primary)' }}>
+              <h3 style={{ marginTop: 0 }}>Autenticazione a due fattori (2FA)</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                Stato attuale: <strong>{user?.totp_enabled ? 'Attivo' : 'Non attivo'}</strong>
+              </p>
+              {!user?.totp_enabled && (
+                <button type="button" className="btn-secondary" onClick={handleSetupTwoFactor}>
+                  Attiva 2FA
+                </button>
+              )}
+              {twoFactorQrCode && !user?.totp_enabled && (
+                <form onSubmit={handleVerifyTwoFactorSetup} style={{ marginTop: '16px' }}>
+                  <img src={twoFactorQrCode} alt="QR code Google Authenticator" style={{ maxWidth: '220px', display: 'block', marginBottom: '12px' }} />
+                  <input
+                    type="text"
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Codice a 6 cifre"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    className="form-input"
+                    style={{ marginBottom: '10px' }}
+                  />
+                  <button type="submit" className="btn-primary">Conferma attivazione</button>
+                </form>
+              )}
+              {user?.totp_enabled && (
+                <div style={{ marginTop: '16px' }}>
+                  <input
+                    type="password"
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                    placeholder="Password per disabilitare (opzionale)"
+                    className="form-input"
+                    style={{ marginBottom: '10px' }}
+                  />
+                  <input
+                    type="text"
+                    value={disableOtp}
+                    onChange={(e) => setDisableOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Oppure codice OTP corrente"
+                    className="form-input"
+                    inputMode="numeric"
+                    maxLength={6}
+                    style={{ marginBottom: '10px' }}
+                  />
+                  <button type="button" className="btn-danger" onClick={handleDisableTwoFactor}>
+                    Disabilita 2FA
+                  </button>
+                </div>
+              )}
+              {twoFactorMsg && (
+                <div className={twoFactorMsg.type === 'success' ? 'success-msg' : 'error-banner'} style={{ marginTop: '16px' }}>
+                  {twoFactorMsg.text}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Attivita tab */}

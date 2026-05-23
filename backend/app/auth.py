@@ -23,6 +23,7 @@ if SECRET_KEY == "changeme-use-a-long-random-secret-key-in-production":  # nosec
     )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 hours
+TWO_FACTOR_TEMP_TOKEN_EXPIRE_MINUTES = 5
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -47,6 +48,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": int(expire.timestamp())})
     return jwt.encode({"alg": ALGORITHM}, to_encode, _jwt_key)
 
+
+def decode_token_claims(token: str) -> dict:
+    token_obj = jwt.decode(token, _jwt_key)
+    return token_obj.claims
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     from .crud.utente import get_utente_by_username
 
@@ -56,8 +62,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        token_obj = jwt.decode(token, _jwt_key)
-        username: str = token_obj.claims.get("sub")
+        claims = decode_token_claims(token)
+        if claims.get("token_type") == "2fa_pending":
+            raise credentials_exception
+        username: str = claims.get("sub")
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)

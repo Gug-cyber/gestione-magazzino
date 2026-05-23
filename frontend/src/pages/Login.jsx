@@ -7,9 +7,12 @@ import useLogoSettings from '../hooks/useLogoSettings'
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false)
+  const [temporaryToken, setTemporaryToken] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, verifyTwoFactorLogin } = useAuth()
   const navigate = useNavigate()
   const { logoUrl, portalTitle } = useLogoSettings()
 
@@ -37,7 +40,16 @@ function Login() {
     setError('')
     setIsLoading(true)
     try {
-      await login(username, password)
+      if (!twoFactorRequired) {
+        const result = await login(username, password)
+        if (result?.requires2FA) {
+          setTwoFactorRequired(true)
+          setTemporaryToken(result.temporaryToken)
+          return
+        }
+      } else {
+        await verifyTwoFactorLogin(temporaryToken, otpCode)
+      }
       navigate('/dashboard')
     } catch (err) {
       const detail = err?.response?.data?.detail
@@ -299,7 +311,8 @@ function Login() {
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
-              autoFocus
+              autoFocus={!twoFactorRequired}
+              disabled={twoFactorRequired}
               placeholder="Inserisci username"
               style={inputStyle}
               onFocus={e => Object.assign(e.target.style, inputFocusStyle)}
@@ -311,6 +324,7 @@ function Login() {
             />
           </div>
 
+          {!twoFactorRequired && (
           <div style={{ marginBottom: '28px' }}>
             <label style={{ 
               display: 'flex', 
@@ -339,6 +353,41 @@ function Login() {
               }}
             />
           </div>
+          )}
+
+          {twoFactorRequired && (
+            <div style={{ marginBottom: '28px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: '500',
+                marginBottom: '8px',
+                color: 'var(--color-text-secondary)',
+                fontSize: '14px',
+              }}>
+                <LockIcon />
+                Codice Google Authenticator
+              </label>
+              <input
+                type="text"
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                autoFocus
+                placeholder="Inserisci codice a 6 cifre"
+                inputMode="numeric"
+                maxLength={6}
+                style={inputStyle}
+                onFocus={e => Object.assign(e.target.style, inputFocusStyle)}
+                onBlur={e => {
+                  e.target.style.borderColor = 'var(--color-border)'
+                  e.target.style.boxShadow = 'none'
+                  e.target.style.backgroundColor = 'var(--color-surface)'
+                }}
+              />
+            </div>
+          )}
 
           {error && (
             <div style={{
@@ -378,10 +427,11 @@ function Login() {
                 <span className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }} />
                 Accesso in corso...
               </span>
-            ) : 'Accedi'}
+            ) : twoFactorRequired ? 'Verifica codice 2FA' : 'Accedi'}
           </button>
         </form>
 
+        {!twoFactorRequired && (
         <div style={{ 
           marginTop: '20px', 
           display: 'flex', 
@@ -419,6 +469,7 @@ function Login() {
             Password dimenticata?
           </button>
         </div>
+        )}
 
         {import.meta.env.DEV && (
           <div style={{

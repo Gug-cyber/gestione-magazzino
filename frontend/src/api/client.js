@@ -111,6 +111,10 @@ export const ubicazioniAPI = {
 }
 
 export const updateProfilo = (data) => client.put('/api/auth/me', data)
+export const setup2FA = () => client.post('/api/auth/2fa/setup')
+export const verify2FASetup = (otp_code) => client.post('/api/auth/2fa/verify-setup', { otp_code })
+export const disable2FA = (data) => client.post('/api/auth/2fa/disable', data)
+export const complete2FALogin = (temporary_token, otp_code) => client.post('/api/auth/2fa/login', { temporary_token, otp_code })
 
 export const forgotUsername = (email) => client.post('/api/auth/forgot-username', { email })
 export const forgotPassword = (email) => client.post('/api/auth/forgot-password', { email })

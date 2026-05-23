@@ -32,6 +32,7 @@ class UtenteResponse(UtenteBase):
     is_admin: bool
     ruolo: str = "operatore"
     must_change_password: bool = False
+    totp_enabled: bool = False
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -45,6 +46,31 @@ class UtenteLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class LoginResponse(BaseModel):
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
+    requires_2fa: bool = False
+    temporary_token: Optional[str] = None
+
+
+class TwoFactorSetupResponse(BaseModel):
+    qr_code_data_url: str
+
+
+class TwoFactorVerifySetupRequest(BaseModel):
+    otp_code: str
+
+
+class TwoFactorLoginRequest(BaseModel):
+    temporary_token: str
+    otp_code: str
+
+
+class TwoFactorDisableRequest(BaseModel):
+    password: Optional[str] = None
+    otp_code: Optional[str] = None
 
 
 class TokenData(BaseModel):
