@@ -143,6 +143,12 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
             opacity: 1 !important;
             transform: translateY(0) !important;
           }
+          .product-card-add-btn {
+            padding: 10px 10px !important;
+            font-size: 12px !important;
+            gap: 5px !important;
+            border-radius: 8px !important;
+          }
         }
       `}</style>
       <div
@@ -381,6 +387,7 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
               </div>
             ) : (
               <button
+                className="product-card-add-btn"
                 onClick={() => onAddToCart(prodotto)}
                 style={{
                   width: '100%',
