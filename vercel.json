@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && pnpm install && pnpm run build",
+  "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://gestione-magazzino-0bpq.onrender.com/api/$1" },
