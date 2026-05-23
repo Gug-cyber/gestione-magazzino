@@ -341,11 +341,43 @@ export default function StorePage() {
       <div className="animate-fade-in">
         {/* Banners con animazione */}
         {showBanners && (
-          <div style={{ marginBottom: '16px', position: 'relative' }}>
+          <div className="store-banner-wrapper" style={{ marginBottom: '16px', position: 'relative' }}>
             <style>{`
               @keyframes bannerSlideIn {
                 from { opacity: 0; transform: scale(0.98); }
                 to { opacity: 1; transform: scale(1); }
+              }
+              @media (max-width: 768px) {
+                .store-banner-wrapper {
+                  margin-bottom: 12px !important;
+                }
+                .store-banner-wrapper > div {
+                  border-radius: 12px !important;
+                }
+                .store-banner-wrapper img {
+                  max-height: 140px !important;
+                }
+                .store-banner-content {
+                  padding: 16px 14px 12px !important;
+                }
+                .store-banner-title {
+                  font-size: 16px !important;
+                }
+                .store-banner-desc {
+                  font-size: 12px !important;
+                  margin-top: 4px !important;
+                }
+                .store-banner-cta {
+                  padding: 8px 14px !important;
+                  font-size: 12px !important;
+                }
+                .store-banner-nav {
+                  bottom: 8px !important;
+                }
+                .store-banner-nav button {
+                  width: 6px !important;
+                  height: 6px !important;
+                }
               }
             `}</style>
             <div style={{
@@ -360,7 +392,7 @@ export default function StorePage() {
                   key={b.id} 
                   style={{ 
                     position: 'relative', 
-                    minHeight: '160px',
+                    minHeight: '120px',
                     animation: 'bannerSlideIn 0.4s ease-out',
                   }}
                 >
@@ -378,7 +410,7 @@ export default function StorePage() {
                     />
                   )}
                   {(b.titolo || b.descrizione || b.link_url) && (
-                    <div style={{
+                    <div className="store-banner-content" style={{
                       position: b.immagine_url ? 'absolute' : 'relative',
                       bottom: b.immagine_url ? 0 : undefined,
                       left: 0, right: 0,
@@ -394,7 +426,7 @@ export default function StorePage() {
                     }}>
                       <div style={{ maxWidth: '70%' }}>
                         {b.titolo && (
-                          <div style={{ 
+                          <div className="store-banner-title" style={{ 
                             fontWeight: '700', 
                             color: b.immagine_url ? '#fff' : 'var(--color-text)', 
                             fontSize: '22px',
@@ -405,7 +437,7 @@ export default function StorePage() {
                           </div>
                         )}
                         {b.descrizione && (
-                          <div style={{ 
+                          <div className="store-banner-desc" style={{ 
                             color: b.immagine_url ? 'rgba(255,255,255,0.9)' : 'var(--color-text-secondary)', 
                             fontSize: '14px', 
                             marginTop: '8px',
@@ -420,6 +452,7 @@ export default function StorePage() {
                           href={b.link_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
+                          className="store-banner-cta"
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -580,73 +613,154 @@ export default function StorePage() {
           .store-product-grid > *:nth-child(8) { animation-delay: 0.16s; }
           .store-product-grid > *:nth-child(n+9) { animation-delay: 0.18s; }
           
-          @media (max-width: 640px) {
+          /* Desktop filters */
+          .store-filters-desktop {
+            display: flex;
+          }
+          .store-filters-mobile {
+            display: none;
+          }
+          
+          @media (max-width: 768px) {
+            .store-filters-desktop {
+              display: none !important;
+            }
+            .store-filters-mobile {
+              display: block !important;
+            }
             .store-product-grid {
               grid-template-columns: repeat(2, 1fr) !important;
               gap: 10px !important;
             }
-            .store-filters {
-              padding: 12px !important;
-              gap: 10px !important;
-              margin-bottom: 16px !important;
-              border-radius: 12px !important;
-            }
-            .store-filters input[type="text"] {
-              padding: 10px 10px 10px 38px !important;
-              font-size: 14px !important;
-            }
-            .store-filters .store-filter-checks {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 8px;
-              margin-top: 0;
-            }
-            .store-filters .store-filter-checks label {
-              font-size: 12px !important;
-              padding: 6px 10px !important;
-            }
-            .store-category-dropdown {
-              flex: 1 1 auto !important;
-            }
-            .store-category-dropdown > button {
-              padding: 10px 12px !important;
-              font-size: 13px !important;
-            }
-            .store-category-dropdown-menu {
-              left: 0 !important;
-              right: 0 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-            }
-            .store-mobile-filters-row {
-              display: flex !important;
-              gap: 8px !important;
-            }
-            .store-search-wrapper {
-              flex: 2 !important;
-            }
-          }
-          @media (max-width: 400px) {
-            .store-product-grid {
-              gap: 8px !important;
-            }
-            .store-filters {
-              padding: 10px !important;
-              gap: 8px !important;
-              margin-bottom: 12px !important;
-            }
-            .store-filters .store-filter-checks label {
-              font-size: 11px !important;
-              padding: 5px 8px !important;
-              gap: 4px !important;
-            }
-            .store-filters .store-filter-checks label span:first-of-type {
-              width: 14px !important;
-              height: 14px !important;
-            }
           }
         `}</style>
-        <div className="store-filters" style={{
+        
+        {/* Mobile Filters - Compact horizontal layout */}
+        <div className="store-filters-mobile" style={{ marginBottom: '12px' }}>
+          {/* Search bar row */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            marginBottom: '10px',
+            alignItems: 'center',
+          }}>
+            <div style={{ 
+              flex: 1, 
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+            }}>
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="#94a3b8" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                style={{ 
+                  position: 'absolute', 
+                  left: '10px', 
+                  pointerEvents: 'none',
+                }}
+              >
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input
+                type="text"
+                placeholder={t('filter_search_placeholder')}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 10px 10px 34px',
+                  backgroundColor: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  color: '#1e293b',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+            <div style={{ flex: '0 0 auto', minWidth: '110px' }}>
+              <CategoryDropdown
+                value={categoriaId}
+                onChange={val => setCategoriaId(val)}
+                treeOptions={categorieTree}
+                allLabel={t('filter_all_categories')}
+              />
+            </div>
+          </div>
+          
+          {/* Filter chips row */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            paddingBottom: '2px',
+          }}>
+            <button
+              onClick={() => setDisponibiliOnly(!disponibiliOnly)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '7px 12px',
+                borderRadius: '20px',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                backgroundColor: disponibiliOnly ? '#0891b2' : '#f1f5f9',
+                color: disponibiliOnly ? '#fff' : '#475569',
+                transition: 'all 150ms ease',
+              }}
+            >
+              {disponibiliOnly && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+              {t('filter_available_only')}
+            </button>
+            
+            <button
+              onClick={() => setOfferteSolo(!offerteSolo)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '7px 12px',
+                borderRadius: '20px',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                backgroundColor: offerteSolo ? '#059669' : '#f1f5f9',
+                color: offerteSolo ? '#fff' : '#475569',
+                transition: 'all 150ms ease',
+              }}
+            >
+              {offerteSolo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+              Offerte
+            </button>
+          </div>
+        </div>
+        
+        {/* Desktop Filters */}
+        <div className="store-filters store-filters-desktop" style={{
           display: 'flex',
           flexWrap: 'wrap',
           gap: '12px',
@@ -799,7 +913,7 @@ export default function StorePage() {
                   </svg>
                 )}
               </span>
-              🏷️ {t('filter_offers_only')}
+              {t('filter_offers_only')}
             </label>
           </div>
         </div>
