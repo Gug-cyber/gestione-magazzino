@@ -620,6 +620,88 @@ export default function StorePage() {
           .store-filters-mobile {
             display: none;
           }
+          .store-mobile-search-input {
+            transition: border-color 200ms ease, box-shadow 200ms ease;
+          }
+          .store-mobile-search-input:focus {
+            border-color: var(--store-primary, #0891b2) !important;
+            box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 59, 130, 246), 0.16) !important;
+          }
+          .store-mobile-chip-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-bottom: 4px;
+          }
+          .store-mobile-chip-row::-webkit-scrollbar {
+            display: none;
+          }
+          .store-mobile-chip {
+            height: 36px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            color: var(--color-text-secondary);
+            transition: all 200ms ease;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 14px;
+            cursor: pointer;
+            flex-shrink: 0;
+          }
+          .store-mobile-chip.is-active {
+            border-color: transparent;
+            color: #fff;
+          }
+          .store-mobile-chip.is-available.is-active {
+            background: var(--store-primary, #0891b2);
+          }
+          .store-mobile-chip.is-offers.is-active {
+            background: #059669;
+          }
+          .store-mobile-chip-check {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 12px;
+            transform: scale(0.5);
+            opacity: 0;
+            transition: all 200ms ease;
+          }
+          .store-mobile-chip.is-active .store-mobile-chip-check {
+            transform: scale(1);
+            opacity: 1;
+          }
+          .store-mobile-category-chip {
+            flex-shrink: 0;
+          }
+          .store-mobile-category-chip .store-category-dropdown {
+            min-width: 0 !important;
+            flex: 0 0 auto !important;
+          }
+          .store-mobile-category-chip .store-category-dropdown > button {
+            height: 36px !important;
+            border-radius: 20px !important;
+            font-size: 13px !important;
+            border: 1px solid var(--color-border) !important;
+            background: var(--color-surface) !important;
+            color: var(--color-text-secondary) !important;
+            padding: 0 14px !important;
+            transition: all 200ms ease !important;
+            min-width: 0 !important;
+            max-width: 190px;
+            gap: 6px;
+          }
+          .store-mobile-category-chip .store-category-dropdown-menu {
+            margin-top: 2px;
+          }
           
           @media (max-width: 768px) {
             .store-filters-desktop {
@@ -636,56 +718,54 @@ export default function StorePage() {
         `}</style>
         
         {/* Mobile Filters - Compact horizontal layout */}
-        <div className="store-filters-mobile" style={{ marginBottom: '12px' }}>
-          {/* Search bar row */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            marginBottom: '10px',
+        <div className="store-filters-mobile" style={{ marginBottom: '16px' }}>
+          <div style={{
+            position: 'relative',
+            display: 'flex',
             alignItems: 'center',
+            marginBottom: '10px',
           }}>
-            <div style={{ 
-              flex: 1, 
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-            }}>
-              <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="#94a3b8" 
-                strokeWidth="2.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                style={{ 
-                  position: 'absolute', 
-                  left: '10px', 
-                  pointerEvents: 'none',
-                }}
-              >
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input
-                type="text"
-                placeholder={t('filter_search_placeholder')}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 10px 10px 34px',
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  color: '#1e293b',
-                  fontSize: '14px',
-                  outline: 'none',
-                }}
-              />
-            </div>
-            <div style={{ flex: '0 0 auto', minWidth: '110px' }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--color-text-muted)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                position: 'absolute',
+                left: '12px',
+                pointerEvents: 'none',
+              }}
+            >
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              className="store-mobile-search-input"
+              placeholder={t('filter_search_placeholder')}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '11px 12px 11px 38px',
+                backgroundColor: 'var(--color-bg)',
+                border: '1.5px solid var(--color-border)',
+                borderRadius: '14px',
+                color: 'var(--color-text)',
+                fontSize: '14px',
+                outline: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                backdropFilter: 'blur(8px)',
+              }}
+            />
+          </div>
+
+          <div className="store-mobile-chip-row">
+            <div className="store-mobile-category-chip">
               <CategoryDropdown
                 value={categoriaId}
                 onChange={val => setCategoriaId(val)}
@@ -693,68 +773,22 @@ export default function StorePage() {
                 allLabel={t('filter_all_categories')}
               />
             </div>
-          </div>
-          
-          {/* Filter chips row */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            paddingBottom: '2px',
-          }}>
+
             <button
               onClick={() => setDisponibiliOnly(!disponibiliOnly)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '7px 12px',
-                borderRadius: '20px',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                backgroundColor: disponibiliOnly ? '#0891b2' : '#f1f5f9',
-                color: disponibiliOnly ? '#fff' : '#475569',
-                transition: 'all 150ms ease',
-              }}
+              className={`store-mobile-chip is-available ${disponibiliOnly ? 'is-active' : ''}`}
             >
-              {disponibiliOnly && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              )}
+              <span className="store-mobile-chip-check">✓</span>
               {t('filter_available_only')}
             </button>
-            
+
             <button
               onClick={() => setOfferteSolo(!offerteSolo)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '7px 12px',
-                borderRadius: '20px',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                backgroundColor: offerteSolo ? '#059669' : '#f1f5f9',
-                color: offerteSolo ? '#fff' : '#475569',
-                transition: 'all 150ms ease',
-              }}
+              className={`store-mobile-chip is-offers ${offerteSolo ? 'is-active' : ''}`}
             >
-              {offerteSolo && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              )}
+              <span>🏷️</span>
               Offerte
+              <span className="store-mobile-chip-check">✓</span>
             </button>
           </div>
         </div>
