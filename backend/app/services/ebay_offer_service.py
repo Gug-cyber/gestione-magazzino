@@ -415,7 +415,7 @@ class EbayOfferService:
                 }
             if auction_duration:
                 payload["listingDuration"] = auction_duration
-            payload["availableQuantity"] = 1
+            payload.pop("availableQuantity", None)
         else:
             payload["format"] = "FIXED_PRICE"
             payload["pricingSummary"] = {

@@ -308,7 +308,7 @@ def test_create_offer_auction_format(monkeypatch):
     assert offer_id == "OFFER-AUCTION-1"
     payload = captured["payload"]
     assert payload["format"] == "AUCTION"
-    assert payload["availableQuantity"] == 1
+    assert "availableQuantity" not in payload
     assert payload["listingDuration"] == "DAYS_7"
     assert payload["pricingSummary"]["auctionStartPrice"]["value"] == "0.99"
     assert payload["pricingSummary"]["auctionStartPrice"]["currency"] == "EUR"
@@ -350,10 +350,59 @@ def test_create_offer_auction_format_minimal(monkeypatch):
 
     payload = captured["payload"]
     assert payload["format"] == "AUCTION"
-    assert payload["availableQuantity"] == 1
+    assert "availableQuantity" not in payload
     assert "listingDuration" not in payload
     assert "auctionReservePrice" not in payload["pricingSummary"]
     assert "price" not in payload["pricingSummary"]
+
+
+def test_create_offer_auction_delete_and_recreate_keeps_payload_without_available_quantity(monkeypatch):
+    payloads = []
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_it", True
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        if method == "POST" and url.endswith("/offer"):
+            payloads.append(kwargs["json"])
+            if len(payloads) == 1:
+                request = httpx.Request("POST", url)
+                response = httpx.Response(
+                    400,
+                    request=request,
+                    json={"errors": [{"errorId": 25002, "message": "Offer already exists.", "parameters": [{"name": "offerId", "value": "STALE-AUCT-1"}]}]},
+                )
+                raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+            return SimpleNamespace(json=lambda: {"offerId": "OFFER-AUCTION-3"})
+        if method == "DELETE":
+            return SimpleNamespace()
+        return SimpleNamespace(json=lambda: {})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    offer_id = EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-AUCTION-3",
+        price=Decimal("10.00"),
+        quantity=2,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Moneta",
+        listing_format="AUCTION",
+        auction_start_price=1.00,
+        category_id="45101",
+    )
+
+    assert offer_id == "OFFER-AUCTION-3"
+    assert len(payloads) == 2
+    assert all(payload["format"] == "AUCTION" for payload in payloads)
+    assert all("availableQuantity" not in payload for payload in payloads)
 
 
 def test_create_offer_uses_only_offer_api_headers(monkeypatch):
