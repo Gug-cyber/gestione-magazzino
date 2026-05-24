@@ -291,6 +291,7 @@ def run_migrations(engine) -> None:
     Accetta un SQLAlchemy Engine, apre una sessione e applica tutte le migrazioni.
     """
     run_enum_migrations(engine)   # PRIMA, fuori transazione
+    _ensure_tables(engine)         # Crea nuove tabelle se mancanti
     from sqlalchemy.orm import sessionmaker
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
@@ -299,6 +300,32 @@ def run_migrations(engine) -> None:
         run_nullable_migrations(db)
     finally:
         db.close()
+
+
+def _ensure_tables(engine) -> None:
+    """Crea le tabelle mancanti usando inspect per verificarne l'esistenza."""
+    from sqlalchemy import inspect as sa_inspect
+
+    inspector = sa_inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    # market_reports
+    if "market_reports" not in existing_tables:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS market_reports (
+                        id SERIAL PRIMARY KEY,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        report_type VARCHAR,
+                        data JSON,
+                        sent_telegram BOOLEAN DEFAULT FALSE
+                    )
+                """))
+                conn.commit()
+                logger.info("Tabella market_reports creata.")
+        except Exception as exc:
+            logger.warning("Creazione tabella market_reports fallita: %s", exc)
 
 
 def run_nullable_migrations(db) -> None:

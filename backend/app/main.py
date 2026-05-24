@@ -24,6 +24,7 @@ from .routers import cms_sync
 from .routers import tracking as tracking_router
 from .routers import backup as backup_router
 from .routers import ai
+from .routers import market_intelligence as market_intelligence_router
 from .routers.cms import contenuti as cms_contenuti, banner as cms_banner, prodotti as cms_prodotti
 from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
 from .models import contenuto as _contenuto_model  # noqa: F401 – ensures contenuti table is created
@@ -51,6 +52,7 @@ from .models import ebay_listing as _ebay_listing_model  # noqa: F401 – ensure
 from .models import ebay_sale as _ebay_sale_model  # noqa: F401 – ensures ebay_sales table is created
 from .models import ebay_order_event as _ebay_order_event_model  # noqa: F401 – ensures ebay_order_events table is created
 from .models import manual_listing as _manual_listing_model  # noqa: F401 – ensures manual_listings table is created
+from .models import market_report as _market_report_model  # noqa: F401 – ensures market_reports table is created
 
 load_dotenv()
 
@@ -133,6 +135,7 @@ app.include_router(control_panel_router.router, prefix="/api/control-panel", tag
 app.include_router(analytics_router.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(backup_router.router)
 app.include_router(ai.router, prefix="/api")
+app.include_router(market_intelligence_router.router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -144,6 +147,12 @@ def startup():
 
     from .tasks.product_cleanup_scheduler import start_product_cleanup_scheduler
     start_product_cleanup_scheduler()
+
+    from .tasks.market_price_scheduler import start_market_price_scheduler
+    start_market_price_scheduler()
+
+    from .tasks.market_scout_scheduler import start_market_scout_scheduler
+    start_market_scout_scheduler()
 
     from .crud.utente import get_utenti, create_utente
     from .schemas.utente import UtenteCreate
