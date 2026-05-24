@@ -4,6 +4,26 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
+function renderMessageContent(content) {
+  if (!content) return null
+  const trimmed = content.trim()
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return (
+          <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
+            {Object.entries(parsed).map(([k, v]) => (
+              <div key={k}><strong>{k}:</strong> {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
+            ))}
+          </div>
+        )
+      }
+    } catch (_) { /* not valid JSON, render as text */ }
+  }
+  return content
+}
+
 const SYSTEM_PROMPT = `Sei un assistente virtuale di RetroVault, un negozio specializzato in articoli vintage e da collezione.
 
 🏪 CHI SIAMO:
@@ -270,7 +290,7 @@ export default function AIAssistantWidget() {
                   wordBreak: 'break-word',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                 }}>
-                  {msg.content}
+                  {renderMessageContent(msg.content)}
                 </div>
               </div>
             ))}
