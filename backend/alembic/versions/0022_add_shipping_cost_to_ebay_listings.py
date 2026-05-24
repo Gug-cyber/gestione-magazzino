@@ -20,6 +20,11 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
+
+    if "ebay_listings" not in tables:
+        return
+
     existing_columns = [col["name"] for col in inspector.get_columns("ebay_listings")]
 
     if "shipping_cost" not in existing_columns:
@@ -29,6 +34,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
+
+    if "ebay_listings" not in tables:
+        return
+
     existing_columns = [col["name"] for col in inspector.get_columns("ebay_listings")]
 
     if "shipping_cost" in existing_columns:
