@@ -8,11 +8,6 @@ import {
   pendingOrders,
   unpaidInvoices,
 } from '../../utils/alertHelpers'
-import {
-  mockProducts,
-  mockOrders,
-  mockInvoices,
-} from '../../mock/alertsMockData'
 
 // SVG icons inline
 const IconBox = () => (
@@ -80,14 +75,14 @@ const IconCheck = () => (
 
 /**
  * Sezione Alert Intelligenti della Dashboard.
- * Usa i dati reali se disponibili, altrimenti fallback ai mock.
+ * Usa i dati reali se disponibili, altrimenti array vuoti.
  */
 export default function DashboardAlerts({ products, orders, invoices }) {
   const isMobile = useIsMobile()
 
-  const effectiveProducts = products?.length ? products : mockProducts
-  const effectiveOrders = orders?.length ? orders : mockOrders
-  const effectiveInvoices = invoices?.length ? invoices : mockInvoices
+  const effectiveProducts = products || []
+  const effectiveOrders = orders || []
+  const effectiveInvoices = invoices || []
 
   const alerts = [
     {
