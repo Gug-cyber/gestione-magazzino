@@ -1,5 +1,6 @@
 import logging
 import re
+import statistics
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
@@ -13,6 +14,22 @@ from ..routers.ebay import get_prezzi_ebay
 
 
 logger = logging.getLogger(__name__)
+
+
+def _filter_outliers(prices: list[float]) -> list[float]:
+    """Rimuove outlier usando il metodo mediana x10.
+
+    Esclude prezzi > 10x la mediana o < mediana/10 per eliminare
+    valori errati come anni (2026, 2005) o numeri astronomici (34096).
+    """
+    if len(prices) < 3:
+        return prices
+    median = statistics.median(prices)
+    if median == 0:
+        return prices
+    filtered = [p for p in prices if median / 10 <= p <= median * 10]
+    return filtered if filtered else prices
+
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -154,8 +171,13 @@ class MarketScraperService:
                     collected.append(float(value))
 
         collected = [round(v, 2) for v in collected if v > 0]
+        total_annunci = len(collected)
+        collected = _filter_outliers(collected)
+        outliers_esclusi = total_annunci - len(collected)
         result["summary"] = {
             "count": len(collected),
+            "total_annunci": total_annunci,
+            "outliers_esclusi": outliers_esclusi,
             "min": round(min(collected), 2) if collected else None,
             "max": round(max(collected), 2) if collected else None,
             "avg": round(sum(collected) / len(collected), 2) if collected else None,

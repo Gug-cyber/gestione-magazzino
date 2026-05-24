@@ -2,6 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { aiAPI } from '../api/ai'
 import { prodottiAPI } from '../api/client'
 
+function renderMessageContent(content) {
+  if (!content) return null
+  const trimmed = content.trim()
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return (
+          <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
+            {Object.entries(parsed).map(([k, v]) => (
+              <div key={k}><strong>{k}:</strong> {typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
+            ))}
+          </div>
+        )
+      }
+    } catch (_) { /* not valid JSON, render as text */ }
+  }
+  return content
+}
+
 const TABS = [
   { key: 'chat', label: 'Chat' },
   { key: 'mercato', label: 'Analisi Mercato' },
@@ -155,7 +175,7 @@ export default function AIAssistant() {
             {chatMessages.map((m, idx) => (
               <div key={idx} style={{ marginBottom: 10, textAlign: m.role === 'user' ? 'right' : 'left' }}>
                 <span style={{ display: 'inline-block', padding: '8px 10px', borderRadius: 10, background: m.role === 'user' ? 'rgba(99,120,255,.12)' : 'var(--color-surface-hover)' }}>
-                  {m.content}
+                  {renderMessageContent(m.content)}
                 </span>
               </div>
             ))}
@@ -202,9 +222,33 @@ export default function AIAssistant() {
           {selectedProduct && <div style={{ fontSize: 13, opacity: 0.8 }}>Prodotto selezionato: {selectedProduct.nome}</div>}
           {mercatoResult && (
             <div style={{ display: 'grid', gap: 8 }}>
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 10 }}>
-                {JSON.stringify(mercatoResult.mercato?.summary || {}, null, 2)}
-              </pre>
+              {(() => {
+                const s = mercatoResult.mercato?.summary || {}
+                const r = mercatoResult.raccomandazioni || {}
+                const p = mercatoResult.prodotto || {}
+                return (
+                  <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 12, display: 'grid', gap: 6 }}>
+                    <div style={{ fontWeight: 600 }}>📊 {p.nome}{p.condizione ? ` (${p.condizione})` : ''}</div>
+                    {s.total_annunci != null && (
+                      <div>
+                        Annunci trovati: <strong>{s.count}</strong>
+                        {s.outliers_esclusi > 0 && ` (su ${s.total_annunci} totali, ${s.outliers_esclusi} esclusi come outlier)`}
+                      </div>
+                    )}
+                    {s.min != null && <div>💰 Prezzo minimo: <strong>€{s.min.toFixed(2)}</strong></div>}
+                    {s.max != null && <div>📈 Prezzo massimo: <strong>€{s.max.toFixed(2)}</strong></div>}
+                    {s.avg != null && <div>📊 Prezzo medio: <strong>€{s.avg.toFixed(2)}</strong></div>}
+                    {r.prezzo_massimo_acquisto_per_margine_30 != null && (
+                      <div>🎯 Prezzo max acquisto (margine 30%): <strong>€{r.prezzo_massimo_acquisto_per_margine_30.toFixed(2)}</strong></div>
+                    )}
+                    {r.suggerimenti_rule_based?.length > 0 && (
+                      <div style={{ marginTop: 4, padding: '8px 10px', borderRadius: 6, background: 'var(--color-surface-hover)', fontSize: 13 }}>
+                        {r.suggerimenti_rule_based.map((sg, i) => <div key={i}>⚠️ {sg}</div>)}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               <div style={{ whiteSpace: 'pre-wrap' }}>{mercatoResult.raccomandazioni?.analisi_llm}</div>
             </div>
           )}
