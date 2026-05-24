@@ -50,6 +50,7 @@ import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import StoreFooterPage from './pages/store/StoreFooterPage'
 import ControlPanel from './pages/ControlPanel'
+import AIAssistant from './pages/AIAssistant'
 import { storeAPI } from './api/store'
 import AIAssistantWidget from './components/AIAssistantWidget'
 function AppLayout({ children }) {
@@ -294,6 +295,11 @@ function App() {
           <Route path="/control-panel" element={
             <ProtectedRoute>
               <AppLayout><ControlPanel /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/ai" element={
+            <ProtectedRoute>
+              <AppLayout><AIAssistant /></AppLayout>
             </ProtectedRoute>
           } />
         </Routes>
