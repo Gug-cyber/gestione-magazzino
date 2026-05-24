@@ -81,7 +81,7 @@ def _safe_chat(prompt: str, system: str) -> str:
         return llm_service.chat(prompt=prompt, system=system)
     except Exception as exc:
         logger.warning("LLM non disponibile, fallback rule-based: %s", exc)
-        return f"⚠️ AI non disponibile in questo momento ({exc})"
+        return "⚠️ AI non disponibile in questo momento. Riprova più tardi."
 
 
 @router.post("/analisi-mercato")
