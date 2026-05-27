@@ -196,6 +196,9 @@ pytest
 | `EBAY_SALES_POLL_LOOKBACK_HOURS` | `24` | Finestra temporale usata nelle chiamate Fulfillment API |
 | `TELEGRAM_BOT_TOKEN` | (vuoto) | Token bot Telegram per notifica ordini |
 | `TELEGRAM_CHAT_ID` | (vuoto) | Chat ID destinatario Telegram (preconfigurato nel codice tramite env) |
+| `MARKET_BOT_TOKEN` | (vuoto) | Token bot Telegram per notifiche market intelligence (report prezzi, occasioni) |
+| `MARKET_CHAT_ID` | (vuoto) | Chat ID canale Telegram market intelligence |
+| `GROQ_API_KEY` | (vuoto) | API key Groq per le funzionalità AI (analisi mercato, chat, previsioni stock) |
 
 > ⚠️ In produzione il server **non si avvia** se `SECRET_KEY` è quella di default o ha meno di 32 caratteri.
 

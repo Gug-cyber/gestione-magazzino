@@ -11,6 +11,7 @@ Logica:
 - Per ogni occasione trovata: invia notifica Telegram (MARKET_BOT_TOKEN)
 """
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -231,6 +232,12 @@ def start_market_scout_scheduler() -> None:
         thread.start()
         _scheduler_started = True
         logger.info("Thread market-scout-scheduler avviato.")
+        if not os.getenv("MARKET_BOT_TOKEN", "").strip():
+            logger.warning(
+                "ATTENZIONE: MARKET_BOT_TOKEN non configurato. "
+                "Le notifiche Telegram per le occasioni marketplace NON verranno inviate. "
+                "Configura MARKET_BOT_TOKEN e MARKET_CHAT_ID nelle variabili d'ambiente."
+            )
 
 
 def get_scheduler_status() -> dict[str, Any]:
