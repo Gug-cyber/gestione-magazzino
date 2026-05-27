@@ -35,6 +35,7 @@ class RigaOrdineCreate(BaseModel):
 
 class RigaOrdineResponse(RigaOrdineCreate):
     id: int
+    prodotto_id: Optional[int] = None
     subtotale: float
     prodotto_nome: Optional[str] = None
     prodotto_sku: Optional[str] = None
