@@ -1,7 +1,7 @@
 """Processo 2 — Scouting occasioni marketplace.
 
 Logica:
-- Cadenza: ogni ora
+- Cadenza: ogni 2 ore
 - Ricerca generica per carte Pokémon (non legata al magazzino)
 - Marketplace: Cardmarket (prezzo rivendita), eBay Italia, Subito.it, Vinted, Wallapop
 - Calcolo marginalità:
@@ -209,9 +209,9 @@ def run_market_scout() -> dict[str, Any]:
 
 
 def _scheduler_loop() -> None:
-    """Loop del thread di scheduling — gira ogni ora."""
-    schedule.every().hour.do(run_market_scout)
-    logger.info("Scheduler scouting occasioni avviato — cadenza ogni ora")
+    """Loop del thread di scheduling — gira ogni 2 ore."""
+    schedule.every(2).hours.do(run_market_scout)
+    logger.info("Scheduler scouting occasioni avviato — cadenza ogni 2 ore")
     while True:
         schedule.run_pending()
         time.sleep(60)
@@ -246,5 +246,5 @@ def get_scheduler_status() -> dict[str, Any]:
         "scheduler": "market_scout",
         "started": _scheduler_started,
         "last_run": _last_run.isoformat() if _last_run else None,
-        "interval": "ogni ora",
+        "interval": "ogni 2 ore",
     }
