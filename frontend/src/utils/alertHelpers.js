@@ -31,7 +31,10 @@ export function stagnantProducts(products, days) {
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - days)
   return products.filter((p) => {
-    if (!p.data_ultimo_movimento) return true
+    if (!p.data_ultimo_movimento) {
+      if (!p.created_at) return false
+      return new Date(p.created_at) < cutoff
+    }
     return new Date(p.data_ultimo_movimento) < cutoff
   })
 }
