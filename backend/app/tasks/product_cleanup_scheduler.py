@@ -18,6 +18,8 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import text
+
 from ..database import SessionLocal
 from ..models.prodotto import Prodotto
 from ..models.ordine import RigaOrdine
@@ -46,6 +48,19 @@ def run_cleanup(db=None) -> dict:
     owns_session = db is None
     if owns_session:
         db = SessionLocal()
+
+    # Preventive check: verify data_scarico column exists before running the query.
+    # If the migration hasn't been applied yet, skip cleanup and log a warning.
+    try:
+        db.execute(text("SELECT data_scarico FROM prodotti LIMIT 0"))
+    except Exception:
+        logger.warning(
+            "Colonna data_scarico non ancora presente nel DB — pulizia prodotti saltata. "
+            "Applicare le migration per abilitare la pulizia automatica."
+        )
+        if owns_session:
+            db.close()
+        return {"eliminati": 0, "ids": []}
 
     eliminati = 0
     eliminati_ids: list[int] = []
