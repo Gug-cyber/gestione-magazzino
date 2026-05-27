@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { prodottiAPI, ordiniAPI, fattureAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import DashboardAlerts from '../components/alerts/DashboardAlerts'
@@ -200,40 +200,49 @@ function Dashboard() {
     fatture: [],
   })
   const [loading, setLoading] = useState(true)
+  const [apiError, setApiError] = useState(null)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    setApiError(null)
+    const safe = (res) => res.status === 'fulfilled' ? res.value : null
+    const [prodottiRes, sottoScortaRes, ordiniRes, tuttiOrdiniRes, ordiniConfermatiRes, ordiniSpeditiRes, fattureRes] = await Promise.allSettled([
+      prodottiAPI.getAll({ limit: 1000 }),
+      prodottiAPI.getSottoScorta(),
+      ordiniAPI.getAll({ limit: 5 }),
+      ordiniAPI.getAll({ limit: 1000 }),
+      ordiniAPI.getAll({ stato: 'confermato', limit: 1000 }),
+      ordiniAPI.getAll({ stato: 'spedito', limit: 1000 }),
+      fattureAPI.getAll({ limit: 1000 }),
+    ])
+    const errors = []
+    if (prodottiRes.status === 'rejected') errors.push('Prodotti')
+    if (sottoScortaRes.status === 'rejected') errors.push('Sotto Scorta')
+    if (ordiniRes.status === 'rejected') errors.push('Ordini Recenti')
+    if (tuttiOrdiniRes.status === 'rejected') errors.push('Tutti gli Ordini')
+    if (ordiniConfermatiRes.status === 'rejected') errors.push('Ordini Confermati')
+    if (ordiniSpeditiRes.status === 'rejected') errors.push('Ordini Spediti')
+    if (fattureRes.status === 'rejected') errors.push('Fatture')
+    if (errors.length > 0) setApiError(`Errore nel caricamento: ${errors.join(', ')}`)
+    const ordiniInCorso = [...(safe(ordiniConfermatiRes)?.data || []), ...(safe(ordiniSpeditiRes)?.data || [])]
+      .sort((a, b) => new Date(b.data_ordine || 0) - new Date(a.data_ordine || 0))
+    setStats({
+      totaleProdotti: safe(prodottiRes)?.data?.length ?? 0,
+      prodottiSottoScorta: safe(sottoScortaRes)?.data?.length ?? 0,
+      totaleOrdini: safe(tuttiOrdiniRes)?.data?.length ?? 0,
+      ordiniRecenti: safe(ordiniRes)?.data ?? [],
+      prodottiSottoScortaList: safe(sottoScortaRes)?.data ?? [],
+      ordiniInCorso,
+      prodotti: safe(prodottiRes)?.data ?? [],
+      ordini: safe(tuttiOrdiniRes)?.data ?? [],
+      fatture: safe(fattureRes)?.data ?? [],
+    })
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [prodottiRes, sottoScortaRes, ordiniRes, tuttiOrdiniRes, ordiniConfermatiRes, ordiniSpeditiRes, fattureRes] = await Promise.all([
-          prodottiAPI.getAll({ limit: 1000 }),
-          prodottiAPI.getSottoScorta(),
-          ordiniAPI.getAll({ limit: 5 }),
-          ordiniAPI.getAll({ limit: 1000 }),
-          ordiniAPI.getAll({ stato: 'confermato', limit: 1000 }),
-          ordiniAPI.getAll({ stato: 'spedito', limit: 1000 }),
-          fattureAPI.getAll({ limit: 1000 }),
-        ])
-        const ordiniInCorso = [...(ordiniConfermatiRes.data || []), ...(ordiniSpeditiRes.data || [])]
-          .sort((a, b) => new Date(b.data_ordine || 0) - new Date(a.data_ordine || 0))
-        setStats({
-          totaleProdotti: prodottiRes.data.length,
-          prodottiSottoScorta: sottoScortaRes.data.length,
-          totaleOrdini: tuttiOrdiniRes.data.length,
-          ordiniRecenti: ordiniRes.data,
-          prodottiSottoScortaList: sottoScortaRes.data,
-          ordiniInCorso,
-          prodotti: prodottiRes.data,
-          ordini: tuttiOrdiniRes.data,
-          fatture: fattureRes.data,
-        })
-      } catch (err) {
-        console.error('Errore nel caricamento dashboard:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchData()
-  }, [])
+  }, [fetchData])
 
   if (loading) return (
     <div style={{ 
@@ -252,6 +261,40 @@ function Dashboard() {
 
   return (
     <div className="animate-fade-in">
+      {/* Error Banner */}
+      {apiError && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          backgroundColor: 'rgba(239, 68, 68, 0.12)',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          borderRadius: '10px',
+          padding: '14px 18px',
+          marginBottom: '24px',
+          color: '#f87171',
+        }}>
+          <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
+          <span style={{ flex: 1, fontSize: '14px', fontWeight: '500' }}>{apiError}</span>
+          <button
+            onClick={fetchData}
+            style={{
+              flexShrink: 0,
+              padding: '6px 14px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#f87171',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Riprova
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ 
