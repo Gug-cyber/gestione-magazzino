@@ -59,7 +59,8 @@ export function lowMarginProducts(products, thresholdPercent) {
 }
 
 /**
- * Restituisce i prodotti privi di prezzo_acquisto O prezzo_vendita (null, undefined o 0).
+ * Restituisce i prodotti privi di prezzo_vendita (null, undefined o 0).
+ * Il prezzo di acquisto è opzionale e non viene considerato.
  * @param {Array} products
  * @returns {Array}
  */
@@ -67,8 +68,6 @@ export function productsWithMissingPricing(products) {
   if (!Array.isArray(products)) return []
   return products.filter(
     (p) =>
-      !p.prezzo_acquisto ||
-      parseFloat(p.prezzo_acquisto) <= 0 ||
       !p.prezzo_vendita ||
       parseFloat(p.prezzo_vendita) <= 0
   )
