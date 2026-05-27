@@ -1,4 +1,3 @@
-import app.routers.market_intelligence as market_intelligence_router
 import app.services.llm_service as llm_service
 import app.services.market_telegram as market_telegram
 import app.services.notification_service as notification_service
@@ -89,7 +88,7 @@ def test_test_groq_endpoint_returns_error_details_on_failure(client, auth_header
         "ai_disponibile": False,
         "backend": "ollama",
         "GROQ_API_KEY": "mancante (usa Ollama locale)",
-        "errore": "Ollama offline",
+        "errore": "Servizio AI non disponibile o configurazione non valida.",
     }
 
 

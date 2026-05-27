@@ -225,7 +225,7 @@ def start_market_price_scheduler() -> None:
         if not os.getenv("MARKET_BOT_TOKEN", "").strip():
             logger.warning(
                 "ATTENZIONE: MARKET_BOT_TOKEN non configurato. "
-                "Le notifiche Telegram per le occasioni marketplace NON verranno inviate. "
+                "Le notifiche Telegram per il report prezzi giornaliero NON verranno inviate. "
                 "Configura MARKET_BOT_TOKEN e MARKET_CHAT_ID nelle variabili d'ambiente."
             )
 
