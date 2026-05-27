@@ -22,6 +22,13 @@ function renderMessageContent(content) {
   return content
 }
 
+function toStr(value) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'object') return JSON.stringify(value, null, 2)
+  return String(value)
+}
+
 const TABS = [
   { key: 'chat', label: 'Chat' },
   { key: 'mercato', label: 'Analisi Mercato' },
@@ -311,11 +318,11 @@ export default function AIAssistant() {
           {descrResult && (
             <div style={{ display: 'grid', gap: 8 }}>
               <label>Italiano</label>
-              <textarea readOnly value={descrResult.descrizione_it || descrResult.raw || ''} style={{ minHeight: 120, borderRadius: 8, border: '1px solid var(--color-border)', padding: 10 }} />
-              <button className="gm-btn gm-btn-secondary" onClick={() => navigator.clipboard.writeText(descrResult.descrizione_it || descrResult.raw || '')}>Copia IT</button>
+              <textarea readOnly value={toStr(descrResult.descrizione_it) || toStr(descrResult.raw)} style={{ minHeight: 120, borderRadius: 8, border: '1px solid var(--color-border)', padding: 10 }} />
+              <button className="gm-btn gm-btn-secondary" onClick={() => navigator.clipboard.writeText(toStr(descrResult.descrizione_it) || toStr(descrResult.raw))}>Copia IT</button>
               <label>English</label>
-              <textarea readOnly value={descrResult.descrizione_en || ''} style={{ minHeight: 120, borderRadius: 8, border: '1px solid var(--color-border)', padding: 10 }} />
-              <button className="gm-btn gm-btn-secondary" onClick={() => navigator.clipboard.writeText(descrResult.descrizione_en || '')}>Copy EN</button>
+              <textarea readOnly value={toStr(descrResult.descrizione_en)} style={{ minHeight: 120, borderRadius: 8, border: '1px solid var(--color-border)', padding: 10 }} />
+              <button className="gm-btn gm-btn-secondary" onClick={() => navigator.clipboard.writeText(toStr(descrResult.descrizione_en))}>Copy EN</button>
             </div>
           )}
         </div>

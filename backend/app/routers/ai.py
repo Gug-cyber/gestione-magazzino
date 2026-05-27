@@ -81,7 +81,18 @@ def _safe_chat(prompt: str, system: str) -> str:
         return llm_service.chat(prompt=prompt, system=system)
     except Exception as exc:
         logger.warning("LLM non disponibile, fallback rule-based: %s", exc)
-        return "⚠️ AI non disponibile in questo momento. Riprova più tardi."
+        return "\u26a0\ufe0f AI non disponibile in questo momento. Riprova pi\u00f9 tardi."
+
+
+def _to_str(value: Any) -> Optional[str]:
+    """Converte un valore in stringa, gestendo dict/list annidati restituiti dall'LLM."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
 
 
 @router.post("/analisi-mercato")
@@ -120,12 +131,12 @@ def analisi_mercato(
 
     if prezzo_vendita_magazzino is not None and prezzo_minimo is not None and prezzo_vendita_magazzino < prezzo_minimo:
         suggerimenti_rule_based.append(
-            f"Prezzo in magazzino (€{prezzo_vendita_magazzino:.2f}) sotto minimo mercato (€{prezzo_minimo:.2f}): valuta aumento."
+            f"Prezzo in magazzino (\u20ac{prezzo_vendita_magazzino:.2f}) sotto minimo mercato (\u20ac{prezzo_minimo:.2f}): valuta aumento."
         )
 
     if prezzo_vendita_magazzino is not None and prezzo_medio is not None and prezzo_vendita_magazzino > prezzo_medio * 1.7:
         suggerimenti_rule_based.append(
-            f"Prezzo in magazzino (€{prezzo_vendita_magazzino:.2f}) oltre +70% del medio mercato (€{prezzo_medio:.2f}): valuta riduzione."
+            f"Prezzo in magazzino (\u20ac{prezzo_vendita_magazzino:.2f}) oltre +70% del medio mercato (\u20ac{prezzo_medio:.2f}): valuta riduzione."
         )
 
     prompt = f"""
@@ -144,7 +155,7 @@ Obiettivi:
 1) Dire se conviene acquistare.
 2) Indicare il prezzo massimo di acquisto consigliato per circa 30% margine.
 3) Dire se il prezzo magazzino va alzato o abbassato.
-4) Evidenziare opportunità su marketplace usato europei.
+4) Evidenziare opportunit\u00e0 su marketplace usato europei.
 """
 
     analisi_llm = _safe_chat(
@@ -246,10 +257,13 @@ Lingua: {lingua}
     )
     parsed = _extract_json_block(raw_text)
 
+    descrizione_it = _to_str((parsed or {}).get("it")) if parsed else None
+    descrizione_en = _to_str((parsed or {}).get("en")) if parsed else None
+
     return {
         "prodotto": {"id": prodotto.id if prodotto else None, "nome": nome},
-        "descrizione_it": (parsed or {}).get("it"),
-        "descrizione_en": (parsed or {}).get("en"),
+        "descrizione_it": descrizione_it,
+        "descrizione_en": descrizione_en,
         "raw": raw_text if not parsed else None,
     }
 
@@ -294,7 +308,7 @@ def previsioni_stock(
         if p.quantita <= (p.quantita_minima or 0):
             riordino = True
             quantita_suggerita = max((p.quantita_minima or 0) * 2 - p.quantita, 1)
-            motivo = "Quantità sotto soglia minima."
+            motivo = "Quantit\u00e0 sotto soglia minima."
         elif giorni_copertura is not None and giorni_copertura < 30:
             riordino = True
             target = int((media_giornaliera * 45) + 0.999)
@@ -318,8 +332,8 @@ def previsioni_stock(
 
     top_alerts = [s for s in suggerimenti if s["riordino_consigliato"]][:30]
     llm_text = _safe_chat(
-        prompt=f"Questi sono i prodotti con necessità di riordino: {json.dumps(top_alerts, ensure_ascii=False)}",
-        system="Sei un inventory planner. Fornisci priorità di riordino pratiche in italiano.",
+        prompt=f"Questi sono i prodotti con necessit\u00e0 di riordino: {json.dumps(top_alerts, ensure_ascii=False)}",
+        system="Sei un inventory planner. Fornisci priorit\u00e0 di riordino pratiche in italiano.",
     )
 
     return {
