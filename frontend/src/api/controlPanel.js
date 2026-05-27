@@ -54,3 +54,11 @@ export const controlPanelAPI = {
   createFooterPage: (data) => apiClient.post('/api/control-panel/footer-pages', data),
   deleteFooterPage: (slug) => apiClient.delete(`/api/control-panel/footer-pages/${slug}`),
 }
+
+export const marketIntelligenceAPI = {
+  testTelegram: () => apiClient.post('/api/market-intelligence/test-telegram'),
+  testGroq: () => apiClient.get('/api/market-intelligence/test-groq'),
+  getStatus: () => apiClient.get('/api/market-intelligence/status'),
+  triggerReportPrezzi: () => apiClient.post('/api/market-intelligence/trigger/report-prezzi'),
+  triggerScout: () => apiClient.post('/api/market-intelligence/trigger/scout'),
+}

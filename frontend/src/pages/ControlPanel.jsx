@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { controlPanelAPI } from '../api/controlPanel'
+import { controlPanelAPI, marketIntelligenceAPI } from '../api/controlPanel'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1505,6 +1505,324 @@ function TabFooter() {
   )
 }
 
+// ─── Tab: AI & Notifiche ──────────────────────────────────────────────────────
+
+function TabAI() {
+  const [toast, setToast] = useState(null)
+
+  // ── Telegram state ──
+  const [telegramLoading, setTelegramLoading] = useState(false)
+  const [telegramResult, setTelegramResult] = useState(null)
+
+  // ── AI state ──
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiResult, setAiResult] = useState(null)
+
+  // ── Scheduler state ──
+  const [statusLoading, setStatusLoading] = useState(true)
+  const [schedulerStatus, setSchedulerStatus] = useState(null)
+  const [triggerPrezziLoading, setTriggerPrezziLoading] = useState(false)
+  const [triggerPrezziResult, setTriggerPrezziResult] = useState(null)
+  const [triggerScoutLoading, setTriggerScoutLoading] = useState(false)
+  const [triggerScoutResult, setTriggerScoutResult] = useState(null)
+
+  useEffect(() => {
+    marketIntelligenceAPI.getStatus()
+      .then(res => setSchedulerStatus(res.data))
+      .catch(err => { console.error('Errore caricamento status scheduler:', err) })
+      .finally(() => setStatusLoading(false))
+  }, [])
+
+  async function handleTestTelegram() {
+    setTelegramLoading(true)
+    setTelegramResult(null)
+    try {
+      const res = await marketIntelligenceAPI.testTelegram()
+      setTelegramResult(res.data)
+    } catch (err) {
+      setTelegramResult({ error: err?.response?.data?.detail || err.message || 'Errore di rete' })
+    } finally {
+      setTelegramLoading(false)
+    }
+  }
+
+  async function handleTestGroq() {
+    setAiLoading(true)
+    setAiResult(null)
+    try {
+      const res = await marketIntelligenceAPI.testGroq()
+      setAiResult(res.data)
+    } catch (err) {
+      setAiResult({ error: err?.response?.data?.detail || err.message || 'Errore di rete' })
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  async function handleTriggerPrezzi() {
+    setTriggerPrezziLoading(true)
+    setTriggerPrezziResult(null)
+    try {
+      const res = await marketIntelligenceAPI.triggerReportPrezzi()
+      setTriggerPrezziResult(res.data)
+      setToast('Report prezzi avviato ✓')
+    } catch (err) {
+      setTriggerPrezziResult({ error: err?.response?.data?.detail || err.message || 'Errore di rete' })
+    } finally {
+      setTriggerPrezziLoading(false)
+    }
+  }
+
+  async function handleTriggerScout() {
+    setTriggerScoutLoading(true)
+    setTriggerScoutResult(null)
+    try {
+      const res = await marketIntelligenceAPI.triggerScout()
+      setTriggerScoutResult(res.data)
+      setToast('Scout occasioni avviato ✓')
+    } catch (err) {
+      setTriggerScoutResult({ error: err?.response?.data?.detail || err.message || 'Errore di rete' })
+    } finally {
+      setTriggerScoutLoading(false)
+    }
+  }
+
+  const badgeGreen = { background: 'var(--color-success-bg)', color: '#4ade80', border: '1px solid var(--color-success-border)', borderRadius: '6px', padding: '2px 10px', fontSize: '13px', fontWeight: '600', display: 'inline-block' }
+  const badgeRed = { background: 'var(--color-danger-bg)', color: '#f87171', border: '1px solid var(--color-danger-border)', borderRadius: '6px', padding: '2px 10px', fontSize: '13px', fontWeight: '600', display: 'inline-block' }
+  const sectionTitle = { fontSize: '14px', fontWeight: '700', color: 'var(--color-text)', marginBottom: '12px', marginTop: 0 }
+
+  return (
+    <div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      {/* ── Sezione 1: Telegram ── */}
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={sectionTitle}>📬 Configurazione Telegram</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+
+          {/* Canale Ordini */}
+          <div className="gm-card" style={{ padding: '24px' }}>
+            <div style={{ fontWeight: '600', fontSize: '15px', color: 'var(--color-text)', marginBottom: '6px' }}>
+              🛒 Canale Ordini
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
+              Notifiche per nuovi ordini, aggiornamenti tracking
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '16px', fontFamily: 'monospace' }}>
+              TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
+            </div>
+            <button
+              className="gm-btn gm-btn-primary"
+              onClick={handleTestTelegram}
+              disabled={telegramLoading}
+            >
+              {telegramLoading ? '⏳ Test in corso…' : '📨 Testa canale ordini'}
+            </button>
+            {telegramResult && !telegramResult.error && telegramResult.canale_ordini && (
+              <div style={{ marginTop: '14px' }}>
+                <span style={telegramResult.canale_ordini.configurato ? badgeGreen : badgeRed}>
+                  {telegramResult.canale_ordini.configurato ? '✅ Configurato' : '❌ Non configurato'}
+                </span>
+                {!telegramResult.canale_ordini.configurato && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#f87171' }}>
+                    {telegramResult.canale_ordini.TELEGRAM_BOT_TOKEN === 'mancante' && <div>• TELEGRAM_BOT_TOKEN mancante</div>}
+                    {telegramResult.canale_ordini.TELEGRAM_CHAT_ID === 'mancante' && <div>• TELEGRAM_CHAT_ID mancante</div>}
+                  </div>
+                )}
+                {telegramResult.canale_ordini.configurato && (
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                    Messaggio inviato: {telegramResult.canale_ordini.messaggio_inviato ? '✓' : '✗'}
+                  </div>
+                )}
+              </div>
+            )}
+            {telegramResult?.error && (
+              <div style={{ marginTop: '12px', fontSize: '13px', color: '#f87171' }}>⚠️ {telegramResult.error}</div>
+            )}
+          </div>
+
+          {/* Canale Market Intelligence */}
+          <div className="gm-card" style={{ padding: '24px' }}>
+            <div style={{ fontWeight: '600', fontSize: '15px', color: 'var(--color-text)', marginBottom: '6px' }}>
+              📊 Canale Market Intelligence
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
+              Report prezzi giornaliero, occasioni marketplace
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '16px', fontFamily: 'monospace' }}>
+              MARKET_BOT_TOKEN / MARKET_CHAT_ID
+            </div>
+            <button
+              className="gm-btn gm-btn-primary"
+              onClick={handleTestTelegram}
+              disabled={telegramLoading}
+            >
+              {telegramLoading ? '⏳ Test in corso…' : '📨 Testa canale market'}
+            </button>
+            {telegramResult && !telegramResult.error && telegramResult.canale_market && (
+              <div style={{ marginTop: '14px' }}>
+                <span style={telegramResult.canale_market.configurato ? badgeGreen : badgeRed}>
+                  {telegramResult.canale_market.configurato ? '✅ Configurato' : '❌ Non configurato'}
+                </span>
+                {!telegramResult.canale_market.configurato && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#f87171' }}>
+                    {telegramResult.canale_market.MARKET_BOT_TOKEN === 'mancante' && <div>• MARKET_BOT_TOKEN mancante</div>}
+                    {telegramResult.canale_market.MARKET_CHAT_ID === 'mancante' && <div>• MARKET_CHAT_ID mancante</div>}
+                  </div>
+                )}
+                {telegramResult.canale_market.configurato && (
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                    Messaggio inviato: {telegramResult.canale_market.messaggio_inviato ? '✓' : '✗'}
+                  </div>
+                )}
+              </div>
+            )}
+            {telegramResult?.error && (
+              <div style={{ marginTop: '12px', fontSize: '13px', color: '#f87171' }}>⚠️ {telegramResult.error}</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sezione 2: AI ── */}
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={sectionTitle}>🧠 Configurazione AI</h3>
+        <div className="gm-card" style={{ padding: '24px', maxWidth: '480px' }}>
+          <div style={{ fontWeight: '600', fontSize: '15px', color: 'var(--color-text)', marginBottom: '6px' }}>
+            Groq / Ollama
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
+            Verifica la disponibilità del servizio AI configurato (Groq cloud o Ollama locale).
+          </div>
+          <button
+            className="gm-btn gm-btn-primary"
+            onClick={handleTestGroq}
+            disabled={aiLoading}
+          >
+            {aiLoading ? '⏳ Test in corso…' : '🧠 Testa AI (Groq/Ollama)'}
+          </button>
+          {aiResult && !aiResult.error && (
+            <div style={{ marginTop: '14px' }}>
+              <span style={aiResult.ai_disponibile ? badgeGreen : badgeRed}>
+                {aiResult.ai_disponibile ? '✅ AI disponibile' : '❌ AI non disponibile'}
+              </span>
+              <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                <div>Backend: <strong>{aiResult.backend}</strong></div>
+                <div>GROQ_API_KEY: {aiResult.GROQ_API_KEY}</div>
+                {aiResult.risposta_test && (
+                  <div style={{ marginTop: '6px', fontFamily: 'monospace', fontSize: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '8px' }}>
+                    {aiResult.risposta_test.slice(0, 80)}{aiResult.risposta_test.length > 80 ? '…' : ''}
+                  </div>
+                )}
+                {aiResult.errore && (
+                  <div style={{ marginTop: '6px', color: '#f87171', fontSize: '12px' }}>{aiResult.errore}</div>
+                )}
+              </div>
+            </div>
+          )}
+          {aiResult?.error && (
+            <div style={{ marginTop: '12px', fontSize: '13px', color: '#f87171' }}>⚠️ {aiResult.error}</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Sezione 3: Scheduler ── */}
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={sectionTitle}>🤖 Scheduler Market Intelligence</h3>
+        <div className="gm-card" style={{ padding: '24px' }}>
+          {statusLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><div className="spinner" /></div>
+          ) : schedulerStatus ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+              {[
+                { key: 'market_price_scheduler', label: '💹 Report Prezzi' },
+                { key: 'market_scout_scheduler', label: '🔍 Scout Occasioni' },
+              ].map(({ key, label }) => {
+                const s = schedulerStatus[key] || {}
+                return (
+                  <div key={key} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px 16px' }}>
+                    <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--color-text)', marginBottom: '8px' }}>{label}</div>
+                    {s.error ? (
+                      <span style={badgeRed}>⚠️ Non disponibile</span>
+                    ) : (
+                      <>
+                        <span style={s.avviato ? badgeGreen : badgeRed}>
+                          {s.avviato ? '✅ Avviato' : '⏸ Non avviato'}
+                        </span>
+                        {s.ultimo_run && (
+                          <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                            Ultimo run: {s.ultimo_run}
+                          </div>
+                        )}
+                        {s.prossimo_run && (
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                            Prossimo run: {s.prossimo_run}
+                          </div>
+                        )}
+                        {s.intervallo && !s.prossimo_run && (
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                            Intervallo: {s.intervallo}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Impossibile caricare lo stato degli scheduler.</div>
+          )}
+
+          {/* Trigger manuale prezzi */}
+          <div style={{ marginBottom: '16px' }}>
+            <button
+              className="gm-btn gm-btn-primary"
+              onClick={handleTriggerPrezzi}
+              disabled={triggerPrezziLoading}
+              style={{ marginRight: '12px' }}
+            >
+              {triggerPrezziLoading ? '⏳ Esecuzione…' : '▶️ Esegui Report Prezzi ora'}
+            </button>
+            {triggerPrezziResult && (
+              <span style={{ fontSize: '13px', color: triggerPrezziResult.error || !triggerPrezziResult.success ? '#f87171' : '#4ade80' }}>
+                {triggerPrezziResult.error
+                  ? `⚠️ ${triggerPrezziResult.error}`
+                  : triggerPrezziResult.success
+                    ? `✅ Completato — ${triggerPrezziResult.totale_prodotti ?? 0} prodotti (in linea: ${triggerPrezziResult.in_linea ?? 0}, sopra: ${triggerPrezziResult.sopra_mercato ?? 0}, sotto: ${triggerPrezziResult.sotto_mercato ?? 0})`
+                    : `⚠️ ${triggerPrezziResult.message || 'Non completato'}`
+                }
+              </span>
+            )}
+          </div>
+
+          {/* Trigger manuale scout */}
+          <div>
+            <button
+              className="gm-btn gm-btn-primary"
+              onClick={handleTriggerScout}
+              disabled={triggerScoutLoading}
+              style={{ marginRight: '12px' }}
+            >
+              {triggerScoutLoading ? '⏳ Esecuzione…' : '🔍 Esegui Scout Occasioni ora'}
+            </button>
+            {triggerScoutResult && (
+              <span style={{ fontSize: '13px', color: triggerScoutResult.error || !triggerScoutResult.success ? '#f87171' : '#4ade80' }}>
+                {triggerScoutResult.error
+                  ? `⚠️ ${triggerScoutResult.error}`
+                  : triggerScoutResult.success
+                    ? `✅ Completato — ${triggerScoutResult.occasioni_trovate ?? 0} occasioni trovate`
+                    : `⚠️ ${triggerScoutResult.message || 'Non completato'}`
+                }
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main ControlPanel Page ───────────────────────────────────────────────────
 
 const TABS = [
@@ -1515,6 +1833,7 @@ const TABS = [
   { key: 'store', label: '🏪 Store' },
   { key: 'utm', label: '🔗 Link UTM' },
   { key: 'footer', label: '📄 Footer' },
+  { key: 'ai', label: '🤖 AI & Notifiche' },
 ]
 
 export default function ControlPanel() {
@@ -1567,6 +1886,7 @@ export default function ControlPanel() {
       {activeTab === 'store' && <TabStore />}
       {activeTab === 'utm' && <TabUtm />}
       {activeTab === 'footer' && <TabFooter />}
+      {activeTab === 'ai' && <TabAI />}
     </div>
   )
 }
