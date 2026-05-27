@@ -9,6 +9,7 @@ Logica:
 - Salva il report nel DB (MarketReport) e invia su Telegram (MARKET_BOT_TOKEN)
 """
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -221,6 +222,12 @@ def start_market_price_scheduler() -> None:
         thread.start()
         _scheduler_started = True
         logger.info("Thread market-price-scheduler avviato.")
+        if not os.getenv("MARKET_BOT_TOKEN", "").strip():
+            logger.warning(
+                "ATTENZIONE: MARKET_BOT_TOKEN non configurato. "
+                "Le notifiche Telegram per il report prezzi giornaliero NON verranno inviate. "
+                "Configura MARKET_BOT_TOKEN e MARKET_CHAT_ID nelle variabili d'ambiente."
+            )
 
 
 def get_scheduler_status() -> dict[str, Any]:

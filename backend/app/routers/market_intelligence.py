@@ -1,4 +1,4 @@
-"""Router per i endpoint REST Market Intelligence.
+"""Router per gli endpoint REST Market Intelligence.
 
 Endpoint:
   GET /api/market-intelligence/report-prezzi   — ultimi N report giornalieri
@@ -8,6 +8,7 @@ Endpoint:
 Tutti protetti da autenticazione.
 """
 import logging
+import os
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -139,3 +140,75 @@ def trigger_scout(
         "success": True,
         "occasioni_trovate": int(result.get("totale") or 0),
     }
+
+
+@router.post("/test-telegram")
+def test_telegram(
+    current_user=Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Testa la configurazione Telegram per entrambi i canali."""
+    from ..services.market_telegram import send_market_message
+    from ..services.notification_service import TelegramChannel
+
+    ordini_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    ordini_chat = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    ordini_channel = TelegramChannel()
+    ordini_configured = ordini_channel.is_configured
+    ordini_sent = False
+    if ordini_configured:
+        ordini_sent = ordini_channel.send(
+            "Test canale ordini",
+            "✅ Canale ordini Telegram configurato correttamente.",
+        )
+
+    market_token = os.getenv("MARKET_BOT_TOKEN", "").strip()
+    market_chat = os.getenv("MARKET_CHAT_ID", "").strip()
+    market_configured = bool(market_token and market_chat)
+    market_sent = False
+    if market_configured:
+        market_sent = send_market_message(
+            "✅ Canale market intelligence Telegram configurato correttamente."
+        )
+
+    return {
+        "canale_ordini": {
+            "configurato": ordini_configured,
+            "TELEGRAM_BOT_TOKEN": "impostato" if ordini_token else "mancante",
+            "TELEGRAM_CHAT_ID": "impostato" if ordini_chat else "mancante",
+            "messaggio_inviato": ordini_sent,
+        },
+        "canale_market": {
+            "configurato": market_configured,
+            "MARKET_BOT_TOKEN": "impostato" if market_token else "mancante",
+            "MARKET_CHAT_ID": "impostato" if market_chat else "mancante",
+            "messaggio_inviato": market_sent,
+        },
+    }
+
+
+@router.get("/test-groq")
+def test_groq(
+    current_user=Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Testa la configurazione AI (Groq o Ollama)."""
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+
+    try:
+        from ..services.llm_service import LLMService
+
+        svc = LLMService()
+        risposta = svc.chat("Rispondi solo con: OK", system="Sei un test.")
+        return {
+            "ai_disponibile": True,
+            "backend": "groq" if groq_key else "ollama",
+            "GROQ_API_KEY": "impostata" if groq_key else "mancante (usa Ollama locale)",
+            "risposta_test": risposta[:100],
+        }
+    except Exception as exc:
+        logger.warning("Test AI non riuscito su backend %s: %s", "groq" if groq_key else "ollama", exc)
+        return {
+            "ai_disponibile": False,
+            "backend": "groq" if groq_key else "ollama",
+            "GROQ_API_KEY": "impostata" if groq_key else "mancante (usa Ollama locale)",
+            "errore": "Servizio AI non disponibile o configurazione non valida.",
+        }
