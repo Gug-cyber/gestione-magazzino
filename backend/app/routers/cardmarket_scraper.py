@@ -60,6 +60,8 @@ LINGUA_SUFFIX_MAP = {
     4: "DE",
     5: "ES",
 }
+# Per lingue non europee (es. JP/KR/CN) usiamo fallback esplicito su lowest_near_mint generico.
+NON_EUROPEAN_LANGUAGE_IDS = {6, 7, 8, 9, 10}
 
 CACHE_DAYS = 7
 
@@ -186,7 +188,7 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
 
     product = None
 
-    # Prima prova: match esatto per card_number + set_code (opzionale)
+    # Prima prova: match flessibile per card_number + set_code (opzionale)
     if card_number_hint:
         for item in data_list:
             if not isinstance(item, dict):
@@ -240,6 +242,12 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
             suffix = LINGUA_SUFFIX_MAP[lingua]
             prezzo_minimo = _to_float(cm_prices.get(f"lowest_near_mint_{suffix}") or cm_prices.get("lowest_near_mint"))
         else:
+            if lingua in NON_EUROPEAN_LANGUAGE_IDS:
+                logger.warning(
+                    "Lingua non europea (languageId=%s) senza suffisso prezzi dedicato: fallback su lowest_near_mint generico per '%s'",
+                    lingua,
+                    nome,
+                )
             prezzo_minimo = _to_float(cm_prices.get("lowest_near_mint"))
     else:
         prezzo_minimo = None

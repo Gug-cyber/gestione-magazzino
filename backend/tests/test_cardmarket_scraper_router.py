@@ -289,3 +289,67 @@ def test_scrape_cardmarket_fallback_difflib_when_no_card_number(monkeypatch):
 
     assert result["prezzo_minimo"] == 20.00
     assert result["url_cardmarket"] == "https://www.cardmarket.com/charizard"
+
+
+def test_scrape_cardmarket_japanese_language_uses_generic_lowest_near_mint(monkeypatch, caplog):
+    """Con lingua giapponese usa lowest_near_mint generico e logga warning esplicito."""
+    payload = {
+        "data": [
+            {
+                "name": "Mega Gengar ex",
+                "card_number": "240",
+                "episode": {"code": "m2a"},
+                "prices": {
+                    "cardmarket": {
+                        "lowest_near_mint": 650.00,
+                        "lowest_near_mint_EN": 2.00,
+                        "30d_average": 640.00,
+                    }
+                },
+                "links": {"cardmarket": "/mega-gengar"},
+            }
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    with caplog.at_level("WARNING"):
+        result = cardmarket_scraper._scrape_cardmarket("Mega Gengar ex (m2a 240)", "NM", 6)
+
+    assert result["prezzo_minimo"] == 650.00
+    assert result["prezzo_medio"] == 640.00
+    assert "Lingua non europea" in caplog.text
+
+
+def test_scrape_cardmarket_japanese_megagengar_selects_correct_product_not_fallback(monkeypatch):
+    """Con lingua giapponese deve selezionare il prodotto corretto e non il fallback tcggo."""
+    payload = {
+        "data": [
+            {
+                "name": "Wrong low-price card",
+                "card_number": "77",
+                "episode": {"code": "zzz"},
+                "prices": {"cardmarket": {"lowest_near_mint": 2.00, "30d_average": 1.98}},
+                "links": {},
+                "tcggo_url": "https://www.tcggo.com/external/cm/31-wrong",
+            },
+            {
+                "name": "Mega Gengar ex",
+                "card_number": "SV3PT5-240",
+                "episode": {"code": "m2a"},
+                "prices": {"cardmarket": {"lowest_near_mint": 650.00, "30d_average": 640.00}},
+                "links": {"cardmarket": "/correct-mega-gengar"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Mega Gengar ex (m2a 240)", "NM", 6)
+
+    assert result["prezzo_minimo"] == 650.00
+    assert result["prezzo_medio"] == 640.00
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-mega-gengar"
+    assert "tcggo.com" not in result["url_cardmarket"]
