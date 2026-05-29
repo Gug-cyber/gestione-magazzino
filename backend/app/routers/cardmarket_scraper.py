@@ -107,6 +107,21 @@ def _find_value(payload: object, keys: set[str]):
     return None
 
 
+def _clean_search_name(nome: str) -> str:
+    cleaned_chars = []
+    depth = 0
+    for char in nome:
+        if char == "(":
+            depth += 1
+            continue
+        if char == ")" and depth > 0:
+            depth -= 1
+            continue
+        if depth == 0:
+            cleaned_chars.append(char)
+    return re.sub(r"\s+", " ", "".join(cleaned_chars)).strip()
+
+
 class CardMarketPriceResponse(BaseModel):
     prodotto_id: int
     prezzo_minimo: Optional[float]
@@ -121,7 +136,7 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
     if not rapidapi_key:
         raise HTTPException(status_code=400, detail="RAPIDAPI_CARDMARKET_KEY non configurata")
 
-    clean_nome = re.sub(r"\s*\([^)]*\)", "", nome).strip()
+    clean_nome = _clean_search_name(nome)
 
     params = {"search": clean_nome}
     if condizione:
