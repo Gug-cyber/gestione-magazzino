@@ -1,27 +1,27 @@
-# 🎴 Setup CardMarket ScraperAPI
+# 🎴 Setup CardMarket RapidAPI
 
-## Registrazione gratuita (1000 richieste/mese)
+## Registrazione RapidAPI
 
-1. Vai su: https://www.scraperapi.com/signup
-2. Registrati con email (no carta di credito richiesta)
-3. Copia la tua API key dalla dashboard
+1. Vai su: https://rapidapi.com/tcggopro/api/cardmarket-api-tcg
+2. Registrati/accedi a RapidAPI
+3. Sottoscrivi il piano dell'API e copia la tua API key
 
 ## Configurazione
 
 ### Vercel (Production)
 1. Settings → Environment Variables
-2. Aggiungi: `SCRAPER_API_KEY=<tua-chiave>`
+2. Aggiungi: `RAPIDAPI_CARDMARKET_KEY=<tua-chiave>`
 3. Redeploy
 
 ### Locale (.env)
 ```bash
-SCRAPER_API_KEY=abc123def456...
+RAPIDAPI_CARDMARKET_KEY=abc123def456...
 ```
 
 ## Come funziona
 
-- Se `SCRAPER_API_KEY` è configurata, il backend usa **ScraperAPI** per bypassare il blocco 403 di CardMarket (rotazione IP, bypass Cloudflare, retry automatici).
-- Se la chiave **non** è configurata, il backend tenta richieste dirette con header realistici — CardMarket potrebbe bloccarle con un 403.
+- Se `RAPIDAPI_CARDMARKET_KEY` è configurata, il backend usa le chiamate REST all'API RapidAPI `cardmarket-api-tcg`.
+- Se la chiave **non** è configurata, l'endpoint restituisce errore `400` (`RAPIDAPI_CARDMARKET_KEY non configurata`).
 - I prezzi vengono **cachati per 7 giorni** nel database per ridurre il numero di richieste API.
 
 ## Endpoint disponibili
@@ -44,12 +44,8 @@ curl -X POST "https://tuo-dominio.com/api/cardmarket-scraper/scrape-prezzi/1?for
   -H "Authorization: Bearer <token>"
 ```
 
-## Costi ScraperAPI
+## Costi RapidAPI
 
-| Piano | Richieste/mese | Prezzo |
-|-------|---------------|--------|
-| Free  | 1.000         | Gratis |
-| Hobby | 25.000        | $29/mese |
-| Startup | 100.000     | $49/mese |
+I costi e i limiti dipendono dal piano disponibile su RapidAPI per `cardmarket-api-tcg`.
 
-Con la cache da 7 giorni e un utilizzo normale (decine di prodotti), il piano gratuito è sufficiente.
+Con la cache da 7 giorni e un utilizzo normale (decine di prodotti), il consumo API resta contenuto.
