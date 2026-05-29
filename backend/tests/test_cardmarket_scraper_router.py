@@ -141,6 +141,126 @@ def test_scrape_cardmarket_matches_by_card_number_only(monkeypatch):
     assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-pikachu"
 
 
+def test_scrape_cardmarket_flexible_card_number_slash_format(monkeypatch):
+    """Verifica matching flessibile: card_number '240/191' matcha hint '240'."""
+    payload = {
+        "data": [
+            {
+                "name": "Mega Gengar ex wrong",
+                "card_number": "99",
+                "episode": {"code": "zzz"},
+                "prices": {"cardmarket": {"lowest_near_mint": 5.00, "30d_average": 6.00}},
+                "links": {"cardmarket": "/wrong-card"},
+            },
+            {
+                "name": "Mega Gengar ex",
+                "card_number": "240/191",
+                "episode": {"code": "m2a"},
+                "prices": {"cardmarket": {"lowest_near_mint": 3.50, "30d_average": 4.00}},
+                "links": {"cardmarket": "/correct-card"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Mega Gengar ex (m2a 240)", "NM", None)
+
+    assert result["prezzo_minimo"] == 3.50
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-card"
+
+
+def test_scrape_cardmarket_flexible_card_number_prefix_dash_format(monkeypatch):
+    """Verifica matching flessibile: card_number 'SV3PT5-240' matcha hint '240'."""
+    payload = {
+        "data": [
+            {
+                "name": "Mega Gengar ex wrong",
+                "card_number": "99",
+                "episode": {"code": "zzz"},
+                "prices": {"cardmarket": {"lowest_near_mint": 5.00, "30d_average": 6.00}},
+                "links": {"cardmarket": "/wrong-card"},
+            },
+            {
+                "name": "Mega Gengar ex",
+                "card_number": "SV3PT5-240",
+                "episode": {"code": "m2a"},
+                "prices": {"cardmarket": {"lowest_near_mint": 3.50, "30d_average": 4.00}},
+                "links": {"cardmarket": "/correct-card"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Mega Gengar ex (m2a 240)", "NM", None)
+
+    assert result["prezzo_minimo"] == 3.50
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-card"
+
+
+def test_scrape_cardmarket_flexible_card_number_prefix_slash_format(monkeypatch):
+    """Verifica matching flessibile: card_number 'sv/240' matcha hint '240'."""
+    payload = {
+        "data": [
+            {
+                "name": "Mega Gengar ex wrong",
+                "card_number": "99",
+                "episode": {"code": "zzz"},
+                "prices": {"cardmarket": {"lowest_near_mint": 5.00, "30d_average": 6.00}},
+                "links": {"cardmarket": "/wrong-card"},
+            },
+            {
+                "name": "Mega Gengar ex",
+                "card_number": "sv/240",
+                "episode": {"code": "m2a"},
+                "prices": {"cardmarket": {"lowest_near_mint": 3.50, "30d_average": 4.00}},
+                "links": {"cardmarket": "/correct-card"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Mega Gengar ex (m2a 240)", "NM", None)
+
+    assert result["prezzo_minimo"] == 3.50
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-card"
+
+
+def test_scrape_cardmarket_flexible_set_code_matching(monkeypatch):
+    """Verifica matching flessibile del set_code: 'sv3pt5' matcha hint 'sv3pt5' come prefisso/suffisso."""
+    payload = {
+        "data": [
+            {
+                "name": "Charizard ex wrong",
+                "card_number": "054",
+                "episode": {"code": "zzz"},
+                "prices": {"cardmarket": {"lowest_near_mint": 1.00, "30d_average": 2.00}},
+                "links": {"cardmarket": "/wrong"},
+            },
+            {
+                "name": "Charizard ex",
+                "card_number": "054",
+                "episode": {"code": "sv3pt5-en"},
+                "prices": {"cardmarket": {"lowest_near_mint": 15.00, "30d_average": 17.00}},
+                "links": {"cardmarket": "/correct"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Charizard ex (sv3pt5 054)", "NM", None)
+
+    assert result["prezzo_minimo"] == 15.00
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct"
+
+
 def test_scrape_cardmarket_fallback_difflib_when_no_card_number(monkeypatch):
     """Senza parentesi usa il fallback difflib e sceglie il miglior match per nome."""
     payload = {
