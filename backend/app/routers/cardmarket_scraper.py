@@ -195,8 +195,19 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
             item_episode = item.get("episode", {})
             item_set_code = str(item_episode.get("code", "")).lower() if isinstance(item_episode, dict) else ""
 
-            num_match = item_card_num == card_number_hint.lower()
-            set_match = (set_code_hint is None) or (item_set_code == set_code_hint)
+            card_hint_lower = card_number_hint.lower()
+            num_match = (
+                item_card_num == card_hint_lower
+                or item_card_num.startswith(card_hint_lower + "/")
+                or item_card_num.endswith("/" + card_hint_lower)
+                or item_card_num.endswith("-" + card_hint_lower)
+            )
+            set_match = (
+                set_code_hint is None
+                or item_set_code == set_code_hint
+                or item_set_code.startswith(set_code_hint)
+                or item_set_code.endswith(set_code_hint)
+            )
 
             if num_match and set_match:
                 product = item
