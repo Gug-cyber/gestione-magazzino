@@ -24,6 +24,12 @@ services:
       SECRET_KEY: ${SECRET_KEY:-changeme-use-a-long-random-secret-key-in-production}
       APP_ENV: ${APP_ENV:-production}
       GROQ_API_KEY: ${GROQ_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      MARKET_BOT_TOKEN: ${MARKET_BOT_TOKEN}
+      MARKET_CHAT_ID: ${MARKET_CHAT_ID}
+      EBAY_CLIENT_ID: ${EBAY_CLIENT_ID}
+      EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET}
     ports:
       - "8000:8000"
     depends_on:
@@ -57,6 +63,10 @@ services:
       SECRET_KEY: ${SECRET_KEY:-changeme-use-a-long-random-secret-key-in-production}
       APP_ENV: ${APP_ENV:-production}
       GROQ_API_KEY: ${GROQ_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      MARKET_BOT_TOKEN: ${MARKET_BOT_TOKEN}
+      MARKET_CHAT_ID: ${MARKET_CHAT_ID}
       TRACKING_UPDATE_INTERVAL_HOURS: ${TRACKING_UPDATE_INTERVAL_HOURS:-2}
       TRACKING_ENABLED: ${TRACKING_ENABLED:-true}
     depends_on:
