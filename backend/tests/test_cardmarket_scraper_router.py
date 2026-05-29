@@ -4,8 +4,41 @@ import pytest
 import app.routers.cardmarket_scraper as cardmarket_scraper
 
 
+def _make_dummy_client(response_json, captured=None):
+    """Factory per un client httpx finto che registra la chiamata ed espone la risposta."""
+
+    class _DummyResponse:
+        url = "https://cardmarket-api-tcg.p.rapidapi.com/pokemon/cards/search"
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        def json(self):
+            return response_json
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, params=None, headers=None):
+            if captured is not None:
+                captured["url"] = url
+                captured["params"] = params
+                captured["headers"] = headers
+            return _DummyResponse()
+
+    return _DummyClient
+
+
 def test_scrape_cardmarket_requires_rapidapi_key(monkeypatch):
-    monkeypatch.setattr(cardmarket_scraper, "RAPIDAPI_CARDMARKET_KEY", "")
+    monkeypatch.delenv("RAPIDAPI_CARDMARKET_KEY", raising=False)
 
     with pytest.raises(HTTPException) as exc:
         cardmarket_scraper._scrape_cardmarket("Black Lotus", "NM", 1)
@@ -16,53 +49,123 @@ def test_scrape_cardmarket_requires_rapidapi_key(monkeypatch):
 
 def test_scrape_cardmarket_uses_rapidapi_and_parses_prices(monkeypatch):
     captured = {}
-
-    class _DummyResponse:
-        url = "https://cardmarket-api-tcg.p.rapidapi.com/products/search?name=Black+Lotus"
-
-        @staticmethod
-        def raise_for_status():
-            return None
-
-        @staticmethod
-        def json():
-            return {
-                "data": {
-                    "products": [
-                        {
-                            "minPrice": "12,34",
-                            "avgPrice": 14.56,
-                            "url": "/it/Magic/Products/Singles/Alpha/Black-Lotus",
-                        }
-                    ]
-                }
+    payload = {
+        "data": [
+            {
+                "name": "Black Lotus",
+                "card_number": "1",
+                "episode": {"code": "alpha"},
+                "prices": {
+                    "cardmarket": {
+                        "lowest_near_mint": 12.34,
+                        "lowest_near_mint_EN": 12.34,
+                        "30d_average": 14.56,
+                    }
+                },
+                "links": {"cardmarket": "/it/Magic/Products/Singles/Alpha/Black-Lotus"},
             }
+        ]
+    }
 
-    class _DummyClient:
-        def __init__(self, timeout):
-            assert timeout == 30
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def get(self, url, params=None, headers=None):
-            captured["url"] = url
-            captured["params"] = params
-            captured["headers"] = headers
-            return _DummyResponse()
-
-    monkeypatch.setattr(cardmarket_scraper, "RAPIDAPI_CARDMARKET_KEY", "test-key")
-    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _DummyClient)
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload, captured))
 
     result = cardmarket_scraper._scrape_cardmarket("Black Lotus", "NM", 1)
 
-    assert captured["url"] == "https://cardmarket-api-tcg.p.rapidapi.com/products/search"
-    assert captured["params"] == {"name": "Black Lotus", "condition": "NM", "languageId": 1}
+    assert captured["url"] == "https://cardmarket-api-tcg.p.rapidapi.com/pokemon/cards/search"
+    assert captured["params"] == {"search": "Black Lotus", "condition": "NM", "languageId": 1}
     assert captured["headers"]["X-RapidAPI-Key"] == "test-key"
     assert captured["headers"]["X-RapidAPI-Host"] == "cardmarket-api-tcg.p.rapidapi.com"
     assert result["prezzo_minimo"] == 12.34
     assert result["prezzo_medio"] == 14.56
     assert result["url_cardmarket"] == "https://www.cardmarket.com/it/Magic/Products/Singles/Alpha/Black-Lotus"
+
+
+def test_scrape_cardmarket_matches_by_card_number_and_set_code(monkeypatch):
+    """Verifica che il prodotto corretto sia scelto tramite card_number + set_code."""
+    payload = {
+        "data": [
+            {
+                "name": "Mega Gengar ex V2",
+                "card_number": "99",
+                "episode": {"code": "zzz"},
+                "prices": {"cardmarket": {"lowest_near_mint": 5.00, "30d_average": 6.00}},
+                "links": {"cardmarket": "/wrong-card"},
+            },
+            {
+                "name": "Mega Gengar ex",
+                "card_number": "240",
+                "episode": {"code": "m2a"},
+                "prices": {"cardmarket": {"lowest_near_mint": 3.50, "30d_average": 4.00}},
+                "links": {"cardmarket": "/correct-card"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Mega Gengar ex (m2a 240)", "NM", None)
+
+    assert result["prezzo_minimo"] == 3.50
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-card"
+
+
+def test_scrape_cardmarket_matches_by_card_number_only(monkeypatch):
+    """Verifica match solo per card_number quando è nella forma '(GG69)'."""
+    payload = {
+        "data": [
+            {
+                "name": "Pikachu V1",
+                "card_number": "001",
+                "episode": {"code": "base"},
+                "prices": {"cardmarket": {"lowest_near_mint": 1.00, "30d_average": 1.50}},
+                "links": {"cardmarket": "/wrong"},
+            },
+            {
+                "name": "Pikachu",
+                "card_number": "GG69",
+                "episode": {"code": "promo"},
+                "prices": {"cardmarket": {"lowest_near_mint": 8.00, "30d_average": 9.00}},
+                "links": {"cardmarket": "/correct-pikachu"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Pikachu (GG69)", "NM", None)
+
+    assert result["prezzo_minimo"] == 8.00
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/correct-pikachu"
+
+
+def test_scrape_cardmarket_fallback_difflib_when_no_card_number(monkeypatch):
+    """Senza parentesi usa il fallback difflib e sceglie il miglior match per nome."""
+    payload = {
+        "data": [
+            {
+                "name": "totally unrelated card",
+                "card_number": "001",
+                "episode": {},
+                "prices": {"cardmarket": {"lowest_near_mint": 1.00, "30d_average": 1.00}},
+                "links": {},
+            },
+            {
+                "name": "charizard ex",
+                "card_number": "004",
+                "episode": {},
+                "prices": {"cardmarket": {"lowest_near_mint": 20.00, "30d_average": 22.00}},
+                "links": {"cardmarket": "/charizard"},
+            },
+        ]
+    }
+
+    monkeypatch.setenv("RAPIDAPI_CARDMARKET_KEY", "test-key")
+    monkeypatch.setattr(cardmarket_scraper.httpx, "Client", _make_dummy_client(payload))
+
+    result = cardmarket_scraper._scrape_cardmarket("Charizard ex", "NM", None)
+
+    assert result["prezzo_minimo"] == 20.00
+    assert result["url_cardmarket"] == "https://www.cardmarket.com/charizard"
