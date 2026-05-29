@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Configurazione RapidAPI CardMarket
-RAPIDAPI_CARDMARKET_KEY = ""
 RAPIDAPI_CARDMARKET_HOST = "cardmarket-api-tcg.p.rapidapi.com"
 RAPIDAPI_BASE_URL = f"https://{RAPIDAPI_CARDMARKET_HOST}"
 
@@ -109,11 +108,9 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
     """Recupera prezzi CardMarket tramite API RapidAPI."""
     rapidapi_key = os.getenv("RAPIDAPI_CARDMARKET_KEY", "").strip()
     if not rapidapi_key:
-        rapidapi_key = RAPIDAPI_CARDMARKET_KEY.strip()
-    if not rapidapi_key:
         raise HTTPException(status_code=400, detail="RAPIDAPI_CARDMARKET_KEY non configurata")
 
-    params = {"name": nome}
+    params = {"search": nome}
     if condizione:
         params["condition"] = condizione
     if lingua is not None:
@@ -126,7 +123,7 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
 
     try:
         with httpx.Client(timeout=30) as client:
-            response = client.get(f"{RAPIDAPI_BASE_URL}/products/search", params=params, headers=headers)
+            response = client.get(f"{RAPIDAPI_BASE_URL}/pokemon/cards/search", params=params, headers=headers)
             response.raise_for_status()
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timeout durante la richiesta a CardMarket")
