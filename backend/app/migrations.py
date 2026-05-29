@@ -77,6 +77,62 @@ COLUMN_MIGRATIONS = [
         "column": "auto_generata",
         "definition": "BOOLEAN DEFAULT FALSE",
     },
+    # Dati emittente snapshot (normativa italiana — fattura immutabile)
+    {
+        "table": "fatture",
+        "column": "emittente_ragione_sociale",
+        "definition": "VARCHAR(255)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_partita_iva",
+        "definition": "VARCHAR(20)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_codice_fiscale",
+        "definition": "VARCHAR(20)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_indirizzo",
+        "definition": "VARCHAR(255)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_citta",
+        "definition": "VARCHAR(100)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_cap",
+        "definition": "VARCHAR(10)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_provincia",
+        "definition": "VARCHAR(5)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_nazione",
+        "definition": "VARCHAR(50)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_pec",
+        "definition": "VARCHAR(255)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_codice_sdi",
+        "definition": "VARCHAR(10)",
+    },
+    {
+        "table": "fatture",
+        "column": "emittente_iban",
+        "definition": "VARCHAR(34)",
+    },
     {
         "table": "ordini",
         "column": "corriere",
