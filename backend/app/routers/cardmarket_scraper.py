@@ -1,5 +1,7 @@
 import logging
 import os
+import re
+import difflib
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -50,6 +52,15 @@ LINGUA_MAP = {
     "Cinese": 10,
 }
 
+# Mapping lingua ID -> suffisso campo prezzi API
+LINGUA_SUFFIX_MAP = {
+    1: "EN",
+    2: "IT",
+    3: "FR",
+    4: "DE",
+    5: "ES",
+}
+
 CACHE_DAYS = 7
 
 
@@ -96,6 +107,21 @@ def _find_value(payload: object, keys: set[str]):
     return None
 
 
+def _clean_search_name(nome: str) -> str:
+    cleaned_chars = []
+    depth = 0
+    for char in nome:
+        if char == "(":
+            depth += 1
+            continue
+        if char == ")" and depth > 0:
+            depth -= 1
+            continue
+        if depth == 0:
+            cleaned_chars.append(char)
+    return re.sub(r"\s+", " ", "".join(cleaned_chars)).strip()
+
+
 class CardMarketPriceResponse(BaseModel):
     prodotto_id: int
     prezzo_minimo: Optional[float]
@@ -110,7 +136,9 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
     if not rapidapi_key:
         raise HTTPException(status_code=400, detail="RAPIDAPI_CARDMARKET_KEY non configurata")
 
-    params = {"search": nome}
+    clean_nome = _clean_search_name(nome)
+
+    params = {"search": clean_nome}
     if condizione:
         params["condition"] = condizione
     if lingua is not None:
@@ -141,13 +169,33 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
         logger.warning("Nessun risultato trovato nella ricerca CardMarket per '%s'", nome)
         return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
 
-    product = next((item for item in data_list if isinstance(item, dict)), None)
+    clean_nome_lower = clean_nome.lower()
+    best_product = None
+    best_score = 0.0
+
+    for item in data_list:
+        if not isinstance(item, dict):
+            continue
+        item_name = str(item.get("name", "")).lower()
+        score = difflib.SequenceMatcher(None, clean_nome_lower, item_name).ratio()
+        if score > best_score:
+            best_score = score
+            best_product = item
+
+    product = best_product or next((item for item in data_list if isinstance(item, dict)), None)
     if not product:
         logger.warning("Nessun prodotto valido trovato nella risposta CardMarket per '%s'", nome)
         return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
 
     cm_prices = product.get("prices", {}).get("cardmarket", {})
-    prezzo_minimo = _to_float(cm_prices.get("lowest_near_mint")) if isinstance(cm_prices, dict) else None
+    if isinstance(cm_prices, dict):
+        if lingua is not None and lingua in LINGUA_SUFFIX_MAP:
+            suffix = LINGUA_SUFFIX_MAP[lingua]
+            prezzo_minimo = _to_float(cm_prices.get(f"lowest_near_mint_{suffix}") or cm_prices.get("lowest_near_mint"))
+        else:
+            prezzo_minimo = _to_float(cm_prices.get("lowest_near_mint"))
+    else:
+        prezzo_minimo = None
     prezzo_medio = (
         _to_float(cm_prices.get("30d_average") or cm_prices.get("7d_average"))
         if isinstance(cm_prices, dict)
