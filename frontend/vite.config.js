@@ -17,6 +17,8 @@ export default defineConfig(async () => {
       workbox: {
         // Cache-first for static assets (JS, CSS, images)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Exclude OAuth callback URLs from SW navigation handling
+        navigateFallbackDenylist: [/^\/api\//],
         // NetworkOnly for API calls (never cache /api/)
         runtimeCaching: [
           // Foto prodotti: NetworkOnly with credentials so the ?token= query param
