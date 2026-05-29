@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Configurazione RapidAPI CardMarket
-RAPIDAPI_CARDMARKET_KEY = os.getenv("RAPIDAPI_CARDMARKET_KEY", "").strip()
+RAPIDAPI_CARDMARKET_KEY = ""
 RAPIDAPI_CARDMARKET_HOST = "cardmarket-api-tcg.p.rapidapi.com"
 RAPIDAPI_BASE_URL = f"https://{RAPIDAPI_CARDMARKET_HOST}"
 
@@ -107,7 +107,10 @@ class CardMarketPriceResponse(BaseModel):
 
 def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[int]) -> dict:
     """Recupera prezzi CardMarket tramite API RapidAPI."""
-    if not RAPIDAPI_CARDMARKET_KEY:
+    rapidapi_key = os.getenv("RAPIDAPI_CARDMARKET_KEY", "").strip()
+    if not rapidapi_key:
+        rapidapi_key = RAPIDAPI_CARDMARKET_KEY.strip()
+    if not rapidapi_key:
         raise HTTPException(status_code=400, detail="RAPIDAPI_CARDMARKET_KEY non configurata")
 
     params = {"name": nome}
@@ -117,7 +120,7 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
         params["languageId"] = lingua
 
     headers = {
-        "X-RapidAPI-Key": RAPIDAPI_CARDMARKET_KEY,
+        "X-RapidAPI-Key": rapidapi_key,
         "X-RapidAPI-Host": RAPIDAPI_CARDMARKET_HOST,
     }
 
