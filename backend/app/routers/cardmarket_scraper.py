@@ -169,20 +169,56 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
         logger.warning("Nessun risultato trovato nella ricerca CardMarket per '%s'", nome)
         return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
 
-    clean_nome_lower = clean_nome.lower()
-    best_product = None
-    best_score = 0.0
+    # Estrai numero carta e codice set dalla parte tra parentesi del nome
+    # es. "(m2a 240)" → set_code_hint="m2a", card_number_hint="240"
+    # es. "(GG69)"    → card_number_hint="GG69"
+    parenthesis_match = re.search(r'\(([^)]{1,50})\)', nome)
+    card_number_hint = None
+    set_code_hint = None
+    if parenthesis_match:
+        inner = parenthesis_match.group(1).strip()
+        parts = inner.split()
+        if len(parts) == 1:
+            card_number_hint = parts[0]
+        elif len(parts) == 2:
+            set_code_hint = parts[0].lower()
+            card_number_hint = parts[1]
 
-    for item in data_list:
-        if not isinstance(item, dict):
-            continue
-        item_name = str(item.get("name", "")).lower()
-        score = difflib.SequenceMatcher(None, clean_nome_lower, item_name).ratio()
-        if score > best_score:
-            best_score = score
-            best_product = item
+    product = None
 
-    product = best_product or next((item for item in data_list if isinstance(item, dict)), None)
+    # Prima prova: match esatto per card_number + set_code (opzionale)
+    if card_number_hint:
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            item_card_num = str(item.get("card_number", "")).lower()
+            item_episode = item.get("episode", {})
+            item_set_code = str(item_episode.get("code", "")).lower() if isinstance(item_episode, dict) else ""
+
+            num_match = item_card_num == card_number_hint.lower()
+            set_match = (set_code_hint is None) or (item_set_code == set_code_hint)
+
+            if num_match and set_match:
+                product = item
+                break
+
+    # Fallback: miglior match per nome con difflib
+    if not product:
+        clean_nome_lower = clean_nome.lower()
+        best_score = 0.0
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            item_name = str(item.get("name", "")).lower()
+            score = difflib.SequenceMatcher(None, clean_nome_lower, item_name).ratio()
+            if score > best_score:
+                best_score = score
+                product = item
+
+    # Ultimo fallback: primo risultato valido
+    if not product:
+        product = next((item for item in data_list if isinstance(item, dict)), None)
+
     if not product:
         logger.warning("Nessun prodotto valido trovato nella risposta CardMarket per '%s'", nome)
         return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
