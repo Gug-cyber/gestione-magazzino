@@ -1,7 +1,5 @@
 import logging
 import os
-import random
-import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -10,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import httpx
-from bs4 import BeautifulSoup
 
 from ..database import get_db
 from ..auth import get_current_active_user
@@ -20,8 +17,10 @@ from ..models.prodotto import Prodotto
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Configurazione ScraperAPI
-SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "").strip()
+# Configurazione RapidAPI CardMarket
+RAPIDAPI_CARDMARKET_KEY = os.getenv("RAPIDAPI_CARDMARKET_KEY", "").strip()
+RAPIDAPI_CARDMARKET_HOST = "cardmarket-api-tcg.p.rapidapi.com"
+RAPIDAPI_BASE_URL = f"https://{RAPIDAPI_CARDMARKET_HOST}"
 
 # Mapping condizioni
 CONDIZIONE_MAP = {
@@ -52,29 +51,50 @@ LINGUA_MAP = {
     "Cinese": 10,
 }
 
-# Header migliorati per richieste dirette
-IMPROVED_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "DNT": "1",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0",
-    "Referer": "https://www.google.com/",
-}
-
 CACHE_DAYS = 7
 
 
-def _rate_limit_sleep() -> None:
-    """Sleep a random interval to avoid hammering CardMarket with direct requests."""
-    time.sleep(random.uniform(10, 20))  # nosec B311 – random used only for rate-limiting delays, not for security purposes
+def _to_float(value) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        normalized = value.replace("€", "").replace(",", ".").strip()
+        try:
+            return float(normalized)
+        except ValueError:
+            return None
+    return None
+
+
+def _get_first_product(payload: object) -> Optional[dict]:
+    if isinstance(payload, list):
+        return next((item for item in payload if isinstance(item, dict)), None)
+    if isinstance(payload, dict):
+        for key in ("products", "results", "items", "data"):
+            value = payload.get(key)
+            found = _get_first_product(value)
+            if found:
+                return found
+    return None
+
+
+def _find_value(payload: object, keys: set[str]):
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if key.lower() in keys:
+                return value
+        for value in payload.values():
+            found = _find_value(value, keys)
+            if found is not None:
+                return found
+    elif isinstance(payload, list):
+        for item in payload:
+            found = _find_value(item, keys)
+            if found is not None:
+                return found
+    return None
 
 
 class CardMarketPriceResponse(BaseModel):
@@ -85,143 +105,56 @@ class CardMarketPriceResponse(BaseModel):
     data_aggiornamento: datetime
 
 
-def _scrape_direct(url: str) -> BeautifulSoup:
-    """Scraping diretto con header migliorati e rate limiting variabile."""
-    _rate_limit_sleep()
+def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[int]) -> dict:
+    """Recupera prezzi CardMarket tramite API RapidAPI."""
+    if not RAPIDAPI_CARDMARKET_KEY:
+        raise HTTPException(status_code=400, detail="RAPIDAPI_CARDMARKET_KEY non configurata")
+
+    params = {"name": nome}
+    if condizione:
+        params["condition"] = condizione
+    if lingua is not None:
+        params["languageId"] = lingua
+
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_CARDMARKET_KEY,
+        "X-RapidAPI-Host": RAPIDAPI_CARDMARKET_HOST,
+    }
 
     try:
-        with httpx.Client(timeout=30, headers=IMPROVED_HEADERS, follow_redirects=True) as client:
-            response = client.get(url)
-            logger.info(f"Direct response: {response.status_code}")
-
-            if response.status_code == 403:
-                logger.error("403 Forbidden - CardMarket blocca le richieste")
-                raise HTTPException(
-                    status_code=403,
-                    detail="CardMarket blocca le richieste. Configura SCRAPER_API_KEY per risolvere.",
-                )
-
+        with httpx.Client(timeout=30) as client:
+            response = client.get(f"{RAPIDAPI_BASE_URL}/products/search", params=params, headers=headers)
             response.raise_for_status()
-            return BeautifulSoup(response.content, "html.parser")
-
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timeout durante la richiesta a CardMarket")
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 429:
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 429:
             raise HTTPException(status_code=429, detail="Rate limit raggiunto. Riprova tra qualche minuto.")
-        raise HTTPException(status_code=502, detail=f"Errore CardMarket: {e.response.status_code}")
+        raise HTTPException(status_code=502, detail=f"Errore CardMarket: {exc.response.status_code}")
+    except httpx.RequestError as exc:
+        logger.error("Errore richiesta RapidAPI CardMarket: %s", exc)
+        raise HTTPException(status_code=502, detail="Errore durante il recupero dei dati da CardMarket")
 
+    payload = response.json()
+    product = _get_first_product(payload)
+    if not product:
+        logger.warning("Nessun risultato trovato nella ricerca CardMarket per '%s'", nome)
+        return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
 
-def _parse_cardmarket_page(soup: BeautifulSoup, search_url: str) -> dict:
-    """Parsing della pagina CardMarket con selettori multipli."""
+    prezzo_minimo = _to_float(_find_value(product, {"minprice", "pricemin", "prezzo_minimo", "lowestprice", "fromprice"}))
+    prezzo_medio = _to_float(_find_value(product, {"avgprice", "priceavg", "prezzo_medio", "averageprice", "trendprice"}))
 
-    # Trova primo risultato di ricerca
-    first_result = soup.select_one("div.table-body a[href*='/Products/Singles']")
-    if not first_result:
-        logger.warning("Nessun risultato trovato nella ricerca")
-        return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": search_url}
-
-    product_url = "https://www.cardmarket.com" + first_result.get("href", "")
-    logger.info(f"Pagina prodotto trovata: {product_url}")
-
-    # Scrape pagina prodotto
-    if SCRAPER_API_KEY:
-        try:
-            from scraperapi_sdk import ScraperAPIClient  # type: ignore[import]
-
-            client = ScraperAPIClient(SCRAPER_API_KEY)
-            product_html = client.get(product_url, render_js=False, premium=True)
-            product_soup = BeautifulSoup(product_html, "html.parser")
-        except Exception as e:
-            logger.error(f"Errore scraping pagina prodotto via ScraperAPI: {e}")
-            return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": product_url}
-    else:
-        try:
-            with httpx.Client(timeout=30, headers=IMPROVED_HEADERS, follow_redirects=True) as client:
-                product_response = client.get(product_url)
-                product_response.raise_for_status()
-                product_soup = BeautifulSoup(product_response.content, "html.parser")
-        except Exception as e:
-            logger.error(f"Errore scraping pagina prodotto: {e}")
-            return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": product_url}
-
-    # Selettori multipli con fallback
-    selectors_map = [
-        ("span.price-from", "span.price-avg"),
-        ("span.font-weight-bold.color-primary", "span.font-weight-bold.text-muted"),
-        (".price-container .price-from", ".price-container .price-avg"),
-        ("dd.col-6.col-xl-7", None),
-    ]
-
-    prezzo_minimo = None
-    prezzo_medio = None
-
-    for min_sel, avg_sel in selectors_map:
-        if not prezzo_minimo:
-            elem = product_soup.select_one(min_sel)
-            if elem:
-                text = elem.get_text(strip=True).replace("€", "").replace(",", ".")
-                try:
-                    prezzo_minimo = float(text.split()[0])
-                    logger.info(f"Prezzo minimo trovato: €{prezzo_minimo}")
-                except (ValueError, IndexError):
-                    pass
-
-        if not prezzo_medio and avg_sel:
-            elem = product_soup.select_one(avg_sel)
-            if elem:
-                text = elem.get_text(strip=True).replace("€", "").replace(",", ".")
-                try:
-                    prezzo_medio = float(text.split()[0])
-                    logger.info(f"Prezzo medio trovato: €{prezzo_medio}")
-                except (ValueError, IndexError):
-                    pass
-
-        if prezzo_minimo and prezzo_medio:
-            break
-
-    if not prezzo_minimo and not prezzo_medio:
-        logger.error("Nessun prezzo trovato nella pagina")
+    url_cardmarket = _find_value(product, {"url", "producturl", "product_url", "cardmarketurl", "href"})
+    if isinstance(url_cardmarket, str) and url_cardmarket.startswith("/"):
+        url_cardmarket = f"https://www.cardmarket.com{url_cardmarket}"
+    if not isinstance(url_cardmarket, str):
+        url_cardmarket = str(response.url)
 
     return {
         "prezzo_minimo": prezzo_minimo,
         "prezzo_medio": prezzo_medio,
-        "url_cardmarket": product_url,
+        "url_cardmarket": url_cardmarket,
     }
-
-
-def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[int]) -> dict:
-    """
-    Scrape prezzi da CardMarket usando ScraperAPI (se configurato) o richieste dirette.
-    """
-    query = nome.replace(" ", "+")
-    url = f"https://www.cardmarket.com/it/Magic/Products/Search?searchString={query}"
-
-    logger.info(f"Scraping CardMarket per: {nome}")
-
-    # Strategia A: ScraperAPI (se configurato)
-    if SCRAPER_API_KEY:
-        try:
-            from scraperapi_sdk import ScraperAPIClient  # type: ignore[import]
-
-            logger.info("Usando ScraperAPI (bypass 403)")
-            client = ScraperAPIClient(SCRAPER_API_KEY)
-            response_text = client.get(url, render_js=False, premium=True)
-            soup = BeautifulSoup(response_text, "html.parser")
-
-        except ImportError:
-            logger.warning("scraperapi-sdk non installato, fallback a richieste dirette")
-            soup = _scrape_direct(url)
-        except Exception as e:
-            logger.error("Errore ScraperAPI: %s", e)
-            raise HTTPException(status_code=502, detail="Errore durante il recupero dei dati da ScraperAPI.")
-
-    # Strategia B: Richieste dirette (fallback)
-    else:
-        logger.warning("SCRAPER_API_KEY non configurata, uso richiesta diretta (possibile 403)")
-        soup = _scrape_direct(url)
-
-    return _parse_cardmarket_page(soup, url)
 
 
 @router.post("/scrape-prezzi/{prodotto_id}", response_model=CardMarketPriceResponse)
@@ -325,7 +258,7 @@ def update_all_prices(
     Solo per admin.
 
     - **limit**: numero massimo di prodotti da aggiornare per chiamata (default 50);
-      usato per controllare il consumo di crediti ScraperAPI in batch.
+      usato per controllare il consumo di chiamate API in batch.
     """
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Solo admin")

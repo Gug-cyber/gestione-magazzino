@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-/* TEMPORANEAMENTE DISABILITATO - CardMarket e CardTrader API issues */
-// import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardtraderAPI, cardmarketScraperAPI } from '../api/client'
-import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardmarketScraperAPI } from '../api/client'
 import { ebayApi } from '../api/ebay'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
@@ -279,10 +277,9 @@ function DettaglioProdotto() {
   // const [cardtraderLoading, setCardtraderLoading] = useState(false)
   // const [cardtraderError, setCardtraderError] = useState(null)
 
-  /* TEMPORANEAMENTE DISABILITATO - CardMarket API issues */
-  // const [cardmarketData, setCardmarketData] = useState(null)
-  // const [cardmarketLoading, setCardmarketLoading] = useState(false)
-  // const [cardmarketError, setCardmarketError] = useState(null)
+  const [cardmarketData, setCardmarketData] = useState(null)
+  const [cardmarketLoading, setCardmarketLoading] = useState(false)
+  const [cardmarketError, setCardmarketError] = useState(null)
 
   const loadScheda = async () => {
     setLoading(true)
@@ -355,7 +352,6 @@ function DettaglioProdotto() {
   }
   */
 
-  /* TEMPORANEAMENTE DISABILITATO - CardMarket API issues
   const fetchCardmarketPrezzi = (prodotto) => {
     setCardmarketData(null)
     setCardmarketLoading(true)
@@ -379,14 +375,12 @@ function DettaglioProdotto() {
       .catch(err => setCardmarketError(err.response?.data?.detail || 'Errore prezzi CardMarket'))
       .finally(() => setCardmarketLoading(false))
   }
-  */
 
   useEffect(() => {
     if (!scheda) return
     const { prodotto } = scheda
     fetchEbayPrezzi(prodotto)
-    // TEMPORANEAMENTE DISABILITATO - CardMarket API issues
-    // fetchCardmarketPrezzi(prodotto)
+    fetchCardmarketPrezzi(prodotto)
     // TEMPORANEAMENTE DISABILITATO - CardTrader API issues
     // if (prodotto.cardtrader_blueprint_id) {
     //   fetchCardtraderPrezzi(prodotto)
@@ -1194,8 +1188,7 @@ function DettaglioProdotto() {
             }
           </div> */}
 
-          {/* TEMPORANEAMENTE DISABILITATO - CardMarket API issues */}
-          {/* <div style={{ ...statCardStyle, borderLeft: '4px solid #ff9800' }}>
+          <div style={{ ...statCardStyle, borderLeft: '4px solid #ff9800' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#ff9800', fontWeight: 700 }}>
               🃏 Prezzi CardMarket
             </h3>
@@ -1235,7 +1228,7 @@ function DettaglioProdotto() {
               style={{ marginTop: 6, fontSize: '0.75rem', color: '#ff9800', background: 'none', border: 'none', cursor: cardmarketLoading ? 'not-allowed' : 'pointer', padding: 0, opacity: cardmarketLoading ? 0.6 : 1 }}>
               🔄 Aggiorna
             </button>
-          </div> */}
+          </div>
         </div>
       </div>
 
