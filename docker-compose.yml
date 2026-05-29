@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgresql://magazzino:magazzino@db:5432/magazzino
       SECRET_KEY: ${SECRET_KEY:-changeme-use-a-long-random-secret-key-in-production}
       APP_ENV: ${APP_ENV:-production}
+      GROQ_API_KEY: ${GROQ_API_KEY}
     ports:
       - "8000:8000"
     depends_on:
@@ -55,6 +56,7 @@ services:
       DATABASE_URL: postgresql://magazzino:magazzino@db:5432/magazzino
       SECRET_KEY: ${SECRET_KEY:-changeme-use-a-long-random-secret-key-in-production}
       APP_ENV: ${APP_ENV:-production}
+      GROQ_API_KEY: ${GROQ_API_KEY}
       TRACKING_UPDATE_INTERVAL_HOURS: ${TRACKING_UPDATE_INTERVAL_HOURS:-2}
       TRACKING_ENABLED: ${TRACKING_ENABLED:-true}
     depends_on:
