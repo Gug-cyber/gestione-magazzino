@@ -7,6 +7,11 @@ COPY package.json package-lock.json* ./
 RUN npm install
 
 COPY . .
+
+# Build-time env var for Vite (must use ARG + ENV so Vite can read it)
+ARG VITE_GROQ_API_KEY
+ENV VITE_GROQ_API_KEY=$VITE_GROQ_API_KEY
+
 RUN npm run build
 
 # Production stage

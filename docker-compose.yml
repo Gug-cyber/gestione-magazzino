@@ -34,7 +34,10 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_GROQ_API_KEY: ${GROQ_API_KEY}
     container_name: magazzino_frontend
     environment:
       - VITE_API_TARGET=http://backend:8000
