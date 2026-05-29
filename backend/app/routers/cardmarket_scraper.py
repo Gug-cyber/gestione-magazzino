@@ -136,19 +136,31 @@ def _scrape_cardmarket(nome: str, condizione: Optional[str], lingua: Optional[in
         raise HTTPException(status_code=502, detail="Errore durante il recupero dei dati da CardMarket")
 
     payload = response.json()
-    product = _get_first_product(payload)
-    if not product:
+    data_list = payload.get("data", []) if isinstance(payload, dict) else []
+    if not isinstance(data_list, list) or not data_list:
         logger.warning("Nessun risultato trovato nella ricerca CardMarket per '%s'", nome)
         return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
 
-    prezzo_minimo = _to_float(_find_value(product, {"minprice", "pricemin", "prezzo_minimo", "lowestprice", "fromprice"}))
-    prezzo_medio = _to_float(_find_value(product, {"avgprice", "priceavg", "prezzo_medio", "averageprice", "trendprice"}))
+    product = next((item for item in data_list if isinstance(item, dict)), None)
+    if not product:
+        logger.warning("Nessun prodotto valido trovato nella risposta CardMarket per '%s'", nome)
+        return {"prezzo_minimo": None, "prezzo_medio": None, "url_cardmarket": str(response.url)}
 
-    url_cardmarket = _find_value(product, {"url", "producturl", "product_url", "cardmarketurl", "href"})
+    cm_prices = product.get("prices", {}).get("cardmarket", {})
+    prezzo_minimo = _to_float(cm_prices.get("lowest_near_mint")) if isinstance(cm_prices, dict) else None
+    prezzo_medio = (
+        _to_float(cm_prices.get("30d_average") or cm_prices.get("7d_average"))
+        if isinstance(cm_prices, dict)
+        else None
+    )
+
+    links = product.get("links", {})
+    url_cardmarket = links.get("cardmarket") if isinstance(links, dict) else None
+    if not isinstance(url_cardmarket, str):
+        tcggo_url = product.get("tcggo_url")
+        url_cardmarket = tcggo_url if isinstance(tcggo_url, str) else str(response.url)
     if isinstance(url_cardmarket, str) and url_cardmarket.startswith("/"):
         url_cardmarket = f"https://www.cardmarket.com{url_cardmarket}"
-    if not isinstance(url_cardmarket, str):
-        url_cardmarket = str(response.url)
 
     return {
         "prezzo_minimo": prezzo_minimo,
