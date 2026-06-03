@@ -1096,8 +1096,8 @@ function DettaglioProdotto() {
             display: 'flex',
             alignItems: 'flex-start',
             gap: 16,
-            minWidth: 280,
-            flex: '1 1 auto',
+            minWidth: 200,
+            flex: '1 1 0',
           }}>
             <div style={{ fontSize: '2rem', opacity: 0.8 }}>🛒</div>
             <div style={{ flex: 1 }}>
@@ -1188,7 +1188,7 @@ function DettaglioProdotto() {
             }
           </div> */}
 
-          <div style={{ ...statCardStyle, borderLeft: '4px solid #ff9800' }}>
+          <div style={{ ...statCardStyle, borderLeft: '4px solid #ff9800', flex: '1 1 0' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#ff9800', fontWeight: 700 }}>
               🃏 Prezzi CardMarket
             </h3>
