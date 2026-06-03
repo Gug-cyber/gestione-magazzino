@@ -15,6 +15,7 @@ from ..database import get_db
 from ..auth import get_current_active_user
 from ..models.cardmarket_price import CardMarketPrice
 from ..models.prodotto import Prodotto
+from ..models.prezzo_storico import PrezzoStorico
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -333,6 +334,12 @@ def scrape_prezzi(
         db.refresh(new_price)
         result = new_price
 
+    # Salva storico prezzi
+    _save_prezzo_storico_cardmarket(db, prodotto_id, scraped)
+
+    # Invia alert Telegram se opportunità rilevata
+    _check_and_alert_cardmarket(prodotto, scraped)
+
     return CardMarketPriceResponse(
         prodotto_id=prodotto_id,
         prezzo_minimo=float(result.prezzo_minimo) if result.prezzo_minimo else None,
@@ -404,6 +411,11 @@ def update_all_prices(
             price.data_aggiornamento = datetime.now(timezone.utc)
 
             db.commit()
+
+            # Salva storico e invia alert Telegram
+            _save_prezzo_storico_cardmarket(db, price.prodotto_id, scraped)
+            _check_and_alert_cardmarket(prodotto, scraped)
+
             aggiornati += 1
 
         except Exception as e:
@@ -415,3 +427,59 @@ def update_all_prices(
         "errori": errori,
         "totale_processati": len(old_prices),
     }
+
+
+def _save_prezzo_storico_cardmarket(db, prodotto_id: int, scraped: dict) -> None:
+    """Salva un record in prezzi_storici per fonte cardmarket."""
+    try:
+        storico = PrezzoStorico(
+            prodotto_id=prodotto_id,
+            fonte="cardmarket",
+            prezzo_minimo=scraped.get("prezzo_minimo"),
+            prezzo_medio=scraped.get("prezzo_medio"),
+            prezzo_venduto=None,
+            numero_risultati=None,
+        )
+        db.add(storico)
+        db.commit()
+    except Exception as exc:
+        logger.warning("Impossibile salvare storico CardMarket per prodotto %d: %s", prodotto_id, exc)
+        db.rollback()
+
+
+def _check_and_alert_cardmarket(prodotto, scraped: dict) -> None:
+    """Controlla le soglie e invia alert Telegram se necessario."""
+    try:
+        from ..services.market_telegram import send_market_message
+
+        prezzo_medio_mercato = scraped.get("prezzo_medio")
+        if not prezzo_medio_mercato:
+            return
+
+        prezzo_vendita = float(prodotto.prezzo_vendita) if prodotto.prezzo_vendita else None
+        prezzo_acquisto = float(prodotto.prezzo_acquisto) if prodotto.prezzo_acquisto else None
+
+        if prezzo_vendita is not None and prezzo_medio_mercato > 0:
+            margine_vs_mercato = (prezzo_medio_mercato - prezzo_vendita) / prezzo_medio_mercato
+            if margine_vs_mercato > 0.50:
+                msg = (
+                    f"🚨 *OPPORTUNITÀ*: {prodotto.nome}\n"
+                    f"Il tuo prezzo €{prezzo_vendita:.2f} è molto sotto il mercato €{prezzo_medio_mercato:.2f}.\n"
+                    f"Considera di aumentarlo!"
+                )
+                send_market_message(msg)
+                return
+
+        if prezzo_acquisto is not None and prezzo_acquisto > 0 and prezzo_medio_mercato is not None:
+            margine_vs_acquisto = (prezzo_medio_mercato - prezzo_acquisto) / prezzo_acquisto
+            if margine_vs_acquisto > 3.0:
+                msg = (
+                    f"💰 *AFFARE*: {prodotto.nome}\n"
+                    f"Comprato a €{prezzo_acquisto:.2f}, mercato a €{prezzo_medio_mercato:.2f}.\n"
+                    f"Vendi subito!"
+                )
+                send_market_message(msg)
+
+    except Exception as exc:
+        logger.warning("Errore alert Telegram CardMarket per %s: %s", prodotto.nome, exc)
+

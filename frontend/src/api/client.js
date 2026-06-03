@@ -241,7 +241,8 @@ export const cardtraderAPI = {
 }
 
 export const ebayAPI = {
-  getPrezzi: (nome, stato) => client.get('/api/ebay/prezzi', { params: { nome, stato } }),
+  getPrezzi: (nome, stato, prodottoId) =>
+    client.get('/api/ebay/prezzi', { params: { nome, stato, prodotto_id: prodottoId } }),
 }
 
 export const cardmarketScraperAPI = {
@@ -249,6 +250,14 @@ export const cardmarketScraperAPI = {
     client.post(`/api/cardmarket-scraper/scrape-prezzi/${prodotto_id}`, null, { params: { force } }),
   getPrezziCached: (prodotto_id) =>
     client.get(`/api/cardmarket-scraper/prezzi-cached/${prodotto_id}`),
+}
+
+export const prezziStoriciAPI = {
+  getByProdotto: (prodottoId) => client.get(`/api/prodotti/${prodottoId}/prezzi-storici`),
+}
+
+export const opportunitaAPI = {
+  getAll: () => client.get('/api/opportunita'),
 }
 
 export { trackingAPI } from './tracking'

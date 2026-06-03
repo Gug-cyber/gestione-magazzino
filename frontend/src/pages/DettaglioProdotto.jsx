@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardmarketScraperAPI } from '../api/client'
+import { prodottiAPI, categorieAPI, ubicazioniAPI, getFotoUrl, ebayAPI, cardmarketScraperAPI, prezziStoriciAPI } from '../api/client'
 import { ebayApi } from '../api/ebay'
 import StatoBadge from '../components/ui/StatoBadge'
 import BarcodeDisplay from '../components/BarcodeDisplay'
@@ -160,6 +160,103 @@ function QuantitaChart({ storico }) {
   )
 }
 
+function PrezziTrendChart({ storici }) {
+  const ebayPoints = (storici || []).filter(s => s.fonte === 'ebay' && s.prezzo_medio != null)
+  const cmPoints = (storici || []).filter(s => s.fonte === 'cardmarket' && s.prezzo_medio != null)
+
+  if (ebayPoints.length === 0 && cmPoints.length === 0) {
+    return <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '16px 0', fontSize: '0.85rem' }}>Dati storici insufficienti</p>
+  }
+
+  const W = 600
+  const H = 180
+  const padLeft = 52
+  const padRight = 16
+  const padTop = 12
+  const padBottom = 32
+
+  const allPrices = [...ebayPoints, ...cmPoints].map(s => s.prezzo_medio)
+  const minVal = Math.min(...allPrices)
+  const maxVal = Math.max(...allPrices)
+  const range = maxVal - minVal || 1
+
+  const allDates = [...ebayPoints, ...cmPoints].map(s => new Date(s.rilevato_at).getTime())
+  const minDate = Math.min(...allDates)
+  const maxDate = Math.max(...allDates)
+  const dateRange = maxDate - minDate || 1
+
+  const toX = (iso) => padLeft + ((new Date(iso).getTime() - minDate) / dateRange) * (W - padLeft - padRight)
+  const toY = (v) => padTop + (H - padTop - padBottom) * (1 - (v - minVal) / range)
+
+  const fmtDate = (iso) => {
+    const d = new Date(iso)
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const mkLine = (pts) => pts.map(s => `${toX(s.rilevato_at)},${toY(s.prezzo_medio)}`).join(' ')
+
+  const ySteps = 4
+  const yLabels = []
+  for (let i = 0; i <= ySteps; i++) {
+    const v = minVal + (range * i) / ySteps
+    yLabels.push({ v: v.toFixed(0), y: toY(v) })
+  }
+
+  const xLabelDates = []
+  const allSorted = [...ebayPoints, ...cmPoints].sort((a, b) => new Date(a.rilevato_at) - new Date(b.rilevato_at))
+  if (allSorted.length > 0) {
+    xLabelDates.push(allSorted[0])
+    if (allSorted.length > 2) xLabelDates.push(allSorted[Math.floor(allSorted.length / 2)])
+    xLabelDates.push(allSorted[allSorted.length - 1])
+  }
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
+      {yLabels.map(({ v, y }, i) => (
+        <g key={i}>
+          <line x1={padLeft - 4} y1={y} x2={W - padRight} y2={y} stroke="var(--color-border-subtle)" strokeWidth="1" />
+          <text x={padLeft - 6} y={y + 4} textAnchor="end" fontSize="10" fill="var(--color-text-muted)">€{v}</text>
+        </g>
+      ))}
+      <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom} stroke="var(--color-border)" strokeWidth="1" />
+      {xLabelDates.map((s, i) => (
+        <text key={i} x={toX(s.rilevato_at)} y={H - padBottom + 14} textAnchor="middle" fontSize="10" fill="var(--color-text-muted)">{fmtDate(s.rilevato_at)}</text>
+      ))}
+      {ebayPoints.length > 1 && (
+        <polyline points={mkLine(ebayPoints)} fill="none" stroke="var(--color-warning)" strokeWidth="2" strokeLinejoin="round" />
+      )}
+      {cmPoints.length > 1 && (
+        <polyline points={mkLine(cmPoints)} fill="none" stroke="#ff9800" strokeWidth="2" strokeLinejoin="round" strokeDasharray="5,3" />
+      )}
+      {ebayPoints.map((s, i) => (
+        <circle key={`e${i}`} cx={toX(s.rilevato_at)} cy={toY(s.prezzo_medio)} r="3.5"
+          fill="var(--color-warning)" stroke="var(--color-surface)" strokeWidth="1.5">
+          <title>{`eBay ${fmtDate(s.rilevato_at)}: €${s.prezzo_medio.toFixed(2)}`}</title>
+        </circle>
+      ))}
+      {cmPoints.map((s, i) => (
+        <circle key={`c${i}`} cx={toX(s.rilevato_at)} cy={toY(s.prezzo_medio)} r="3.5"
+          fill="#ff9800" stroke="var(--color-surface)" strokeWidth="1.5">
+          <title>{`CardMarket ${fmtDate(s.rilevato_at)}: €${s.prezzo_medio.toFixed(2)}`}</title>
+        </circle>
+      ))}
+      {/* Legend */}
+      {ebayPoints.length > 0 && (
+        <g>
+          <line x1={padLeft} y1={padTop - 2} x2={padLeft + 18} y2={padTop - 2} stroke="var(--color-warning)" strokeWidth="2" />
+          <text x={padLeft + 22} y={padTop + 2} fontSize="10" fill="var(--color-text-muted)">eBay</text>
+        </g>
+      )}
+      {cmPoints.length > 0 && (
+        <g>
+          <line x1={padLeft + 60} y1={padTop - 2} x2={padLeft + 78} y2={padTop - 2} stroke="#ff9800" strokeWidth="2" strokeDasharray="5,3" />
+          <text x={padLeft + 82} y={padTop + 2} fontSize="10" fill="var(--color-text-muted)">CardMarket</text>
+        </g>
+      )}
+    </svg>
+  )
+}
+
 const PAGE_SIZE = 20
 
 function DettaglioProdotto() {
@@ -281,6 +378,8 @@ function DettaglioProdotto() {
   const [cardmarketLoading, setCardmarketLoading] = useState(false)
   const [cardmarketError, setCardmarketError] = useState(null)
 
+  const [prezziStorici, setPrezziStorici] = useState([])
+
   const loadScheda = async () => {
     setLoading(true)
     setError(null)
@@ -329,7 +428,7 @@ function DettaglioProdotto() {
     setEbayData(null)
     setEbayLoading(true)
     setEbayError(null)
-    ebayAPI.getPrezzi(prodotto.nome, prodotto.stato_conservazione)
+    ebayAPI.getPrezzi(prodotto.nome, prodotto.stato_conservazione, prodotto.id)
       .then(res => setEbayData(res.data))
       .catch(err => setEbayError(err.response?.data?.detail || 'Errore prezzi eBay'))
       .finally(() => setEbayLoading(false))
@@ -381,6 +480,10 @@ function DettaglioProdotto() {
     const { prodotto } = scheda
     fetchEbayPrezzi(prodotto)
     fetchCardmarketPrezzi(prodotto)
+    // Load price history for trend chart
+    prezziStoriciAPI.getByProdotto(prodotto.id)
+      .then(res => setPrezziStorici(res.data || []))
+      .catch(() => setPrezziStorici([]))
     // TEMPORANEAMENTE DISABILITATO - CardTrader API issues
     // if (prodotto.cardtrader_blueprint_id) {
     //   fetchCardtraderPrezzi(prodotto)
@@ -1230,6 +1333,53 @@ function DettaglioProdotto() {
             </button>
           </div>
         </div>
+
+        {/* Suggerimento azione concreta */}
+        {(() => {
+          const pv = prodotto.prezzo_vendita ? Number(prodotto.prezzo_vendita) : null
+          const pa = prodotto.prezzo_acquisto ? Number(prodotto.prezzo_acquisto) : null
+          const ebayMedio = ebayData?.prezzo_medio ? Number(ebayData.prezzo_medio) : null
+          const cmMedio = cardmarketData?.prezzo_medio ? Number(cardmarketData.prezzo_medio) : null
+          const prezziDisp = [ebayMedio, cmMedio].filter(v => v != null)
+          if (prezziDisp.length === 0 || pv == null) return null
+          const mediaMercato = prezziDisp.reduce((a, b) => a + b, 0) / prezziDisp.length
+          const margineAcquisto = pa && pa > 0 ? (mediaMercato - pa) / pa : 0
+          const prezzoConsigliato = Math.round(mediaMercato * 0.95 * 100) / 100
+
+          if (pv < mediaMercato * 0.9) {
+            return (
+              <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 8, background: 'rgba(255,152,0,0.1)', borderLeft: '4px solid #ff9800' }}>
+                <span style={{ fontSize: '0.95rem', color: '#ff9800', fontWeight: 600 }}>💡 Opportunità prezzo</span>
+                <div style={{ fontSize: '0.88rem', color: 'var(--color-text)', marginTop: 4 }}>
+                  Il tuo prezzo (€{pv.toFixed(2)}) è sotto la media di mercato (€{mediaMercato.toFixed(2)}).
+                  Considera di aumentarlo a <strong>€{prezzoConsigliato.toFixed(2)}</strong>.
+                </div>
+              </div>
+            )
+          }
+          if (margineAcquisto > 3.0) {
+            return (
+              <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 8, background: 'rgba(56,161,105,0.1)', borderLeft: '4px solid var(--color-success)' }}>
+                <span style={{ fontSize: '0.95rem', color: 'var(--color-success)', fontWeight: 600 }}>🚀 Ottimo affare!</span>
+                <div style={{ fontSize: '0.88rem', color: 'var(--color-text)', marginTop: 4 }}>
+                  Comprato a €{pa.toFixed(2)}, mercato a €{mediaMercato.toFixed(2)}.
+                  Vendi subito al prezzo consigliato <strong>€{prezzoConsigliato.toFixed(2)}</strong>.
+                </div>
+              </div>
+            )
+          }
+          return null
+        })()}
+
+        {/* Grafico trend prezzi */}
+        {prezziStorici.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+              📈 Andamento prezzi (ultimi 30 giorni)
+            </div>
+            <PrezziTrendChart storici={prezziStorici} />
+          </div>
+        )}
       </div>
 
       {/* Sezione Codici & Etichette — nascosta */}

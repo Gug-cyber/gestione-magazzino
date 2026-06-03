@@ -19,6 +19,7 @@ from ..models.ebay_connection import EbayConnection
 from ..models.ebay_listing import EbayListing
 from ..models.ebay_sale import EbaySale
 from ..models.prodotto import Prodotto
+from ..models.prezzo_storico import PrezzoStorico
 from ..schemas.ebay import (
     ConnectionSettingsUpdate,
     EbayConnectionStatus,
@@ -218,6 +219,8 @@ def _build_ebay_search_url(nome: str, marketplace: str) -> str:
 def get_prezzi_ebay(
     nome: str = Query(..., description="Nome del prodotto da cercare"),
     stato: Optional[str] = Query(None, description="Stato di conservazione"),
+    prodotto_id: Optional[int] = Query(None, description="ID prodotto per salvare storico prezzi"),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     client_id, _ = _get_credentials()
@@ -304,8 +307,18 @@ def get_prezzi_ebay(
         }
 
     prezzo_medio = round(sum(prices) / len(prices), 2)
+    prezzo_minimo = round(min(prices), 2)
     ultimo_prezzo = round(prices[0], 2)
     valuta = items[0].get("price", {}).get("currency", "EUR")
+
+    # Salva storico e invia alert Telegram se prodotto_id fornito
+    if prodotto_id is not None:
+        _save_prezzo_storico_ebay(
+            db, prodotto_id, prezzo_minimo, prezzo_medio, ultimo_prezzo_venduto, len(items)
+        )
+        prodotto = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
+        if prodotto:
+            _check_and_alert_ebay(prodotto, prezzo_medio)
 
     return {
         "configurato": True,
@@ -317,6 +330,64 @@ def get_prezzi_ebay(
         "url_ricerca": url_ricerca,
         "stato_filtrato": stato,
     }
+
+
+def _save_prezzo_storico_ebay(
+    db: Session,
+    prodotto_id: int,
+    prezzo_minimo: Optional[float],
+    prezzo_medio: Optional[float],
+    prezzo_venduto: Optional[float],
+    numero_risultati: int,
+) -> None:
+    """Salva un record in prezzi_storici per fonte ebay."""
+    try:
+        storico = PrezzoStorico(
+            prodotto_id=prodotto_id,
+            fonte="ebay",
+            prezzo_minimo=prezzo_minimo,
+            prezzo_medio=prezzo_medio,
+            prezzo_venduto=prezzo_venduto,
+            numero_risultati=numero_risultati,
+        )
+        db.add(storico)
+        db.commit()
+    except Exception as exc:
+        logger.warning("Impossibile salvare storico eBay per prodotto %d: %s", prodotto_id, exc)
+        db.rollback()
+
+
+def _check_and_alert_ebay(prodotto, prezzo_medio_mercato: float) -> None:
+    """Controlla le soglie e invia alert Telegram se necessario."""
+    try:
+        from ..services.market_telegram import send_market_message
+
+        prezzo_vendita = float(prodotto.prezzo_vendita) if prodotto.prezzo_vendita else None
+        prezzo_acquisto = float(prodotto.prezzo_acquisto) if prodotto.prezzo_acquisto else None
+
+        if prezzo_vendita is not None and prezzo_medio_mercato > 0:
+            margine_vs_mercato = (prezzo_medio_mercato - prezzo_vendita) / prezzo_medio_mercato
+            if margine_vs_mercato > 0.50:
+                msg = (
+                    f"🚨 *OPPORTUNITÀ*: {prodotto.nome}\n"
+                    f"Il tuo prezzo €{prezzo_vendita:.2f} è molto sotto il mercato €{prezzo_medio_mercato:.2f}.\n"
+                    f"Considera di aumentarlo!"
+                )
+                send_market_message(msg)
+                return
+
+        if prezzo_acquisto is not None and prezzo_acquisto > 0 and prezzo_medio_mercato is not None:
+            margine_vs_acquisto = (prezzo_medio_mercato - prezzo_acquisto) / prezzo_acquisto
+            if margine_vs_acquisto > 3.0:
+                msg = (
+                    f"💰 *AFFARE*: {prodotto.nome}\n"
+                    f"Comprato a €{prezzo_acquisto:.2f}, mercato a €{prezzo_medio_mercato:.2f}.\n"
+                    f"Vendi subito!"
+                )
+                send_market_message(msg)
+
+    except Exception as exc:
+        logger.warning("Errore alert Telegram eBay per %s: %s", prodotto.nome, exc)
 
 
 @router.get("/categories")
