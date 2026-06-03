@@ -201,10 +201,112 @@ def _format_telegram_message(report: dict[str, Any]) -> str:
 def _scheduler_loop() -> None:
     """Loop del thread di scheduling — gira ogni giorno alle 08:00."""
     schedule.every().day.at("08:00").do(run_daily_price_report)
+    schedule.every().day.at("08:30").do(run_daily_opportunities_report)
     logger.info("Scheduler report giornaliero avviato — prossima esecuzione alle 08:00")
     while True:
         schedule.run_pending()
         time.sleep(60)
+
+
+def run_daily_opportunities_report() -> None:
+    """Invia su Telegram i top 5 prodotti con miglior opportunita_score."""
+    logger.info("Avvio report giornaliero opportunità")
+    db = SessionLocal()
+    try:
+        from ..models.prezzo_storico import PrezzoStorico
+        from ..models.cardmarket_price import CardMarketPrice
+        from sqlalchemy import desc
+
+        prodotti = db.query(Prodotto).filter(Prodotto.quantita >= 0).all()
+        opportunita = []
+
+        for prodotto in prodotti:
+            prezzo_acquisto = float(prodotto.prezzo_acquisto) if prodotto.prezzo_acquisto else None
+            prezzo_vendita = float(prodotto.prezzo_vendita) if prodotto.prezzo_vendita else None
+
+            ultimo_ebay = (
+                db.query(PrezzoStorico)
+                .filter(PrezzoStorico.prodotto_id == prodotto.id, PrezzoStorico.fonte == "ebay")
+                .order_by(desc(PrezzoStorico.rilevato_at))
+                .first()
+            )
+            ultimo_cm = (
+                db.query(PrezzoStorico)
+                .filter(PrezzoStorico.prodotto_id == prodotto.id, PrezzoStorico.fonte == "cardmarket")
+                .order_by(desc(PrezzoStorico.rilevato_at))
+                .first()
+            )
+
+            ebay_medio = ultimo_ebay.prezzo_medio if ultimo_ebay else None
+            cm_medio = None
+            if ultimo_cm:
+                cm_medio = ultimo_cm.prezzo_medio
+            else:
+                cm_cache = (
+                    db.query(CardMarketPrice)
+                    .filter(CardMarketPrice.prodotto_id == prodotto.id)
+                    .first()
+                )
+                if cm_cache and cm_cache.prezzo_medio:
+                    cm_medio = float(cm_cache.prezzo_medio)
+
+            prezzi_mercato = [p for p in [ebay_medio, cm_medio] if p is not None]
+            if not prezzi_mercato:
+                continue
+            media_mercato = sum(prezzi_mercato) / len(prezzi_mercato)
+
+            margine_vs_mercato = None
+            if prezzo_vendita is not None:
+                margine_vs_mercato = media_mercato - prezzo_vendita
+
+            score = 0
+            if margine_vs_mercato is not None and media_mercato > 0:
+                pct_sotto = margine_vs_mercato / media_mercato
+                score += min(60, int(pct_sotto * 100))
+            if prezzo_acquisto and prezzo_acquisto > 0:
+                m = (media_mercato - prezzo_acquisto) / prezzo_acquisto
+                score += min(40, int(m * 20))
+            score = max(0, min(100, score))
+
+            if score > 0:
+                azione = "Prezzo ok"
+                if prezzo_vendita is not None and prezzo_vendita < media_mercato * 0.9:
+                    azione = "Aumenta prezzo"
+                elif prezzo_acquisto and prezzo_acquisto > 0 and (media_mercato - prezzo_acquisto) / prezzo_acquisto > 3.0:
+                    azione = "Vendi subito"
+
+                opportunita.append({
+                    "nome": prodotto.nome,
+                    "score": score,
+                    "prezzo_vendita": prezzo_vendita,
+                    "media_mercato": round(media_mercato, 2),
+                    "azione": azione,
+                })
+
+        opportunita.sort(key=lambda x: x["score"], reverse=True)
+        top5 = opportunita[:5]
+
+        if not top5:
+            logger.info("Nessuna opportunità da segnalare oggi.")
+            return
+
+        lines = ["🎯 *Top Opportunità del Giorno*", ""]
+        for i, op in enumerate(top5, 1):
+            pv = f"€{op['prezzo_vendita']:.2f}" if op["prezzo_vendita"] else "N/D"
+            lines.append(
+                f"{i}. *{op['nome']}* (score: {op['score']})\n"
+                f"   Prezzo: {pv} | Mercato: €{op['media_mercato']:.2f}\n"
+                f"   Azione: {op['azione']}"
+            )
+
+        send_market_message("\n".join(lines))
+        logger.info("Report opportunità inviato su Telegram — top %d prodotti", len(top5))
+
+    except Exception as exc:
+        logger.error("Errore run_daily_opportunities_report: %s", exc)
+    finally:
+        db.close()
+
 
 
 def start_market_price_scheduler() -> None:

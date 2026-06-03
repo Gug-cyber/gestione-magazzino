@@ -157,6 +157,7 @@ const BASE_SECTIONS = [
       { to: '/', label: 'Dashboard', icon: 'Dashboard', end: true },
       { to: '/analisi', label: 'Analisi', icon: 'Analytics' },
       { to: '/statistiche', label: 'Report & Statistiche', icon: 'PieChart' },
+      { to: '/dashboard-opportunita', label: '📈 Dashboard Opportunità', icon: 'Analytics' },
       { to: '/ai', label: '🤖 AI Assistant', icon: 'Sliders' },
     ],
   },

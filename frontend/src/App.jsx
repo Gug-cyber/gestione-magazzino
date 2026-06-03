@@ -51,6 +51,7 @@ import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import StoreFooterPage from './pages/store/StoreFooterPage'
 import ControlPanel from './pages/ControlPanel'
 import AIAssistant from './pages/AIAssistant'
+import DashboardOpportunita from './pages/DashboardOpportunita.jsx'
 import { storeAPI } from './api/store'
 import AIAssistantWidget from './components/AIAssistantWidget'
 function AppLayout({ children }) {
@@ -164,6 +165,11 @@ function App() {
           <Route path="/analisi" element={
             <ProtectedRoute>
               <AppLayout><Analisi /></AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard-opportunita" element={
+            <ProtectedRoute>
+              <AppLayout><DashboardOpportunita /></AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/statistiche" element={

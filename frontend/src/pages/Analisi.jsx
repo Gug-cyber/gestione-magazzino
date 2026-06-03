@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { speseGestioneAPI, analisiAPI } from '../api/client'
+import { speseGestioneAPI, analisiAPI, opportunitaAPI } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import '../styles/shared.css'
 
@@ -825,6 +825,139 @@ function TabStorico() {
   )
 }
 
+// Tab Opportunità Mercato
+const AZIONE_COLORS = {
+  'Vendi subito': { bg: 'rgba(56,161,105,0.15)', color: '#38a169', border: '#38a169' },
+  'Aumenta prezzo': { bg: 'rgba(255,152,0,0.15)', color: '#ff9800', border: '#ff9800' },
+  'Riordina': { bg: 'rgba(220,53,69,0.15)', color: 'var(--color-danger)', border: 'var(--color-danger)' },
+  'Prezzo ok': { bg: 'rgba(100,100,100,0.1)', color: 'var(--color-text-secondary)', border: 'var(--color-border)' },
+}
+
+function TabOpportunita() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [errore, setErrore] = useState(null)
+  const [sortKey, setSortKey] = useState('opportunita_score')
+  const [sortDir, setSortDir] = useState('desc')
+
+  useEffect(() => {
+    opportunitaAPI.getAll()
+      .then(res => setItems(res.data || []))
+      .catch(() => setErrore('Errore nel caricamento delle opportunità'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+  }
+
+  const sorted = [...items].sort((a, b) => {
+    const va = a[sortKey] ?? -Infinity
+    const vb = b[sortKey] ?? -Infinity
+    if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    return sortDir === 'asc' ? va - vb : vb - va
+  })
+
+  const fmt = (v) => v != null ? `€${Number(v).toFixed(2)}` : '—'
+
+  const SortIcon = ({ k }) => {
+    if (sortKey !== k) return <span style={{ opacity: 0.3 }}>↕</span>
+    return <span>{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
+
+  if (loading) return <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-secondary)' }}>Caricamento...</div>
+  if (errore) return <div style={{ padding: 32, color: 'var(--color-danger)' }}>{errore}</div>
+  if (items.length === 0) return (
+    <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-secondary)' }}>
+      Nessun dato disponibile. Aggiorna i prezzi eBay o CardMarket per i tuoi prodotti.
+    </div>
+  )
+
+  const thStyle = {
+    padding: '10px 12px',
+    textAlign: 'left',
+    fontSize: '0.8rem',
+    color: 'var(--text-secondary)',
+    fontWeight: 600,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    borderBottom: '2px solid var(--border-primary)',
+    userSelect: 'none',
+  }
+  const tdStyle = { padding: '10px 12px', fontSize: '0.85rem', borderBottom: '1px solid var(--border-primary)', verticalAlign: 'middle' }
+
+  return (
+    <div>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '0.9rem' }}>
+        Prodotti analizzati: <strong>{items.length}</strong> — ordinabili per ogni colonna
+      </p>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {[
+                { key: 'nome', label: 'Nome' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'prezzo_acquisto', label: 'Acquisto' },
+                { key: 'prezzo_vendita', label: 'Vendita' },
+                { key: 'ebay_prezzo_medio', label: 'eBay medio' },
+                { key: 'cardmarket_prezzo_medio', label: 'CM medio' },
+                { key: 'margine_attuale', label: 'Margine' },
+                { key: 'margine_vs_mercato', label: 'vs Mercato' },
+                { key: 'opportunita_score', label: 'Score' },
+                { key: 'azione_consigliata', label: 'Azione' },
+              ].map(({ key, label }) => (
+                <th key={key} style={thStyle} onClick={() => handleSort(key)}>
+                  {label} <SortIcon k={key} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row) => {
+              const az = AZIONE_COLORS[row.azione_consigliata] || AZIONE_COLORS['Prezzo ok']
+              return (
+                <tr key={row.prodotto_id} style={{ transition: 'background 0.15s' }}>
+                  <td style={tdStyle}><strong>{row.nome}</strong></td>
+                  <td style={{ ...tdStyle, color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.8rem' }}>{row.sku || '—'}</td>
+                  <td style={tdStyle}>{fmt(row.prezzo_acquisto)}</td>
+                  <td style={tdStyle}>{fmt(row.prezzo_vendita)}</td>
+                  <td style={{ ...tdStyle, color: 'var(--color-warning)' }}>{fmt(row.ebay_prezzo_medio)}</td>
+                  <td style={{ ...tdStyle, color: '#ff9800' }}>{fmt(row.cardmarket_prezzo_medio)}</td>
+                  <td style={{ ...tdStyle, color: row.margine_attuale > 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    {row.margine_attuale != null ? `€${Number(row.margine_attuale).toFixed(2)}` : '—'}
+                  </td>
+                  <td style={{ ...tdStyle, color: row.margine_vs_mercato > 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    {row.margine_vs_mercato != null ? `€${Number(row.margine_vs_mercato).toFixed(2)}` : '—'}
+                  </td>
+                  <td style={tdStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 32, height: 6, borderRadius: 3, background: 'var(--border-primary)', overflow: 'hidden' }}>
+                        <div style={{ width: `${row.opportunita_score}%`, height: '100%', background: row.opportunita_score > 60 ? '#38a169' : row.opportunita_score > 30 ? '#ff9800' : 'var(--color-text-muted)', borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{row.opportunita_score}</span>
+                    </div>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ padding: '3px 10px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: az.bg, color: az.color, border: `1px solid ${az.border}`, whiteSpace: 'nowrap' }}>
+                      {row.azione_consigliata}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // Main Component
 export default function Analisi() {
   const [tab, setTab] = useState('grafici')
@@ -833,6 +966,7 @@ export default function Analisi() {
     { key: 'grafici', label: 'Grafici', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10M12 20V4M6 20v-6" /></svg> },
     { key: 'spese', label: 'Spese', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg> },
     { key: 'storico', label: 'Storico', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18" /><path d="M18 17l-5-5-4 4-5-5" /></svg> },
+    { key: 'opportunita', label: 'Opportunità Mercato', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg> },
   ]
 
   return (
@@ -883,6 +1017,7 @@ export default function Analisi() {
       {tab === 'grafici' && <TabGrafici />}
       {tab === 'spese' && <TabSpese />}
       {tab === 'storico' && <TabStorico />}
+      {tab === 'opportunita' && <TabOpportunita />}
     </div>
   )
 }

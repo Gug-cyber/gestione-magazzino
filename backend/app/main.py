@@ -25,6 +25,7 @@ from .routers import tracking as tracking_router
 from .routers import backup as backup_router
 from .routers import ai
 from .routers import market_intelligence as market_intelligence_router
+from .routers import prezzi_storici as prezzi_storici_router
 from .routers.cms import contenuti as cms_contenuti, banner as cms_banner, prodotti as cms_prodotti
 from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
 from .models import contenuto as _contenuto_model  # noqa: F401 – ensures contenuti table is created
@@ -53,6 +54,7 @@ from .models import ebay_sale as _ebay_sale_model  # noqa: F401 – ensures ebay
 from .models import ebay_order_event as _ebay_order_event_model  # noqa: F401 – ensures ebay_order_events table is created
 from .models import manual_listing as _manual_listing_model  # noqa: F401 – ensures manual_listings table is created
 from .models import market_report as _market_report_model  # noqa: F401 – ensures market_reports table is created
+from .models import prezzo_storico as _prezzo_storico_model  # noqa: F401 – ensures prezzi_storici table is created
 
 load_dotenv()
 
@@ -136,6 +138,7 @@ app.include_router(analytics_router.router, prefix="/api/analytics", tags=["Anal
 app.include_router(backup_router.router)
 app.include_router(ai.router, prefix="/api")
 app.include_router(market_intelligence_router.router, prefix="/api")
+app.include_router(prezzi_storici_router.router, prefix="/api")
 
 
 @app.on_event("startup")
