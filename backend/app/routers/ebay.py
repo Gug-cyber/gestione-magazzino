@@ -893,6 +893,10 @@ def publish_listing(
                 else:
                     # Step 2: escalate to a more permissive condition in the fallback chain
                     fallback_condition = _INV_CONDITION_FALLBACK.get(current_condition)
+                    if not fallback_condition and current_condition not in {"USED_GOOD", "USED_ACCEPTABLE"}:
+                        # Safety fallback for category-specific/unknown conditions.
+                        # "USED_GOOD" maps to conditionId 3000 and is broadly accepted.
+                        fallback_condition = "USED_GOOD"
                     if not fallback_condition:
                         raise pub_exc
                     logger.warning(

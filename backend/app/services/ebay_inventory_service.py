@@ -259,6 +259,10 @@ class EbayInventoryService:
                 if "condition" in error_lower or "condizione" in error_lower:
                     original_condition = current_payload.get("condition", "")
                     fallback_condition = _CONDITION_FALLBACK.get(original_condition)
+                    if not fallback_condition and original_condition not in {"USED_GOOD", "USED_ACCEPTABLE"}:
+                        # Safety fallback for category-specific/unknown conditions:
+                        # "USED_GOOD" is broadly accepted and maps to conditionId 3000.
+                        fallback_condition = "USED_GOOD"
                     if fallback_condition:
                         logger.warning(
                             "eBay PUT inventory_item returned 400 with condition error — "
