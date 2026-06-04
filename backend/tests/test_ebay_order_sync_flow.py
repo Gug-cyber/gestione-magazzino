@@ -126,3 +126,31 @@ def test_ebay_orders_webhook_requires_secret_when_configured(client, db, monkeyp
     )
     assert response_ok.status_code == 200
     assert response_ok.json() == {"total": 0, "processed": 0, "skipped": 0}
+
+
+def test_ebay_orders_webhook_logs_warning_when_secret_missing(client, db, monkeypatch, caplog):
+    connection = EbayConnection(
+        ebay_account_id="demo-account",
+        access_token="access-token",
+        refresh_token="refresh-token",
+        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        status="active",
+    )
+    db.add(connection)
+    db.commit()
+
+    monkeypatch.delenv("EBAY_WEBHOOK_SECRET", raising=False)
+    monkeypatch.setattr(
+        "app.routers.ebay.process_webhook_payload",
+        lambda connection_obj, db_session, payload: {"total": 0, "processed": 0, "skipped": 0},
+    )
+
+    with caplog.at_level("WARNING"):
+        response = client.post("/api/ebay/webhook/orders", json={"orderId": "ORDER-1"})
+
+    assert response.status_code == 200
+    assert response.json() == {"total": 0, "processed": 0, "skipped": 0}
+    assert any(
+        "EBAY_WEBHOOK_SECRET non configurata: webhook eBay accetta richieste senza autenticazione" in record.message
+        for record in caplog.records
+    )
