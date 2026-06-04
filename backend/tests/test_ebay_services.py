@@ -946,6 +946,33 @@ def test_put_inventory_item_with_fallback_no_condition_fallback_when_no_fallback
     assert len(calls) == 1  # re-raised immediately, no retry
 
 
+def test_put_inventory_item_with_fallback_uses_safe_used_good_for_unknown_condition(monkeypatch):
+    """Unknown category-specific conditions should safely fall back to USED_GOOD (conditionId 3000)."""
+    calls = []
+
+    def _mock_request(method, url, **kwargs):
+        payload = kwargs.get("json", {})
+        calls.append(dict(payload))
+        if len(calls) == 1:
+            raise ebay_inventory_service_module._EbayRequestHTTPException(
+                ebay_status=400,
+                detail="Errore creazione inventory eBay: 400 (invalid item condition information)",
+            )
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    EbayInventoryService._put_inventory_item_with_fallback(
+        "https://api.example.com/sell/inventory/v1/inventory_item/SKU-1",
+        headers={"Authorization": "******"},
+        payload={"condition": "MANUFACTURER_REFURBISHED"},
+    )
+
+    assert len(calls) == 2
+    assert calls[0]["condition"] == "MANUFACTURER_REFURBISHED"
+    assert calls[1]["condition"] == "USED_GOOD"
+
+
 def test_condition_fallback_map_entries():
     """Verify the _CONDITION_FALLBACK map has the expected entries."""
     fb = ebay_inventory_service_module._CONDITION_FALLBACK

@@ -167,3 +167,73 @@ def test_publish_listing_propagates_detailed_offer_error(client, auth_headers, d
     assert listing is not None
     assert listing.status == "error"
     assert listing.error_message == "Errore creazione offer eBay: 400 (INVALID_FIELD_VALUE)"
+
+
+def test_publish_listing_condition_error_unknown_condition_falls_back_to_used_good(client, auth_headers, db, monkeypatch):
+    connection = EbayConnection(
+        ebay_account_id="demo-account",
+        access_token="access-token",
+        refresh_token="refresh-token",
+        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        status="active",
+        fee_percentage=Decimal("13.25"),
+        marketplace_id="EBAY_IT",
+    )
+    db.add(connection)
+
+    product = Prodotto(
+        nome="Carta test",
+        descrizione="Descrizione test",
+        sku="SKU-COND-FALLBACK-1",
+        quantita=1,
+        prezzo_vendita=Decimal("10.00"),
+        foto_path="https://img.example.com/test.jpg",
+        stato_conservazione="Mint",
+    )
+    db.add(product)
+    db.commit()
+
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+
+    inventory_calls = []
+
+    def _mock_inventory(*_args, **kwargs):
+        inventory_calls.append({
+            "condition_override": kwargs.get("condition_override"),
+            "skip_condition_description": kwargs.get("skip_condition_description", False),
+        })
+        return None
+
+    monkeypatch.setattr("app.routers.ebay.EbayInventoryService.create_or_update_inventory_item", _mock_inventory)
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.create_offer", lambda *_args, **_kwargs: "OFFER-1")
+
+    publish_attempt = {"count": 0}
+
+    def _mock_publish(*_args, **_kwargs):
+        publish_attempt["count"] += 1
+        if publish_attempt["count"] <= 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Le informazioni sulla condizione 5000 non indicano una condizione valida per la categoria 183454",
+            )
+        return "LISTING-1"
+
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.publish_offer", _mock_publish)
+
+    response = client.post(
+        "/api/ebay/listings/publish",
+        headers=auth_headers,
+        json={
+            "product_id": product.id,
+            "ebay_category_id": "183454",
+            "condition_override": "MANUFACTURER_REFURBISHED",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(inventory_calls) == 3
+    assert inventory_calls[0]["condition_override"] == "MANUFACTURER_REFURBISHED"
+    assert inventory_calls[1]["condition_override"] == "MANUFACTURER_REFURBISHED"
+    assert inventory_calls[1]["skip_condition_description"] is True
+    assert inventory_calls[2]["condition_override"] == "USED_GOOD"
+    assert inventory_calls[2]["skip_condition_description"] is True
