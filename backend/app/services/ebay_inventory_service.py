@@ -17,12 +17,13 @@ _CONDITION_MAP = {
     "Excellent": "USED_EXCELLENT",
     "Good": "USED_GOOD",          # corrected from USED_EXCELLENT — more broadly accepted across categories
     "Light Played": "USED_GOOD",
-    "Played": "USED_ACCEPTABLE",
-    "Poor": "USED_ACCEPTABLE",
+    "Played": "USED_GOOD",
+    "Poor": "USED_GOOD",
     # Additional values for broader compatibility
     "Like New": "LIKE_NEW",
     "Very Good": "USED_EXCELLENT",
-    "Acceptable": "USED_ACCEPTABLE",
+    "Acceptable": "USED_GOOD",
+    "condizioni come da foto": "USED_GOOD",
 }
 
 # Condition fallback chain for 400 "invalid condition for category" errors.
@@ -34,7 +35,6 @@ _CONDITION_FALLBACK: dict[str, str] = {
     "NEW_WITH_DEFECTS": "USED_GOOD",
     "LIKE_NEW": "USED_EXCELLENT",
     "USED_EXCELLENT": "USED_GOOD",
-    "USED_GOOD": "USED_ACCEPTABLE",
 }
 
 # Maximum number of PUT attempts in _put_inventory_item_with_fallback

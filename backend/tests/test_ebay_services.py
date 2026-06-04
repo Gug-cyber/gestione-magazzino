@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 import app.services.ebay_inventory_service as ebay_inventory_service_module
 import app.services.ebay_offer_service as ebay_offer_service_module
+from app.routers import ebay as ebay_router_module
 from app.schemas.ebay import PublishRequest
 from app.services.ebay_auth_service import EbayAuthService
 from app.services.ebay_inventory_service import EbayInventoryService
@@ -954,7 +955,7 @@ def test_condition_fallback_map_entries():
     assert fb["NEW_WITH_DEFECTS"] == "USED_GOOD"
     assert fb["LIKE_NEW"] == "USED_EXCELLENT"
     assert fb["USED_EXCELLENT"] == "USED_GOOD"
-    assert fb["USED_GOOD"] == "USED_ACCEPTABLE"
+    assert "USED_GOOD" not in fb  # terminal condition
     assert "USED_ACCEPTABLE" not in fb  # terminal condition
 
 
@@ -1100,9 +1101,16 @@ def test_condition_map_good_maps_to_used_good():
     """'Good' condition should map to USED_GOOD (widely accepted across categories incl. toys)."""
     from app.services.ebay_inventory_service import _CONDITION_MAP
     assert _CONDITION_MAP["Good"] == "USED_GOOD"
+    assert _CONDITION_MAP["Played"] == "USED_GOOD"
+    assert _CONDITION_MAP["Poor"] == "USED_GOOD"
     assert _CONDITION_MAP["Like New"] == "LIKE_NEW"
     assert _CONDITION_MAP["Very Good"] == "USED_EXCELLENT"
-    assert _CONDITION_MAP["Acceptable"] == "USED_ACCEPTABLE"
+    assert _CONDITION_MAP["Acceptable"] == "USED_GOOD"
+    assert _CONDITION_MAP["condizioni come da foto"] == "USED_GOOD"
+
+
+def test_condition_id_to_enum_includes_6000_used_acceptable():
+    assert ebay_router_module._CONDITION_ID_TO_ENUM["6000"] == "USED_ACCEPTABLE"
 
 
 def test_policy_cache_ttl_expiration(monkeypatch):

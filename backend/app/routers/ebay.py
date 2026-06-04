@@ -684,6 +684,7 @@ _CONDITION_ID_TO_ENUM: dict[str, str] = {
     "2750": "USED_EXCELLENT",
     "3000": "USED_GOOD",
     "4000": "USED_ACCEPTABLE",
+    "6000": "USED_ACCEPTABLE",
     "7000": "FOR_PARTS_OR_NOT_WORKING",
 }
 
