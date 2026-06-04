@@ -11,37 +11,37 @@ from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
+# Mappa stato_conservazione -> condizione eBay enum.
+# Usiamo solo condizioni ampiamente accettate da tutte le categorie eBay IT.
+# NEW (5000) è volutamente escluso perché rifiutato da molte categorie (es. carte collezionabili 183454).
+# La qualità reale viene comunicata tramite il campo conditionDescription.
 _CONDITION_MAP = {
-    "Mint": "NEW",
-    "Near Mint": "NEW",
+    "Mint": "USED_EXCELLENT",          # non usiamo NEW (5000): rifiutato da molte categorie
+    "Near Mint": "USED_EXCELLENT",     # non usiamo NEW (5000): rifiutato da molte categorie
     "Excellent": "USED_EXCELLENT",
     "Good": "USED_GOOD",
     "Light Played": "USED_GOOD",
-    "Played": "USED_GOOD",           # era USED_ACCEPTABLE (6000) — non valido per molte categorie
-    "Poor": "USED_GOOD",              # era USED_ACCEPTABLE (6000) — non valido per molte categorie
-    # Additional values for broader compatibility
-    "Like New": "LIKE_NEW",
+    "Played": "USED_GOOD",
+    "Poor": "USED_GOOD",
+    "Like New": "USED_EXCELLENT",
     "Very Good": "USED_EXCELLENT",
-    "Acceptable": "USED_GOOD",        # era USED_ACCEPTABLE (6000) — non valido per molte categorie
-    "condizioni come da foto": "USED_GOOD",  # mapping esplicito per evitare fallback
+    "Acceptable": "USED_GOOD",
+    "condizioni come da foto": "USED_GOOD",
 }
 
-# Condition fallback chain for 400 "invalid condition for category" errors.
-# When eBay rejects a condition as invalid for the selected category, the PUT is
-# retried with the next (more permissive) condition in this chain.
-# NOTA: USED_ACCEPTABLE (conditionId 6000) è stato rimosso dalla catena perché
-# non è valido per molte categorie eBay IT (es. 183454 GCC carte singole).
+# Condition fallback chain per errori 400 "invalid condition for category".
+# USED_GOOD (3000) è terminale — è accettato dalla quasi totalità delle categorie eBay IT.
 _CONDITION_FALLBACK: dict[str, str] = {
     "NEW": "USED_EXCELLENT",
     "NEW_OTHER": "USED_EXCELLENT",
     "NEW_WITH_DEFECTS": "USED_GOOD",
     "LIKE_NEW": "USED_EXCELLENT",
+    "MANUFACTURER_REFURBISHED": "USED_EXCELLENT",
     "USED_EXCELLENT": "USED_GOOD",
     # USED_GOOD è terminale — non fare fallback su USED_ACCEPTABLE (6000)
 }
 
 # Maximum number of PUT attempts in _put_inventory_item_with_fallback
-# (initial attempt + up to 2 fallbacks: conditionDescription removal and condition downgrade)
 _MAX_FALLBACK_ATTEMPTS = 3
 
 _MARKETPLACE_LANGUAGE_MAP = {
@@ -83,7 +83,6 @@ def _build_auto_aspects(product) -> dict[str, list[str]]:
     """Auto-genera gli aspect eBay dai dati del prodotto (titolo, categoria/piattaforma, marca, modello)."""
     auto: dict[str, list[str]] = {}
 
-    # Titolo / nome prodotto
     nome = (product.nome or "").strip()
     if nome:
         auto["Titolo videogioco"] = [nome]
@@ -91,29 +90,22 @@ def _build_auto_aspects(product) -> dict[str, list[str]]:
         auto["Nome"] = [nome]
         auto["Title"] = [nome]
 
-    # Piattaforma: risale la gerarchia di categorie
-    # La categoria foglia è tipicamente la piattaforma (es. "PlayStation 4", "Nintendo Switch", "PC")
-    # Il parent è tipicamente il genere (es. "Videogiochi")
     category_chain = _get_category_chain(product)
     if category_chain:
-        # La categoria più specifica (foglia) viene usata come Piattaforma
         piattaforma = category_chain[0]
         auto["Piattaforma"] = [piattaforma]
         auto["Platform"] = [piattaforma]
         logger.debug("eBay auto-aspect Piattaforma='%s' dalla categoria del prodotto", piattaforma)
 
-        # Se c'è anche il parent, usalo come categoria generica (es. "Videogiochi")
         if len(category_chain) > 1:
             genere = category_chain[1]
             auto["Genere"] = [genere]
 
-    # Marca / brand
     marca = getattr(product, "marca", None) or getattr(product, "brand", None)
     if marca and str(marca).strip():
         auto["Marca"] = [str(marca).strip()]
         auto["Brand"] = [str(marca).strip()]
 
-    # Modello
     modello = getattr(product, "modello", None) or getattr(product, "model", None)
     if modello and str(modello).strip():
         auto["Modello"] = [str(modello).strip()]
@@ -139,7 +131,6 @@ class EbayInventoryService:
     def _request_with_retry(
         method: str, url: str, headers: dict = None, json=None, params: dict = None
     ) -> dict | None:
-        # Pass headers as-is — Content-Language is required by eBay Inventory API
         clean_headers = dict(headers) if headers else {}
         if json is not None and "content-type" not in {k.lower() for k in clean_headers}:
             clean_headers["Content-Type"] = "application/json"
@@ -223,7 +214,7 @@ class EbayInventoryService:
             extra_url = EbayInventoryService._to_public_image_url(extra)
             if extra_url and extra_url not in urls:
                 urls.append(extra_url)
-        return [u for u in urls if u][:12]  # eBay max 12 immagini
+        return [u for u in urls if u][:12]
 
     @staticmethod
     def _content_language_for_marketplace(marketplace_id: str | None) -> str:
@@ -232,13 +223,7 @@ class EbayInventoryService:
 
     @staticmethod
     def _put_inventory_item_with_fallback(url: str, headers: dict, payload: dict) -> None:
-        """PUT inventory item with progressive fallback logic for 400 errors (max 3 attempts):
-
-        1. If eBay returns 400 and conditionDescription is in the payload, retry without it —
-           many categories (e.g. toys, action figures) do not accept conditionDescription.
-        2. If eBay returns 400 with a condition-related error message and the current condition
-           has a fallback in _CONDITION_FALLBACK, retry with the more permissive condition.
-        """
+        """PUT inventory item con fallback progressivo per errori 400."""
         current_payload = dict(payload)
         for attempt in range(_MAX_FALLBACK_ATTEMPTS):
             try:
@@ -249,16 +234,15 @@ class EbayInventoryService:
                     raise
                 error_lower = (exc.detail or "").lower()
 
-                # Fallback 1: remove conditionDescription if present (category may not support it)
+                # Fallback 1: rimuovi conditionDescription se presente
                 if "conditionDescription" in current_payload:
                     logger.warning(
-                        "eBay PUT inventory_item returned 400 — retrying without conditionDescription "
-                        "(category may not support it)"
+                        "eBay PUT inventory_item returned 400 — retrying without conditionDescription"
                     )
                     current_payload = {k: v for k, v in current_payload.items() if k != "conditionDescription"}
                     continue
 
-                # Fallback 2: if error mentions condition, escalate to a more permissive condition
+                # Fallback 2: scala a condizione più permissiva
                 if "condition" in error_lower or "condizione" in error_lower:
                     original_condition = current_payload.get("condition", "")
                     fallback_condition = _CONDITION_FALLBACK.get(original_condition)
@@ -286,29 +270,18 @@ class EbayInventoryService:
         category_id: str | None = None,
         skip_condition_description: bool = False,
     ) -> None:
-        """Create or update an eBay inventory item for the given product/listing.
+        """Crea o aggiorna un inventory item eBay.
 
-        Args:
-            token: OAuth bearer token for the eBay seller account.
-            sku: eBay inventory item SKU.
-            product: product ORM object with nome, descrizione, stato_conservazione etc.
-            listing: EbayListing ORM object (mutable — ebay_item_id/last_sync_at are set).
-            marketplace_id: eBay marketplace (e.g. "EBAY_IT").
-            aspects: explicit item specifics provided by the user; merged with auto-generated ones.
-            condition_override: raw eBay condition string (e.g. "USED_GOOD") that overrides the
-                automatic mapping from product.stato_conservazione.
-            category_id: eBay leaf category ID. Reserved for future category-aware condition
-                validation; currently accepted but not yet used in inventory item logic.
-            skip_condition_description: when True, omit the conditionDescription field from the
-                inventory item payload. Some eBay categories (e.g. Action Figures) reject
-                conditionDescription at publish time even though the PUT succeeds; set this flag
-                on retry attempts to work around those category restrictions.
+        La qualità reale del prodotto viene sempre comunicata via conditionDescription
+        (es. "Near Mint", "condizioni come da foto"), mentre il campo condition usa
+        solo valori ampiamente accettati (USED_EXCELLENT, USED_GOOD) per evitare
+        rifiuti da categorie che non supportano NEW o USED_ACCEPTABLE.
         """
         title = (product.nome or "").strip()
         if len(title) > 80:
             title = f"{title[:77]}..."
         description = (product.descrizione or "").strip()
-        if len(description) > 4000:  # eBay API max description length
+        if len(description) > 4000:
             description = description[:3997] + "..."
         image_urls = EbayInventoryService._build_image_urls(product)
         if not image_urls:
@@ -319,6 +292,7 @@ class EbayInventoryService:
             condition = condition_override.strip()
         else:
             condition = _CONDITION_MAP.get(product.stato_conservazione, "USED_GOOD")
+
         url = f"{EbayInventoryService._base_url()}/sell/inventory/v1/inventory_item/{sku}"
         payload = {
             "availability": {
@@ -333,11 +307,13 @@ class EbayInventoryService:
             },
             "condition": condition,
         }
+
+        # Includi sempre conditionDescription con la qualità reale del prodotto,
+        # tranne per NEW e quando esplicitamente saltato.
         if condition != "NEW" and not skip_condition_description:
-            payload["conditionDescription"] = (
-                (product.stato_conservazione or "").strip() or "Usato in buone condizioni"
-            )
-        # Auto-genera aspect dai dati del prodotto; gli aspect espliciti dell'utente hanno precedenza
+            real_quality = (product.stato_conservazione or "").strip()
+            payload["conditionDescription"] = real_quality if real_quality else "Usato in buone condizioni"
+
         auto_aspects = _build_auto_aspects(product)
         merged_aspects = {**auto_aspects, **(aspects or {})}
         if merged_aspects:
@@ -389,7 +365,6 @@ class EbayInventoryService:
             "Content-Language": content_language,
         }
 
-        # Step 1: recupera l'item esistente per non sovrascrivere dati del prodotto
         existing: dict = {}
         try:
             result = EbayInventoryService._request_with_retry("GET", url, headers=auth_headers)
@@ -402,7 +377,6 @@ class EbayInventoryService:
                 return
             raise
 
-        # Step 2: aggiorna solo la quantità e fai PUT completo
         existing.setdefault("availability", {}).setdefault(
             "shipToLocationAvailability", {}
         )["quantity"] = max(0, int(new_quantity))
