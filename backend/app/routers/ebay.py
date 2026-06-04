@@ -1009,7 +1009,9 @@ async def ebay_orders_webhook(
         raise HTTPException(status_code=404, detail="Connessione eBay non trovata")
 
     configured_secret = os.getenv("EBAY_WEBHOOK_SECRET", "").strip()
-    if configured_secret:
+    if not configured_secret:
+        logger.warning("EBAY_WEBHOOK_SECRET non configurata: webhook eBay accetta richieste senza autenticazione")
+    else:
         incoming_secret = (
             request.headers.get("x-ebay-webhook-secret", "").strip()
             or request.headers.get("x-webhook-secret", "").strip()
