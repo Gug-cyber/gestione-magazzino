@@ -15,26 +15,29 @@ _CONDITION_MAP = {
     "Mint": "NEW",
     "Near Mint": "NEW",
     "Excellent": "USED_EXCELLENT",
-    "Good": "USED_GOOD",          # corrected from USED_EXCELLENT — more broadly accepted across categories
+    "Good": "USED_GOOD",
     "Light Played": "USED_GOOD",
-    "Played": "USED_ACCEPTABLE",
-    "Poor": "USED_ACCEPTABLE",
+    "Played": "USED_GOOD",           # era USED_ACCEPTABLE (6000) — non valido per molte categorie
+    "Poor": "USED_GOOD",              # era USED_ACCEPTABLE (6000) — non valido per molte categorie
     # Additional values for broader compatibility
     "Like New": "LIKE_NEW",
     "Very Good": "USED_EXCELLENT",
-    "Acceptable": "USED_ACCEPTABLE",
+    "Acceptable": "USED_GOOD",        # era USED_ACCEPTABLE (6000) — non valido per molte categorie
+    "condizioni come da foto": "USED_GOOD",  # mapping esplicito per evitare fallback
 }
 
 # Condition fallback chain for 400 "invalid condition for category" errors.
 # When eBay rejects a condition as invalid for the selected category, the PUT is
 # retried with the next (more permissive) condition in this chain.
+# NOTA: USED_ACCEPTABLE (conditionId 6000) è stato rimosso dalla catena perché
+# non è valido per molte categorie eBay IT (es. 183454 GCC carte singole).
 _CONDITION_FALLBACK: dict[str, str] = {
     "NEW": "USED_EXCELLENT",
     "NEW_OTHER": "USED_EXCELLENT",
     "NEW_WITH_DEFECTS": "USED_GOOD",
     "LIKE_NEW": "USED_EXCELLENT",
     "USED_EXCELLENT": "USED_GOOD",
-    "USED_GOOD": "USED_ACCEPTABLE",
+    # USED_GOOD è terminale — non fare fallback su USED_ACCEPTABLE (6000)
 }
 
 # Maximum number of PUT attempts in _put_inventory_item_with_fallback
