@@ -3,6 +3,7 @@ Servizio per il tracking automatico delle spedizioni Poste Italiane.
 Utilizza l'API JSON pubblica di Poste Italiane per recuperare lo stato delle spedizioni.
 """
 import requests
+import os
 from typing import Optional, Dict, List
 from datetime import datetime
 import logging
@@ -15,7 +16,7 @@ class PosteTrackingService:
     """Servizio per tracking spedizioni Poste Italiane."""
 
     TRACKING_API_URL = "https://api.poste.it/proxy/v1/tracking"
-    TRACKING_API_KEY = "pmzaVxBFkx4NKZNQF1AMO8QBV4rFpqnI8zbfBqzv"
+    TRACKING_API_KEY = os.getenv("POSTE_TRACKING_API_KEY", "pmzaVxBFkx4NKZNQF1AMO8QBV4rFpqnI8zbfBqzv")
     REQUEST_DELAY = 2  # secondi tra richieste consecutive
 
     def __init__(self):

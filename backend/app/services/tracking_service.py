@@ -2,6 +2,7 @@
 Servizio unificato per tracking automatico di tutti i corrieri.
 """
 import logging
+import os
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -68,7 +69,7 @@ class PosteItalianeProvider(BaseTrackingProvider):
     """Provider per Poste Italiane."""
 
     TRACKING_API_URL = "https://api.poste.it/proxy/v1/tracking"
-    TRACKING_API_KEY = "pmzaVxBFkx4NKZNQF1AMO8QBV4rFpqnI8zbfBqzv"
+    TRACKING_API_KEY = os.getenv("POSTE_TRACKING_API_KEY", "pmzaVxBFkx4NKZNQF1AMO8QBV4rFpqnI8zbfBqzv")
 
     def get_tracking_info(self, tracking_number: str) -> Optional[Dict]:
         if not tracking_number or not tracking_number.strip():
