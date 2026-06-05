@@ -85,6 +85,20 @@ CONDITION_MAP: dict = {
     "Poor": ["ACCEPTABLE"],
 }
 
+TRADING_CARD_CATEGORY_IDS = {
+    "2536",
+    "38292",
+    "183050",
+    "183454",
+    "183455",
+}
+
+
+def _is_trading_card_category(category_id: str | None) -> bool:
+    """Categorie eBay note dei giochi di carte collezionabili che richiedono l'aspect Gioco."""
+    normalized_category_id = str(category_id or "").strip()
+    return normalized_category_id in TRADING_CARD_CATEGORY_IDS
+
 
 def _get_credentials() -> tuple:
     client_id = os.getenv("EBAY_CLIENT_ID", "").strip()
@@ -878,6 +892,12 @@ def publish_listing(
         raise HTTPException(status_code=400, detail="Spese di spedizione non valide")
 
     shipping_cost = Decimal(str(shipping_cost_value))
+    effective_game = (payload.item_game or "").strip() or (product.gioco or "").strip() or None
+    if _is_trading_card_category(payload.ebay_category_id) and not effective_game:
+        raise HTTPException(
+            status_code=400,
+            detail="Per le categorie di carte collezionabili è obbligatorio specificare il Gioco nella scheda prodotto",
+        )
 
     published_price = PricingService.calculate_ebay_price(net_price, fee_percentage)
     expected_net_price = PricingService.calculate_net_from_gross(published_price, fee_percentage)
@@ -905,6 +925,7 @@ def publish_listing(
             listing,
             marketplace_id=connection.marketplace_id or "EBAY_IT",
             aspects=payload.aspects,
+            item_game=effective_game,
             condition_override=payload.condition_override,
             category_id=payload.ebay_category_id,
         )
@@ -969,6 +990,7 @@ def publish_listing(
                     listing,
                     marketplace_id=connection.marketplace_id or "EBAY_IT",
                     aspects=payload.aspects,
+                    item_game=effective_game,
                     condition_override=current_condition,
                     category_id=payload.ebay_category_id,
                     skip_condition_description=skip_cond_desc,

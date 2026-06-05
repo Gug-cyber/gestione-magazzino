@@ -94,6 +94,7 @@ class ProdottoBase(BaseModel):
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
+    gioco: Optional[str] = None
     foto_path: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
@@ -141,6 +142,7 @@ class ProdottoUpdate(BaseModel):
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
+    gioco: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
     google_drive_folder_id: Optional[str] = None

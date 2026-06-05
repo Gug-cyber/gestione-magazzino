@@ -5,19 +5,22 @@ import pytest
 from app.models.prodotto import Prodotto as ProdottoModel
 
 
-def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", quantita=10):
+def _crea_prodotto(client, auth_headers, nome="Prodotto Test", sku="PROD-001", quantita=10, extra_payload=None):
     """Helper per creare un prodotto di test."""
+    payload = {
+        "nome": nome,
+        "sku": sku,
+        "quantita": quantita,
+        "quantita_minima": 2,
+        "prezzo_acquisto": 5.00,
+        "prezzo_vendita": 10.00,
+        "stato_conservazione": "Near Mint",
+    }
+    if extra_payload:
+        payload.update(extra_payload)
     response = client.post(
         "/api/prodotti/",
-        json={
-            "nome": nome,
-            "sku": sku,
-            "quantita": quantita,
-            "quantita_minima": 2,
-            "prezzo_acquisto": 5.00,
-            "prezzo_vendita": 10.00,
-            "stato_conservazione": "Near Mint",
-        },
+        json=payload,
         headers=auth_headers,
     )
     return response
@@ -36,6 +39,35 @@ def test_create_prodotto(client, auth_headers):
     assert float(data["prezzo_vendita"]) == 10.00
     assert data["stato_conservazione"] == "Near Mint"
     assert data["id"] is not None
+
+
+def test_create_prodotto_with_gioco(client, auth_headers):
+    resp = _crea_prodotto(client, auth_headers, sku="PROD-GAME-001", extra_payload={"gioco": "Pokémon"})
+
+    assert resp.status_code == 201
+    assert resp.json()["gioco"] == "Pokémon"
+
+
+def test_create_prodotto_without_gioco(client, auth_headers):
+    resp = _crea_prodotto(client, auth_headers, sku="PROD-NOGAME-001")
+
+    assert resp.status_code == 201
+    assert resp.json()["gioco"] is None
+
+
+def test_update_prodotto_gioco(client, auth_headers):
+    created = _crea_prodotto(client, auth_headers, sku="PROD-UPD-GAME-001")
+    assert created.status_code == 201
+    prodotto_id = created.json()["id"]
+
+    updated = client.put(
+        f"/api/prodotti/{prodotto_id}",
+        json={"gioco": "Magic: The Gathering"},
+        headers=auth_headers,
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["gioco"] == "Magic: The Gathering"
 
 
 def test_create_prodotto_sku_duplicato(client, auth_headers):

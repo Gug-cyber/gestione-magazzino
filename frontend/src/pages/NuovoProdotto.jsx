@@ -8,6 +8,7 @@ import JsBarcode from 'jsbarcode'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import { generateSKU } from '../utils/skuGenerator'
 import { flattenCategorieTree } from '../utils/categorieUtils'
+import { PRODUCT_GAME_OPTIONS } from '../constants/productGames'
 import '../styles/shared.css'
 
 function BarcodeCanvas({ value, canvasRef: extRef }) {
@@ -50,7 +51,7 @@ function BarcodeCanvas({ value, canvasRef: extRef }) {
 const emptyForm = {
   nome: '', descrizione: '', sku: '', barcode: '', quantita: 0,
   quantita_minima: 0, prezzo_acquisto: '', prezzo_vendita: '',
-  categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '',
+  categoria_id: '', ubicazione_id: '', stato_conservazione: '', lingua: '', gioco: '',
   su_vinted: false, su_wallapop: false, non_vendibile: false,
 }
 
@@ -113,6 +114,7 @@ function NuovoProdotto() {
       ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
       stato_conservazione: form.stato_conservazione || null,
       lingua: form.lingua || null,
+      gioco: form.gioco || null,
     }
     try {
       const res = await prodottiAPI.create(payload)
@@ -372,6 +374,16 @@ function NuovoProdotto() {
                   <option value="Giapponese">Giapponese</option>
                   <option value="Cinese">Cinese</option>
                   <option value="Coreano">Coreano</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Gioco</label>
+                <select value={form.gioco} onChange={(e) => setForm({ ...form, gioco: e.target.value })} className="form-input">
+                  <option value="">-- Nessuno --</option>
+                  {PRODUCT_GAME_OPTIONS.map((game) => (
+                    <option key={game} value={game}>{game}</option>
+                  ))}
                 </select>
               </div>
 
