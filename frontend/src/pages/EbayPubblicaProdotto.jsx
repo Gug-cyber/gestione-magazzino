@@ -9,6 +9,20 @@ const CONDITION_MAP_LOCAL = {
   'Light Played': 'USED_GOOD', 'Played': 'USED_ACCEPTABLE', 'Poor': 'USED_ACCEPTABLE',
 }
 
+const TRADING_CARD_CATEGORY_IDS = new Set(['2536', '38292', '183050', '183454', '183455'])
+
+function isTradingCardCategory(categoryId, categoryPath, validConditions) {
+  const normalizedCategoryId = String(categoryId || '').trim()
+  if (TRADING_CARD_CATEGORY_IDS.has(normalizedCategoryId)) {
+    return true
+  }
+  const pathLabel = (categoryPath || []).map(category => category?.name || '').join(' ').toLowerCase()
+  if (pathLabel.includes('carte') || pathLabel.includes('gcc') || pathLabel.includes('giochi di carte collezionabili')) {
+    return true
+  }
+  return (validConditions || []).some((condition) => ['2750', '7000'].includes(String(condition?.conditionId || '').trim()))
+}
+
 function EbayPubblicaProdotto() {
   const navigate = useNavigate()
   const { productId: paramId } = useParams()
@@ -174,11 +188,15 @@ function EbayPubblicaProdotto() {
   }, [categoryPath, categoryLevels, connection, product])
 
   const validationMessage = useMemo(() => {
+    const productGame = (product?.gioco || '').trim()
     if (!connection.connected) return 'Account eBay non collegato'
     if (!product) return ''
     if (!product.foto_path) return 'Il prodotto non ha immagini pubbliche — non è possibile pubblicare'
     if ((product.quantita || 0) <= 0) return 'Quantità non disponibile'
     if (!selectedCategoryId) return 'Seleziona una categoria eBay foglia'
+    if (isTradingCardCategory(selectedCategoryId, categoryPath, validConditions) && !productGame) {
+      return 'Questo prodotto non ha il campo "Gioco" compilato. Modifica la scheda prodotto e seleziona il gioco prima di pubblicare su eBay.'
+    }
     const shipping = Number(shippingCost)
     if (!freeShipping && (!Number.isFinite(shipping) || shipping < 0)) return 'Spese di spedizione non valide'
     if (listingFormat === 'AUCTION') {
@@ -194,7 +212,7 @@ function EbayPubblicaProdotto() {
       return 'Seleziona una condizione valida per questa categoria'
     }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, aspects, aspectValues, validConditions, conditionOverride])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, categoryPath, listingFormat, auctionStartPrice, aspects, aspectValues, validConditions, conditionOverride])
 
   const handlePublish = async () => {
     setError('')
@@ -216,6 +234,7 @@ function EbayPubblicaProdotto() {
         quantity_override: listingFormat === 'AUCTION' ? 1 : Number(quantity),
         shipping_cost: freeShipping ? 0 : Number(shippingCost),
         ebay_category_id: selectedCategoryId,
+        item_game: (product?.gioco || '').trim() || undefined,
         listing_format: listingFormat,
         auction_start_price: listingFormat === 'AUCTION' ? Number(auctionStartPrice) : undefined,
         auction_duration: listingFormat === 'AUCTION' ? auctionDuration : undefined,
@@ -390,6 +409,13 @@ function EbayPubblicaProdotto() {
               <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
                 <div style={{ color: 'var(--color-warning, #e67e22)', fontSize: 13 }}>
                   ⚠ Impossibile verificare le condizioni valide per questa categoria. Verrà usato &quot;{conditionOverride}&quot; come fallback.
+                </div>
+              </div>
+            )}
+            {selectedCategoryId && isTradingCardCategory(selectedCategoryId, categoryPath, validConditions) && !(product?.gioco || '').trim() && (
+              <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--color-border, #e0e0e0)', paddingTop: 12 }}>
+                <div style={{ color: 'var(--color-warning, #e67e22)', fontSize: 13 }}>
+                  ⚠ Questo prodotto non ha il campo &quot;Gioco&quot; compilato. Modifica la scheda prodotto e seleziona il gioco prima di pubblicare su eBay.
                 </div>
               </div>
             )}

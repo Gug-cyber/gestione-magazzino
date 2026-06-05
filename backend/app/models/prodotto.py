@@ -19,6 +19,7 @@ class Prodotto(Base):
     ubicazione_id = Column(Integer, ForeignKey("ubicazioni.id"), nullable=True)
     stato_conservazione = Column(String(50), nullable=True)
     lingua = Column(String(50), nullable=True)
+    gioco = Column(String(100), nullable=True)
     foto_path = Column(String(255), nullable=True)
     foto_aggiuntive = Column(JSON, nullable=True)
     su_vinted = Column(Boolean, nullable=False, default=False)

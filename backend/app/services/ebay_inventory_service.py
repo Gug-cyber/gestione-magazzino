@@ -2,7 +2,6 @@ import logging
 import os
 import time
 import json as _json
-import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -56,9 +55,6 @@ _MARKETPLACE_LANGUAGE_MAP = {
 }
 _DEFAULT_MARKETPLACE_ID = "EBAY_IT"
 _DEFAULT_CONTENT_LANGUAGE = "it-IT"
-
-def _sanitize_ascii_text(value: str) -> str:
-    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
 
 
 def _get_category_chain(product) -> list[str]:
@@ -266,6 +262,7 @@ class EbayInventoryService:
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
         aspects: dict[str, list[str]] | None = None,
+        item_game: str | None = None,
         condition_override: str | None = None,
         category_id: str | None = None,
         skip_condition_description: bool = False,
@@ -315,15 +312,18 @@ class EbayInventoryService:
             payload["conditionDescription"] = real_quality if real_quality else "Usato in buone condizioni"
 
         auto_aspects = _build_auto_aspects(product)
-        merged_aspects = {**auto_aspects, **(aspects or {})}
+        merged_aspects = {**auto_aspects, **dict(aspects or {})}
+        normalized_item_game = (item_game or "").strip()
+        if normalized_item_game and "Gioco" not in merged_aspects:
+            merged_aspects["Gioco"] = [normalized_item_game]
         if merged_aspects:
-            sanitized_aspects = {
-                _sanitize_ascii_text(k): [_sanitize_ascii_text(v) for v in vals]
+            normalized_aspects = {
+                str(k).strip(): [str(v).strip() for v in vals if str(v).strip()]
                 for k, vals in merged_aspects.items()
-                if vals
+                if str(k).strip() and vals
             }
-            if sanitized_aspects:
-                payload["product"]["aspects"] = sanitized_aspects
+            if normalized_aspects:
+                payload["product"]["aspects"] = normalized_aspects
 
         EbayInventoryService._put_inventory_item_with_fallback(
             url,

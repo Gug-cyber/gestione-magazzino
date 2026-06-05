@@ -1,5 +1,6 @@
 import logging
 import json
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -10,12 +11,48 @@ from fastapi import HTTPException
 import app.routers.ebay as ebay_router_module
 import app.services.ebay_inventory_service as ebay_inventory_service_module
 import app.services.ebay_offer_service as ebay_offer_service_module
+from app.models.ebay_connection import EbayConnection
+from app.models.ebay_listing import EbayListing
+from app.models.prodotto import Prodotto
 from app.schemas.ebay import PublishRequest
 from app.services.ebay_auth_service import EbayAuthService
 from app.services.ebay_inventory_service import EbayInventoryService
 from app.services.ebay_order_sync_service import EbayOrderSyncService
 from app.services.ebay_offer_service import EbayOfferService
 from app.services.pricing_service import PricingService
+
+
+def _create_publish_connection(db):
+    connection = EbayConnection(
+        ebay_account_id="demo-account",
+        access_token="access-token",
+        refresh_token="refresh-token",
+        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        status="active",
+        fee_percentage=Decimal("13.25"),
+        marketplace_id="EBAY_IT",
+    )
+    db.add(connection)
+    db.commit()
+    db.refresh(connection)
+    return connection
+
+
+def _create_publish_product(db, sku: str, gioco: str | None = None):
+    product = Prodotto(
+        nome="Prodotto test",
+        descrizione="Descrizione test",
+        sku=sku,
+        quantita=2,
+        prezzo_vendita=Decimal("10.00"),
+        foto_path="https://img.example.com/test.jpg",
+        stato_conservazione="Good",
+        gioco=gioco,
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
 
 
 def test_pricing_service_calculates_expected_values():
@@ -143,6 +180,37 @@ def test_inventory_item_preserves_utf8_in_title_and_description(monkeypatch):
     assert payload["conditionDescription"] == "Usàto"
 
 
+def test_inventory_item_adds_game_aspect_without_overwriting_other_aspects(monkeypatch):
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Carta rara",
+        descrizione="Descrizione reale",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/a.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-GAME-1",
+        product,
+        listing,
+        aspects={"Rarità": ["Rara"]},
+        item_game="Pokémon",
+    )
+
+    assert captured["payload"]["product"]["aspects"]["Rarità"] == ["Rara"]
+    assert captured["payload"]["product"]["aspects"]["Gioco"] == ["Pokémon"]
+
+
 def test_update_quantity_makes_get_then_put(monkeypatch):
     calls = []
 
@@ -202,6 +270,101 @@ def test_publish_request_shipping_cost_default_is_590_and_optional():
 
     payload_with_none = PublishRequest(product_id=1, shipping_cost=None)
     assert payload_with_none.shipping_cost is None
+
+
+def test_is_trading_card_category_helper():
+    assert ebay_router_module._is_trading_card_category("183454") is True
+    assert ebay_router_module._is_trading_card_category("183455") is True
+    assert ebay_router_module._is_trading_card_category("19077") is False
+
+
+def test_publish_listing_blocks_trading_card_category_without_game(client, auth_headers, db, monkeypatch):
+    _create_publish_connection(db)
+    product = _create_publish_product(db, "SKU-TCG-NOGAME-1")
+    inventory_calls = []
+    offer_calls = []
+
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+    monkeypatch.setattr(
+        "app.routers.ebay.EbayInventoryService.create_or_update_inventory_item",
+        lambda *_args, **_kwargs: inventory_calls.append((_args, _kwargs)),
+    )
+    monkeypatch.setattr(
+        "app.routers.ebay.EbayOfferService.create_offer",
+        lambda *_args, **_kwargs: offer_calls.append((_args, _kwargs)),
+    )
+
+    response = client.post(
+        "/api/ebay/listings/publish",
+        headers=auth_headers,
+        json={"product_id": product.id, "ebay_category_id": "183454"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Per le categorie di carte collezionabili è obbligatorio specificare il Gioco nella scheda prodotto"
+    )
+    assert inventory_calls == []
+    assert offer_calls == []
+    assert db.query(EbayListing).count() == 0
+
+
+def test_publish_listing_propagates_product_game_to_inventory_retries(client, auth_headers, db, monkeypatch):
+    _create_publish_connection(db)
+    product = _create_publish_product(db, "SKU-TCG-GAME-1", gioco="Pokémon")
+    inventory_calls = []
+
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+
+    def _mock_inventory(*args, **kwargs):
+        inventory_calls.append(kwargs)
+
+    monkeypatch.setattr("app.routers.ebay.EbayInventoryService.create_or_update_inventory_item", _mock_inventory)
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.create_offer", lambda *_args, **_kwargs: "OFFER-1")
+
+    publish_attempts = {"count": 0}
+
+    def _mock_publish_offer(*_args, **_kwargs):
+        publish_attempts["count"] += 1
+        if publish_attempts["count"] == 1:
+            raise HTTPException(status_code=400, detail="Condizione non valida per la categoria")
+        return "LISTING-1"
+
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.publish_offer", _mock_publish_offer)
+
+    response = client.post(
+        "/api/ebay/listings/publish",
+        headers=auth_headers,
+        json={"product_id": product.id, "ebay_category_id": "183454"},
+    )
+
+    assert response.status_code == 200
+    assert len(inventory_calls) == 2
+    assert [call["item_game"] for call in inventory_calls] == ["Pokémon", "Pokémon"]
+
+
+def test_publish_listing_allows_non_trading_category_without_game(client, auth_headers, db, monkeypatch):
+    _create_publish_connection(db)
+    product = _create_publish_product(db, "SKU-NONTCG-1")
+    inventory_calls = []
+
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+    monkeypatch.setattr(
+        "app.routers.ebay.EbayInventoryService.create_or_update_inventory_item",
+        lambda *_args, **kwargs: inventory_calls.append(kwargs),
+    )
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.create_offer", lambda *_args, **_kwargs: "OFFER-2")
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.publish_offer", lambda *_args, **_kwargs: "LISTING-2")
+
+    response = client.post(
+        "/api/ebay/listings/publish",
+        headers=auth_headers,
+        json={"product_id": product.id, "ebay_category_id": "19077"},
+    )
+
+    assert response.status_code == 200
+    assert len(inventory_calls) == 1
+    assert inventory_calls[0]["item_game"] is None
 
 
 def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
@@ -405,6 +568,59 @@ def test_create_offer_auction_delete_and_recreate_keeps_payload_without_availabl
     assert len(payloads) == 2
     assert all(payload["format"] == "AUCTION" for payload in payloads)
     assert all("availableQuantity" not in payload for payload in payloads)
+
+
+def test_create_offer_offer_entity_already_exists_deletes_and_recreates_once(monkeypatch, caplog):
+    calls = []
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_it", True
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        calls.append(method)
+        if method == "POST" and url.endswith("/offer"):
+            if len([call for call in calls if call == "POST"]) == 1:
+                request = httpx.Request("POST", url)
+                response = httpx.Response(
+                    400,
+                    request=request,
+                    json={
+                        "errors": [{
+                            "errorId": 25002,
+                            "message": "A user error has occurred. Offer entity already exists.",
+                            "parameters": [{"name": "offerId", "value": "EXISTING-OFFER-1"}],
+                        }]
+                    },
+                )
+                raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+            return SimpleNamespace(json=lambda: {"offerId": "NEW-OFFER-1"})
+        if method == "DELETE":
+            return SimpleNamespace()
+        return SimpleNamespace(json=lambda: {})
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    offer_id = EbayOfferService.create_offer(
+        token="token",
+        sku="SKU-OFFER-ENTITY-1",
+        price=Decimal("12.34"),
+        quantity=1,
+        marketplace_id="EBAY_IT",
+        listing_db=listing_db,
+        description="Descrizione",
+        category_id="19077",
+    )
+
+    assert offer_id == "NEW-OFFER-1"
+    assert calls.count("POST") == 2
+    assert calls.count("DELETE") == 1
+    assert any("deleting and recreating once" in message for message in caplog.messages)
 
 
 def test_create_offer_uses_only_offer_api_headers(monkeypatch):

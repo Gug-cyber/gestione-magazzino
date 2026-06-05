@@ -12,6 +12,7 @@ import styles from './DettaglioProdotto.module.css'
 import { flattenCategorieTree } from '../utils/categorieUtils'
 import { normalizeSkuForCode39 } from '../utils/formatters'
 import useExternalScanner from '../hooks/useExternalScanner'
+import { PRODUCT_GAME_OPTIONS } from '../constants/productGames'
 
 const CONDIZIONE_MAP = {
   'Near Mint': 'NM', 'Mint': 'NM', 'Quasi Perfetto': 'NM',
@@ -516,6 +517,7 @@ function DettaglioProdotto() {
       ubicazione_id: p.ubicazione_id || '',
       stato_conservazione: p.stato_conservazione || '',
       lingua: p.lingua || '',
+      gioco: p.gioco || '',
       cardtrader_blueprint_id: p.cardtrader_blueprint_id || '',
       su_vinted: p.su_vinted ?? false,
       su_wallapop: p.su_wallapop ?? false,
@@ -561,6 +563,7 @@ function DettaglioProdotto() {
       ubicazione_id: form.ubicazione_id ? parseInt(form.ubicazione_id) : null,
       stato_conservazione: form.stato_conservazione || null,
       lingua: form.lingua || null,
+      gioco: form.gioco || null,
       cardtrader_blueprint_id: form.cardtrader_blueprint_id ? parseInt(form.cardtrader_blueprint_id) : null,
       su_vinted: Boolean(vintedListing?.active),
       su_wallapop: Boolean(wallapopListing?.active),
@@ -794,6 +797,17 @@ function DettaglioProdotto() {
                 <option value="Giapponese">Giapponese</option>
                 <option value="Cinese">Cinese</option>
                 <option value="Coreano">Coreano</option>
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Gioco</span>
+              <select value={form.gioco} onChange={(e) => setForm({ ...form, gioco: e.target.value })}
+                style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.95rem', width: '100%' }}>
+                <option value="">-- Nessuno --</option>
+                {PRODUCT_GAME_OPTIONS.map((game) => (
+                  <option key={game} value={game}>{game}</option>
+                ))}
               </select>
             </label>
 
@@ -1064,6 +1078,12 @@ function DettaglioProdotto() {
               <div style={infoRowStyle}>
                 <span style={labelStyle}>Lingua</span>
                 <span style={valueStyle}>{prodotto.lingua}</span>
+              </div>
+            )}
+            {prodotto.gioco && (
+              <div style={infoRowStyle}>
+                <span style={labelStyle}>Gioco</span>
+                <span style={valueStyle}>{prodotto.gioco}</span>
               </div>
             )}
             {prodotto.stato_conservazione && (
