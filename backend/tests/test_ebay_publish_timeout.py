@@ -167,3 +167,110 @@ def test_publish_listing_propagates_detailed_offer_error(client, auth_headers, d
     assert listing is not None
     assert listing.status == "error"
     assert listing.error_message == "Errore creazione offer eBay: 400 (INVALID_FIELD_VALUE)"
+
+
+def test_publish_listing_passes_item_game_to_inventory_call(client, auth_headers, db, monkeypatch):
+    connection = EbayConnection(
+        ebay_account_id="demo-account",
+        access_token="access-token",
+        refresh_token="refresh-token",
+        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        status="active",
+        fee_percentage=Decimal("13.25"),
+        marketplace_id="EBAY_IT",
+    )
+    db.add(connection)
+
+    product = Prodotto(
+        nome="Carta Pokémon",
+        descrizione="Descrizione test",
+        sku="SKU-GAME-1",
+        quantita=1,
+        prezzo_vendita=Decimal("10.00"),
+        foto_path="https://img.example.com/test.jpg",
+        stato_conservazione="Good",
+    )
+    db.add(product)
+    db.commit()
+
+    captured = {}
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+
+    def _mock_create_or_update_inventory_item(*args, **kwargs):
+        captured["item_game"] = kwargs.get("item_game")
+        return None
+
+    monkeypatch.setattr("app.routers.ebay.EbayInventoryService.create_or_update_inventory_item", _mock_create_or_update_inventory_item)
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.create_offer", lambda *_args, **_kwargs: "OFFER-1")
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.publish_offer", lambda *_args, **_kwargs: "LISTING-1")
+
+    response = client.post(
+        "/api/ebay/listings/publish",
+        headers=auth_headers,
+        json={"product_id": product.id, "item_game": "Pokémon"},
+    )
+
+    assert response.status_code == 200
+    assert captured["item_game"] == "Pokémon"
+
+
+def test_publish_listing_keeps_item_game_in_condition_retry_calls(client, auth_headers, db, monkeypatch):
+    connection = EbayConnection(
+        ebay_account_id="demo-account",
+        access_token="access-token",
+        refresh_token="refresh-token",
+        token_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        status="active",
+        fee_percentage=Decimal("13.25"),
+        marketplace_id="EBAY_IT",
+    )
+    db.add(connection)
+
+    product = Prodotto(
+        nome="Carta Pokémon",
+        descrizione="Descrizione test",
+        sku="SKU-GAME-2",
+        quantita=1,
+        prezzo_vendita=Decimal("10.00"),
+        foto_path="https://img.example.com/test.jpg",
+        stato_conservazione="Good",
+    )
+    db.add(product)
+    db.commit()
+
+    inventory_calls = []
+    publish_attempts = {"count": 0}
+
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda *_args, **_kwargs: "token")
+
+    def _mock_create_or_update_inventory_item(*args, **kwargs):
+        inventory_calls.append(kwargs)
+        return None
+
+    def _mock_publish_offer(*_args, **_kwargs):
+        publish_attempts["count"] += 1
+        if publish_attempts["count"] == 1:
+            raise HTTPException(status_code=502, detail="condizione non valida per la categoria")
+        return "LISTING-2"
+
+    monkeypatch.setattr("app.routers.ebay.EbayInventoryService.create_or_update_inventory_item", _mock_create_or_update_inventory_item)
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.create_offer", lambda *_args, **_kwargs: "OFFER-2")
+    monkeypatch.setattr("app.routers.ebay.EbayOfferService.publish_offer", _mock_publish_offer)
+
+    response = client.post(
+        "/api/ebay/listings/publish",
+        headers=auth_headers,
+        json={
+            "product_id": product.id,
+            "item_game": "Pokémon",
+            "condition_override": "USED_EXCELLENT",
+            "ebay_category_id": "183454",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(inventory_calls) == 2
+    assert inventory_calls[0]["item_game"] == "Pokémon"
+    assert inventory_calls[1]["item_game"] == "Pokémon"
+    assert inventory_calls[1]["condition_override"] == "USED_EXCELLENT"
+    assert inventory_calls[1]["skip_condition_description"] is True

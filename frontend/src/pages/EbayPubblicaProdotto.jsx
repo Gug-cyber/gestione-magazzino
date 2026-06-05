@@ -8,6 +8,18 @@ const CONDITION_MAP_LOCAL = {
   'Excellent': 'USED_EXCELLENT', 'Good': 'USED_EXCELLENT',
   'Light Played': 'USED_GOOD', 'Played': 'USED_ACCEPTABLE', 'Poor': 'USED_ACCEPTABLE',
 }
+const TRADING_CARD_GAME_OPTIONS = [
+  'Magic: The Gathering',
+  'Pokémon',
+  'Yu-Gi-Oh!',
+  'Dragon Ball Super Card Game',
+  'One Piece Card Game',
+  'Lorcana',
+  'Flesh and Blood',
+  'Cardfight!! Vanguard',
+  'Digimon Card Game',
+  'Altro',
+]
 
 function EbayPubblicaProdotto() {
   const navigate = useNavigate()
@@ -49,6 +61,7 @@ function EbayPubblicaProdotto() {
   const [conditionOverride, setConditionOverride] = useState('')
   const [conditionWarning, setConditionWarning] = useState(false)
   const [conditionLoadError, setConditionLoadError] = useState(false)
+  const [itemGame, setItemGame] = useState('')
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -113,6 +126,7 @@ function EbayPubblicaProdotto() {
     setConditionOverride('')
     setConditionWarning(false)
     setConditionLoadError(false)
+    setItemGame('')
 
     if (selectedCat.is_leaf) {
       setSelectedCategoryId(categoryId)
@@ -173,6 +187,14 @@ function EbayPubblicaProdotto() {
       .catch(() => setCategoriesError('Impossibile caricare le sottocategorie eBay. Riprova più tardi.'))
   }, [categoryPath, categoryLevels, connection, product])
 
+  const isTradingCardCategory = useMemo(() => {
+    if (!selectedCategoryId) return false
+    const conditionIds = new Set((validConditions || []).map(c => String(c?.conditionId || '')))
+    if (conditionIds.has('2750') || conditionIds.has('7000')) return true
+    const categoryPathText = categoryPath.map(c => c?.name || '').join(' ').toLowerCase()
+    return categoryPathText.includes('carte') || categoryPathText.includes('gcc') || categoryPathText.includes('giochi di carte collezionabili')
+  }, [selectedCategoryId, validConditions, categoryPath])
+
   const validationMessage = useMemo(() => {
     if (!connection.connected) return 'Account eBay non collegato'
     if (!product) return ''
@@ -193,8 +215,11 @@ function EbayPubblicaProdotto() {
     if (validConditions.length > 0 && !conditionOverride) {
       return 'Seleziona una condizione valida per questa categoria'
     }
+    if (isTradingCardCategory && !itemGame.trim()) {
+      return 'Seleziona il gioco per le categorie di carte collezionabili'
+    }
     return ''
-  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, aspects, aspectValues, validConditions, conditionOverride])
+  }, [connection, product, freeShipping, shippingCost, selectedCategoryId, listingFormat, auctionStartPrice, aspects, aspectValues, validConditions, conditionOverride, isTradingCardCategory, itemGame])
 
   const handlePublish = async () => {
     setError('')
@@ -210,6 +235,9 @@ function EbayPubblicaProdotto() {
           .filter(([, v]) => v && v.trim())
           .map(([k, v]) => [k, [v.trim()]])
       )
+      const effectiveConditionOverride = validConditions.length > 0
+        ? (conditionOverride || validConditions[0]?.conditionEnum || undefined)
+        : (conditionOverride || undefined)
       await ebayApi.publishProduct({
         product_id: Number(productId),
         fee_override: Number(fee),
@@ -222,7 +250,8 @@ function EbayPubblicaProdotto() {
         auction_reserve_price: listingFormat === 'AUCTION' && auctionReservePrice ? Number(auctionReservePrice) : undefined,
         auction_buy_it_now_price: listingFormat === 'AUCTION' && auctionBuyItNow ? Number(auctionBuyItNow) : undefined,
         aspects: Object.keys(aspectsPayload).length > 0 ? aspectsPayload : undefined,
-        condition_override: conditionOverride || undefined,
+        condition_override: effectiveConditionOverride,
+        item_game: isTradingCardCategory && itemGame ? itemGame : undefined,
       })
       setSuccess('Prodotto pubblicato su eBay con successo')
     } catch (e) {
@@ -424,9 +453,27 @@ function EbayPubblicaProdotto() {
                 {aspectsLoading && (
                   <div style={{ color: '#888', fontSize: 13 }}>Caricamento dettagli categoria...</div>
                 )}
-                {!aspectsLoading && aspects.length > 0 && (
+                {!aspectsLoading && (aspects.length > 0 || isTradingCardCategory) && (
                   <>
                     <div style={{ fontWeight: 600, marginTop: 8 }}>Dettagli specifici della categoria</div>
+                    {isTradingCardCategory && (
+                      <label style={{ display: 'grid', gap: 4 }}>
+                        <span>
+                          Gioco
+                          <span style={{ color: 'var(--color-danger, #e53e3e)', marginLeft: 2 }}>*</span>
+                        </span>
+                        <select
+                          value={itemGame}
+                          onChange={e => setItemGame(e.target.value)}
+                          style={{ fontSize: 16, minHeight: 44, width: '100%', boxSizing: 'border-box' }}
+                        >
+                          <option value="">— Seleziona gioco —</option>
+                          {TRADING_CARD_GAME_OPTIONS.map(game => (
+                            <option key={game} value={game}>{game}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                     {aspects.map(asp => (
                       <label key={asp.name} style={{ display: 'grid', gap: 4 }}>
                         <span>

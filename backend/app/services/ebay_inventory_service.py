@@ -266,6 +266,7 @@ class EbayInventoryService:
         listing,
         marketplace_id: str = _DEFAULT_MARKETPLACE_ID,
         aspects: dict[str, list[str]] | None = None,
+        item_game: str | None = None,
         condition_override: str | None = None,
         category_id: str | None = None,
         skip_condition_description: bool = False,
@@ -316,12 +317,17 @@ class EbayInventoryService:
 
         auto_aspects = _build_auto_aspects(product)
         merged_aspects = {**auto_aspects, **(aspects or {})}
+        game_value = (item_game or "").strip()
+        if game_value:
+            merged_aspects["Gioco"] = [game_value]
         if merged_aspects:
             sanitized_aspects = {
                 _sanitize_ascii_text(k): [_sanitize_ascii_text(v) for v in vals]
                 for k, vals in merged_aspects.items()
                 if vals
             }
+            if game_value:
+                sanitized_aspects["Gioco"] = [game_value]
             if sanitized_aspects:
                 payload["product"]["aspects"] = sanitized_aspects
 

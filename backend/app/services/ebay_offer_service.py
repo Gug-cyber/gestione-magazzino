@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 _policy_cache: dict = {}
 _policy_cache_lock = threading.Lock()
 _POLICY_CACHE_TTL = 7200  # 2 ore
+_OFFER_DELETION_DELAY_SECONDS = 0.5
 
 _location_cache: dict = {}
 _location_cache_lock = threading.Lock()
@@ -453,8 +454,8 @@ class EbayOfferService:
                 existing_offer_id = _extract_existing_offer_id(exc.response)
                 if existing_offer_id:
                     # Sempre elimina e ricrea l'offer stale — garantisce dati freschi (categoryId, location, ecc.)
-                    logger.info(
-                        "eBay offer already exists (%s), deleting and recreating with fresh data",
+                    logger.warning(
+                        "eBay offer already exists (%s), deleting stale offer and recreating once",
                         existing_offer_id,
                     )
                     try:
@@ -473,6 +474,8 @@ class EbayOfferService:
                         listing_db.ebay_offer_id = existing_offer_id
                         EbayOfferService._update_offer(token, existing_offer_id, payload, marketplace_id)
                         return existing_offer_id
+                    if _OFFER_DELETION_DELAY_SECONDS > 0:
+                        time.sleep(_OFFER_DELETION_DELAY_SECONDS)
                     # Ritenta la creazione dopo la cancellazione
                     try:
                         response = EbayOfferService._request_with_retry(
