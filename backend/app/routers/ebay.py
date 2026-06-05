@@ -679,11 +679,18 @@ _CONDITION_ID_TO_ENUM: dict[str, str] = {
     "1000": "NEW",
     "1500": "NEW_OTHER",
     "1750": "NEW_WITH_DEFECTS",
+    # Inventory API compatibility: the rest of the backend still uses the
+    # historical MANUFACTURER_REFURBISHED enum for conditionId 2000.
     "2000": "MANUFACTURER_REFURBISHED",
-    "2500": "LIKE_NEW",
-    "2750": "USED_EXCELLENT",
-    "3000": "USED_GOOD",
-    "4000": "USED_ACCEPTABLE",
+    "2010": "EXCELLENT_REFURBISHED",
+    "2020": "VERY_GOOD_REFURBISHED",
+    "2030": "GOOD_REFURBISHED",
+    "2500": "SELLER_REFURBISHED",
+    "2750": "LIKE_NEW",
+    "3000": "USED_EXCELLENT",
+    "4000": "USED_VERY_GOOD",
+    "5000": "USED_GOOD",
+    "6000": "USED_ACCEPTABLE",
     "7000": "FOR_PARTS_OR_NOT_WORKING",
 }
 
@@ -702,30 +709,75 @@ def get_category_conditions(
     token = EbayAuthService.get_valid_token(connection, db)
     env = _get_ebay_env()
     base = "https://api.sandbox.ebay.com" if env == "SANDBOX" else "https://api.ebay.com"
-    url = f"{base}/sell/metadata/v1/marketplace/{marketplace_id}/get_listing_conditions_by_category"
+    url = f"{base}/sell/metadata/v1/marketplace/{marketplace_id}/get_item_condition_policies"
     try:
         with httpx.Client(timeout=15) as client:
             resp = client.get(
                 url,
-                headers={"Authorization": f"Bearer {token}"},
-                params={"category_id": category_id},
+                headers={"Authorization": "Bearer " + token},
+                params={"filter": f"categoryIds:{category_id}"},
             )
         if resp.status_code in (404, 204):
+            logger.warning(
+                "eBay item condition policies returned %s for marketplace=%s category=%s",
+                resp.status_code,
+                marketplace_id,
+                category_id,
+            )
             return {"conditions": []}
         resp.raise_for_status()
-    except httpx.HTTPStatusError:
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "eBay item condition policies request failed with status %s for marketplace=%s category=%s",
+            exc.response.status_code,
+            marketplace_id,
+            category_id,
+        )
         return {"conditions": []}
-    except httpx.RequestError:
+    except httpx.RequestError as exc:
+        logger.warning(
+            "eBay item condition policies request error for marketplace=%s category=%s: %s",
+            marketplace_id,
+            category_id,
+            exc,
+        )
         return {"conditions": []}
 
     try:
         data = resp.json()
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "eBay item condition policies returned invalid JSON for marketplace=%s category=%s: %s",
+            marketplace_id,
+            category_id,
+            exc,
+        )
         return {"conditions": []}
 
-    # eBay Metadata API returns conditionPolicies[].conditions[]
     raw_conditions: list = []
-    if "conditionPolicies" in data:
+    if "itemConditionPolicies" in data:
+        policies = data.get("itemConditionPolicies") or []
+        selected_policy = next(
+            (policy for policy in policies if str(policy.get("categoryId", "")) == str(category_id)),
+            None,
+        )
+        if not selected_policy and policies:
+            logger.info(
+                "eBay item condition policies missing exact policy match for category=%s in marketplace=%s; using first policy category=%s",
+                category_id,
+                marketplace_id,
+                policies[0].get("categoryId"),
+            )
+            selected_policy = policies[0]
+        if selected_policy:
+            raw_conditions = selected_policy.get("itemConditions", []) or []
+        else:
+            logger.warning(
+                "eBay item condition policies returned no policies for marketplace=%s category=%s",
+                marketplace_id,
+                category_id,
+            )
+    elif "conditionPolicies" in data:
         for policy in data["conditionPolicies"]:
             raw_conditions.extend(policy.get("conditions", []))
     elif "conditionDescriptors" in data:
@@ -748,6 +800,13 @@ def get_category_conditions(
             "conditionEnum": cenum,
             "conditionDescription": item.get("conditionDescription", cenum),
         })
+
+    if not result:
+        logger.warning(
+            "eBay item condition policies returned no supported conditions for marketplace=%s category=%s",
+            marketplace_id,
+            category_id,
+        )
 
     return {"conditions": result}
 
