@@ -1172,7 +1172,7 @@ def test_condition_fallback_map_entries():
     assert fb["NEW_WITH_DEFECTS"] == "USED_GOOD"
     assert fb["LIKE_NEW"] == "USED_EXCELLENT"
     assert fb["USED_EXCELLENT"] == "USED_GOOD"
-    assert fb["USED_GOOD"] == "USED_ACCEPTABLE"
+    assert "USED_GOOD" not in fb
     assert "USED_ACCEPTABLE" not in fb  # terminal condition
 
 
@@ -1210,8 +1210,8 @@ def test_create_or_update_inventory_item_accepts_category_id_parameter(monkeypat
     )
 
     payload = captured["payload"]
-    assert payload["condition"] == "NEW"
-    assert "conditionDescription" not in payload
+    assert payload["condition"] == "USED_EXCELLENT"
+    assert payload["conditionDescription"] == "Near Mint"
 
 
 def test_create_or_update_inventory_item_skip_condition_description_flag(monkeypatch):
@@ -1318,9 +1318,9 @@ def test_condition_map_good_maps_to_used_good():
     """'Good' condition should map to USED_GOOD (widely accepted across categories incl. toys)."""
     from app.services.ebay_inventory_service import _CONDITION_MAP
     assert _CONDITION_MAP["Good"] == "USED_GOOD"
-    assert _CONDITION_MAP["Like New"] == "LIKE_NEW"
+    assert _CONDITION_MAP["Like New"] == "USED_EXCELLENT"
     assert _CONDITION_MAP["Very Good"] == "USED_EXCELLENT"
-    assert _CONDITION_MAP["Acceptable"] == "USED_ACCEPTABLE"
+    assert _CONDITION_MAP["Acceptable"] == "USED_GOOD"
 
 
 def test_get_category_conditions_uses_item_condition_policies_and_matching_policy(client, auth_headers, monkeypatch):

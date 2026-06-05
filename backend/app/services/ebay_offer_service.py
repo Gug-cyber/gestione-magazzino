@@ -82,23 +82,6 @@ def _extract_existing_offer_id(response: httpx.Response) -> str | None:
         payload = response.json()
     except Exception:
         return None
-
-
-def _is_offer_already_exists_error(response: httpx.Response) -> bool:
-        try:
-            payload = response.json()
-        except Exception:
-            return False
-        errors = payload.get("errors", [])
-        for error in errors:
-            if not isinstance(error, dict):
-                continue
-            if error.get("errorId") != 25002:
-                continue
-            message = str(error.get("message") or "").lower()
-            if "offer entity already exists" in message or "offer already exists" in message:
-                return True
-        return False
     errors = payload.get("errors", [])
     for error in errors:
         if not isinstance(error, dict):
@@ -108,6 +91,23 @@ def _is_offer_already_exists_error(response: httpx.Response) -> bool:
                 if isinstance(param, dict) and param.get("name") == "offerId":
                     return str(param["value"])
     return None
+
+
+def _is_offer_already_exists_error(response: httpx.Response) -> bool:
+    try:
+        payload = response.json()
+    except Exception:
+        return False
+    errors = payload.get("errors", [])
+    for error in errors:
+        if not isinstance(error, dict):
+            continue
+        if error.get("errorId") != 25002:
+            continue
+        message = str(error.get("message") or "").lower()
+        if "offer entity already exists" in message or "offer already exists" in message:
+            return True
+    return False
 
 
 def _content_language_for_marketplace(marketplace_id: str | None) -> str:
