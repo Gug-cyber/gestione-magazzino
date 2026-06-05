@@ -204,6 +204,11 @@ def test_publish_request_shipping_cost_default_is_590_and_optional():
     assert payload_with_none.shipping_cost is None
 
 
+def test_publish_request_accepts_item_game():
+    payload = PublishRequest(product_id=1, item_game="Pokémon")
+    assert payload.item_game == "Pokémon"
+
+
 def test_create_offer_uses_real_description_and_shipping_note(monkeypatch):
     captured = {}
 
@@ -439,6 +444,51 @@ def test_create_offer_uses_only_offer_api_headers(monkeypatch):
     assert captured["headers"]["Authorization"] == "Bearer token"
     assert captured["headers"]["Content-Type"] == "application/json"
     assert captured["headers"].get("Content-Language") == "it-IT"
+
+
+def test_create_offer_on_stale_offer_retries_delete_recreate_once(monkeypatch):
+    calls = []
+
+    def _mock_ensure_location(token, marketplace_id):
+        return "default_it", True
+
+    def _mock_fetch_policy_id(token, marketplace_id, policy_type):
+        return f"{policy_type}-id"
+
+    def _mock_request(method, url, **kwargs):
+        calls.append(method)
+        if method == "POST" and url.endswith("/offer"):
+            request = httpx.Request("POST", url)
+            response = httpx.Response(
+                400,
+                request=request,
+                json={"errors": [{"errorId": 25002, "parameters": [{"name": "offerId", "value": "STALE-ONLY-1"}]}]},
+            )
+            raise httpx.HTTPStatusError("Bad request", request=request, response=response)
+        if method == "DELETE":
+            return SimpleNamespace()
+        return SimpleNamespace()
+
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._ensure_merchant_location", _mock_ensure_location)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._fetch_default_policy_id", _mock_fetch_policy_id)
+    monkeypatch.setattr("app.services.ebay_offer_service.EbayOfferService._request_with_retry", _mock_request)
+
+    listing_db = SimpleNamespace(ebay_offer_id=None)
+    with pytest.raises(HTTPException) as exc:
+        EbayOfferService.create_offer(
+            token="token",
+            sku="SKU-ONLY-1",
+            price=Decimal("12.34"),
+            quantity=1,
+            marketplace_id="EBAY_IT",
+            listing_db=listing_db,
+            description="Descrizione",
+            category_id="19077",
+        )
+
+    assert exc.value.status_code == 502
+    assert calls.count("POST") == 2
+    assert calls.count("DELETE") == 1
 
 
 def test_create_offer_logs_error_body_and_propagates_ebay_message(monkeypatch, caplog):
@@ -1096,6 +1146,39 @@ def test_create_or_update_inventory_item_skip_condition_description_with_conditi
     payload = captured["payload"]
     assert payload["condition"] == "USED_EXCELLENT"
     assert "conditionDescription" not in payload
+
+
+def test_create_or_update_inventory_item_merges_item_game_with_existing_aspects(monkeypatch):
+    captured = {}
+
+    def _mock_request(method, url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return None
+
+    monkeypatch.setattr("app.services.ebay_inventory_service.EbayInventoryService._request_with_retry", _mock_request)
+
+    product = SimpleNamespace(
+        nome="Carta collezionabile",
+        descrizione="Dettagli carta",
+        stato_conservazione="Good",
+        foto_path="https://img.example.com/card.jpg",
+        google_drive_folder_id=None,
+    )
+    listing = SimpleNamespace(quantity_published=1, ebay_item_id=None, last_sync_at=None)
+
+    EbayInventoryService.create_or_update_inventory_item(
+        "token",
+        "SKU-CARD-1",
+        product,
+        listing,
+        marketplace_id="EBAY_IT",
+        aspects={"Set": ["Base Set"]},
+        item_game="Pokémon",
+    )
+
+    aspects_payload = captured["payload"]["product"]["aspects"]
+    assert aspects_payload["Set"] == ["Base Set"]
+    assert aspects_payload["Gioco"] == ["Pokémon"]
 
 
 def test_condition_map_good_maps_to_used_good():

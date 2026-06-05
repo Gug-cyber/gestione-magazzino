@@ -905,6 +905,7 @@ def publish_listing(
             listing,
             marketplace_id=connection.marketplace_id or "EBAY_IT",
             aspects=payload.aspects,
+            item_game=payload.item_game,
             condition_override=payload.condition_override,
             category_id=payload.ebay_category_id,
         )
@@ -969,6 +970,7 @@ def publish_listing(
                     listing,
                     marketplace_id=connection.marketplace_id or "EBAY_IT",
                     aspects=payload.aspects,
+                    item_game=payload.item_game,
                     condition_override=current_condition,
                     category_id=payload.ebay_category_id,
                     skip_condition_description=skip_cond_desc,
