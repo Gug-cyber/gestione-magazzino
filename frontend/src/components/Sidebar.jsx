@@ -194,7 +194,7 @@ const BASE_SECTIONS = [
   {
     label: 'Negozio',
     links: [
-      { to: '/store', label: 'Store Pubblico', icon: 'ShoppingCart', external: true },
+      { to: '/store', label: 'Store Pubblico', icon: 'ShoppingCart' },
     ],
   },
 ]
