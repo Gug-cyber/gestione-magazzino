@@ -105,7 +105,8 @@ function App() {
         <FeatureFlagsProvider>
         <BrowserRouter>
           <Routes>
-            {/* Route pubbliche store */}
+            {/* Route pubbliche store - / va sullo store */}
+            <Route path="/" element={<StorePage />} />
             <Route path="/store" element={<StorePage />} />
             <Route path="/store/product/:id" element={<StoreProductPage />} />
             <Route path="/store/cart" element={<StoreCartPage />} />
@@ -116,9 +117,6 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/ebay/callback" element={<EbayCallback />} />
-
-            {/* Redirect root → dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             {/* Route protette */}
             <Route path="/dashboard" element={
@@ -317,8 +315,8 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* Catch-all: qualsiasi route non trovata → dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* Catch-all: qualsiasi route non trovata → store */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <AIAssistantWidget />
         </BrowserRouter>
