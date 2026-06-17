@@ -111,7 +111,7 @@ const Icons = {
   Settings: () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   ),
   List: () => (
@@ -154,7 +154,7 @@ const BASE_SECTIONS = [
   {
     label: 'Panoramica',
     links: [
-      { to: '/', label: 'Dashboard', icon: 'Dashboard', end: true },
+      { to: '/dashboard', label: 'Dashboard', icon: 'Dashboard' },
       { to: '/analisi', label: 'Analisi', icon: 'Analytics' },
       { to: '/statistiche', label: 'Report & Statistiche', icon: 'PieChart' },
       { to: '/dashboard-opportunita', label: '📈 Dashboard Opportunità', icon: 'Analytics' },
@@ -194,6 +194,7 @@ const BASE_SECTIONS = [
   {
     label: 'Negozio',
     links: [
+      // Link esterno: apre lo store in una nuova tab senza alterare la navigazione interna
       { to: '/store', label: 'Store Pubblico', icon: 'ShoppingCart', external: true },
     ],
   },
@@ -209,9 +210,9 @@ function NavLinks({ onLinkClick }) {
 
   const sistemaLinks = user?.is_admin
     ? [
-        { to: '/amministrazione', label: 'Amministrazione', icon: 'Settings' }, 
-        { to: '/control-panel', label: 'Control Panel', icon: 'Sliders' }, 
-        { to: '/activity-log', label: 'Log Attivita', icon: 'List' }, 
+        { to: '/amministrazione', label: 'Amministrazione', icon: 'Settings' },
+        { to: '/control-panel', label: 'Control Panel', icon: 'Sliders' },
+        { to: '/activity-log', label: 'Log Attivita', icon: 'List' },
         ...SISTEMA_LINKS_BASE
       ]
     : SISTEMA_LINKS_BASE
@@ -326,50 +327,50 @@ function NavLinks({ onLinkClick }) {
                   <span style={{ fontSize: '11px', opacity: 0.5, marginLeft: 'auto' }}>↗</span>
                 </a>
               ) : (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                title={label}
-                onClick={onLinkClick}
-                onMouseEnter={() => setHoveredTo(to)}
-                onMouseLeave={() => setHoveredTo(null)}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '10px 14px',
-                  paddingLeft: '13px',
-                  marginLeft: '8px',
-                  marginRight: '8px',
-                  marginBottom: '2px',
-                  color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                  textDecoration: 'none',
-                  backgroundColor: isActive
-                    ? 'rgba(99, 120, 255, 0.15)'
-                    : hoveredTo === to
-                      ? 'var(--color-surface-hover)'
-                      : 'transparent',
-                  borderRadius: '8px',
-                  fontWeight: isActive ? '600' : '400',
-                  fontSize: '14.5px',
-                  transition: 'all 150ms ease',
-                  borderLeft: isActive ? '4px solid var(--color-primary)' : '4px solid transparent',
-                  outline: 'none',
-                })}
-              >
-                <span style={{ 
-                  opacity: 0.9,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  color: 'inherit',
-                }}>
-                  {renderIcon(icon)}
-                </span>
-                <span>{label}</span>
-              </NavLink>
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  title={label}
+                  onClick={onLinkClick}
+                  onMouseEnter={() => setHoveredTo(to)}
+                  onMouseLeave={() => setHoveredTo(null)}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 14px',
+                    paddingLeft: '13px',
+                    marginLeft: '8px',
+                    marginRight: '8px',
+                    marginBottom: '2px',
+                    color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                    textDecoration: 'none',
+                    backgroundColor: isActive
+                      ? 'rgba(99, 120, 255, 0.15)'
+                      : hoveredTo === to
+                        ? 'var(--color-surface-hover)'
+                        : 'transparent',
+                    borderRadius: '8px',
+                    fontWeight: isActive ? '600' : '400',
+                    fontSize: '14.5px',
+                    transition: 'all 150ms ease',
+                    borderLeft: isActive ? '4px solid var(--color-primary)' : '4px solid transparent',
+                    outline: 'none',
+                  })}
+                >
+                  <span style={{
+                    opacity: 0.9,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    color: 'inherit',
+                  }}>
+                    {renderIcon(icon)}
+                  </span>
+                  <span>{label}</span>
+                </NavLink>
               )
             ))}
           </div>

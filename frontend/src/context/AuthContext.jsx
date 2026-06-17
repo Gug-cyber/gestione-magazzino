@@ -69,8 +69,12 @@ export function AuthProvider({ children }) {
     setToken(null)
   }
 
+  // isAuthenticated è true se c'è un token valido in localStorage
+  // non dipende da user per evitare flash di redirect durante il caricamento
+  const isAuthenticated = !!token
+
   return (
-    <AuthContext.Provider value={{ user, setUser, token, isAuthenticated: !!token && !!user, isLoading, login, verifyTwoFactorLogin, logout }}>
+    <AuthContext.Provider value={{ user, setUser, token, isAuthenticated, isLoading, login, verifyTwoFactorLogin, logout }}>
       {children}
     </AuthContext.Provider>
   )
