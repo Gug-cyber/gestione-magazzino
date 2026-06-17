@@ -315,8 +315,8 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* Catch-all: qualsiasi route non trovata → store */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Catch-all: route non trovata → login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
           <AIAssistantWidget />
         </BrowserRouter>
