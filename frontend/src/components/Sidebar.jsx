@@ -194,7 +194,8 @@ const BASE_SECTIONS = [
   {
     label: 'Negozio',
     links: [
-      { to: '/store', label: 'Store Pubblico', icon: 'ShoppingCart' },
+      // Link esterno: apre lo store in una nuova tab senza alterare la navigazione interna
+      { to: '/store', label: 'Store Pubblico', icon: 'ShoppingCart', external: true },
     ],
   },
 ]
@@ -209,9 +210,9 @@ function NavLinks({ onLinkClick }) {
 
   const sistemaLinks = user?.is_admin
     ? [
-        { to: '/amministrazione', label: 'Amministrazione', icon: 'Settings' }, 
-        { to: '/control-panel', label: 'Control Panel', icon: 'Sliders' }, 
-        { to: '/activity-log', label: 'Log Attivita', icon: 'List' }, 
+        { to: '/amministrazione', label: 'Amministrazione', icon: 'Settings' },
+        { to: '/control-panel', label: 'Control Panel', icon: 'Sliders' },
+        { to: '/activity-log', label: 'Log Attivita', icon: 'List' },
         ...SISTEMA_LINKS_BASE
       ]
     : SISTEMA_LINKS_BASE
@@ -326,50 +327,50 @@ function NavLinks({ onLinkClick }) {
                   <span style={{ fontSize: '11px', opacity: 0.5, marginLeft: 'auto' }}>↗</span>
                 </a>
               ) : (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                title={label}
-                onClick={onLinkClick}
-                onMouseEnter={() => setHoveredTo(to)}
-                onMouseLeave={() => setHoveredTo(null)}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '10px 14px',
-                  paddingLeft: '13px',
-                  marginLeft: '8px',
-                  marginRight: '8px',
-                  marginBottom: '2px',
-                  color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                  textDecoration: 'none',
-                  backgroundColor: isActive
-                    ? 'rgba(99, 120, 255, 0.15)'
-                    : hoveredTo === to
-                      ? 'var(--color-surface-hover)'
-                      : 'transparent',
-                  borderRadius: '8px',
-                  fontWeight: isActive ? '600' : '400',
-                  fontSize: '14.5px',
-                  transition: 'all 150ms ease',
-                  borderLeft: isActive ? '4px solid var(--color-primary)' : '4px solid transparent',
-                  outline: 'none',
-                })}
-              >
-                <span style={{ 
-                  opacity: 0.9,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  color: 'inherit',
-                }}>
-                  {renderIcon(icon)}
-                </span>
-                <span>{label}</span>
-              </NavLink>
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  title={label}
+                  onClick={onLinkClick}
+                  onMouseEnter={() => setHoveredTo(to)}
+                  onMouseLeave={() => setHoveredTo(null)}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 14px',
+                    paddingLeft: '13px',
+                    marginLeft: '8px',
+                    marginRight: '8px',
+                    marginBottom: '2px',
+                    color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                    textDecoration: 'none',
+                    backgroundColor: isActive
+                      ? 'rgba(99, 120, 255, 0.15)'
+                      : hoveredTo === to
+                        ? 'var(--color-surface-hover)'
+                        : 'transparent',
+                    borderRadius: '8px',
+                    fontWeight: isActive ? '600' : '400',
+                    fontSize: '14.5px',
+                    transition: 'all 150ms ease',
+                    borderLeft: isActive ? '4px solid var(--color-primary)' : '4px solid transparent',
+                    outline: 'none',
+                  })}
+                >
+                  <span style={{
+                    opacity: 0.9,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    color: 'inherit',
+                  }}>
+                    {renderIcon(icon)}
+                  </span>
+                  <span>{label}</span>
+                </NavLink>
               )
             ))}
           </div>
