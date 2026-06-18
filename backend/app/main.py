@@ -26,6 +26,9 @@ from .routers import backup as backup_router
 from .routers import ai
 from .routers import market_intelligence as market_intelligence_router
 from .routers import prezzi_storici as prezzi_storici_router
+from .routers import clienti_auth as clienti_auth_router
+from .models import cliente_account as _cliente_account_model  # noqa: F401 – ensures clienti_account table is created
+from .models import ordine_ecommerce as _ordine_ecommerce_model  # noqa: F401 – ensures ordini_ecommerce table is created
 from .routers.cms import contenuti as cms_contenuti, banner as cms_banner, prodotti as cms_prodotti
 from .models import activity_log as _activity_log_model  # noqa: F401 – ensures activity_logs table is created
 from .models import contenuto as _contenuto_model  # noqa: F401 – ensures contenuti table is created
@@ -139,6 +142,7 @@ app.include_router(backup_router.router)
 app.include_router(ai.router, prefix="/api")
 app.include_router(market_intelligence_router.router, prefix="/api")
 app.include_router(prezzi_storici_router.router, prefix="/api")
+app.include_router(clienti_auth_router.router)
 
 
 @app.on_event("startup")

@@ -21,7 +21,8 @@ function ProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    // Salva la pagina di destinazione per il redirect post-login
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
   if (user?.must_change_password && location.pathname !== '/profilo') {

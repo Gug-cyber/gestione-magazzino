@@ -1,224 +1,270 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { strapiAPI } from '../api/strapi';
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext.jsx';
+import { getOrderDetail, requestReturn } from '../api/auth';
 
-const STATUS_LABELS = {
-  pending: 'In attesa',
-  processing: 'In elaborazione',
-  shipped: 'Spedito',
-  delivered: 'Consegnato',
-  cancelled: 'Annullato',
+const STATO_LABELS = {
+  in_attesa: { label: 'In attesa', color: 'bg-yellow-100 text-yellow-800' },
+  confermato: { label: 'Confermato', color: 'bg-blue-100 text-blue-800' },
+  in_lavorazione: { label: 'In lavorazione', color: 'bg-indigo-100 text-indigo-800' },
+  spedito: { label: 'Spedito', color: 'bg-purple-100 text-purple-800' },
+  consegnato: { label: 'Consegnato', color: 'bg-green-100 text-green-800' },
+  annullato: { label: 'Annullato', color: 'bg-red-100 text-red-800' },
+  reso_richiesto: { label: 'Reso richiesto', color: 'bg-orange-100 text-orange-800' },
+  reso_approvato: { label: 'Reso approvato', color: 'bg-orange-100 text-orange-800' },
+  reso_completato: { label: 'Reso completato', color: 'bg-gray-100 text-gray-800' },
+  rimborsato: { label: 'Rimborsato', color: 'bg-gray-100 text-gray-800' },
 };
 
-const STATUS_COLORS = {
-  pending: 'rgba(245, 158, 11, 0.15)',
-  processing: 'rgba(59, 130, 246, 0.15)',
-  shipped: 'rgba(139, 92, 246, 0.15)',
-  delivered: 'rgba(34, 197, 94, 0.15)',
-  cancelled: 'rgba(239, 68, 68, 0.15)',
-};
-
-const STATUS_TEXT_COLORS = {
-  pending: 'var(--color-accent)',
-  processing: '#3b82f6',
-  shipped: '#8b5cf6',
-  delivered: '#22c55e',
-  cancelled: 'var(--color-error)',
-};
-
-export default function OrderDetail() {
-  const { orderId } = useParams();
-  const { token } = useAuth();
+export function OrderDetail() {
+  const { id } = useParams();
+  const { isAuthenticated, loading: authLoading } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [showResoForm, setShowResoForm] = useState(false);
+  const [resoMotivo, setResoMotivo] = useState('');
+  const [resoLoading, setResoLoading] = useState(false);
+  const [resoSuccess, setResoSuccess] = useState(false);
 
   useEffect(() => {
-    if (!orderId || !token) return;
-    setLoading(true);
-    strapiAPI
-      .getOrder(orderId, token)
-      .then((data) => setOrder(data?.data))
-      .catch(() => setError('Ordine non trovato'))
-      .finally(() => setLoading(false));
-  }, [orderId, token]);
+    if (!authLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
-  if (loading) {
+  useEffect(() => {
+    if (isAuthenticated && id) {
+      loadOrder();
+    }
+  }, [isAuthenticated, id]);
+
+  async function loadOrder() {
+    try {
+      const data = await getOrderDetail(id);
+      setOrder(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRequestReturn(e) {
+    e.preventDefault();
+    if (!resoMotivo.trim()) return;
+    setResoLoading(true);
+    try {
+      await requestReturn(id, resoMotivo);
+      setResoSuccess(true);
+      setShowResoForm(false);
+      // Reload order to get updated status
+      await loadOrder();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResoLoading(false);
+    }
+  }
+
+  if (authLoading || loading) {
+    return <div className="min-h-screen flex items-center justify-center"><p>Caricamento ordine...</p></div>;
+  }
+
+  if (error && !order) {
     return (
-      <div style={{ maxWidth: 800, margin: '60px auto', padding: 'var(--spacing-xl)', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-text-muted)' }}>Caricamento ordine...</p>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+          <Link to="/orders" className="mt-4 inline-block text-blue-600 hover:text-blue-800">← Torna agli ordini</Link>
+        </div>
       </div>
     );
   }
 
-  if (error || !order) {
-    return (
-      <div style={{ maxWidth: 800, margin: '60px auto', padding: 'var(--spacing-xl)', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-error)' }}>{error || 'Ordine non trovato'}</p>
-        <Link to="/ordini" style={{ color: 'var(--color-accent)', textDecoration: 'none', marginTop: 'var(--spacing-md)', display: 'inline-block' }}>
-          Torna agli ordini
-        </Link>
-      </div>
-    );
-  }
+  if (!order) return null;
 
-  const attrs = order.attributes || {};
-  const status = attrs.status || 'pending';
+  const stato = STATO_LABELS[order.stato] || { label: order.stato, color: 'bg-gray-100 text-gray-800' };
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: 'var(--spacing-xl)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-xl)' }}>
-        <Link
-          to="/ordini"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-xs)',
-            color: 'var(--color-text-secondary)',
-            textDecoration: 'none',
-            fontSize: 14,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          Ordini
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <Link to="/orders" className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-4 inline-block">
+          ← Torna agli ordini
         </Link>
-        <span style={{ color: 'var(--color-text-muted)' }}>/</span>
-        <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
-          {attrs.orderNumber || `#${orderId}`}
-        </span>
-      </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-xl)' }}>
-        <h1 style={{ margin: 0 }}>Dettaglio Ordine</h1>
-        <span
-          style={{
-            background: STATUS_COLORS[status],
-            color: STATUS_TEXT_COLORS[status],
-            padding: '4px 14px',
-            borderRadius: 'var(--radius-sm)',
-            fontWeight: 600,
-            fontSize: 14,
-          }}
-        >
-          {STATUS_LABELS[status] || status}
-        </span>
-      </div>
-
-      {/* Prodotti */}
-      <div
-        style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-lg)',
-          padding: 'var(--spacing-xl)',
-          marginBottom: 'var(--spacing-lg)',
-        }}
-      >
-        <h3 style={{ marginTop: 0, marginBottom: 'var(--spacing-md)', fontSize: 15 }}>
-          Prodotti
-        </h3>
-        {(attrs.items || []).map((item, idx) => (
-          <div
-            key={idx}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 'var(--spacing-sm) 0',
-              borderBottom: idx < (attrs.items.length - 1) ? '1px solid var(--color-border)' : 'none',
-              fontSize: 14,
-            }}
-          >
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex justify-between items-start mb-6">
             <div>
-              <div style={{ fontWeight: 500 }}>{item.product?.title || 'Prodotto'}</div>
-              <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
-                Qtà: {item.quantity} × €{item.priceAtTime?.toFixed(2)}
-              </div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Ordine #{order.numero_ordine}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Effettuato il {new Date(order.data_ordine).toLocaleDateString('it-IT', {
+                  day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                })}
+              </p>
             </div>
-            <div style={{ fontWeight: 600 }}>
-              €{(item.quantity * item.priceAtTime).toFixed(2)}
+            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${stato.color}`}>
+              {stato.label}
+            </span>
+          </div>
+
+          {/* Tracking info */}
+          {order.tracking_number && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm font-medium text-blue-800">Spedizione</p>
+              <p className="text-sm text-blue-700">
+                {order.corriere} - Tracking: <span className="font-mono">{order.tracking_number}</span>
+              </p>
+              {order.data_spedizione && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Spedito il {new Date(order.data_spedizione).toLocaleDateString('it-IT')}
+                </p>
+              )}
+              {order.data_consegna && (
+                <p className="text-xs text-blue-600">
+                  Consegnato il {new Date(order.data_consegna).toLocaleDateString('it-IT')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Order items */}
+          <div className="border-t pt-4">
+            <h3 className="text-lg font-semibold mb-4">Prodotti</h3>
+            <div className="space-y-3">
+              {order.righe?.map((riga, idx) => (
+                <div key={idx} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                  {riga.immagine_url && (
+                    <img src={riga.immagine_url} alt={riga.nome_prodotto} className="w-16 h-16 object-cover rounded" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{riga.nome_prodotto}</p>
+                    <p className="text-sm text-gray-500">Quantità: {riga.quantita}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">€{riga.prezzo_unitario?.toFixed(2)}</p>
+                    <p className="text-sm text-gray-500">Tot: €{riga.subtotale?.toFixed(2)}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 'var(--spacing-lg)',
-          marginBottom: 'var(--spacing-lg)',
-        }}
-      >
-        {/* Spedizione */}
-        {attrs.shippingAddress && (
-          <div
-            style={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--spacing-xl)',
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 'var(--spacing-md)', fontSize: 15 }}>
-              Spedizione
-            </h3>
-            <address style={{ fontStyle: 'normal', fontSize: 14, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
-              {attrs.shippingAddress.firstName} {attrs.shippingAddress.lastName}<br />
-              {attrs.shippingAddress.address}<br />
-              {attrs.shippingAddress.zip} {attrs.shippingAddress.city} ({attrs.shippingAddress.province})<br />
-              {attrs.shippingAddress.country}
-            </address>
+          {/* Order totals */}
+          <div className="border-t mt-6 pt-4">
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Subtotale</span>
+              <span>€{order.subtotale?.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Spese di spedizione</span>
+              <span>€{order.spese_spedizione?.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold text-gray-900 border-t pt-2">
+              <span>Totale</span>
+              <span>€{order.totale?.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Shipping address */}
+          {order.indirizzo_spedizione && (
+            <div className="border-t mt-6 pt-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-1">Indirizzo di spedizione</h3>
+              <p className="text-sm text-gray-600 whitespace-pre-line">{order.indirizzo_spedizione}</p>
+            </div>
+          )}
+        </div>
+
+        {/* RETURN CTA - Active only within 14 days of delivery */}
+        {order.reso_disponibile && !resoSuccess && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Hai bisogno di fare un reso?</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Puoi richiedere il reso entro 14 giorni dalla consegna.
+                  {order.data_consegna && (
+                    <span className="block mt-1">
+                      Scadenza: {new Date(new Date(order.data_consegna).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('it-IT')}
+                    </span>
+                  )}
+                </p>
+              </div>
+              {!showResoForm && (
+                <button
+                  onClick={() => setShowResoForm(true)}
+                  className="px-6 py-3 bg-orange-600 text-white font-medium rounded-md hover:bg-orange-700 transition-colors"
+                >
+                  Fai il reso
+                </button>
+              )}
+            </div>
+
+            {showResoForm && (
+              <form onSubmit={handleRequestReturn} className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Motivo del reso
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                    placeholder="Descrivi il motivo per cui vuoi restituire il prodotto..."
+                    value={resoMotivo}
+                    onChange={(e) => setResoMotivo(e.target.value)}
+                  />
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    type="submit"
+                    disabled={resoLoading}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    {resoLoading ? 'Invio in corso...' : 'Conferma richiesta reso'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowResoForm(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
 
-        {/* Totali */}
-        <div
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--spacing-xl)',
-          }}
-        >
-          <h3 style={{ marginTop: 0, marginBottom: 'var(--spacing-md)', fontSize: 15 }}>
-            Totali
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)', fontSize: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--color-text-secondary)' }}>Subtotale</span>
-              <span>€{attrs.subtotal?.toFixed(2) || '—'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--color-text-secondary)' }}>Spedizione</span>
-              <span>{attrs.shippingCost === 0 ? 'Gratuita' : `€${attrs.shippingCost?.toFixed(2)}`}</span>
-            </div>
-            {attrs.paymentFee > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Commissione pagamento</span>
-                <span>€{attrs.paymentFee?.toFixed(2)}</span>
-              </div>
+        {/* Return already requested */}
+        {(order.stato === 'reso_richiesto' || order.stato === 'reso_approvato' || resoSuccess) && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-orange-800">Reso richiesto</h3>
+            <p className="text-sm text-orange-700 mt-1">
+              {resoSuccess
+                ? 'La tua richiesta di reso è stata inviata con successo. Ti contatteremo presto.'
+                : `Motivo: ${order.reso_motivo || 'Non specificato'}`
+              }
+            </p>
+            {order.reso_richiesto_il && (
+              <p className="text-xs text-orange-600 mt-2">
+                Richiesto il {new Date(order.reso_richiesto_il).toLocaleDateString('it-IT')}
+              </p>
             )}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                borderTop: '1px solid var(--color-border)',
-                paddingTop: 'var(--spacing-sm)',
-                fontWeight: 700,
-                fontSize: 16,
-              }}
-            >
-              <span>Totale</span>
-              <span>€{attrs.total?.toFixed(2) || '—'}</span>
-            </div>
           </div>
-        </div>
+        )}
+
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+export default OrderDetail;

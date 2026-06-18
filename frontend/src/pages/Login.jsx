@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { forgotUsername, forgotPassword, resetPassword } from '../api/client'
 import useLogoSettings from '../hooks/useLogoSettings'
@@ -14,6 +14,7 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const { login, verifyTwoFactorLogin } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { logoUrl, portalTitle } = useLogoSettings()
 
   // Modal state
@@ -50,7 +51,7 @@ function Login() {
       } else {
         await verifyTwoFactorLogin(temporaryToken, otpCode)
       }
-      navigate('/dashboard')
+      navigate(location.state?.from || '/dashboard')
     } catch (err) {
       const detail = err?.response?.data?.detail
       setError(detail || 'Credenziali errate. Riprova.')

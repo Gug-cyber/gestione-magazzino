@@ -15,9 +15,10 @@ import { Login } from './pages/Login.jsx';
 import { Register } from './pages/Register.jsx';
 import { Account } from './pages/Account.jsx';
 import { Orders } from './pages/Orders.jsx';
+import { OrderDetail } from './pages/OrderDetail.jsx';
+import { Favorites } from './pages/Favorites.jsx';
 import Checkout from './pages/Checkout.jsx';
 import OrderSuccess from './pages/OrderSuccess.jsx';
-import OrderDetail from './pages/OrderDetail.jsx';
 
 export default function App() {
   return (
@@ -31,14 +32,20 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/catalogo" element={<Catalog />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
+                <Route path="/prodotto/:slug" element={<ProductDetail />} />
                 <Route path="/pagina/:slug" element={<StaticPage />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/registrati" element={<Register />} />
                 <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/ordini" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+                <Route path="/ordine/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+                <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+                <Route path="/preferiti" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                 <Route path="/ordine-confermato/:orderId" element={<ProtectedRoute><OrderSuccess /></ProtectedRoute>} />
-                <Route path="/ordine/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
               </Routes>
             </main>
             <Footer />
