@@ -1,26 +1,26 @@
+"""Schemas Pydantic per autenticazione clienti, ordini e preferiti."""
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
-# --- Auth schemas ---
+# === AUTH SCHEMAS ===
+
 class ClienteRegistrazione(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     nome: str
     cognome: str
     telefono: Optional[str] = None
+    indirizzo: Optional[str] = None
+    citta: Optional[str] = None
+    cap: Optional[str] = None
+    provincia: Optional[str] = None
 
 
 class ClienteLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
-
-
-class ClienteToken(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: "ClienteResponse"
 
 
 class ClienteResponse(BaseModel):
@@ -33,10 +33,8 @@ class ClienteResponse(BaseModel):
     citta: Optional[str] = None
     cap: Optional[str] = None
     provincia: Optional[str] = None
-    paese: Optional[str] = "Italia"
     is_active: bool
-    is_verified: bool
-    created_at: Optional[datetime] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -50,60 +48,55 @@ class ClienteUpdate(BaseModel):
     citta: Optional[str] = None
     cap: Optional[str] = None
     provincia: Optional[str] = None
-    paese: Optional[str] = None
 
 
-class ClienteChangePassword(BaseModel):
-    current_password: str
-    new_password: str
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    cliente: ClienteResponse
 
 
-# --- Order schemas ---
-class RigaOrdineEcommerceResponse(BaseModel):
-    id: int
-    prodotto_id: Optional[int] = None
+# === ORDINI SCHEMAS ===
+
+class ItemOrdineSchema(BaseModel):
+    prodotto_id: int
     nome_prodotto: str
+    quantita: int = 1
+    prezzo_unitario: float
     immagine_url: Optional[str] = None
+
+
+class CreaOrdineSchema(BaseModel):
+    items: List[ItemOrdineSchema]
+    indirizzo_spedizione: Optional[str] = None
+    note: Optional[str] = None
+
+
+class ItemOrdineResponse(BaseModel):
+    id: int
+    prodotto_id: int
+    nome_prodotto: str
     quantita: int
     prezzo_unitario: float
-    subtotale: float
+    immagine_url: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 
-class OrdineEcommerceResponse(BaseModel):
+class OrdineResponse(BaseModel):
     id: int
     numero_ordine: str
     stato: str
     totale: float
-    subtotale: float
-    spese_spedizione: float
-    metodo_pagamento: Optional[str] = None
     indirizzo_spedizione: Optional[str] = None
-    corriere: Optional[str] = None
-    tracking_number: Optional[str] = None
-    data_ordine: Optional[datetime] = None
+    note: Optional[str] = None
+    motivo_reso: Optional[str] = None
+    data_ordine: datetime
     data_spedizione: Optional[datetime] = None
     data_consegna: Optional[datetime] = None
-    reso_richiesto_il: Optional[datetime] = None
-    reso_motivo: Optional[str] = None
-    note: Optional[str] = None
-    righe: list[RigaOrdineEcommerceResponse] = []
-    reso_disponibile: bool = False  # Calcolato: True se entro 14 giorni dalla consegna
-
-    class Config:
-        from_attributes = True
-
-
-class OrdineEcommerceListResponse(BaseModel):
-    id: int
-    numero_ordine: str
-    stato: str
-    totale: float
-    data_ordine: Optional[datetime] = None
-    data_consegna: Optional[datetime] = None
-    reso_disponibile: bool = False
+    data_richiesta_reso: Optional[datetime] = None
+    items: List[ItemOrdineResponse] = []
 
     class Config:
         from_attributes = True
@@ -113,25 +106,22 @@ class RichiestaReso(BaseModel):
     motivo: str
 
 
-# --- Favorites schemas ---
+# === PREFERITI SCHEMAS ===
+
 class PreferitoCreate(BaseModel):
     prodotto_id: int
-    nome_prodotto: Optional[str] = None
-    immagine_url: Optional[str] = None
+    nome_prodotto: str
     prezzo: Optional[float] = None
+    immagine_url: Optional[str] = None
 
 
 class PreferitoResponse(BaseModel):
     id: int
     prodotto_id: int
-    nome_prodotto: Optional[str] = None
-    immagine_url: Optional[str] = None
+    nome_prodotto: str
     prezzo: Optional[float] = None
-    created_at: Optional[datetime] = None
+    immagine_url: Optional[str] = None
+    added_at: datetime
 
     class Config:
         from_attributes = True
-
-
-# Fix forward reference
-ClienteToken.model_rebuild()

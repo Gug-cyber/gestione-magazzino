@@ -1,86 +1,54 @@
-import enum
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum, Boolean, Text
+"""Modello DB per ordini e-commerce."""
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Enum
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from ..database import Base
+from datetime import datetime
+import enum
+
+from app.database import Base
 
 
-class StatoOrdineEcommerce(str, enum.Enum):
-    in_attesa = "in_attesa"
-    confermato = "confermato"
-    in_lavorazione = "in_lavorazione"
-    spedito = "spedito"
-    consegnato = "consegnato"
-    annullato = "annullato"
-    reso_richiesto = "reso_richiesto"
-    reso_approvato = "reso_approvato"
-    reso_completato = "reso_completato"
-    rimborsato = "rimborsato"
+class StatoOrdine(str, enum.Enum):
+    IN_ATTESA = "in_attesa"
+    CONFERMATO = "confermato"
+    SPEDITO = "spedito"
+    CONSEGNATO = "consegnato"
+    RESO_RICHIESTO = "reso_richiesto"
+    RESO_APPROVATO = "reso_approvato"
+    ANNULLATO = "annullato"
 
 
 class OrdineEcommerce(Base):
-    """Ordini effettuati dai clienti sull'e-commerce"""
     __tablename__ = "ordini_ecommerce"
 
     id = Column(Integer, primary_key=True, index=True)
-    numero_ordine = Column(String, unique=True, nullable=False, index=True)
     cliente_id = Column(Integer, ForeignKey("clienti_account.id"), nullable=False)
-    stato = Column(Enum(StatoOrdineEcommerce), default=StatoOrdineEcommerce.in_attesa, nullable=False)
-    totale = Column(Float, default=0.0)
-    subtotale = Column(Float, default=0.0)
-    spese_spedizione = Column(Float, default=0.0)
-    metodo_pagamento = Column(String, nullable=True)
-    
-    # Indirizzo di spedizione (copiato al momento dell'ordine)
+    numero_ordine = Column(String(50), unique=True, index=True, nullable=False)
+    stato = Column(String(30), default=StatoOrdine.IN_ATTESA)
+    totale = Column(Float, nullable=False)
     indirizzo_spedizione = Column(Text, nullable=True)
-    
-    # Tracking
-    corriere = Column(String, nullable=True)
-    tracking_number = Column(String, nullable=True)
-    
-    # Date
-    data_ordine = Column(DateTime(timezone=True), server_default=func.now())
-    data_spedizione = Column(DateTime(timezone=True), nullable=True)
-    data_consegna = Column(DateTime(timezone=True), nullable=True)
-    
-    # Reso
-    reso_richiesto_il = Column(DateTime(timezone=True), nullable=True)
-    reso_motivo = Column(Text, nullable=True)
-    
     note = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    motivo_reso = Column(Text, nullable=True)
+    data_ordine = Column(DateTime, default=datetime.utcnow)
+    data_spedizione = Column(DateTime, nullable=True)
+    data_consegna = Column(DateTime, nullable=True)
+    data_richiesta_reso = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationships
-    cliente = relationship("ClienteAccount", backref="ordini")
-    righe = relationship("RigaOrdineEcommerce", back_populates="ordine", cascade="all, delete-orphan")
+    # Relazioni
+    cliente = relationship("ClienteAccount", back_populates="ordini")
+    items = relationship("ItemOrdine", back_populates="ordine", cascade="all, delete-orphan")
 
 
-class RigaOrdineEcommerce(Base):
-    __tablename__ = "righe_ordine_ecommerce"
+class ItemOrdine(Base):
+    __tablename__ = "items_ordine"
 
     id = Column(Integer, primary_key=True, index=True)
     ordine_id = Column(Integer, ForeignKey("ordini_ecommerce.id"), nullable=False)
-    prodotto_id = Column(Integer, nullable=True)
-    nome_prodotto = Column(String, nullable=False)
-    immagine_url = Column(String, nullable=True)
-    quantita = Column(Integer, nullable=False, default=1)
-    prezzo_unitario = Column(Float, nullable=False)
-    subtotale = Column(Float, nullable=False)
-
-    ordine = relationship("OrdineEcommerce", back_populates="righe")
-
-
-class Preferito(Base):
-    """Prodotti preferiti/wishlist del cliente"""
-    __tablename__ = "preferiti"
-
-    id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clienti_account.id"), nullable=False)
     prodotto_id = Column(Integer, nullable=False)
-    nome_prodotto = Column(String, nullable=True)
-    immagine_url = Column(String, nullable=True)
-    prezzo = Column(Float, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    nome_prodotto = Column(String(255), nullable=False)
+    quantita = Column(Integer, default=1)
+    prezzo_unitario = Column(Float, nullable=False)
+    immagine_url = Column(String(500), nullable=True)
 
-    cliente = relationship("ClienteAccount", backref="preferiti")
+    # Relazioni
+    ordine = relationship("OrdineEcommerce", back_populates="items")

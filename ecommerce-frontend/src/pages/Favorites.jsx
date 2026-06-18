@@ -1,101 +1,77 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext.jsx';
-import { getFavorites, removeFavorite } from '../api/auth';
+/**
+ * Pagina Preferiti cliente.
+ */
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { getPreferiti, rimuoviPreferito } from '../api/auth';
 
-export function Favorites() {
-  const { isAuthenticated, loading: authLoading } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const [favorites, setFavorites] = useState([]);
+export default function Favorites() {
+  const [preferiti, setPreferiti] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate('/login');
-    }
-  }, [authLoading, isAuthenticated, navigate]);
+    loadPreferiti();
+  }, []);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadFavorites();
-    }
-  }, [isAuthenticated]);
-
-  async function loadFavorites() {
+  const loadPreferiti = async () => {
     try {
-      const data = await getFavorites();
-      setFavorites(data);
+      const data = await getPreferiti();
+      setPreferiti(data);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Errore nel caricamento preferiti');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleRemove(prodottoId) {
+  const handleRemove = async (prodottoId) => {
     try {
-      await removeFavorite(prodottoId);
-      setFavorites(favorites.filter(f => f.prodotto_id !== prodottoId));
+      await rimuoviPreferito(prodottoId);
+      setPreferiti(preferiti.filter((p) => p.prodotto_id !== prodottoId));
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Errore nella rimozione');
     }
-  }
+  };
 
-  if (authLoading || loading) {
-    return <div className="min-h-screen flex items-center justify-center"><p>Caricamento preferiti...</p></div>;
-  }
+  if (loading) return <div className="page-loading">Caricamento preferiti...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">I miei preferiti</h1>
-          <Link to="/account" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-            ← Torna al profilo
-          </Link>
+    <div className="favorites-page">
+      <div className="favorites-container">
+        <div className="favorites-header">
+          <h1>❤️ I miei Preferiti</h1>
+          <Link to="/account" className="btn btn-outline btn-sm">← Account</Link>
         </div>
 
-        {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-error">{error}</div>}
 
-        {favorites.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-500 text-lg">Non hai ancora prodotti preferiti.</p>
-            <Link to="/catalogo" className="mt-4 inline-block px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-              Scopri il catalogo
-            </Link>
+        {preferiti.length === 0 ? (
+          <div className="empty-state">
+            <p>Non hai ancora aggiunto prodotti ai preferiti.</p>
+            <Link to="/" className="btn btn-primary">Esplora lo Store</Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map(fav => (
-              <div key={fav.id} className="bg-white rounded-lg shadow overflow-hidden">
-                {fav.immagine_url && (
-                  <img src={fav.immagine_url} alt={fav.nome_prodotto} className="w-full h-48 object-cover" />
+          <div className="favorites-grid">
+            {preferiti.map((item) => (
+              <div key={item.id} className="favorite-card">
+                {item.immagine_url && (
+                  <img src={item.immagine_url} alt={item.nome_prodotto} className="favorite-img" />
                 )}
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900 truncate">{fav.nome_prodotto}</h3>
-                  {fav.prezzo && (
-                    <p className="text-lg font-bold text-blue-600 mt-1">€{fav.prezzo.toFixed(2)}</p>
-                  )}
-                  <div className="flex space-x-2 mt-3">
-                    <Link
-                      to={`/prodotto/${fav.prodotto_id}`}
-                      className="flex-1 text-center px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                    >
-                      Vedi prodotto
-                    </Link>
-                    <button
-                      onClick={() => handleRemove(fav.prodotto_id)}
-                      className="px-3 py-2 border border-red-300 text-red-600 text-sm rounded-md hover:bg-red-50"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                <div className="favorite-info">
+                  <h3>{item.nome_prodotto}</h3>
+                  {item.prezzo && <p className="favorite-price">€ {item.prezzo.toFixed(2)}</p>}
+                  <p className="favorite-date">
+                    Aggiunto il {new Date(item.added_at).toLocaleDateString('it-IT')}
+                  </p>
                 </div>
+                <button
+                  onClick={() => handleRemove(item.prodotto_id)}
+                  className="btn btn-outline btn-sm btn-remove"
+                  title="Rimuovi dai preferiti"
+                >
+                  🗑️ Rimuovi
+                </button>
               </div>
             ))}
           </div>
@@ -104,5 +80,3 @@ export function Favorites() {
     </div>
   );
 }
-
-export default Favorites;

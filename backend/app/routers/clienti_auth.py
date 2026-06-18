@@ -1,281 +1,295 @@
-import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-
+"""Router per autenticazione clienti, ordini e preferiti."""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+import uuid
 
-from ..database import get_db
-from ..auth import get_password_hash, verify_password, create_access_token, decode_token_claims
-from ..models.cliente_account import ClienteAccount
-from ..models.ordine_ecommerce import OrdineEcommerce, RigaOrdineEcommerce, Preferito, StatoOrdineEcommerce
-from ..schemas.cliente_auth import (
-    ClienteRegistrazione, ClienteLogin, ClienteToken, ClienteResponse,
-    ClienteUpdate, ClienteChangePassword,
-    OrdineEcommerceResponse, OrdineEcommerceListResponse, RigaOrdineEcommerceResponse,
-    RichiestaReso,
-    PreferitoCreate, PreferitoResponse,
+from app.database import get_db
+from app.models.cliente_account import ClienteAccount
+from app.models.ordine_ecommerce import OrdineEcommerce, ItemOrdine, StatoOrdine
+from app.models.preferito import Preferito
+from app.schemas.cliente_auth import (
+    ClienteRegistrazione, ClienteLogin, ClienteResponse, ClienteUpdate,
+    TokenResponse, CreaOrdineSchema, OrdineResponse, RichiestaReso,
+    PreferitoCreate, PreferitoResponse
+)
+from app.services.auth_service import (
+    hash_password, verify_password, create_access_token, get_current_cliente
 )
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(prefix="/api/ecommerce", tags=["Clienti E-commerce"])
-
-# --- Helper: get current customer from JWT ---
-def get_current_cliente(token: str = Depends(
-    __import__("fastapi.security", fromlist=["OAuth2PasswordBearer"]).OAuth2PasswordBearer(tokenUrl="/api/ecommerce/login")
-), db: Session = Depends(get_db)) -> ClienteAccount:
-    from joserfc.errors import JoseError
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Token non valido",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        claims = decode_token_claims(token)
-        if claims.get("type") != "cliente":
-            raise credentials_exception
-        cliente_id = claims.get("sub")
-        if cliente_id is None:
-            raise credentials_exception
-    except (JoseError, Exception):
-        raise credentials_exception
-
-    cliente = db.query(ClienteAccount).filter(ClienteAccount.id == int(cliente_id)).first()
-    if cliente is None or not cliente.is_active:
-        raise credentials_exception
-    return cliente
+router = APIRouter(prefix="/api/clienti", tags=["Clienti"])
 
 
-def _create_cliente_token(cliente: ClienteAccount) -> str:
-    """Create a JWT token for a customer"""
-    return create_access_token(
-        data={"sub": str(cliente.id), "type": "cliente", "email": cliente.email},
-        expires_delta=timedelta(hours=24 * 7),  # 7 days for customers
-    )
+# === AUTENTICAZIONE ===
 
-
-def _is_reso_disponibile(ordine: OrdineEcommerce) -> bool:
-    """Check if return is available (within 14 days of delivery)"""
-    if ordine.stato not in (StatoOrdineEcommerce.consegnato,):
-        return False
-    if not ordine.data_consegna:
-        return False
-    now = datetime.now(timezone.utc)
-    deadline = ordine.data_consegna + timedelta(days=14)
-    return now <= deadline
-
-
-# ==================== AUTH ENDPOINTS ====================
-
-@router.post("/registrazione", response_model=ClienteToken, status_code=201)
-def registra_cliente(data: ClienteRegistrazione, db: Session = Depends(get_db)):
-    """Registra un nuovo cliente"""
-    # Check if email already exists
-    existing = db.query(ClienteAccount).filter(ClienteAccount.email == data.email.lower().strip()).first()
+@router.post("/registrazione", response_model=TokenResponse)
+def registrazione(data: ClienteRegistrazione, db: Session = Depends(get_db)):
+    """Registrazione nuovo cliente."""
+    # Verifica se email già esistente
+    existing = db.query(ClienteAccount).filter(ClienteAccount.email == data.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email già registrata")
-
-    # Validate password
-    if len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="La password deve avere almeno 6 caratteri")
-
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email già registrata"
+        )
+    
+    # Crea account
     cliente = ClienteAccount(
-        email=data.email.lower().strip(),
-        password_hash=get_password_hash(data.password),
-        nome=data.nome.strip(),
-        cognome=data.cognome.strip(),
+        email=data.email,
+        password_hash=hash_password(data.password),
+        nome=data.nome,
+        cognome=data.cognome,
         telefono=data.telefono,
-        is_active=True,
-        is_verified=False,
+        indirizzo=data.indirizzo,
+        citta=data.citta,
+        cap=data.cap,
+        provincia=data.provincia,
     )
     db.add(cliente)
     db.commit()
     db.refresh(cliente)
+    
+    # Genera token
+    token = create_access_token(data={"sub": cliente.id})
+    
+    return TokenResponse(access_token=token, cliente=ClienteResponse.from_orm(cliente))
 
-    token = _create_cliente_token(cliente)
-    return ClienteToken(
-        access_token=token,
-        user=ClienteResponse.model_validate(cliente),
-    )
 
-
-@router.post("/login", response_model=ClienteToken)
-def login_cliente(data: ClienteLogin, db: Session = Depends(get_db)):
-    """Login cliente"""
-    cliente = db.query(ClienteAccount).filter(
-        ClienteAccount.email == data.email.lower().strip()
-    ).first()
-
+@router.post("/login", response_model=TokenResponse)
+def login(data: ClienteLogin, db: Session = Depends(get_db)):
+    """Login cliente."""
+    cliente = db.query(ClienteAccount).filter(ClienteAccount.email == data.email).first()
+    
     if not cliente or not verify_password(data.password, cliente.password_hash):
-        raise HTTPException(status_code=401, detail="Email o password non corretti")
-
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o password non validi"
+        )
+    
     if not cliente.is_active:
-        raise HTTPException(status_code=403, detail="Account disattivato")
-
-    token = _create_cliente_token(cliente)
-    return ClienteToken(
-        access_token=token,
-        user=ClienteResponse.model_validate(cliente),
-    )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account disattivato"
+        )
+    
+    token = create_access_token(data={"sub": cliente.id})
+    
+    return TokenResponse(access_token=token, cliente=ClienteResponse.from_orm(cliente))
 
 
 @router.get("/me", response_model=ClienteResponse)
-def get_profilo(cliente: ClienteAccount = Depends(get_current_cliente)):
-    """Get current customer profile"""
-    return ClienteResponse.model_validate(cliente)
+async def get_profilo(cliente: ClienteAccount = Depends(get_current_cliente)):
+    """Ottieni profilo cliente corrente."""
+    return cliente
 
 
 @router.put("/me", response_model=ClienteResponse)
-def aggiorna_profilo(data: ClienteUpdate, cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Update customer profile"""
-    update_data = data.model_dump(exclude_unset=True)
+async def update_profilo(
+    data: ClienteUpdate,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Aggiorna profilo cliente."""
+    update_data = data.dict(exclude_unset=True)
     for key, value in update_data.items():
         if value is not None:
-            setattr(cliente, key, value.strip() if isinstance(value, str) else value)
+            setattr(cliente, key, value)
+    
     db.commit()
     db.refresh(cliente)
-    return ClienteResponse.model_validate(cliente)
+    return cliente
 
 
-@router.post("/cambio-password")
-def cambio_password(data: ClienteChangePassword, cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Change customer password"""
-    if not verify_password(data.current_password, cliente.password_hash):
-        raise HTTPException(status_code=400, detail="Password attuale non corretta")
-    if len(data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="La nuova password deve avere almeno 6 caratteri")
-    cliente.password_hash = get_password_hash(data.new_password)
+# === ORDINI ===
+
+@router.post("/ordini", response_model=OrdineResponse)
+async def crea_ordine(
+    data: CreaOrdineSchema,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Crea un nuovo ordine."""
+    # Calcola totale
+    totale = sum(item.prezzo_unitario * item.quantita for item in data.items)
+    
+    # Genera numero ordine univoco
+    numero_ordine = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+    
+    ordine = OrdineEcommerce(
+        cliente_id=cliente.id,
+        numero_ordine=numero_ordine,
+        stato=StatoOrdine.IN_ATTESA,
+        totale=totale,
+        indirizzo_spedizione=data.indirizzo_spedizione or cliente.indirizzo,
+        note=data.note,
+    )
+    db.add(ordine)
+    db.flush()
+    
+    # Aggiungi items
+    for item_data in data.items:
+        item = ItemOrdine(
+            ordine_id=ordine.id,
+            prodotto_id=item_data.prodotto_id,
+            nome_prodotto=item_data.nome_prodotto,
+            quantita=item_data.quantita,
+            prezzo_unitario=item_data.prezzo_unitario,
+            immagine_url=item_data.immagine_url,
+        )
+        db.add(item)
+    
     db.commit()
-    return {"message": "Password aggiornata con successo"}
+    db.refresh(ordine)
+    return ordine
 
 
-# ==================== ORDERS ENDPOINTS ====================
-
-@router.get("/ordini", response_model=list[OrdineEcommerceListResponse])
-def lista_ordini(cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Get customer orders list"""
-    ordini = db.query(OrdineEcommerce).filter(
-        OrdineEcommerce.cliente_id == cliente.id
-    ).order_by(OrdineEcommerce.data_ordine.desc()).all()
-
-    result = []
-    for o in ordini:
-        result.append(OrdineEcommerceListResponse(
-            id=o.id,
-            numero_ordine=o.numero_ordine,
-            stato=o.stato.value if hasattr(o.stato, 'value') else o.stato,
-            totale=o.totale,
-            data_ordine=o.data_ordine,
-            data_consegna=o.data_consegna,
-            reso_disponibile=_is_reso_disponibile(o),
-        ))
-    return result
+@router.get("/ordini", response_model=list[OrdineResponse])
+async def lista_ordini(
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Lista ordini del cliente."""
+    ordini = (
+        db.query(OrdineEcommerce)
+        .filter(OrdineEcommerce.cliente_id == cliente.id)
+        .order_by(OrdineEcommerce.data_ordine.desc())
+        .all()
+    )
+    return ordini
 
 
-@router.get("/ordini/{ordine_id}", response_model=OrdineEcommerceResponse)
-def dettaglio_ordine(ordine_id: int, cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Get order detail"""
-    ordine = db.query(OrdineEcommerce).filter(
-        OrdineEcommerce.id == ordine_id,
-        OrdineEcommerce.cliente_id == cliente.id,
-    ).first()
+@router.get("/ordini/{ordine_id}", response_model=OrdineResponse)
+async def dettaglio_ordine(
+    ordine_id: int,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Dettaglio singolo ordine."""
+    ordine = (
+        db.query(OrdineEcommerce)
+        .filter(OrdineEcommerce.id == ordine_id, OrdineEcommerce.cliente_id == cliente.id)
+        .first()
+    )
     if not ordine:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
-
-    righe = [RigaOrdineEcommerceResponse.model_validate(r) for r in ordine.righe]
-    stato_val = ordine.stato.value if hasattr(ordine.stato, 'value') else ordine.stato
-
-    return OrdineEcommerceResponse(
-        id=ordine.id,
-        numero_ordine=ordine.numero_ordine,
-        stato=stato_val,
-        totale=ordine.totale,
-        subtotale=ordine.subtotale,
-        spese_spedizione=ordine.spese_spedizione,
-        metodo_pagamento=ordine.metodo_pagamento,
-        indirizzo_spedizione=ordine.indirizzo_spedizione,
-        corriere=ordine.corriere,
-        tracking_number=ordine.tracking_number,
-        data_ordine=ordine.data_ordine,
-        data_spedizione=ordine.data_spedizione,
-        data_consegna=ordine.data_consegna,
-        reso_richiesto_il=ordine.reso_richiesto_il,
-        reso_motivo=ordine.reso_motivo,
-        note=ordine.note,
-        righe=righe,
-        reso_disponibile=_is_reso_disponibile(ordine),
-    )
+    return ordine
 
 
 @router.post("/ordini/{ordine_id}/reso")
-def richiedi_reso(ordine_id: int, data: RichiestaReso, cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Request a return for an order"""
-    ordine = db.query(OrdineEcommerce).filter(
-        OrdineEcommerce.id == ordine_id,
-        OrdineEcommerce.cliente_id == cliente.id,
-    ).first()
+async def richiedi_reso(
+    ordine_id: int,
+    data: RichiestaReso,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """
+    Richiedi reso per un ordine.
+    Il reso è possibile SOLO entro 14 giorni dalla data di consegna.
+    """
+    ordine = (
+        db.query(OrdineEcommerce)
+        .filter(OrdineEcommerce.id == ordine_id, OrdineEcommerce.cliente_id == cliente.id)
+        .first()
+    )
+    
     if not ordine:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
-
-    if not _is_reso_disponibile(ordine):
-        raise HTTPException(status_code=400, detail="Il reso non è più disponibile per questo ordine")
-
-    if ordine.stato in (StatoOrdineEcommerce.reso_richiesto, StatoOrdineEcommerce.reso_approvato, StatoOrdineEcommerce.reso_completato):
-        raise HTTPException(status_code=400, detail="Reso già richiesto per questo ordine")
-
-    ordine.stato = StatoOrdineEcommerce.reso_richiesto
-    ordine.reso_richiesto_il = datetime.now(timezone.utc)
-    ordine.reso_motivo = data.motivo.strip()
+    
+    if ordine.stato != StatoOrdine.CONSEGNATO:
+        raise HTTPException(
+            status_code=400,
+            detail="Il reso è possibile solo per ordini consegnati"
+        )
+    
+    if not ordine.data_consegna:
+        raise HTTPException(
+            status_code=400,
+            detail="Data di consegna non disponibile"
+        )
+    
+    # Verifica 14 giorni dalla consegna
+    giorni_dalla_consegna = (datetime.utcnow() - ordine.data_consegna).days
+    if giorni_dalla_consegna > 14:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Il periodo per il reso è scaduto. Sono passati {giorni_dalla_consegna} giorni dalla consegna (massimo 14)."
+        )
+    
+    # Aggiorna stato
+    ordine.stato = StatoOrdine.RESO_RICHIESTO
+    ordine.motivo_reso = data.motivo
+    ordine.data_richiesta_reso = datetime.utcnow()
+    
     db.commit()
+    db.refresh(ordine)
+    
+    return {
+        "message": "Richiesta di reso inviata con successo",
+        "ordine_id": ordine.id,
+        "stato": ordine.stato
+    }
 
-    return {"message": "Richiesta di reso inviata con successo", "stato": "reso_richiesto"}
 
-
-# ==================== FAVORITES ENDPOINTS ====================
+# === PREFERITI ===
 
 @router.get("/preferiti", response_model=list[PreferitoResponse])
-def lista_preferiti(cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Get customer favorites"""
-    preferiti = db.query(Preferito).filter(
-        Preferito.cliente_id == cliente.id
-    ).order_by(Preferito.created_at.desc()).all()
-    return [PreferitoResponse.model_validate(p) for p in preferiti]
+async def lista_preferiti(
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Lista preferiti del cliente."""
+    return (
+        db.query(Preferito)
+        .filter(Preferito.cliente_id == cliente.id)
+        .order_by(Preferito.added_at.desc())
+        .all()
+    )
 
 
-@router.post("/preferiti", response_model=PreferitoResponse, status_code=201)
-def aggiungi_preferito(data: PreferitoCreate, cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Add a product to favorites"""
-    # Check if already in favorites
-    existing = db.query(Preferito).filter(
-        Preferito.cliente_id == cliente.id,
-        Preferito.prodotto_id == data.prodotto_id,
-    ).first()
+@router.post("/preferiti", response_model=PreferitoResponse)
+async def aggiungi_preferito(
+    data: PreferitoCreate,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Aggiungi prodotto ai preferiti."""
+    # Verifica se già presente
+    existing = (
+        db.query(Preferito)
+        .filter(Preferito.cliente_id == cliente.id, Preferito.prodotto_id == data.prodotto_id)
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Prodotto già nei preferiti")
-
+    
     preferito = Preferito(
         cliente_id=cliente.id,
         prodotto_id=data.prodotto_id,
         nome_prodotto=data.nome_prodotto,
-        immagine_url=data.immagine_url,
         prezzo=data.prezzo,
+        immagine_url=data.immagine_url,
     )
     db.add(preferito)
     db.commit()
     db.refresh(preferito)
-    return PreferitoResponse.model_validate(preferito)
+    return preferito
 
 
 @router.delete("/preferiti/{prodotto_id}")
-def rimuovi_preferito(prodotto_id: int, cliente: ClienteAccount = Depends(get_current_cliente), db: Session = Depends(get_db)):
-    """Remove a product from favorites"""
-    preferito = db.query(Preferito).filter(
-        Preferito.cliente_id == cliente.id,
-        Preferito.prodotto_id == prodotto_id,
-    ).first()
+async def rimuovi_preferito(
+    prodotto_id: int,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Rimuovi prodotto dai preferiti."""
+    preferito = (
+        db.query(Preferito)
+        .filter(Preferito.cliente_id == cliente.id, Preferito.prodotto_id == prodotto_id)
+        .first()
+    )
     if not preferito:
-        raise HTTPException(status_code=404, detail="Prodotto non trovato nei preferiti")
+        raise HTTPException(status_code=404, detail="Preferito non trovato")
+    
     db.delete(preferito)
     db.commit()
-    return {"message": "Prodotto rimosso dai preferiti"}
+    return {"message": "Rimosso dai preferiti"}

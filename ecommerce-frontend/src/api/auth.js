@@ -1,150 +1,116 @@
-import axios from 'axios';
+/**
+ * API helpers per autenticazione e area privata clienti.
+ */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-const authClient = axios.create({
-  baseURL: `${API_URL}/api/ecommerce`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Helper per gestire le richieste
+async function fetchAPI(endpoint, options = {}) {
+  const token = localStorage.getItem('cliente_token');
+  
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  };
 
-// Add auth token to requests
-authClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('ecommerce-auth-token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Errore di rete' }));
+    throw new Error(error.detail || `Errore ${response.status}`);
   }
-  return config;
-});
-
-export async function loginUser(email, password) {
-  try {
-    const response = await authClient.post('/login', { email, password });
-    return response.data;
-  } catch (error) {
-    if (error.response?.status === 401) {
-      throw new Error('Email o password non corretti');
-    }
-    if (error.response?.status === 403) {
-      throw new Error('Account disattivato');
-    }
-    const message = error.response?.data?.detail;
-    throw new Error(message || 'Errore di connessione, riprova');
+  
+  // Per DELETE che non ritorna body
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return null;
   }
+  
+  return response.json();
 }
 
-export async function registerUser(nome, cognome, email, password) {
-  try {
-    const response = await authClient.post('/registrazione', { nome, cognome, email, password });
-    return response.data;
-  } catch (error) {
-    const message = error.response?.data?.detail || '';
-    if (message.toLowerCase().includes('email')) {
-      throw new Error('Questa email è già in uso');
-    }
-    if (error.response?.status === 400) {
-      throw new Error(message || 'Dati non validi, controlla i campi inseriti');
-    }
-    throw new Error('Errore di connessione, riprova');
-  }
+// === AUTH ===
+
+export async function registrazione(data) {
+  const result = await fetchAPI('/api/clienti/registrazione', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  localStorage.setItem('cliente_token', result.access_token);
+  return result;
 }
 
-export async function getCurrentUser() {
-  try {
-    const response = await authClient.get('/me');
-    return response.data;
-  } catch (error) {
-    if (error.response?.status === 401) {
-      throw new Error('Sessione scaduta, effettua di nuovo il login');
-    }
-    throw new Error('Impossibile verificare la sessione');
-  }
+export async function login(email, password) {
+  const result = await fetchAPI('/api/clienti/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  localStorage.setItem('cliente_token', result.access_token);
+  return result;
 }
 
-export async function updateProfile(data) {
-  try {
-    const response = await authClient.put('/me', data);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore aggiornamento profilo');
-  }
+export function logout() {
+  localStorage.removeItem('cliente_token');
 }
 
-export async function changePassword(currentPassword, newPassword) {
-  try {
-    const response = await authClient.post('/cambio-password', {
-      current_password: currentPassword,
-      new_password: newPassword,
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore cambio password');
-  }
+export async function getProfilo() {
+  return fetchAPI('/api/clienti/me');
 }
 
-// Orders
-export async function getOrders() {
-  try {
-    const response = await authClient.get('/ordini');
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore caricamento ordini');
-  }
+export async function updateProfilo(data) {
+  return fetchAPI('/api/clienti/me', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 }
 
-export async function getOrderDetail(ordineId) {
-  try {
-    const response = await authClient.get(`/ordini/${ordineId}`);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore caricamento ordine');
-  }
+// === ORDINI ===
+
+export async function getOrdini() {
+  return fetchAPI('/api/clienti/ordini');
 }
 
-export async function requestReturn(ordineId, motivo) {
-  try {
-    const response = await authClient.post(`/ordini/${ordineId}/reso`, { motivo });
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore richiesta reso');
-  }
+export async function getOrdine(id) {
+  return fetchAPI(`/api/clienti/ordini/${id}`);
 }
 
-// Favorites
-export async function getFavorites() {
-  try {
-    const response = await authClient.get('/preferiti');
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore caricamento preferiti');
-  }
+export async function creaOrdine(data) {
+  return fetchAPI('/api/clienti/ordini', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
-export async function addFavorite(prodotto) {
-  try {
-    const response = await authClient.post('/preferiti', {
-      prodotto_id: prodotto.id,
-      nome_prodotto: prodotto.nome || prodotto.name,
-      immagine_url: prodotto.immagine_url || prodotto.image,
-      prezzo: prodotto.prezzo || prodotto.price,
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore aggiunta preferito');
-  }
+export async function richiediReso(ordineId, motivo) {
+  return fetchAPI(`/api/clienti/ordini/${ordineId}/reso`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo }),
+  });
 }
 
-export async function removeFavorite(prodottoId) {
-  try {
-    const response = await authClient.delete(`/preferiti/${prodottoId}`);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.detail || 'Errore rimozione preferito');
-  }
+// === PREFERITI ===
+
+export async function getPreferiti() {
+  return fetchAPI('/api/clienti/preferiti');
 }
 
-export async function requestPasswordReset(email) {
-  // TODO: implement password reset endpoint
-  throw new Error('Funzionalità in arrivo');
+export async function aggiungiPreferito(data) {
+  return fetchAPI('/api/clienti/preferiti', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function rimuoviPreferito(prodottoId) {
+  return fetchAPI(`/api/clienti/preferiti/${prodottoId}`, {
+    method: 'DELETE',
+  });
+}
+
+// Verifica se l'utente è autenticato
+export function isAuthenticated() {
+  return !!localStorage.getItem('cliente_token');
 }

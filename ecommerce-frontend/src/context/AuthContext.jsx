@@ -1,88 +1,67 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { loginUser, registerUser, getCurrentUser } from '../api/auth';
+/**
+ * Context per gestione autenticazione clienti.
+ */
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getProfilo, login as apiLogin, registrazione as apiRegistrazione, logout as apiLogout } from '../api/auth';
 
-export const AuthContext = createContext(null);
-
-const STORAGE_KEY = 'ecommerce-auth-token';
-const DEFAULT_ERROR_MSG = 'Errore di connessione, riprova';
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!error) return;
-    const timer = setTimeout(() => setError(null), 5000);
-    return () => clearTimeout(timer);
-  }, [error]);
-
-  const checkAuth = useCallback(async () => {
-    const savedToken = localStorage.getItem(STORAGE_KEY);
-    if (!savedToken) {
-      setLoading(false);
-      return;
-    }
-    try {
-      const userData = await getCurrentUser();
-      setUser(userData);
-      setToken(savedToken);
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-      setUser(null);
-      setToken(null);
-    } finally {
+    // Verifica token al mount
+    const token = localStorage.getItem('cliente_token');
+    if (token) {
+      getProfilo()
+        .then(setCliente)
+        .catch(() => {
+          localStorage.removeItem('cliente_token');
+          setCliente(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  const login = async (email, password) => {
+    const result = await apiLogin(email, password);
+    setCliente(result.cliente);
+    return result;
+  };
 
-  async function login(email, password) {
-    setError(null);
-    try {
-      const data = await loginUser(email, password);
-      localStorage.setItem(STORAGE_KEY, data.access_token);
-      setToken(data.access_token);
-      setUser(data.user);
-      return data;
-    } catch (err) {
-      setError(err.message || DEFAULT_ERROR_MSG);
-      throw err;
-    }
-  }
+  const registrazione = async (data) => {
+    const result = await apiRegistrazione(data);
+    setCliente(result.cliente);
+    return result;
+  };
 
-  async function register(nome, cognome, email, password) {
-    setError(null);
-    try {
-      const data = await registerUser(nome, cognome, email, password);
-      localStorage.setItem(STORAGE_KEY, data.access_token);
-      setToken(data.access_token);
-      setUser(data.user);
-      return data;
-    } catch (err) {
-      setError(err.message || DEFAULT_ERROR_MSG);
-      throw err;
-    }
-  }
+  const logout = () => {
+    apiLogout();
+    setCliente(null);
+  };
 
-  function logout() {
-    localStorage.removeItem(STORAGE_KEY);
-    setToken(null);
-    setUser(null);
-    setError(null);
-  }
-
-  function updateUser(updatedUser) {
-    setUser(updatedUser);
-  }
+  const refreshProfilo = async () => {
+    const profilo = await getProfilo();
+    setCliente(profilo);
+    return profilo;
+  };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, updateUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ cliente, loading, login, registrazione, logout, refreshProfilo }}>
       {children}
     </AuthContext.Provider>
   );
 }
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth deve essere usato dentro AuthProvider');
+  }
+  return context;
+}
+
+export default AuthContext;
