@@ -34,7 +34,8 @@ _CONDITION_FALLBACK: dict[str, str] = {
     "NEW_WITH_DEFECTS": "USED_GOOD",
     "LIKE_NEW": "USED_EXCELLENT",
     "USED_EXCELLENT": "USED_GOOD",
-    "USED_GOOD": "USED_ACCEPTABLE",
+    "USED_GOOD": "GOOD",
+    "GOOD": "USED_ACCEPTABLE",
 }
 
 # Maximum number of PUT attempts in _put_inventory_item_with_fallback
@@ -255,8 +256,18 @@ class EbayInventoryService:
                     current_payload = {k: v for k, v in current_payload.items() if k != "conditionDescription"}
                     continue
 
-                # Fallback 2: if error mentions condition, escalate to a more permissive condition
-                if "condition" in error_lower or "condizione" in error_lower:
+                # Fallback 2: escalate to a more permissive condition.
+                # Trigger on condition-related keywords OR any 400 after conditionDescription
+                # was already removed (some categories return generic error messages).
+                condition_error_detected = (
+                    "condition" in error_lower
+                    or "condizione" in error_lower
+                    or "invalid" in error_lower
+                    or "not valid" in error_lower
+                    or "not applicable" in error_lower
+                    or "conditionDescription" not in payload  # already removed in previous attempt
+                )
+                if condition_error_detected:
                     original_condition = current_payload.get("condition", "")
                     fallback_condition = _CONDITION_FALLBACK.get(original_condition)
                     if fallback_condition:

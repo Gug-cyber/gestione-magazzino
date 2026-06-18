@@ -5,7 +5,7 @@ import { ebayApi } from '../api/ebay'
 
 const CONDITION_MAP_LOCAL = {
   'Mint': 'NEW', 'Near Mint': 'NEW',
-  'Excellent': 'USED_EXCELLENT', 'Good': 'USED_EXCELLENT',
+  'Excellent': 'USED_EXCELLENT', 'Good': 'USED_GOOD',
   'Light Played': 'USED_GOOD', 'Played': 'USED_ACCEPTABLE', 'Poor': 'USED_ACCEPTABLE',
 }
 
