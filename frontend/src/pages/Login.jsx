@@ -51,7 +51,13 @@ function Login() {
       } else {
         await verifyTwoFactorLogin(temporaryToken, otpCode)
       }
-      navigate(location.state?.from || '/dashboard')
+      const redirectFrom = location.state?.from
+      const redirectPath = typeof redirectFrom === 'string'
+        ? redirectFrom
+        : redirectFrom?.pathname
+          ? `${redirectFrom.pathname}${redirectFrom.search || ''}${redirectFrom.hash || ''}`
+          : '/dashboard'
+      navigate(redirectPath)
     } catch (err) {
       const detail = err?.response?.data?.detail
       setError(detail || 'Credenziali errate. Riprova.')
