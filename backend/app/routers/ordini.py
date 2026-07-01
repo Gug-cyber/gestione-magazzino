@@ -63,6 +63,7 @@ def _ordine_to_response(o) -> OrdineResponse:
         "totale": o.totale,
         "corriere": o.corriere,
         "tracking_number": o.tracking_number,
+        "indirizzo_spedizione": getattr(o, 'indirizzo_spedizione', None),
         "data_ordine": o.data_ordine,
         "data_completamento": o.data_completamento,
         "righe": [

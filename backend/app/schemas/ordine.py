@@ -50,6 +50,7 @@ class OrdineCreate(BaseModel):
     note: Optional[str] = None
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
+    indirizzo_spedizione: Optional[str] = None
     righe: List[RigaOrdineCreate]
 
 
@@ -92,6 +93,7 @@ class OrdineResponse(BaseModel):
     totale: float
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
+    indirizzo_spedizione: Optional[str] = None
     data_ordine: Optional[datetime] = None
     data_completamento: Optional[datetime] = None
     righe: List[RigaOrdineResponse] = []

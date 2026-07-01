@@ -28,6 +28,7 @@ class Ordine(Base):
     totale = Column(Float, default=0.0)
     corriere = Column(String, nullable=True)
     tracking_number = Column(String, nullable=True)
+    indirizzo_spedizione = Column(String, nullable=True)
     # Flag: True quando lo stock e' gia' stato scalato per questo ordine.
     # Impedisce doppi scarichi in caso di aggiornamenti multipli di stato.
     stock_scalato = Column(Boolean, default=False, nullable=False)
