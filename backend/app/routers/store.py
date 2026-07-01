@@ -296,6 +296,7 @@ def store_checkout(
         cliente_id=cliente.id,
         cliente_nome=body.nome,
         note=body.note,
+        indirizzo_spedizione=f"{body.indirizzo}, {body.cap} {body.citta}".strip(", ") if body.indirizzo else None,
         righe=righe_ordine,
     )
 

@@ -261,6 +261,7 @@ export default function DettaglioOrdine() {
                 </div>
               )}
               {ordine.note && <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>Note: {ordine.note}</p>}
+              {ordine.indirizzo_spedizione && <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>Indirizzo spedizione: <strong style={{ color: 'var(--text-primary)' }}>{ordine.indirizzo_spedizione}</strong></p>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
               <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
