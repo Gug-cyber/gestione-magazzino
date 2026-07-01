@@ -1,3 +1,4 @@
+import logging
 import json
 from decimal import Decimal
 from types import SimpleNamespace
@@ -6,6 +7,7 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
+import app.routers.ebay as ebay_router_module
 import app.services.ebay_inventory_service as ebay_inventory_service_module
 import app.services.ebay_offer_service as ebay_offer_service_module
 from app.schemas.ebay import PublishRequest
@@ -1103,6 +1105,214 @@ def test_condition_map_good_maps_to_used_good():
     assert _CONDITION_MAP["Like New"] == "LIKE_NEW"
     assert _CONDITION_MAP["Very Good"] == "USED_EXCELLENT"
     assert _CONDITION_MAP["Acceptable"] == "USED_ACCEPTABLE"
+
+
+def test_get_category_conditions_uses_item_condition_policies_and_matching_policy(client, auth_headers, monkeypatch):
+    captured = {}
+    fake_connection = SimpleNamespace(status="active")
+
+    class _DummyResponse:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {
+                "itemConditionPolicies": [
+                    {
+                        "categoryId": "999999",
+                        "itemConditions": [
+                            {"conditionId": "5000", "conditionDescription": "Wrong policy"},
+                        ],
+                    },
+                    {
+                        "categoryId": "183454",
+                        "itemConditions": [
+                            {"conditionId": "2750", "conditionDescription": "Come nuovo"},
+                            {"conditionId": "3000", "conditionDescription": "Usato eccellente"},
+                        ],
+                    },
+                ]
+            }
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            captured["timeout"] = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, **kwargs):
+            captured["url"] = url
+            captured["headers"] = kwargs["headers"]
+            captured["params"] = kwargs["params"]
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.routers.ebay._get_connection", lambda db: fake_connection)
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda connection, db: "user-token")
+    monkeypatch.setattr("app.routers.ebay.httpx.Client", _DummyClient)
+
+    response = client.get(
+        "/api/ebay/category_conditions",
+        params={"category_id": "183454", "marketplace_id": "EBAY_IT"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert captured["timeout"] == 15
+    assert captured["url"].endswith("/sell/metadata/v1/marketplace/EBAY_IT/get_item_condition_policies")
+    assert captured["headers"] == {"Authorization": "Bearer " + "user-token"}
+    assert captured["params"] == {"filter": "categoryIds:183454"}
+    assert response.json() == {
+        "conditions": [
+            {
+                "conditionId": "2750",
+                "conditionEnum": "LIKE_NEW",
+                "conditionDescription": "Come nuovo",
+            },
+            {
+                "conditionId": "3000",
+                "conditionEnum": "USED_EXCELLENT",
+                "conditionDescription": "Usato eccellente",
+            },
+        ]
+    }
+
+
+def test_get_category_conditions_falls_back_to_first_policy_and_logs_info(client, auth_headers, monkeypatch, caplog):
+    fake_connection = SimpleNamespace(status="active")
+    caplog.set_level(logging.INFO, logger=ebay_router_module.logger.name)
+
+    class _DummyResponse:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {
+                "itemConditionPolicies": [
+                    {
+                        "categoryId": "183454",
+                        "itemConditions": [
+                            {"conditionId": "4000", "conditionDescription": "Usato molto buono"},
+                            {"conditionId": "5000", "conditionDescription": "Usato buono"},
+                            {"conditionId": "6000", "conditionDescription": "Usato accettabile"},
+                        ],
+                    }
+                ]
+            }
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, **kwargs):
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.routers.ebay._get_connection", lambda db: fake_connection)
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda connection, db: "user-token")
+    monkeypatch.setattr("app.routers.ebay.httpx.Client", _DummyClient)
+
+    response = client.get(
+        "/api/ebay/category_conditions",
+        params={"category_id": "183455", "marketplace_id": "EBAY_IT"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "conditions": [
+            {
+                "conditionId": "4000",
+                "conditionEnum": "USED_VERY_GOOD",
+                "conditionDescription": "Usato molto buono",
+            },
+            {
+                "conditionId": "5000",
+                "conditionEnum": "USED_GOOD",
+                "conditionDescription": "Usato buono",
+            },
+            {
+                "conditionId": "6000",
+                "conditionEnum": "USED_ACCEPTABLE",
+                "conditionDescription": "Usato accettabile",
+            },
+        ]
+    }
+    assert any("missing exact policy match for category=183455" in message for message in caplog.messages)
+
+
+def test_get_category_conditions_logs_warning_when_empty(client, auth_headers, monkeypatch, caplog):
+    fake_connection = SimpleNamespace(status="active")
+
+    class _DummyResponse:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"itemConditionPolicies": []}
+
+    class _DummyClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, **kwargs):
+            return _DummyResponse()
+
+    monkeypatch.setattr("app.routers.ebay._get_connection", lambda db: fake_connection)
+    monkeypatch.setattr("app.routers.ebay.EbayAuthService.get_valid_token", lambda connection, db: "user-token")
+    monkeypatch.setattr("app.routers.ebay.httpx.Client", _DummyClient)
+
+    response = client.get(
+        "/api/ebay/category_conditions",
+        params={"category_id": "183455", "marketplace_id": "EBAY_IT"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"conditions": []}
+    assert any("returned no policies for marketplace=EBAY_IT category=183455" in message for message in caplog.messages)
+    assert any("returned no supported conditions for marketplace=EBAY_IT category=183455" in message for message in caplog.messages)
+
+
+def test_condition_id_to_enum_mapping_is_aligned():
+    mapping = ebay_router_module._CONDITION_ID_TO_ENUM
+
+    assert mapping["2000"] == "MANUFACTURER_REFURBISHED"
+    assert mapping["2010"] == "EXCELLENT_REFURBISHED"
+    assert mapping["2020"] == "VERY_GOOD_REFURBISHED"
+    assert mapping["2030"] == "GOOD_REFURBISHED"
+    assert mapping["2500"] == "SELLER_REFURBISHED"
+    assert mapping["2750"] == "LIKE_NEW"
+    assert mapping["3000"] == "USED_EXCELLENT"
+    assert mapping["4000"] == "USED_VERY_GOOD"
+    assert mapping["5000"] == "USED_GOOD"
+    assert mapping["6000"] == "USED_ACCEPTABLE"
 
 
 def test_policy_cache_ttl_expiration(monkeypatch):
