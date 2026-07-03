@@ -8,6 +8,7 @@ import PaymentMethodSelector from '../components/checkout/PaymentMethodSelector'
 import OrderSummary from '../components/checkout/OrderSummary';
 import OrderConfirmationStep from '../components/checkout/OrderConfirmationStep';
 import { strapiAPI } from '../api/strapi';
+import { creaOrdine } from '../api/auth';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -134,48 +135,36 @@ export default function Checkout() {
       setIsSubmitting(true);
       setOrderError(null);
 
-      const orderData = {
-        user: user.id,
+      const orderPayload = {
         items: items.map((item) => ({
-          product: {
-            id: item.product.id,
-            title: item.product.attributes.title,
-            price: item.product.attributes.price,
-            slug: item.product.attributes.slug,
-            image: item.product.attributes.images?.data?.[0]?.attributes?.url,
-          },
-          quantity: item.quantity,
-          priceAtTime: item.product.attributes.price,
+          prodotto_id: item.product?.id ?? item.id ?? 0,
+          nome_prodotto: item.product?.attributes?.title ?? item.name ?? item.nome_prodotto ?? '',
+          quantita: item.quantity ?? item.quantita ?? 1,
+          prezzo_unitario: item.product?.attributes?.price ?? item.price ?? item.prezzo_unitario ?? 0,
+          immagine_url: item.product?.attributes?.images?.data?.[0]?.attributes?.url ?? item.immagine_url ?? null,
         })),
-        shippingAddress: shippingData,
-        billingAddress: useSameAddress ? shippingData : billingData,
-        paymentMethod,
-        subtotal: totalPrice,
-        shippingCost,
-        paymentFee,
-        total: grandTotal,
-        status: 'pending',
-        orderNumber: `ORD-${Date.now()}-${user.id}`,
+        shipping_nome: shippingData.firstName,
+        shipping_cognome: shippingData.lastName,
+        shipping_indirizzo: shippingData.address,
+        shipping_numero_civico: shippingData.civico || '',
+        shipping_citta: shippingData.city,
+        shipping_cap: shippingData.zip,
+        shipping_provincia: shippingData.province,
+        shipping_paese: shippingData.country || 'Italia',
+        shipping_telefono: shippingData.phone,
+        spese_spedizione: shippingCost,
+        metodo_pagamento: paymentMethod,
+        note: shippingData.notes || null,
       };
 
-      const response = await strapiAPI.createOrder(orderData, token);
-
-      await Promise.all(
-        items.map((item) =>
-          strapiAPI.updateProductStock(
-            item.product.id,
-            item.product.attributes.quantity - item.quantity,
-            token
-          )
-        )
-      );
+      const response = await creaOrdine(orderPayload);
 
       clearCart();
-      navigate(`/ordine-confermato/${response.data.id}`);
+      navigate(`/ordine-confermato/${response.id}`);
     } catch (error) {
       console.error('Order submission error:', error);
       const errorMessage =
-        error.response?.data?.error?.message ||
+        error.message ||
         "Errore durante la creazione dell'ordine. Riprova.";
       setOrderError(errorMessage);
       window.scrollTo({ top: 0, behavior: 'smooth' });

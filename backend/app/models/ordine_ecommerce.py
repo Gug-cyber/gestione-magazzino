@@ -7,6 +7,8 @@ import enum
 from app.database import Base
 
 
+
+
 class StatoOrdine(str, enum.Enum):
     IN_ATTESA = "in_attesa"
     CONFERMATO = "confermato"
@@ -25,12 +27,18 @@ class OrdineEcommerce(Base):
     numero_ordine = Column(String(50), unique=True, index=True, nullable=False)
     stato = Column(String(30), default=StatoOrdine.IN_ATTESA)
     totale = Column(Float, nullable=False)
+    subtotale = Column(Float, nullable=True, default=0.0)
+    spese_spedizione = Column(Float, nullable=True, default=0.0)
+    metodo_pagamento = Column(String(50), nullable=True)
+    corriere = Column(String(100), nullable=True)
+    tracking_number = Column(String(100), nullable=True)
     indirizzo_spedizione = Column(Text, nullable=True)
     note = Column(Text, nullable=True)
     motivo_reso = Column(Text, nullable=True)
     data_ordine = Column(DateTime, default=datetime.utcnow)
     data_spedizione = Column(DateTime, nullable=True)
     data_consegna = Column(DateTime, nullable=True)
+    data_stimata_consegna = Column(DateTime, nullable=True)
     data_richiesta_reso = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -48,6 +56,7 @@ class ItemOrdine(Base):
     nome_prodotto = Column(String(255), nullable=False)
     quantita = Column(Integer, default=1)
     prezzo_unitario = Column(Float, nullable=False)
+    subtotale = Column(Float, nullable=True)
     immagine_url = Column(String(500), nullable=True)
 
     # Relazioni

@@ -13,9 +13,13 @@ class ClienteRegistrazione(BaseModel):
     cognome: str
     telefono: Optional[str] = None
     indirizzo: Optional[str] = None
+    numero_civico: Optional[str] = None
     citta: Optional[str] = None
     cap: Optional[str] = None
     provincia: Optional[str] = None
+    paese: Optional[str] = "Italia"
+    indirizzo_nome_destinatario: Optional[str] = None
+    indirizzo_cognome_destinatario: Optional[str] = None
 
 
 class ClienteLogin(BaseModel):
@@ -30,9 +34,13 @@ class ClienteResponse(BaseModel):
     cognome: str
     telefono: Optional[str] = None
     indirizzo: Optional[str] = None
+    numero_civico: Optional[str] = None
     citta: Optional[str] = None
     cap: Optional[str] = None
     provincia: Optional[str] = None
+    paese: Optional[str] = None
+    indirizzo_nome_destinatario: Optional[str] = None
+    indirizzo_cognome_destinatario: Optional[str] = None
     is_active: bool
     created_at: datetime
 
@@ -45,9 +53,13 @@ class ClienteUpdate(BaseModel):
     cognome: Optional[str] = None
     telefono: Optional[str] = None
     indirizzo: Optional[str] = None
+    numero_civico: Optional[str] = None
     citta: Optional[str] = None
     cap: Optional[str] = None
     provincia: Optional[str] = None
+    paese: Optional[str] = None
+    indirizzo_nome_destinatario: Optional[str] = None
+    indirizzo_cognome_destinatario: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -69,6 +81,18 @@ class ItemOrdineSchema(BaseModel):
 class CreaOrdineSchema(BaseModel):
     items: List[ItemOrdineSchema]
     indirizzo_spedizione: Optional[str] = None
+    # Campi indirizzo strutturato
+    shipping_nome: Optional[str] = None
+    shipping_cognome: Optional[str] = None
+    shipping_indirizzo: Optional[str] = None
+    shipping_numero_civico: Optional[str] = None
+    shipping_citta: Optional[str] = None
+    shipping_cap: Optional[str] = None
+    shipping_provincia: Optional[str] = None
+    shipping_paese: Optional[str] = "Italia"
+    shipping_telefono: Optional[str] = None
+    spese_spedizione: Optional[float] = 0.0
+    metodo_pagamento: Optional[str] = None
     note: Optional[str] = None
 
 
@@ -78,6 +102,7 @@ class ItemOrdineResponse(BaseModel):
     nome_prodotto: str
     quantita: int
     prezzo_unitario: float
+    subtotale: Optional[float] = None
     immagine_url: Optional[str] = None
 
     class Config:
@@ -89,6 +114,12 @@ class OrdineResponse(BaseModel):
     numero_ordine: str
     stato: str
     totale: float
+    subtotale: Optional[float] = None
+    spese_spedizione: Optional[float] = 0.0
+    metodo_pagamento: Optional[str] = None
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
+    data_stimata_consegna: Optional[datetime] = None
     indirizzo_spedizione: Optional[str] = None
     note: Optional[str] = None
     motivo_reso: Optional[str] = None
@@ -97,9 +128,20 @@ class OrdineResponse(BaseModel):
     data_consegna: Optional[datetime] = None
     data_richiesta_reso: Optional[datetime] = None
     items: List[ItemOrdineResponse] = []
+    # Dati cliente nel dettaglio
+    cliente_nome: Optional[str] = None
+    cliente_cognome: Optional[str] = None
+    cliente_email: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class AggiornaStatoOrdineSchema(BaseModel):
+    stato: str
+    corriere: Optional[str] = None
+    tracking_number: Optional[str] = None
+    data_stimata_consegna: Optional[datetime] = None
 
 
 class RichiestaReso(BaseModel):
