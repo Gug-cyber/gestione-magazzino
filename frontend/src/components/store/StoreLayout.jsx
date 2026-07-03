@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClientiAuth } from '../../context/ClientiAuthContext'
 import { storeAPI } from '../../api/store'
 import '../../styles/store-theme.css'
 
@@ -245,6 +246,7 @@ function StoreFooter() {
 export default function StoreLayout({ children }) {
   const { totalItems } = useCart()
   const { lang, setLanguage, t } = useLanguage()
+  const { cliente, login, logout } = useClientiAuth()
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => {
@@ -260,6 +262,12 @@ export default function StoreLayout({ children }) {
   })
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const langMenuRef = useRef(null)
+  const [loginMenuOpen, setLoginMenuOpen] = useState(false)
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [loginSubmitting, setLoginSubmitting] = useState(false)
+  const loginMenuRef = useRef(null)
 
   useEffect(() => {
     storeAPI.getStoreSettings()
@@ -333,6 +341,18 @@ export default function StoreLayout({ children }) {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [langMenuOpen])
+
+  useEffect(() => {
+    function handleLoginClickOutside(e) {
+      if (loginMenuRef.current && !loginMenuRef.current.contains(e.target)) {
+        setLoginMenuOpen(false)
+      }
+    }
+    if (loginMenuOpen) {
+      document.addEventListener('mousedown', handleLoginClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleLoginClickOutside)
+  }, [loginMenuOpen])
 
   const leftBanners = sideBanners.filter(b => (b.posizione === 'sidebar_left' || b.posizione === 'sidebar_both') && b.immagine_url)
   const rightBanners = sideBanners.filter(b => (b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both') && b.immagine_url)
@@ -461,6 +481,156 @@ export default function StoreLayout({ children }) {
           <Link to="/store" style={navLinkStyle('/store')}>
             {t('nav_products')}
           </Link>
+
+          {/* Login / Account button */}
+          <div ref={loginMenuRef} style={{ position: 'relative' }}>
+            {cliente ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Link to="/store/account" style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  color: 'var(--color-primary)',
+                  textDecoration: 'none',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                }}>
+                  👤 {cliente.nome}
+                </Link>
+                <button
+                  onClick={logout}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    color: 'var(--color-text-secondary)',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                  }}
+                >
+                  Esci
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setLoginMenuOpen(p => !p)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '7px 14px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Accedi
+                </button>
+                {loginMenuOpen && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: '8px',
+                    zIndex: 300, minWidth: '280px',
+                    background: 'var(--color-bg-elevated, #fff)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                    padding: '20px',
+                  }}>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault()
+                      setLoginError('')
+                      setLoginSubmitting(true)
+                      try {
+                        await login(loginEmail, loginPassword)
+                        setLoginMenuOpen(false)
+                        setLoginEmail('')
+                        setLoginPassword('')
+                      } catch (err) {
+                        setLoginError(err.response?.data?.detail || err.message || 'Errore durante il login')
+                      } finally {
+                        setLoginSubmitting(false)
+                      }
+                    }}>
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={loginEmail}
+                        onChange={e => setLoginEmail(e.target.value)}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '9px 12px',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '7px',
+                          fontSize: '14px',
+                          backgroundColor: 'var(--color-bg)',
+                          color: 'var(--color-text)',
+                          boxSizing: 'border-box',
+                          marginBottom: '10px',
+                          outline: 'none',
+                        }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={loginPassword}
+                        onChange={e => setLoginPassword(e.target.value)}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '9px 12px',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '7px',
+                          fontSize: '14px',
+                          backgroundColor: 'var(--color-bg)',
+                          color: 'var(--color-text)',
+                          boxSizing: 'border-box',
+                          marginBottom: '10px',
+                          outline: 'none',
+                        }}
+                      />
+                      {loginError && (
+                        <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--color-danger, #ef4444)' }}>
+                          {loginError}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={loginSubmitting}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          background: 'var(--color-primary)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '7px',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          marginTop: '4px',
+                        }}
+                      >
+                        {loginSubmitting ? 'Accesso...' : 'Entra'}
+                      </button>
+                    </form>
+                    <p style={{ textAlign: 'center', marginTop: '14px', marginBottom: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                      Non hai un account?{' '}
+                      <Link
+                        to="/store/registrazione"
+                        onClick={() => setLoginMenuOpen(false)}
+                        style={{ color: 'var(--color-primary)', fontWeight: '600', textDecoration: 'none' }}
+                      >
+                        Registrati
+                      </Link>
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           <Link to="/store/cart" style={{
             ...navLinkStyle('/store/cart'),
             display: 'flex',

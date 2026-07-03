@@ -4,6 +4,7 @@ import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClientiAuth } from '../../context/ClientiAuthContext'
 import { trackPageView, trackCheckoutStart, trackPurchase } from '../../utils/analytics'
 
 const STEP_KEYS = ['step_personal', 'step_shipping', 'step_payment', 'step_summary', 'step_confirm']
@@ -136,6 +137,7 @@ function ProgressStepper({ currentStep, t }) {
 export default function StoreCheckoutPage() {
   const { items, totalPrice, clearCart } = useCart()
   const { t } = useLanguage()
+  const { cliente } = useClientiAuth()
   const [checkoutEnabled, setCheckoutEnabled] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -188,6 +190,20 @@ export default function StoreCheckoutPage() {
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (cliente) {
+      setForm(prev => ({
+        ...prev,
+        nome: prev.nome || cliente.nome || '',
+        email: prev.email || cliente.email || '',
+        telefono: prev.telefono || cliente.telefono || '',
+        indirizzo: prev.indirizzo || cliente.indirizzo || '',
+        citta: prev.citta || cliente.citta || '',
+        cap: prev.cap || cliente.cap || '',
+      }))
+    }
+  }, [cliente])
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -399,6 +415,29 @@ export default function StoreCheckoutPage() {
         {/* Step 1 — Personal data & shipping */}
         {currentStep === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {!cliente && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px 16px',
+                backgroundColor: 'var(--color-primary-bg, rgba(99,102,241,0.08))',
+                border: '1px solid var(--color-primary)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: 'var(--color-text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span>👤</span>
+                <span>
+                  Hai già un account?{' '}
+                  <Link to="/store/login" state={{ from: { pathname: '/store/checkout' } }} style={{ color: 'var(--color-primary)', fontWeight: '600' }}>
+                    Accedi
+                  </Link>
+                  {' '}per velocizzare il checkout con i tuoi dati salvati.
+                </span>
+              </div>
+            )}
             <div style={{
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
