@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import { FeatureFlagsProvider } from './context/FeatureFlagsContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { ClientiAuthProvider } from './context/ClientiAuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -49,6 +50,11 @@ import StoreProductPage from './pages/store/StoreProductPage'
 import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import StoreFooterPage from './pages/store/StoreFooterPage'
+import StoreLoginPage from './pages/store/StoreLoginPage'
+import StoreRegisterPage from './pages/store/StoreRegisterPage'
+import StoreAccountPage from './pages/store/StoreAccountPage'
+import StoreOrdersPage from './pages/store/StoreOrdersPage'
+import StoreOrderDetailPage from './pages/store/StoreOrderDetailPage'
 import ControlPanel from './pages/ControlPanel'
 import AIAssistant from './pages/AIAssistant'
 import DashboardOpportunita from './pages/DashboardOpportunita.jsx'
@@ -100,6 +106,7 @@ function App() {
   return (
     <LanguageProvider>
     <CartProvider>
+      <ClientiAuthProvider>
       <AuthProvider>
         <FeatureFlagsProvider>
         <BrowserRouter>
@@ -109,6 +116,11 @@ function App() {
             <Route path="/store/cart" element={<StoreCartPage />} />
             <Route path="/store/checkout" element={<StoreCheckoutPage />} />
             <Route path="/store/pagina/:slug" element={<StoreFooterPage />} />
+            <Route path="/store/login" element={<StoreLoginPage />} />
+            <Route path="/store/registrazione" element={<StoreRegisterPage />} />
+            <Route path="/store/account" element={<StoreAccountPage />} />
+            <Route path="/store/ordini" element={<StoreOrdersPage />} />
+            <Route path="/store/ordini/:id" element={<StoreOrderDetailPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Navigate to="/store" replace />} />
@@ -314,6 +326,7 @@ function App() {
         </BrowserRouter>
         </FeatureFlagsProvider>
       </AuthProvider>
+      </ClientiAuthProvider>
     </CartProvider>
     </LanguageProvider>
   )
