@@ -114,6 +114,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.include_router(activity_log_router.router, prefix="/api/activity-log", tags=["Activity Log"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(clienti_auth_router.router)
 app.include_router(prodotti.router, prefix="/api/prodotti", tags=["Prodotti"])
 app.include_router(categorie.router, prefix="/api/categorie", tags=["Categorie"])
 app.include_router(movimenti.router, prefix="/api/movimenti", tags=["Movimenti"])
@@ -142,7 +143,6 @@ app.include_router(backup_router.router)
 app.include_router(ai.router, prefix="/api")
 app.include_router(market_intelligence_router.router, prefix="/api")
 app.include_router(prezzi_storici_router.router, prefix="/api")
-app.include_router(clienti_auth_router.router)
 
 
 @app.on_event("startup")

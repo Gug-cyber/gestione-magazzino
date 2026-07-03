@@ -57,7 +57,7 @@ def registrazione(data: ClienteRegistrazione, db: Session = Depends(get_db)):
     db.refresh(cliente)
 
     # Genera token
-    token = create_access_token(data={"sub": cliente.id})
+    token = create_access_token(data={"sub": str(cliente.id)})
 
     return TokenResponse(access_token=token, cliente=ClienteResponse.from_orm(cliente))
 
@@ -79,7 +79,7 @@ def login(data: ClienteLogin, db: Session = Depends(get_db)):
             detail="Account disattivato"
         )
 
-    token = create_access_token(data={"sub": cliente.id})
+    token = create_access_token(data={"sub": str(cliente.id)})
 
     return TokenResponse(access_token=token, cliente=ClienteResponse.from_orm(cliente))
 

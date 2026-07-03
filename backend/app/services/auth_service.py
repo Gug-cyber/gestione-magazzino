@@ -53,10 +53,11 @@ async def get_current_cliente(
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        cliente_id: int = payload.get("sub")
-        if cliente_id is None:
+        sub = payload.get("sub")
+        if sub is None:
             raise credentials_exception
-    except JWTError:
+        cliente_id = int(sub)
+    except (JWTError, ValueError, TypeError):
         raise credentials_exception
     
     cliente = db.query(ClienteAccount).filter(ClienteAccount.id == cliente_id).first()
