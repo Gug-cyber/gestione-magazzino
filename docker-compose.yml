@@ -59,6 +59,16 @@ services:
       - backend
     restart: unless-stopped
 
+  ecommerce-frontend:
+    build:
+      context: ./ecommerce-frontend
+    container_name: magazzino_ecommerce_frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   tracking-scheduler:
     build: ./backend
     container_name: magazzino_tracking_scheduler
