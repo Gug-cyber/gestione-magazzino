@@ -77,6 +77,9 @@ export default function OrderDetail() {
   if (error && !ordine) return <div className="alert alert-error">{error}</div>;
   if (!ordine) return <div className="alert alert-error">Ordine non trovato</div>;
 
+  const subtotale = ordine.subtotale ?? ordine.totale;
+  const speseSpedizione = ordine.spese_spedizione ?? 0;
+
   return (
     <div className="order-detail-page">
       <div className="order-detail-container">
@@ -88,6 +91,28 @@ export default function OrderDetail() {
         {error && <div className="alert alert-error">{error}</div>}
         {resoMessage && <div className="alert alert-success">{resoMessage}</div>}
 
+        {/* Dati cliente */}
+        {(ordine.cliente_nome || ordine.cliente_email) && (
+          <div className="order-section">
+            <h2>👤 Dati cliente</h2>
+            <div className="order-detail-info">
+              {(ordine.cliente_nome || ordine.cliente_cognome) && (
+                <div className="info-row">
+                  <span>Nome:</span>
+                  <span>{ordine.cliente_nome} {ordine.cliente_cognome}</span>
+                </div>
+              )}
+              {ordine.cliente_email && (
+                <div className="info-row">
+                  <span>Email:</span>
+                  <span>{ordine.cliente_email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Stato e date ordine */}
         <div className="order-detail-info">
           <div className="info-row">
             <span>Stato:</span>
@@ -109,21 +134,56 @@ export default function OrderDetail() {
               <span>{new Date(ordine.data_consegna).toLocaleDateString('it-IT')}</span>
             </div>
           )}
-          {ordine.indirizzo_spedizione && (
+          {ordine.data_stimata_consegna && (
             <div className="info-row">
-              <span>Indirizzo:</span>
-              <span>{ordine.indirizzo_spedizione}</span>
+              <span>Consegna stimata:</span>
+              <span>{new Date(ordine.data_stimata_consegna).toLocaleDateString('it-IT')}</span>
             </div>
           )}
-          <div className="info-row info-row-total">
-            <span>Totale:</span>
-            <span>€ {ordine.totale.toFixed(2)}</span>
-          </div>
+          {ordine.metodo_pagamento && (
+            <div className="info-row">
+              <span>Metodo pagamento:</span>
+              <span>{ordine.metodo_pagamento}</span>
+            </div>
+          )}
         </div>
+
+        {/* Indirizzo di spedizione */}
+        {ordine.indirizzo_spedizione && (
+          <div className="order-section">
+            <h2>📍 Indirizzo di spedizione</h2>
+            <div className="order-detail-info">
+              <div className="info-row">
+                <span>{ordine.indirizzo_spedizione}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tracciamento spedizione */}
+        {(ordine.corriere || ordine.tracking_number) && (
+          <div className="order-section">
+            <h2>🚚 Tracciamento spedizione</h2>
+            <div className="order-detail-info">
+              {ordine.corriere && (
+                <div className="info-row">
+                  <span>Corriere:</span>
+                  <span>{ordine.corriere}</span>
+                </div>
+              )}
+              {ordine.tracking_number && (
+                <div className="info-row">
+                  <span>Codice tracking:</span>
+                  <span><strong>{ordine.tracking_number}</strong></span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Lista articoli */}
         <div className="order-items-section">
-          <h2>Articoli</h2>
+          <h2>📦 Articoli</h2>
           <div className="order-items-list">
             {ordine.items.map((item) => (
               <div key={item.id} className="order-item">
@@ -133,10 +193,32 @@ export default function OrderDetail() {
                 <div className="order-item-info">
                   <p className="order-item-name">{item.nome_prodotto}</p>
                   <p className="order-item-qty">Quantità: {item.quantita}</p>
-                  <p className="order-item-price">€ {item.prezzo_unitario.toFixed(2)}</p>
+                  <p className="order-item-price">€ {item.prezzo_unitario.toFixed(2)} cad.</p>
+                  {item.subtotale != null && (
+                    <p className="order-item-subtotal"><strong>Subtotale: € {item.subtotale.toFixed(2)}</strong></p>
+                  )}
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Riepilogo totali */}
+        <div className="order-section order-totals">
+          <h2>💶 Riepilogo</h2>
+          <div className="order-detail-info">
+            <div className="info-row">
+              <span>Subtotale prodotti:</span>
+              <span>€ {subtotale.toFixed(2)}</span>
+            </div>
+            <div className="info-row">
+              <span>Spese di spedizione:</span>
+              <span>{speseSpedizione > 0 ? `€ ${speseSpedizione.toFixed(2)}` : 'Gratuite'}</span>
+            </div>
+            <div className="info-row info-row-total">
+              <span>Totale finale:</span>
+              <span>€ {ordine.totale.toFixed(2)}</span>
+            </div>
           </div>
         </div>
 
