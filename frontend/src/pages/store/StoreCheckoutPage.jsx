@@ -4,6 +4,7 @@ import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClienteAuth } from '../../context/ClienteAuthContext'
 import { trackPageView, trackCheckoutStart, trackPurchase } from '../../utils/analytics'
 
 const STEP_KEYS = ['step_personal', 'step_shipping', 'step_payment', 'step_summary', 'step_confirm']
@@ -136,6 +137,7 @@ function ProgressStepper({ currentStep, t }) {
 export default function StoreCheckoutPage() {
   const { items, totalPrice, clearCart } = useCart()
   const { t } = useLanguage()
+  const { cliente } = useClienteAuth()
   const [checkoutEnabled, setCheckoutEnabled] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -188,6 +190,20 @@ export default function StoreCheckoutPage() {
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (cliente) {
+      setForm(prev => ({
+        ...prev,
+        nome: prev.nome || `${cliente.nome || ''} ${cliente.cognome || ''}`.trim(),
+        email: prev.email || cliente.email || '',
+        telefono: prev.telefono || cliente.telefono || '',
+        indirizzo: prev.indirizzo || (cliente.indirizzo ? `${cliente.indirizzo}${cliente.numero_civico ? ', ' + cliente.numero_civico : ''}` : ''),
+        citta: prev.citta || cliente.citta || '',
+        cap: prev.cap || cliente.cap || '',
+      }))
+    }
+  }, [cliente])
 
   function handleChange(e) {
     const { name, value } = e.target

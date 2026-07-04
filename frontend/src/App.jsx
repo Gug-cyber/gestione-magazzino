@@ -53,6 +53,8 @@ import StoreFooterPage from './pages/store/StoreFooterPage'
 import StoreLoginPage from './pages/store/StoreLoginPage'
 import StoreRegisterPage from './pages/store/StoreRegisterPage'
 import StoreAccountPage from './pages/store/StoreAccountPage'
+import StoreOrdiniPage from './pages/store/StoreOrdiniPage'
+import StorePreferitiPage from './pages/store/StorePreferitiPage'
 import ControlPanel from './pages/ControlPanel'
 import AIAssistant from './pages/AIAssistant'
 import DashboardOpportunita from './pages/DashboardOpportunita.jsx'
@@ -117,6 +119,8 @@ function App() {
             <Route path="/store/login" element={<StoreLoginPage />} />
             <Route path="/store/register" element={<StoreRegisterPage />} />
             <Route path="/store/account" element={<StoreAccountPage />} />
+            <Route path="/store/ordini" element={<StoreOrdiniPage />} />
+            <Route path="/store/preferiti" element={<StorePreferitiPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Navigate to="/store" replace />} />

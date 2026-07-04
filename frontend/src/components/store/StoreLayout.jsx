@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useClienteAuth } from '../../context/ClienteAuthContext'
@@ -246,7 +246,8 @@ function StoreFooter() {
 export default function StoreLayout({ children }) {
   const { totalItems } = useCart()
   const { lang, setLanguage, t } = useLanguage()
-  const { cliente } = useClienteAuth()
+  const { cliente, logout } = useClienteAuth()
+  const navigate = useNavigate()
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => {
@@ -262,6 +263,8 @@ export default function StoreLayout({ children }) {
   })
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const langMenuRef = useRef(null)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef(null)
 
   useEffect(() => {
     storeAPI.getStoreSettings()
@@ -335,6 +338,18 @@ export default function StoreLayout({ children }) {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [langMenuOpen])
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
+        setAccountMenuOpen(false)
+      }
+    }
+    if (accountMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [accountMenuOpen])
 
   const leftBanners = sideBanners.filter(b => (b.posizione === 'sidebar_left' || b.posizione === 'sidebar_both') && b.immagine_url)
   const rightBanners = sideBanners.filter(b => (b.posizione === 'sidebar_right' || b.posizione === 'sidebar_both') && b.immagine_url)
@@ -498,15 +513,57 @@ export default function StoreLayout({ children }) {
           </Link>
 
           {cliente ? (
-            <Link to="/store/account" style={{
-              ...navLinkStyle('/store/account'),
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}>
-              <span>👤</span>
-              <span>{cliente.nome}</span>
-            </Link>
+            <div ref={accountMenuRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setAccountMenuOpen(p => !p)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  background: 'var(--color-bg-elevated)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: 'var(--color-text)',
+                }}
+              >
+                <span>👤</span>
+                <span>{cliente.nome}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              {accountMenuOpen && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: '4px',
+                  background: 'var(--color-bg-elevated)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  zIndex: 200,
+                  overflow: 'hidden',
+                  minWidth: '180px',
+                }}>
+                  <Link to="/store/account" onClick={() => setAccountMenuOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', textDecoration: 'none', color: 'var(--color-text)', fontSize: '14px', borderBottom: '1px solid var(--color-border)' }}>
+                    👤 Il mio profilo
+                  </Link>
+                  <Link to="/store/ordini" onClick={() => setAccountMenuOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', textDecoration: 'none', color: 'var(--color-text)', fontSize: '14px', borderBottom: '1px solid var(--color-border)' }}>
+                    📦 I miei ordini
+                  </Link>
+                  <Link to="/store/preferiti" onClick={() => setAccountMenuOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', textDecoration: 'none', color: 'var(--color-text)', fontSize: '14px', borderBottom: '1px solid var(--color-border)' }}>
+                    ❤️ Preferiti
+                  </Link>
+                  <button onClick={() => { logout(); setAccountMenuOpen(false); navigate('/store') }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger, #dc2626)', fontSize: '14px', width: '100%', textAlign: 'left' }}>
+                    🚪 Esci
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <Link to="/store/login" style={navLinkStyle('/store/login')}>
               Accedi
