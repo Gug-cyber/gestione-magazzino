@@ -61,6 +61,8 @@ def _ordine_to_response(o) -> OrdineResponse:
         "stato": o.stato,
         "note": o.note,
         "totale": o.totale,
+        "spese_spedizione": getattr(o, 'spese_spedizione', None),
+        "metodo_pagamento": getattr(o, 'metodo_pagamento', None),
         "corriere": o.corriere,
         "tracking_number": o.tracking_number,
         "indirizzo_spedizione": getattr(o, 'indirizzo_spedizione', None),
