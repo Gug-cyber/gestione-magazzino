@@ -1,7 +1,7 @@
 """Router per autenticazione clienti, ordini e preferiti."""
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from app.database import get_db
@@ -236,6 +236,7 @@ async def lista_ordini(
     """Lista ordini del cliente dalla tabella gestionale (ordini)."""
     from sqlalchemy.orm import joinedload
 
+    # Trova il cliente nella tabella gestionale per email
     cliente_gestionale = (
         db.query(ClienteGestionale)
         .filter(ClienteGestionale.email == cliente.email)
@@ -264,15 +265,31 @@ async def dettaglio_ordine(
     cliente: ClienteAccount = Depends(get_current_cliente),
     db: Session = Depends(get_db)
 ):
-    """Dettaglio singolo ordine."""
+    """Dettaglio singolo ordine dalla tabella gestionale."""
+    from sqlalchemy.orm import joinedload
+
+    # Trova il cliente nella tabella gestionale per email
+    cliente_gestionale = (
+        db.query(ClienteGestionale)
+        .filter(ClienteGestionale.email == cliente.email)
+        .first()
+    )
+
+    if not cliente_gestionale:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
     ordine = (
-        db.query(OrdineEcommerce)
-        .filter(OrdineEcommerce.id == ordine_id, OrdineEcommerce.cliente_id == cliente.id)
+        db.query(OrdineGestionale)
+        .options(joinedload(OrdineGestionale.righe).joinedload(RigaOrdine.prodotto))
+        .filter(
+            OrdineGestionale.id == ordine_id,
+            OrdineGestionale.cliente_id == cliente_gestionale.id,
+        )
         .first()
     )
     if not ordine:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
-    return _ordine_response_with_cliente(ordine, cliente)
+    return _ordine_gestionale_to_response(ordine, cliente)
 
 
 @router.patch("/ordini/{ordine_id}/stato", response_model=OrdineResponse)
@@ -392,6 +409,7 @@ def _ordine_response_with_cliente(ordine: OrdineEcommerce, cliente: ClienteAccou
 def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAccount) -> OrdineResponse:
     """Mappa un ordine gestionale (tabella ordini) al formato OrdineResponse del cliente."""
     from app.schemas.cliente_auth import ItemOrdineResponse
+
     items = []
     for riga in (ordine.righe or []):
         prodotto_id = riga.prodotto_id or 0
@@ -404,6 +422,7 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
             subtotale=float(riga.subtotale),
             immagine_url=None,
         ))
+
     # Mappa lo stato gestionale → stato ecommerce
     stato_map = {
         "bozza": "in_attesa",
@@ -416,6 +435,9 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
     stato_str = ordine.stato.value if hasattr(ordine.stato, "value") else str(ordine.stato)
     stato_ecommerce = stato_map.get(stato_str, "in_attesa")
 
+    # data_ordine è obbligatorio nello schema — garantire un valore non-None
+    data_ordine = ordine.data_ordine or ordine.created_at or datetime.now(timezone.utc)
+
     return OrdineResponse(
         id=ordine.id,
         numero_ordine=ordine.numero_ordine,
@@ -426,7 +448,7 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
         metodo_pagamento=None,
         indirizzo_spedizione=ordine.indirizzo_spedizione,
         note=ordine.note,
-        data_ordine=ordine.data_ordine or ordine.created_at,
+        data_ordine=data_ordine,
         data_spedizione=None,
         data_consegna=None,
         data_stimata_consegna=None,
