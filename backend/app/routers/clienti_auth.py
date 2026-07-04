@@ -24,13 +24,15 @@ from app.services.email_cliente_service import (
 
 router = APIRouter(prefix="/api/clienti", tags=["Clienti"])
 
+# Aliquota IVA standard italiana
+IVA_RATE = 0.22
+
 
 # === AUTENTICAZIONE ===
 
 @router.post("/registrazione", response_model=TokenResponse)
 def registrazione(data: ClienteRegistrazione, db: Session = Depends(get_db)):
     """Registrazione nuovo cliente."""
-    # Verifica se email già esistente
     existing = db.query(ClienteAccount).filter(ClienteAccount.email == data.email).first()
     if existing:
         raise HTTPException(
@@ -38,7 +40,6 @@ def registrazione(data: ClienteRegistrazione, db: Session = Depends(get_db)):
             detail="Email già registrata"
         )
 
-    # Crea account
     cliente = ClienteAccount(
         email=data.email,
         password_hash=hash_password(data.password),
@@ -58,9 +59,7 @@ def registrazione(data: ClienteRegistrazione, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(cliente)
 
-    # Genera token
     token = create_access_token(data={"sub": str(cliente.id)})
-
     return TokenResponse(access_token=token, cliente=ClienteResponse.from_orm(cliente))
 
 
@@ -82,7 +81,6 @@ def login(data: ClienteLogin, db: Session = Depends(get_db)):
         )
 
     token = create_access_token(data={"sub": str(cliente.id)})
-
     return TokenResponse(access_token=token, cliente=ClienteResponse.from_orm(cliente))
 
 
@@ -113,7 +111,6 @@ async def update_profilo(
 
 def _build_indirizzo_spedizione(data: CreaOrdineSchema, cliente: ClienteAccount) -> str:
     """Costruisce la stringa indirizzo di spedizione da dati strutturati o profilo cliente."""
-    # Priorità: campi shipping_* strutturati
     if data.shipping_indirizzo and data.shipping_citta:
         parts = []
         nome = " ".join(filter(None, [data.shipping_nome, data.shipping_cognome]))
@@ -133,11 +130,9 @@ def _build_indirizzo_spedizione(data: CreaOrdineSchema, cliente: ClienteAccount)
             parts.append(f"Tel: {data.shipping_telefono}")
         return " — ".join(parts)
 
-    # Fallback: indirizzo libero nel payload
     if data.indirizzo_spedizione:
         return data.indirizzo_spedizione
 
-    # Fallback: profilo cliente
     if cliente.indirizzo:
         parts = []
         nome_dest = " ".join(filter(None, [
@@ -172,22 +167,18 @@ async def crea_ordine(
     db: Session = Depends(get_db)
 ):
     """Crea un nuovo ordine."""
-    # Calcola subtotale e totale
     subtotale = sum(item.prezzo_unitario * item.quantita for item in data.items)
     spese_spedizione = data.spese_spedizione or 0.0
     totale = subtotale + spese_spedizione
 
-    # Costruisci indirizzo di spedizione
     indirizzo_spedizione = _build_indirizzo_spedizione(data, cliente)
 
-    # Validazione indirizzo
     if not indirizzo_spedizione:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Inserisci un indirizzo di spedizione prima di procedere con l'ordine."
         )
 
-    # Genera numero ordine univoco
     numero_ordine = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
 
     ordine = OrdineEcommerce(
@@ -204,7 +195,6 @@ async def crea_ordine(
     db.add(ordine)
     db.flush()
 
-    # Aggiungi items
     for item_data in data.items:
         item_subtotale = item_data.quantita * item_data.prezzo_unitario
         item = ItemOrdine(
@@ -221,10 +211,7 @@ async def crea_ordine(
     db.commit()
     db.refresh(ordine)
 
-    # Invia email di conferma in background (non blocca la risposta)
     background_tasks.add_task(send_email_conferma_ordine, ordine, cliente)
-
-    # Aggiungi dati cliente alla risposta
     return _ordine_response_with_cliente(ordine, cliente)
 
 
@@ -236,7 +223,6 @@ async def lista_ordini(
     """Lista ordini del cliente dalla tabella gestionale (ordini)."""
     from sqlalchemy.orm import joinedload
 
-    # Trova il cliente nella tabella gestionale per email
     cliente_gestionale = (
         db.query(ClienteGestionale)
         .filter(ClienteGestionale.email == cliente.email)
@@ -268,7 +254,6 @@ async def dettaglio_ordine(
     """Dettaglio singolo ordine dalla tabella gestionale."""
     from sqlalchemy.orm import joinedload
 
-    # Trova il cliente nella tabella gestionale per email
     cliente_gestionale = (
         db.query(ClienteGestionale)
         .filter(ClienteGestionale.email == cliente.email)
@@ -300,10 +285,7 @@ async def aggiorna_stato_ordine(
     cliente: ClienteAccount = Depends(get_current_cliente),
     db: Session = Depends(get_db)
 ):
-    """
-    Aggiorna stato ordine (corriere, tracking, data stimata consegna).
-    Quando lo stato diventa 'spedito', invia email di conferma spedizione.
-    """
+    """Aggiorna stato ordine."""
     ordine = (
         db.query(OrdineEcommerce)
         .filter(OrdineEcommerce.id == ordine_id, OrdineEcommerce.cliente_id == cliente.id)
@@ -328,14 +310,12 @@ async def aggiorna_stato_ordine(
     if data.data_stimata_consegna is not None:
         ordine.data_stimata_consegna = data.data_stimata_consegna
 
-    # Imposta data_spedizione quando passa a spedito
     if data.stato == StatoOrdine.SPEDITO and vecchio_stato != StatoOrdine.SPEDITO:
         ordine.data_spedizione = datetime.utcnow()
 
     db.commit()
     db.refresh(ordine)
 
-    # Invia email di conferma spedizione se lo stato è diventato "spedito"
     if data.stato == StatoOrdine.SPEDITO and vecchio_stato != StatoOrdine.SPEDITO:
         background_tasks.add_task(send_email_conferma_spedizione, ordine, cliente)
 
@@ -349,10 +329,7 @@ async def richiedi_reso(
     cliente: ClienteAccount = Depends(get_current_cliente),
     db: Session = Depends(get_db)
 ):
-    """
-    Richiedi reso per un ordine.
-    Il reso è possibile SOLO entro 14 giorni dalla data di consegna.
-    """
+    """Richiedi reso per un ordine."""
     ordine = (
         db.query(OrdineEcommerce)
         .filter(OrdineEcommerce.id == ordine_id, OrdineEcommerce.cliente_id == cliente.id)
@@ -363,18 +340,11 @@ async def richiedi_reso(
         raise HTTPException(status_code=404, detail="Ordine non trovato")
 
     if ordine.stato != StatoOrdine.CONSEGNATO:
-        raise HTTPException(
-            status_code=400,
-            detail="Il reso è possibile solo per ordini consegnati"
-        )
+        raise HTTPException(status_code=400, detail="Il reso è possibile solo per ordini consegnati")
 
     if not ordine.data_consegna:
-        raise HTTPException(
-            status_code=400,
-            detail="Data di consegna non disponibile"
-        )
+        raise HTTPException(status_code=400, detail="Data di consegna non disponibile")
 
-    # Verifica 14 giorni dalla consegna
     giorni_dalla_consegna = (datetime.utcnow() - ordine.data_consegna).days
     if giorni_dalla_consegna > 14:
         raise HTTPException(
@@ -382,7 +352,6 @@ async def richiedi_reso(
             detail=f"Il periodo per il reso è scaduto. Sono passati {giorni_dalla_consegna} giorni dalla consegna (massimo 14)."
         )
 
-    # Aggiorna stato
     ordine.stato = StatoOrdine.RESO_RICHIESTO
     ordine.motivo_reso = data.motivo
     ordine.data_richiesta_reso = datetime.utcnow()
@@ -423,7 +392,6 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
             immagine_url=None,
         ))
 
-    # Mappa lo stato gestionale → stato ecommerce
     stato_map = {
         "bozza": "in_attesa",
         "confermato": "in_attesa",
@@ -435,18 +403,48 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
     stato_str = ordine.stato.value if hasattr(ordine.stato, "value") else str(ordine.stato)
     stato_ecommerce = stato_map.get(stato_str, "in_attesa")
 
-    # data_ordine è obbligatorio nello schema — garantire un valore non-None
     data_ordine = ordine.data_ordine or ordine.created_at or datetime.now(timezone.utc)
+
+    # Leggi i valori reali dal modello gestionale
+    spese_spedizione = float(getattr(ordine, "spese_spedizione", None) or 0.0)
+    metodo_pagamento = getattr(ordine, "metodo_pagamento", None)
+    totale = float(ordine.totale or 0)
+    # Calcola IVA inclusa (22%)
+    imponibile = round(totale / (1 + IVA_RATE), 2)
+    importo_iva = round(totale - imponibile, 2)
+
+    # Costruisci indirizzo di spedizione dal profilo cliente se non presente nell'ordine
+    indirizzo_spedizione = getattr(ordine, "indirizzo_spedizione", None)
+    if not indirizzo_spedizione:
+        parts = []
+        nome = f"{cliente.nome or ''} {cliente.cognome or ''}".strip()
+        if nome:
+            parts.append(nome)
+        if cliente.indirizzo:
+            via = cliente.indirizzo
+            if getattr(cliente, "numero_civico", None):
+                via += f", {cliente.numero_civico}"
+            parts.append(via)
+        localita = f"{getattr(cliente, 'cap', '') or ''} {getattr(cliente, 'citta', '') or ''}".strip()
+        if getattr(cliente, "provincia", None):
+            localita += f" ({cliente.provincia})"
+        if localita.strip():
+            parts.append(localita)
+        if parts:
+            indirizzo_spedizione = " — ".join(parts)
 
     return OrdineResponse(
         id=ordine.id,
         numero_ordine=ordine.numero_ordine,
         stato=stato_ecommerce,
-        totale=float(ordine.totale or 0),
-        subtotale=float(ordine.totale or 0),
-        spese_spedizione=0.0,
-        metodo_pagamento=None,
-        indirizzo_spedizione=ordine.indirizzo_spedizione,
+        totale=totale,
+        subtotale=totale - spese_spedizione,
+        spese_spedizione=spese_spedizione,
+        metodo_pagamento=metodo_pagamento,
+        imponibile=imponibile,
+        importo_iva=importo_iva,
+        aliquota_iva=IVA_RATE * 100,
+        indirizzo_spedizione=indirizzo_spedizione,
         note=ordine.note,
         data_ordine=data_ordine,
         data_spedizione=None,
@@ -485,7 +483,6 @@ async def aggiungi_preferito(
     db: Session = Depends(get_db)
 ):
     """Aggiungi prodotto ai preferiti."""
-    # Verifica se già presente
     existing = (
         db.query(Preferito)
         .filter(Preferito.cliente_id == cliente.id, Preferito.prodotto_id == data.prodotto_id)
