@@ -92,6 +92,8 @@ class StoreCheckoutRequest(BaseModel):
     cap: Optional[str] = None
     note: Optional[str] = None
     righe: List[StoreRigaCheckout]
+    spese_spedizione: Optional[float] = 0.0
+    metodo_pagamento: Optional[str] = None
 
 
 class StoreCheckoutResponse(BaseModel):
@@ -307,11 +309,15 @@ def store_checkout(
         for r in body.righe
     ]
 
+    spese_spedizione = body.spese_spedizione or 0.0
+
     ordine_create = OrdineCreate(
         cliente_id=cliente.id,
         cliente_nome=body.nome,
         note=body.note,
         indirizzo_spedizione=f"{body.indirizzo}, {body.cap} {body.citta}".strip(", ") if body.indirizzo else None,
+        spese_spedizione=spese_spedizione,
+        metodo_pagamento=body.metodo_pagamento,
         righe=righe_ordine,
     )
 
