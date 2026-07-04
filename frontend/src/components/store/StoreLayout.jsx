@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClienteAuth } from '../../context/ClienteAuthContext'
 import { storeAPI } from '../../api/store'
 import '../../styles/store-theme.css'
 
@@ -245,6 +246,7 @@ function StoreFooter() {
 export default function StoreLayout({ children }) {
   const { totalItems } = useCart()
   const { lang, setLanguage, t } = useLanguage()
+  const { cliente } = useClienteAuth()
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => {
@@ -494,6 +496,22 @@ export default function StoreLayout({ children }) {
               )}
             </span>
           </Link>
+
+          {cliente ? (
+            <Link to="/store/account" style={{
+              ...navLinkStyle('/store/account'),
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}>
+              <span>👤</span>
+              <span>{cliente.nome}</span>
+            </Link>
+          ) : (
+            <Link to="/store/login" style={navLinkStyle('/store/login')}>
+              Accedi
+            </Link>
+          )}
         </div>
       </nav>
 
