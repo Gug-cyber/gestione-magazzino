@@ -40,4 +40,7 @@ export const storeAPI = {
   clienteOrdini: () => clienteAuthClient.get('/api/clienti/ordini'),
   clienteOrdine: (id) => clienteAuthClient.get(`/api/clienti/ordini/${id}`),
   creaOrdine: (data) => clienteAuthClient.post('/api/clienti/ordini', data),
+  clientePreferiti: () => clienteAuthClient.get('/api/clienti/preferiti'),
+  aggiungiPreferito: (data) => clienteAuthClient.post('/api/clienti/preferiti', data),
+  rimuoviPreferito: (prodottoId) => clienteAuthClient.delete(`/api/clienti/preferiti/${prodottoId}`),
 }
