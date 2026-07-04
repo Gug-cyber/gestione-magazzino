@@ -4,6 +4,7 @@ import StoreLayout from '../../components/store/StoreLayout'
 import { storeAPI } from '../../api/store'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClienteAuth } from '../../context/ClienteAuthContext'
 import ProductGallery from '../../components/store/ProductGallery'
 import ProductInfo from '../../components/store/ProductInfo'
 import { trackPageView, trackAddToCart } from '../../utils/analytics'
@@ -12,6 +13,7 @@ export default function StoreProductPage() {
   const { id } = useParams()
   const { addItem, isInCart, getItemQty } = useCart()
   const { t } = useLanguage()
+  const { cliente } = useClienteAuth()
   const [prodotto, setProdotto] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -19,6 +21,8 @@ export default function StoreProductPage() {
   const [promozioni, setPromozioni] = useState([])
   const [flags, setFlags] = useState({})
   const addedTimerRef = useRef(null)
+  const [liked, setLiked] = useState(false)
+  const [preferitiLoaded, setPreferitiLoaded] = useState(false)
 
   useEffect(() => {
     trackPageView(`/store/product/${id}`)
@@ -54,6 +58,39 @@ export default function StoreProductPage() {
   useEffect(() => {
     return () => { if (addedTimerRef.current) clearTimeout(addedTimerRef.current) }
   }, [])
+
+  useEffect(() => {
+    if (cliente && prodotto && !preferitiLoaded) {
+      storeAPI.clientePreferiti()
+        .then(res => {
+          const ids = (res.data || []).map(p => p.prodotto_id)
+          setLiked(ids.includes(prodotto.id))
+          setPreferitiLoaded(true)
+        })
+        .catch(() => {})
+    }
+  }, [cliente, prodotto])
+
+  async function handleTogglePreferito(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!cliente) {
+      window.location.href = '/store/login'
+      return
+    }
+    if (liked) {
+      setLiked(false)
+      storeAPI.rimuoviPreferito(prodotto.id).catch(() => setLiked(true))
+    } else {
+      setLiked(true)
+      storeAPI.aggiungiPreferito({
+        prodotto_id: prodotto.id,
+        nome_prodotto: prodotto.nome,
+        prezzo: prodotto.prezzo_vendita,
+        immagine_url: prodotto.immagini?.[0] || prodotto.foto_url || null,
+      }).catch(() => setLiked(false))
+    }
+  }
 
   const activePromos = flags.discounts_enabled !== false ? promozioni : []
   const promo = prodotto
@@ -144,6 +181,32 @@ export default function StoreProductPage() {
               onAddToCart={handleAddToCart}
               prezzoScontato={prezzoScontato}
             />
+            {/* Bottone preferiti */}
+            <button
+              onClick={handleTogglePreferito}
+              style={{
+                marginTop: '12px',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                border: `1px solid ${liked ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                backgroundColor: liked ? 'rgba(239,68,68,0.06)' : 'transparent',
+                color: liked ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 200ms ease',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              {liked ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+            </button>
           </div>
         </div>
 

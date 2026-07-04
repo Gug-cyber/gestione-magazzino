@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClienteAuth } from '../../context/ClienteAuthContext'
+import { storeAPI } from '../../api/store'
 
 function cercaPromozioneAttiva(prodotto, promozioni) {
   if (!promozioni || promozioni.length === 0) return null
@@ -91,9 +93,44 @@ function HeartIcon({ filled }) {
 export default function ProductCard({ prodotto, onAddToCart, promozioni = [], index = 0 }) {
   const { isInCart, getItemQty } = useCart()
   const { t } = useLanguage()
+  const { cliente } = useClienteAuth()
   const [hovered, setHovered] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
   const [liked, setLiked] = useState(false)
+  const [preferitiLoaded, setPreferitiLoaded] = useState(false)
+
+  useEffect(() => {
+    if (cliente && !preferitiLoaded) {
+      storeAPI.clientePreferiti()
+        .then(res => {
+          const ids = (res.data || []).map(p => p.prodotto_id)
+          setLiked(ids.includes(prodotto.id))
+          setPreferitiLoaded(true)
+        })
+        .catch(() => {})
+    }
+  }, [cliente, prodotto.id])
+
+  async function handleTogglePreferito(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!cliente) {
+      window.location.href = '/store/login'
+      return
+    }
+    if (liked) {
+      setLiked(false)
+      storeAPI.rimuoviPreferito(prodotto.id).catch(() => setLiked(true))
+    } else {
+      setLiked(true)
+      storeAPI.aggiungiPreferito({
+        prodotto_id: prodotto.id,
+        nome_prodotto: prodotto.nome,
+        prezzo: prodotto.prezzo_vendita,
+        immagine_url: prodotto.immagini?.[0] || prodotto.foto_url || null,
+      }).catch(() => setLiked(false))
+    }
+  }
 
   const inCart = isInCart(prodotto.id)
   const cartQty = getItemQty(prodotto.id)
@@ -256,7 +293,7 @@ export default function ProductCard({ prodotto, onAddToCart, promozioni = [], in
           {/* Quick action button - wishlist */}
           <button
             className="product-card-action-btn"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(!liked) }}
+            onClick={handleTogglePreferito}
             style={{
               position: 'absolute',
               top: '10px',
