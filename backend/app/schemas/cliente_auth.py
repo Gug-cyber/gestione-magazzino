@@ -132,6 +132,10 @@ class OrdineResponse(BaseModel):
     cliente_nome: Optional[str] = None
     cliente_cognome: Optional[str] = None
     cliente_email: Optional[str] = None
+    # Dati fiscali IVA (calcolati dal backend)
+    imponibile: Optional[float] = None
+    importo_iva: Optional[float] = None
+    aliquota_iva: Optional[float] = None
 
     class Config:
         from_attributes = True
