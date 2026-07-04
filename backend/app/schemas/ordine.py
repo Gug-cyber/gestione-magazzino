@@ -51,6 +51,8 @@ class OrdineCreate(BaseModel):
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
     indirizzo_spedizione: Optional[str] = None
+    spese_spedizione: Optional[float] = 0.0
+    metodo_pagamento: Optional[str] = None
     righe: List[RigaOrdineCreate]
 
 
@@ -91,6 +93,8 @@ class OrdineResponse(BaseModel):
     stato: str
     note: Optional[str] = None
     totale: float
+    spese_spedizione: Optional[float] = None
+    metodo_pagamento: Optional[str] = None
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
     indirizzo_spedizione: Optional[str] = None

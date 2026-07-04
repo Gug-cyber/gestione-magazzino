@@ -305,11 +305,6 @@ export default function StoreCheckoutPage() {
     setLoading(true)
     setSubmitError(null)
     try {
-      const noteParts = [
-        form.note,
-        `Metodo pagamento: ${pagamento}`,
-        `Spedizione: ${spedizione.label} (€${spedizione.costo.toFixed(2)})`,
-      ].filter(Boolean)
       const payload = {
         nome: form.nome,
         email: form.email,
@@ -317,7 +312,9 @@ export default function StoreCheckoutPage() {
         indirizzo: form.indirizzo || undefined,
         citta: form.citta || undefined,
         cap: form.cap || undefined,
-        note: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
+        note: form.note || undefined,
+        spese_spedizione: spedizione.costo,
+        metodo_pagamento: pagamento,
         righe: items.map(i => ({
           prodotto_id: i.id,
           quantita: i.quantita,

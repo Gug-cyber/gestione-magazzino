@@ -126,16 +126,19 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
     # 2. Calcolo totale e struttura righe                                 #
     # ------------------------------------------------------------------ #
     righe_data = []
-    totale = 0.0
+    subtotale = 0.0
     for r in ordine_data.righe:
-        subtotale = r.quantita * r.prezzo_unitario
-        totale += subtotale
+        riga_subtotale = r.quantita * r.prezzo_unitario
+        subtotale += riga_subtotale
         righe_data.append({
             "prodotto_id": r.prodotto_id,
             "quantita": r.quantita,
             "prezzo_unitario": r.prezzo_unitario,
-            "subtotale": subtotale,
+            "subtotale": riga_subtotale,
         })
+
+    spese_spedizione = ordine_data.spese_spedizione or 0.0
+    totale = subtotale + spese_spedizione
 
     # ------------------------------------------------------------------ #
     # 3. Creazione ordine con retry per numero univoco                    #
@@ -150,6 +153,9 @@ def create_ordine(db: Session, ordine_data: OrdineCreate) -> Ordine:
             note=ordine_data.note,
             corriere=ordine_data.corriere,
             tracking_number=ordine_data.tracking_number,
+            indirizzo_spedizione=ordine_data.indirizzo_spedizione,
+            spese_spedizione=spese_spedizione,
+            metodo_pagamento=ordine_data.metodo_pagamento,
             totale=totale,
             righe=righe,
             stock_scalato=False,  # lo stock viene scalato alla conferma dell'ordine
