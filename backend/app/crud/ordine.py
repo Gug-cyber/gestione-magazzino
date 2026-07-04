@@ -175,12 +175,12 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     Transizione → confermato:
       - Se stock non ancora scalato: lock pessimistico, verifica disponibilità,
         decrementa stock, registra movimenti, setta stock_scalato=True.
+      - Se quantita diventa 0, imposta data_scarico (la cancellazione avviene al completamento).
       - Genera fattura automatica (anti-duplicazione via get_fattura_by_ordine).
 
     Transizione → completato:
       - Imposta data_completamento.
-      - NON genera più fattura (già generata alla conferma).
-      - NON scala lo stock (già scalato alla conferma).
+      - Cancella fisicamente i prodotti con quantita=0 (esauriti dall'ordine).
 
     Transizione → annullato (se stock già scalato):
       - Ripristina lo stock per ogni riga con lock FOR UPDATE.
@@ -204,7 +204,6 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     # Transizione → CONFERMATO                                            #
     # ------------------------------------------------------------------ #
-    # Scala stock quando ordine confermato
     if nuovo_stato == StatoOrdine.confermato and stato_precedente != StatoOrdine.confermato:
         logger.info(
             "Transizione a CONFERMATO per ordine %s (id=%s): stock_scalato=%s",
@@ -241,9 +240,10 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                         f"disponibili {prodotto.quantita}, richiesti {riga.quantita}",
                     )
                 prodotto.quantita -= riga.quantita
+                # Se la quantità raggiunge zero, marca per cancellazione futura
+                # (la cancellazione effettiva avviene quando l'ordine diventa COMPLETATO)
                 if prodotto.quantita == 0:
-                    # Cancella immediatamente il prodotto esaurito
-                    db.delete(prodotto)
+                    prodotto.data_scarico = datetime.now(timezone.utc)
                 db.add(Movimento(
                     prodotto_id=riga.prodotto_id,
                     tipo=TipoMovimento.scarico,
@@ -267,6 +267,27 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
     # ------------------------------------------------------------------ #
     if nuovo_stato == StatoOrdine.completato and stato_precedente != StatoOrdine.completato:
         ordine.data_completamento = datetime.now(timezone.utc)
+
+        # Cancella fisicamente i prodotti esauriti collegati a questo ordine
+        for riga in ordine.righe:
+            if riga.prodotto_id is None:
+                continue
+            prodotto = (
+                db.execute(
+                    select(Prodotto)
+                    .where(Prodotto.id == riga.prodotto_id)
+                )
+                .scalars()
+                .first()
+            )
+            if prodotto and prodotto.quantita == 0 and prodotto.data_scarico is not None:
+                logger.info(
+                    "Completamento ordine %s: cancellazione prodotto id=%s sku='%s' (quantita=0)",
+                    ordine.numero_ordine,
+                    prodotto.id,
+                    prodotto.sku,
+                )
+                db.delete(prodotto)
 
     # ------------------------------------------------------------------ #
     # Transizione → ANNULLATO                                             #
@@ -402,8 +423,7 @@ def delete_ordine(db: Session, ordine_id: int) -> bool:
         return False
     if ordine.stato == StatoOrdine.completato:
         raise HTTPException(status_code=400, detail="Non è possibile eliminare un ordine completato")
-    # Se lo stock era stato scalato (completato poi tornato indietro non dovrebbe succedere,
-    # ma per sicurezza) ripristiniamo lo stock
+    # Se lo stock era stato scalato ripristiniamo lo stock
     if ordine.stock_scalato:
         for riga in ordine.righe:
             prodotto = (
