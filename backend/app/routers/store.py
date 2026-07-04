@@ -26,6 +26,7 @@ from ..models.prodotto import Prodotto
 from ..models.cliente import Cliente
 from ..limiter import limiter
 from ..services.notification_service import notification_service
+from ..services.email_cliente_service import send_email_conferma_ordine
 
 logger = logging.getLogger(__name__)
 
@@ -314,6 +315,8 @@ def store_checkout(
         notification_service.send_new_order_notification(ordine)
     except Exception as e:
         logger.warning("Notifica ordine fallita (non critico): %s", e)
+
+    background_tasks.add_task(send_email_conferma_ordine, ordine, cliente)
 
     # Sincronizza stock e annunci su tutte le piattaforme in background
     prodotto_ids = [r.prodotto_id for r in body.righe]
