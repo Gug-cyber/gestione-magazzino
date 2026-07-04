@@ -305,70 +305,33 @@ export default function StoreCheckoutPage() {
     setLoading(true)
     setSubmitError(null)
     try {
-      if (cliente) {
-        // Cliente loggato: usa route autenticata che invia email
-        const payload = {
-          items: items.map(i => ({
-            prodotto_id: i.id,
-            nome_prodotto: i.nome,
-            quantita: i.quantita,
-            prezzo_unitario: i.prezzo_unitario ?? i.prezzo_vendita ?? 0,
-            immagine_url: i.immagini?.[0] || i.foto_url || null,
-          })),
-          spese_spedizione: spedizione.costo,
-          metodo_pagamento: pagamento,
-          note: [form.note, `Spedizione: ${spedizione.label}`].filter(Boolean).join(' | ') || undefined,
-          shipping_nome: form.nome.split(' ')[0] || '',
-          shipping_cognome: form.nome.split(' ').slice(1).join(' ') || '',
-          shipping_indirizzo: form.indirizzo || undefined,
-          shipping_citta: form.citta || undefined,
-          shipping_cap: form.cap || undefined,
-          shipping_telefono: form.telefono || undefined,
-          indirizzo_spedizione: form.indirizzo
-            ? `${form.nome} — ${form.indirizzo}${form.citta ? ', ' + form.citta : ''}${form.cap ? ' ' + form.cap : ''}`
-            : undefined,
-        }
-        const res = await storeAPI.creaOrdine(payload)
-        clearCart()
-        setSuccess({
-          messaggio: `Ordine confermato! Riceverai una email di conferma a ${cliente.email}.`,
-          ordine: { numero_ordine: res.data.numero_ordine }
-        })
-        trackPurchase(
-          res.data?.numero_ordine,
-          res.data?.totale || 0,
-          payload.items?.map(r => ({ id: String(r.prodotto_id), quantity: r.quantita, price: r.prezzo_unitario })) || []
-        )
-      } else {
-        // Guest: usa route pubblica (comportamento attuale)
-        const noteParts = [
-          form.note,
-          `Metodo pagamento: ${pagamento}`,
-          `Spedizione: ${spedizione.label} (€${spedizione.costo.toFixed(2)})`,
-        ].filter(Boolean)
-        const payload = {
-          nome: form.nome,
-          email: form.email,
-          telefono: form.telefono || undefined,
-          indirizzo: form.indirizzo || undefined,
-          citta: form.citta || undefined,
-          cap: form.cap || undefined,
-          note: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
-          righe: items.map(i => ({
-            prodotto_id: i.id,
-            quantita: i.quantita,
-            prezzo_unitario: i.prezzo_unitario ?? i.prezzo_vendita ?? 0,
-          })),
-        }
-        const res = await storeAPI.checkout(payload)
-        clearCart()
-        setSuccess(res.data)
-        trackPurchase(
-          res.data?.ordine?.numero_ordine || payload.righe?.length,
-          payload.righe?.reduce((sum, r) => sum + r.prezzo_unitario * r.quantita, 0) || 0,
-          payload.righe?.map(r => ({ id: String(r.prodotto_id), quantity: r.quantita, price: r.prezzo_unitario })) || []
-        )
+      const noteParts = [
+        form.note,
+        `Metodo pagamento: ${pagamento}`,
+        `Spedizione: ${spedizione.label} (€${spedizione.costo.toFixed(2)})`,
+      ].filter(Boolean)
+      const payload = {
+        nome: form.nome,
+        email: form.email,
+        telefono: form.telefono || undefined,
+        indirizzo: form.indirizzo || undefined,
+        citta: form.citta || undefined,
+        cap: form.cap || undefined,
+        note: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
+        righe: items.map(i => ({
+          prodotto_id: i.id,
+          quantita: i.quantita,
+          prezzo_unitario: i.prezzo_unitario ?? i.prezzo_vendita ?? 0,
+        })),
       }
+      const res = await storeAPI.checkout(payload)
+      clearCart()
+      setSuccess(res.data)
+      trackPurchase(
+        res.data?.ordine?.numero_ordine || payload.righe?.length,
+        payload.righe?.reduce((sum, r) => sum + r.prezzo_unitario * r.quantita, 0) || 0,
+        payload.righe?.map(r => ({ id: String(r.prodotto_id), quantity: r.quantita, price: r.prezzo_unitario })) || []
+      )
       setCurrentStep(5)
     } catch (err) {
       const detail = err.response?.data?.detail
