@@ -6,14 +6,26 @@ import { storeAPI } from '../../api/store'
 
 function statoStyle(stato) {
   switch (stato) {
-    case 'in_attesa':     return { bg: '#fff7ed', color: '#c2410c' }
-    case 'confermato':    return { bg: '#eff6ff', color: '#1d4ed8' }
-    case 'spedito':       return { bg: '#f0fdf4', color: '#16a34a' }
-    case 'consegnato':    return { bg: '#dcfce7', color: '#15803d' }
-    case 'annullato':     return { bg: '#fff0f0', color: '#dc2626' }
-    case 'reso_richiesto':return { bg: '#fefce8', color: '#ca8a04' }
-    default:              return { bg: 'var(--color-primary-bg, #eff6ff)', color: 'var(--color-primary)' }
+    case 'in_attesa':      return { bg: '#fff7ed', color: '#c2410c' }
+    case 'confermato':     return { bg: '#eff6ff', color: '#1d4ed8' }
+    case 'spedito':        return { bg: '#f0fdf4', color: '#16a34a' }
+    case 'consegnato':     return { bg: '#dcfce7', color: '#15803d' }
+    case 'annullato':      return { bg: '#fff0f0', color: '#dc2626' }
+    case 'reso_richiesto': return { bg: '#fefce8', color: '#ca8a04' }
+    default:               return { bg: 'var(--color-primary-bg, #eff6ff)', color: 'var(--color-primary)' }
   }
+}
+
+function statoLabel(stato) {
+  const labels = {
+    in_attesa: 'In attesa',
+    confermato: 'Confermato',
+    spedito: 'Spedito',
+    consegnato: 'Consegnato',
+    annullato: 'Annullato',
+    reso_richiesto: 'Reso richiesto',
+  }
+  return labels[stato] || stato?.replace(/_/g, ' ') || '—'
 }
 
 export default function StoreOrdiniPage() {
@@ -102,9 +114,18 @@ export default function StoreOrdiniPage() {
         )}
 
         {!ordiniLoading && ordini.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {ordini.map(ordine => {
               const { bg, color } = statoStyle(ordine.stato)
+
+              // Calcolo subtotale prodotti
+              const subtotaleProdotti = ordine.items
+                ? ordine.items.reduce((sum, item) => sum + Number(item.subtotale ?? (item.prezzo_unitario * item.quantita) ?? 0), 0)
+                : Number(ordine.subtotale ?? ordine.totale ?? 0)
+
+              const speseSpedizione = Number(ordine.spese_spedizione ?? 0)
+              const totaleFinale = Number(ordine.totale ?? 0)
+
               return (
                 <div
                   key={ordine.id}
@@ -115,12 +136,13 @@ export default function StoreOrdiniPage() {
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Header ordine */}
+                  {/* ── Header ordine ── */}
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     flexWrap: 'wrap', gap: '8px',
                     padding: '16px 20px',
                     borderBottom: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
                   }}>
                     <div>
                       <div style={{ fontWeight: '700', color: 'var(--color-text)', fontSize: '15px' }}>
@@ -132,27 +154,18 @@ export default function StoreOrdiniPage() {
                           : '—'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {ordine.stato && (
-                        <span style={{
-                          fontSize: '12px', fontWeight: '600',
-                          padding: '3px 10px', borderRadius: '999px',
-                          background: bg, color,
-                        }}>
-                          {ordine.stato.replace(/_/g, ' ')}
-                        </span>
-                      )}
-                      {ordine.totale != null && (
-                        <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--color-text)' }}>
-                          €{Number(ordine.totale).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
+                    <span style={{
+                      fontSize: '12px', fontWeight: '600',
+                      padding: '4px 12px', borderRadius: '999px',
+                      background: bg, color,
+                    }}>
+                      {statoLabel(ordine.stato)}
+                    </span>
                   </div>
 
-                  {/* Prodotti dell'ordine */}
+                  {/* ── Prodotti ── */}
                   {ordine.items && ordine.items.length > 0 && (
-                    <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {ordine.items.map((item, idx) => (
                         <div key={idx} style={{
                           display: 'flex', alignItems: 'center', gap: '12px',
@@ -171,16 +184,101 @@ export default function StoreOrdiniPage() {
                               {item.nome_prodotto || item.nome || '—'}
                             </div>
                             <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                              Qtà: {item.quantita}
+                              Qtà: {item.quantita} · €{Number(item.prezzo_unitario ?? 0).toFixed(2)} cad.
                             </div>
                           </div>
                           <div style={{ fontWeight: '600', flexShrink: 0 }}>
-                            €{Number(item.prezzo_unitario ?? item.prezzo ?? 0).toFixed(2)}
+                            €{Number(item.subtotale ?? (item.prezzo_unitario * item.quantita) ?? 0).toFixed(2)}
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
+
+                  {/* ── Riepilogo costi ── */}
+                  <div style={{
+                    borderTop: '1px solid var(--color-border)',
+                    padding: '12px 20px',
+                    display: 'flex', flexDirection: 'column', gap: '6px',
+                    fontSize: '14px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-secondary)' }}>
+                      <span>Subtotale</span>
+                      <span>€{subtotaleProdotti.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-secondary)' }}>
+                      <span>Spedizione</span>
+                      <span>{speseSpedizione > 0 ? `€${speseSpedizione.toFixed(2)}` : 'Gratuita'}</span>
+                    </div>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontWeight: '700', fontSize: '15px',
+                      color: 'var(--color-text)',
+                      borderTop: '1px solid var(--color-border)',
+                      paddingTop: '8px', marginTop: '2px',
+                    }}>
+                      <span>Totale</span>
+                      <span>€{totaleFinale.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* ── Dettagli aggiuntivi ── */}
+                  <div style={{
+                    borderTop: '1px solid var(--color-border)',
+                    padding: '12px 20px',
+                    display: 'flex', flexDirection: 'column', gap: '6px',
+                    fontSize: '13px', color: 'var(--color-text-secondary)',
+                  }}>
+                    {/* Metodo di pagamento */}
+                    {ordine.metodo_pagamento && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ minWidth: '140px', fontWeight: '500', color: 'var(--color-text)' }}>Metodo di pagamento</span>
+                        <span style={{ textTransform: 'capitalize' }}>
+                          {ordine.metodo_pagamento.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Indirizzo di spedizione */}
+                    {ordine.indirizzo_spedizione && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ minWidth: '140px', fontWeight: '500', color: 'var(--color-text)', flexShrink: 0 }}>Indirizzo spedizione</span>
+                        <span>{ordine.indirizzo_spedizione}</span>
+                      </div>
+                    )}
+
+                    {/* Corriere + tracking */}
+                    {ordine.corriere && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ minWidth: '140px', fontWeight: '500', color: 'var(--color-text)' }}>Corriere</span>
+                        <span>{ordine.corriere}</span>
+                      </div>
+                    )}
+                    {ordine.tracking_number && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ minWidth: '140px', fontWeight: '500', color: 'var(--color-text)' }}>Tracking</span>
+                        <span style={{ fontFamily: 'monospace' }}>{ordine.tracking_number}</span>
+                      </div>
+                    )}
+
+                    {/* Data stimata consegna */}
+                    {ordine.data_stimata_consegna && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ minWidth: '140px', fontWeight: '500', color: 'var(--color-text)' }}>Consegna prevista</span>
+                        <span>
+                          {new Date(ordine.data_stimata_consegna).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Note */}
+                    {ordine.note && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ minWidth: '140px', fontWeight: '500', color: 'var(--color-text)', flexShrink: 0 }}>Note</span>
+                        <span style={{ fontStyle: 'italic' }}>{ordine.note}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
