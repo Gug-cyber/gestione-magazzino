@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useClienteAuth } from '../../context/ClienteAuthContext'
 import { storeAPI } from '../../api/store'
 import '../../styles/store-theme.css'
 
@@ -245,6 +246,7 @@ function StoreFooter() {
 export default function StoreLayout({ children }) {
   const { totalItems } = useCart()
   const { lang, setLanguage, t } = useLanguage()
+  const { cliente } = useClienteAuth()
   const location = useLocation()
   const [sideBanners, setSideBanners] = useState([])
   const [isWide, setIsWide] = useState(() => {
@@ -494,6 +496,26 @@ export default function StoreLayout({ children }) {
               )}
             </span>
           </Link>
+          {cliente ? (
+            <Link to="/store/account" style={{
+              ...navLinkStyle('/store/account'),
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {cliente.nome}
+              </span>
+            </Link>
+          ) : (
+            <Link to="/store/login" style={navLinkStyle('/store/login')}>
+              Accedi
+            </Link>
+          )}
         </div>
       </nav>
 

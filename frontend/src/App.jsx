@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { ClienteAuthProvider } from './context/ClienteAuthContext'
 import { FeatureFlagsProvider } from './context/FeatureFlagsContext'
 import { LanguageProvider } from './context/LanguageContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -49,6 +50,9 @@ import StoreProductPage from './pages/store/StoreProductPage'
 import StoreCartPage from './pages/store/StoreCartPage'
 import StoreCheckoutPage from './pages/store/StoreCheckoutPage'
 import StoreFooterPage from './pages/store/StoreFooterPage'
+import StoreLoginPage from './pages/store/StoreLoginPage'
+import StoreRegisterPage from './pages/store/StoreRegisterPage'
+import StoreAccountPage from './pages/store/StoreAccountPage'
 import ControlPanel from './pages/ControlPanel'
 import AIAssistant from './pages/AIAssistant'
 import DashboardOpportunita from './pages/DashboardOpportunita.jsx'
@@ -100,6 +104,7 @@ function App() {
   return (
     <LanguageProvider>
     <CartProvider>
+      <ClienteAuthProvider>
       <AuthProvider>
         <FeatureFlagsProvider>
         <BrowserRouter>
@@ -109,6 +114,9 @@ function App() {
             <Route path="/store/cart" element={<StoreCartPage />} />
             <Route path="/store/checkout" element={<StoreCheckoutPage />} />
             <Route path="/store/pagina/:slug" element={<StoreFooterPage />} />
+            <Route path="/store/login" element={<StoreLoginPage />} />
+            <Route path="/store/registrati" element={<StoreRegisterPage />} />
+            <Route path="/store/account" element={<StoreAccountPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Navigate to="/store" replace />} />
@@ -314,6 +322,7 @@ function App() {
         </BrowserRouter>
         </FeatureFlagsProvider>
       </AuthProvider>
+      </ClienteAuthProvider>
     </CartProvider>
     </LanguageProvider>
   )

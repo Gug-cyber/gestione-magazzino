@@ -7,6 +7,19 @@ const storeClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+const clienteAuthClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+clienteAuthClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('cliente_token')
+  if (token) {
+    config.headers['Authorization'] = 'Bearer ' + token
+  }
+  return config
+})
+
 export const storeAPI = {
   getProdotti: (params) => storeClient.get('/api/store/prodotti', { params }),
   getProdotto: (id) => storeClient.get(`/api/store/prodotti/${id}`),
@@ -19,4 +32,14 @@ export const storeAPI = {
   getStoreSettings: () => storeClient.get('/api/store/store-settings'),
   getFooterPages: () => storeClient.get('/api/store/footer-pages'),
   getFooterPage: (slug) => storeClient.get(`/api/store/footer-pages/${slug}`),
+  clienteRegistrazione: (data) => clienteAuthClient.post('/api/clienti/registrazione', data),
+  clienteLogin: (data) => clienteAuthClient.post('/api/clienti/login', data),
+  clienteMe: () => clienteAuthClient.get('/api/clienti/me'),
+  clienteUpdate: (data) => clienteAuthClient.put('/api/clienti/me', data),
+  clienteOrdini: () => clienteAuthClient.get('/api/clienti/ordini'),
+  clienteOrdine: (id) => clienteAuthClient.get(`/api/clienti/ordini/${id}`),
+  creaOrdine: (data) => clienteAuthClient.post('/api/clienti/ordini', data),
+  clientePreferiti: () => clienteAuthClient.get('/api/clienti/preferiti'),
+  aggiungiPreferito: (data) => clienteAuthClient.post('/api/clienti/preferiti', data),
+  rimuoviPreferito: (prodottoId) => clienteAuthClient.delete(`/api/clienti/preferiti/${prodottoId}`),
 }
