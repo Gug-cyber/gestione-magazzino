@@ -241,9 +241,9 @@ def update_ordine(db: Session, ordine_id: int, update: OrdineUpdate) -> Optional
                         f"disponibili {prodotto.quantita}, richiesti {riga.quantita}",
                     )
                 prodotto.quantita -= riga.quantita
-                # Marca il prodotto per la cancellazione automatica se la quantità è zero
                 if prodotto.quantita == 0:
-                    prodotto.data_scarico = datetime.now(timezone.utc)
+                    # Cancella immediatamente il prodotto esaurito
+                    db.delete(prodotto)
                 db.add(Movimento(
                     prodotto_id=riga.prodotto_id,
                     tipo=TipoMovimento.scarico,

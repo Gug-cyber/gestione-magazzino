@@ -197,6 +197,14 @@ def get_store_prodotti(
             )
         if disponibili_only:
             query = query.filter(ProdottoModel.quantita > 0)
+        # Escludi prodotti non vendibili, senza prezzo o senza foto
+        query = query.filter(ProdottoModel.non_vendibile == False)  # noqa: E712
+        query = query.filter(ProdottoModel.prezzo_vendita.isnot(None))
+        query = query.filter(ProdottoModel.prezzo_vendita > 0)
+        query = query.filter(
+            (ProdottoModel.foto_path.isnot(None)) |
+            (ProdottoModel.foto_aggiuntive.isnot(None))
+        )
         prodotti = query.order_by(ProdottoModel.nome).offset(skip).limit(limit).all()
     else:
         prodotti = crud_prodotti.get_prodotti(
@@ -206,6 +214,7 @@ def get_store_prodotti(
             search=search,
             categoria_id=categoria_id,
             disponibili_only=disponibili_only,
+            store_only=True,
         )
     return [_to_public(p, request) for p in prodotti]
 
