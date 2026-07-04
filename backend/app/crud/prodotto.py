@@ -63,6 +63,7 @@ def get_prodotti(
     ubicazione_id: Optional[int] = None,
     stato_conservazione: Optional[str] = None,
     disponibili_only: bool = False,
+    store_only: bool = False,
 ) -> List[Prodotto]:
     query = db.query(Prodotto)
     if search:
@@ -79,6 +80,14 @@ def get_prodotti(
         query = query.filter(Prodotto.stato_conservazione == stato_conservazione)
     if disponibili_only:
         query = query.filter(Prodotto.quantita > 0)
+    if store_only:
+        query = query.filter(Prodotto.non_vendibile == False)  # noqa: E712
+        query = query.filter(Prodotto.prezzo_vendita.isnot(None))
+        query = query.filter(Prodotto.prezzo_vendita > 0)
+        query = query.filter(
+            (Prodotto.foto_path.isnot(None)) |
+            (Prodotto.foto_aggiuntive.isnot(None))
+        )
     return query.order_by(Prodotto.nome).offset(skip).limit(limit).all()
 
 
@@ -89,6 +98,7 @@ def count_prodotti(
     ubicazione_id: Optional[int] = None,
     stato_conservazione: Optional[str] = None,
     disponibili_only: bool = False,
+    store_only: bool = False,
 ) -> int:
     query = db.query(Prodotto)
     if search:
@@ -105,6 +115,14 @@ def count_prodotti(
         query = query.filter(Prodotto.stato_conservazione == stato_conservazione)
     if disponibili_only:
         query = query.filter(Prodotto.quantita > 0)
+    if store_only:
+        query = query.filter(Prodotto.non_vendibile == False)  # noqa: E712
+        query = query.filter(Prodotto.prezzo_vendita.isnot(None))
+        query = query.filter(Prodotto.prezzo_vendita > 0)
+        query = query.filter(
+            (Prodotto.foto_path.isnot(None)) |
+            (Prodotto.foto_aggiuntive.isnot(None))
+        )
     return query.count()
 
 

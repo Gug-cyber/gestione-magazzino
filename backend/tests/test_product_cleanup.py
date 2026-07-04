@@ -2,14 +2,16 @@
 Test per la logica di cancellazione automatica dei prodotti a zero stock.
 
 Verifica:
-  1. data_scarico viene impostato quando la quantità del prodotto raggiunge zero
+  1. Il prodotto viene eliminato immediatamente quando la quantità raggiunge zero
      in seguito alla conferma di un ordine.
-  2. data_scarico viene azzerato quando lo stock viene ripristinato (annullamento
-     ordine o ricezione fornitura).
-  3. run_cleanup() elimina correttamente i prodotti candidati dopo 10 giorni.
-  4. run_cleanup() NON elimina prodotti non collegati a un ordine.
-  5. run_cleanup() NON elimina prodotti con data_scarico recente (< 10 giorni).
-  6. run_cleanup() NON elimina prodotti con quantità > 0.
+  2. Se dopo la vendita rimane dello stock, il prodotto NON viene eliminato.
+  3. Annullare un ordine il cui prodotto è già stato eliminato non causa errori.
+  4. run_cleanup() elimina correttamente i prodotti candidati dopo 10 giorni
+     (prodotti con data_scarico impostata manualmente per altri casi).
+  5. run_cleanup() NON elimina prodotti non collegati a un ordine.
+  6. run_cleanup() NON elimina prodotti con data_scarico recente (< 10 giorni).
+  7. run_cleanup() NON elimina prodotti con quantità > 0.
+  8. Dopo la cancellazione del prodotto, la riga ordine deve esistere con prodotto_id=NULL.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -77,11 +79,11 @@ def _annulla_ordine(client, auth_headers, ordine_id):
 
 
 # ---------------------------------------------------------------------------
-# Test: data_scarico viene impostato quando la quantità raggiunge zero
+# Test: il prodotto viene eliminato immediatamente quando la quantità raggiunge zero
 # ---------------------------------------------------------------------------
 
-def test_data_scarico_impostato_quando_quantita_zero(client, auth_headers, db):
-    """Confermare un ordine che esaurisce le scorte deve impostare data_scarico."""
+def test_prodotto_eliminato_immediatamente_quando_quantita_zero(client, auth_headers, db):
+    """Confermare un ordine che esaurisce le scorte deve eliminare subito il prodotto."""
     from app.models.prodotto import Prodotto
 
     prodotto = _crea_prodotto(client, auth_headers, sku="CLEANUP-TEST-01", quantita=3)
@@ -92,8 +94,7 @@ def test_data_scarico_impostato_quando_quantita_zero(client, auth_headers, db):
 
     db.expire_all()
     p = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
-    assert p.quantita == 0
-    assert p.data_scarico is not None, "data_scarico deve essere impostato quando la quantità è zero"
+    assert p is None, "Il prodotto deve essere eliminato immediatamente quando la quantità è zero"
 
 
 def test_data_scarico_non_impostato_se_quantita_rimane_positiva(client, auth_headers, db):
@@ -112,8 +113,8 @@ def test_data_scarico_non_impostato_se_quantita_rimane_positiva(client, auth_hea
     assert p.data_scarico is None, "data_scarico deve restare None se la quantità è > 0"
 
 
-def test_data_scarico_azzerato_quando_stock_ripristinato(client, auth_headers, db):
-    """Annullare un ordine deve azzerare data_scarico se lo stock viene ripristinato."""
+def test_annullamento_ordine_prodotto_eliminato_non_causa_errori(client, auth_headers, db):
+    """Annullare un ordine il cui prodotto è già stato eliminato non deve causare errori."""
     from app.models.prodotto import Prodotto
 
     prodotto = _crea_prodotto(client, auth_headers, sku="CLEANUP-TEST-03", quantita=3)
@@ -124,14 +125,15 @@ def test_data_scarico_azzerato_quando_stock_ripristinato(client, auth_headers, d
 
     db.expire_all()
     p = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
-    assert p.data_scarico is not None
+    assert p is None, "Il prodotto deve essere già eliminato dopo la conferma"
 
+    # Annullare l'ordine non deve sollevare eccezioni
     _annulla_ordine(client, auth_headers, ordine["id"])
 
+    # Il prodotto rimane eliminato (non viene ricreato)
     db.expire_all()
-    p = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
-    assert p.quantita == 3
-    assert p.data_scarico is None, "data_scarico deve essere azzerato dopo il ripristino dello stock"
+    p_after = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
+    assert p_after is None, "Il prodotto eliminato non deve essere ricreato dall'annullamento"
 
 
 # ---------------------------------------------------------------------------
@@ -139,19 +141,27 @@ def test_data_scarico_azzerato_quando_stock_ripristinato(client, auth_headers, d
 # ---------------------------------------------------------------------------
 
 def test_cleanup_elimina_prodotto_candidato(client, auth_headers, db):
-    """run_cleanup deve eliminare un prodotto con quantità=0, data_scarico > 10 giorni e ordine."""
+    """run_cleanup deve eliminare un prodotto con quantità=0, data_scarico > 10 giorni e ordine.
+
+    Questo test simula il caso in cui data_scarico viene impostato manualmente
+    (ad es. per prodotti gestiti al di fuori del flusso ordine normale).
+    """
     from app.models.prodotto import Prodotto
     from app.tasks.product_cleanup_scheduler import run_cleanup
 
+    # Crea un prodotto con quantità > 0 (non verrà eliminato automaticamente)
     prodotto = _crea_prodotto(client, auth_headers, sku="CLEANUP-TEST-04", quantita=2)
     prodotto_id = prodotto["id"]
 
-    ordine = _crea_ordine(client, auth_headers, prodotto_id, quantita=2)
+    # Crea e conferma un ordine parziale per associare il prodotto a una riga_ordine
+    ordine = _crea_ordine(client, auth_headers, prodotto_id, quantita=1)
     _conferma_ordine(client, auth_headers, ordine["id"])
 
-    # Simula data_scarico vecchia (> 10 giorni)
+    # Imposta manualmente quantita=0 e data_scarico vecchia per simulare il caso dello scheduler
     db.expire_all()
     p = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
+    assert p is not None
+    p.quantita = 0
     p.data_scarico = datetime.now(timezone.utc) - timedelta(days=11)
     db.commit()
 
@@ -193,15 +203,18 @@ def test_cleanup_non_elimina_prodotto_con_data_scarico_recente(client, auth_head
     from app.models.prodotto import Prodotto
     from app.tasks.product_cleanup_scheduler import run_cleanup
 
-    prodotto = _crea_prodotto(client, auth_headers, sku="CLEANUP-TEST-06", quantita=1)
+    # Crea prodotto e ordine parziale per associare una riga_ordine
+    prodotto = _crea_prodotto(client, auth_headers, sku="CLEANUP-TEST-06", quantita=2)
     prodotto_id = prodotto["id"]
 
     ordine = _crea_ordine(client, auth_headers, prodotto_id, quantita=1)
     _conferma_ordine(client, auth_headers, ordine["id"])
 
-    # data_scarico recente (solo 5 giorni fa)
+    # Imposta manualmente quantita=0 e data_scarico recente
     db.expire_all()
     p = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
+    assert p is not None
+    p.quantita = 0
     p.data_scarico = datetime.now(timezone.utc) - timedelta(days=5)
     db.commit()
 
@@ -242,10 +255,13 @@ def test_cleanup_non_elimina_prodotto_con_quantita_positiva(client, auth_headers
 
 
 def test_cleanup_preserva_storia_ordine_dopo_eliminazione(client, auth_headers, db):
-    """Dopo la cancellazione del prodotto, la riga ordine deve esistere con prodotto_id=NULL."""
+    """Dopo la cancellazione del prodotto, la riga ordine deve esistere con prodotto_id=NULL.
+
+    Testa sia la cancellazione immediata (qty→0 da ordine) sia il comportamento
+    del campo prodotto_id nelle righe d'ordine (ON DELETE SET NULL).
+    """
     from app.models.prodotto import Prodotto
     from app.models.ordine import RigaOrdine
-    from app.tasks.product_cleanup_scheduler import run_cleanup
 
     prodotto = _crea_prodotto(client, auth_headers, sku="CLEANUP-TEST-08", quantita=2)
     prodotto_id = prodotto["id"]
@@ -254,18 +270,10 @@ def test_cleanup_preserva_storia_ordine_dopo_eliminazione(client, auth_headers, 
     ordine_id = ordine["id"]
     _conferma_ordine(client, auth_headers, ordine_id)
 
-    # Simula data_scarico vecchia
     db.expire_all()
-    p = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
-    p.data_scarico = datetime.now(timezone.utc) - timedelta(days=11)
-    db.commit()
-
-    run_cleanup(db=db)
-
-    db.expire_all()
-    # Il prodotto deve essere eliminato
+    # Il prodotto deve essere eliminato immediatamente dopo la conferma
     p_after = db.query(Prodotto).filter(Prodotto.id == prodotto_id).first()
-    assert p_after is None
+    assert p_after is None, "Il prodotto deve essere eliminato immediatamente quando qty=0"
 
     # La riga ordine deve esistere ancora (prodotto_id=NULL grazie a SET NULL)
     riga = db.query(RigaOrdine).filter(RigaOrdine.ordine_id == ordine_id).first()
