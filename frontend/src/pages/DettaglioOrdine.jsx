@@ -56,6 +56,14 @@ const FileTextIcon = () => (
   </svg>
 )
 
+const DownloadIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <line x1="12" y1="15" x2="12" y2="3"/>
+  </svg>
+)
+
 const PlusIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19"/>
@@ -86,6 +94,7 @@ export default function DettaglioOrdine() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [fatturaOrdine, setFatturaOrdine] = useState(null)
+  const [downloadingFattura, setDownloadingFattura] = useState(false)
   const [trackingEdit, setTrackingEdit] = useState(false)
   const [trackingForm, setTrackingForm] = useState({ corriere: '', tracking_number: '' })
   const [trackingLoading, setTrackingLoading] = useState(false)
@@ -112,6 +121,17 @@ export default function DettaglioOrdine() {
     prodottiAPI.getAll({ limit: 200 }).then(r => setProdotti(r.data)).catch(err => console.error('Errore caricamento prodotti:', err))
   }, [])
 
+  const loadFattura = async (ordineId) => {
+    try {
+      const fr = await fattureAPI.getByOrdine(ordineId)
+      const fatture = fr.data || []
+      const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
+      setFatturaOrdine(fattura || null)
+    } catch {
+      setFatturaOrdine(null)
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       setLoading(true)
@@ -119,11 +139,9 @@ export default function DettaglioOrdine() {
       try {
         const res = await ordiniAPI.getById(id)
         setOrdine(res.data)
-        if (res.data.stato === 'completato' || res.data.stato === 'annullato' || res.data.stato === 'reso') {
-          const fr = await fattureAPI.getByOrdine(res.data.id)
-          const fatture = fr.data || []
-          const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
-          setFatturaOrdine(fattura || null)
+        // Carica fattura per tutti gli stati tranne bozza
+        if (res.data.stato !== 'bozza') {
+          await loadFattura(res.data.id)
         }
       } catch {
         setError('Ordine non trovato')
@@ -139,11 +157,8 @@ export default function DettaglioOrdine() {
       await ordiniAPI.updateStato(ordine.id, nuovoStato)
       const res = await ordiniAPI.getById(ordine.id)
       setOrdine(res.data)
-      if (res.data.stato === 'completato' || res.data.stato === 'annullato' || res.data.stato === 'reso') {
-        const fr = await fattureAPI.getByOrdine(ordine.id)
-        const fatture = fr.data || []
-        const fattura = fatture.find(f => f.tipo_documento === 'fattura' && f.auto_generata)
-        setFatturaOrdine(fattura || null)
+      if (res.data.stato !== 'bozza') {
+        await loadFattura(ordine.id)
       } else {
         setFatturaOrdine(null)
       }
@@ -159,6 +174,28 @@ export default function DettaglioOrdine() {
       navigate('/ordini')
     } catch (err) {
       alert(err?.response?.data?.detail || "Errore nell'eliminazione")
+    }
+  }
+
+  const handleDownloadFattura = async () => {
+    if (!fatturaOrdine) return
+    setDownloadingFattura(true)
+    try {
+      const url = fattureAPI.getDownloadUrl(fatturaOrdine.id)
+      const token = localStorage.getItem('token')
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error('Download fallito')
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `fattura_${ordine.numero_ordine}.pdf`
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      alert('Errore durante il download della fattura')
+    } finally {
+      setDownloadingFattura(false)
     }
   }
 
@@ -330,6 +367,20 @@ export default function DettaglioOrdine() {
                     📦 Segna come reso
                   </button>
                 )}
+
+                {/* CTA Scarica Fattura */}
+                {fatturaOrdine && !fatturaOrdine.annullata && (
+                  <button
+                    onClick={handleDownloadFattura}
+                    disabled={downloadingFattura}
+                    className="btn-secondary"
+                    style={{ fontSize: '13px', padding: '10px 14px', width: '100%', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center', color: 'var(--success)', borderColor: 'var(--success)' }}
+                  >
+                    <DownloadIcon />
+                    {downloadingFattura ? 'Download...' : 'Scarica fattura PDF'}
+                  </button>
+                )}
+
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={handleDelete} className="btn-secondary" style={{ fontSize: '13px', padding: '10px 14px', flex: 1, color: 'var(--danger)' }}>
                     <TrashIcon /> Elimina
@@ -357,14 +408,16 @@ export default function DettaglioOrdine() {
         {/* Fattura auto-generata */}
         {fatturaOrdine && (
           <div className="card" style={{
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            background: fatturaOrdine.annullata ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.1)',
+            border: fatturaOrdine.annullata ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)',
             marginBottom: '20px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <FileTextIcon />
-              <div>
-                <strong style={{ color: 'var(--success)' }}>Fattura generata automaticamente</strong>
+              <div style={{ flex: 1 }}>
+                <strong style={{ color: fatturaOrdine.annullata ? 'var(--danger)' : 'var(--success)' }}>
+                  Fattura generata automaticamente
+                </strong>
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   N. <strong>{fatturaOrdine.numero_fattura}</strong>
                   {' - '}{formatDate(fatturaOrdine.data_fattura)}
@@ -378,6 +431,17 @@ export default function DettaglioOrdine() {
                   )}
                 </div>
               </div>
+              {!fatturaOrdine.annullata && (
+                <button
+                  onClick={handleDownloadFattura}
+                  disabled={downloadingFattura}
+                  className="btn-secondary"
+                  style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--success)', borderColor: 'var(--success)', whiteSpace: 'nowrap' }}
+                >
+                  <DownloadIcon />
+                  {downloadingFattura ? 'Download...' : 'PDF'}
+                </button>
+              )}
             </div>
           </div>
         )}
