@@ -8,6 +8,8 @@ from app.database import get_db
 from app.models.cliente_account import ClienteAccount
 from app.models.ordine_ecommerce import OrdineEcommerce, ItemOrdine, StatoOrdine
 from app.models.preferito import Preferito
+from app.models.ordine import Ordine as OrdineGestionale, RigaOrdine
+from app.models.cliente import Cliente as ClienteGestionale
 from app.schemas.cliente_auth import (
     ClienteRegistrazione, ClienteLogin, ClienteResponse, ClienteUpdate,
     TokenResponse, CreaOrdineSchema, OrdineResponse, RichiestaReso,
@@ -231,14 +233,35 @@ async def lista_ordini(
     cliente: ClienteAccount = Depends(get_current_cliente),
     db: Session = Depends(get_db)
 ):
-    """Lista ordini del cliente."""
-    ordini = (
+    """Lista ordini del cliente: include ordini ecommerce + ordini gestionale per stessa email."""
+    # Ordini ecommerce (sistema clienti)
+    ordini_ecommerce = (
         db.query(OrdineEcommerce)
         .filter(OrdineEcommerce.cliente_id == cliente.id)
         .order_by(OrdineEcommerce.data_ordine.desc())
         .all()
     )
-    return [_ordine_response_with_cliente(o, cliente) for o in ordini]
+    risultati = [_ordine_response_with_cliente(o, cliente) for o in ordini_ecommerce]
+
+    # Ordini gestionale: trova il cliente_id nella tabella clienti per la stessa email
+    cliente_gestionale = (
+        db.query(ClienteGestionale)
+        .filter(ClienteGestionale.email == cliente.email)
+        .first()
+    )
+    if cliente_gestionale:
+        ordini_gestionale = (
+            db.query(OrdineGestionale)
+            .filter(OrdineGestionale.cliente_id == cliente_gestionale.id)
+            .order_by(OrdineGestionale.data_ordine.desc())
+            .all()
+        )
+        for o in ordini_gestionale:
+            risultati.append(_ordine_gestionale_to_response(o, cliente))
+
+    # Ordina tutto per data discendente
+    risultati.sort(key=lambda x: x.data_ordine or datetime.min, reverse=True)
+    return risultati
 
 
 @router.get("/ordini/{ordine_id}", response_model=OrdineResponse)
@@ -370,6 +393,56 @@ def _ordine_response_with_cliente(ordine: OrdineEcommerce, cliente: ClienteAccou
     resp.cliente_cognome = cliente.cognome
     resp.cliente_email = cliente.email
     return resp
+
+
+def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAccount) -> OrdineResponse:
+    """Mappa un ordine gestionale (tabella ordini) al formato OrdineResponse del cliente."""
+    from app.schemas.cliente_auth import ItemOrdineResponse
+    items = []
+    for riga in (ordine.righe or []):
+        items.append(ItemOrdineResponse(
+            id=riga.id,
+            prodotto_id=riga.prodotto_id,
+            nome_prodotto=riga.prodotto.nome if riga.prodotto else f"Prodotto #{riga.prodotto_id}",
+            quantita=riga.quantita,
+            prezzo_unitario=float(riga.prezzo_unitario),
+            subtotale=float(riga.subtotale),
+            immagine_url=None,
+        ))
+    # Mappa lo stato gestionale → stato ecommerce
+    stato_map = {
+        "bozza": "in_attesa",
+        "confermato": "in_attesa",
+        "spedito": "spedito",
+        "completato": "consegnato",
+        "annullato": "annullato",
+        "reso": "reso_richiesto",
+    }
+    stato_str = ordine.stato.value if hasattr(ordine.stato, "value") else str(ordine.stato)
+    stato_ecommerce = stato_map.get(stato_str, "in_attesa")
+
+    return OrdineResponse(
+        id=ordine.id,
+        numero_ordine=ordine.numero_ordine,
+        stato=stato_ecommerce,
+        totale=float(ordine.totale or 0),
+        subtotale=float(ordine.totale or 0),
+        spese_spedizione=0.0,
+        metodo_pagamento=None,
+        indirizzo_spedizione=ordine.indirizzo_spedizione,
+        note=ordine.note,
+        data_ordine=ordine.data_ordine,
+        data_spedizione=None,
+        data_consegna=None,
+        data_stimata_consegna=None,
+        corriere=ordine.corriere,
+        tracking_number=ordine.tracking_number,
+        motivo_reso=None,
+        items=items,
+        cliente_nome=cliente.nome,
+        cliente_cognome=cliente.cognome,
+        cliente_email=cliente.email,
+    )
 
 
 # === PREFERITI ===

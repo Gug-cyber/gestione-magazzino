@@ -229,6 +229,11 @@ def get_store_prodotto(
     prodotto = crud_prodotti.get_prodotto(db, prodotto_id)
     if not prodotto:
         raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    # Stessi filtri della lista: non_vendibile, senza prezzo, senza foto
+    ha_foto = bool(prodotto.foto_path or prodotto.foto_aggiuntive)
+    ha_prezzo = prodotto.prezzo_vendita is not None and float(prodotto.prezzo_vendita) > 0
+    if prodotto.non_vendibile or not ha_prezzo or not ha_foto:
+        raise HTTPException(status_code=404, detail="Prodotto non disponibile")
     return _to_public(prodotto, request)
 
 
