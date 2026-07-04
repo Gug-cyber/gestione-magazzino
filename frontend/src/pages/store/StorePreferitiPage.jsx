@@ -42,14 +42,13 @@ export default function StorePreferitiPage() {
   }
 
   function handleAggiungiCarrello(pref) {
-    const prodotto = pref.prodotto || pref
     addItem({
-      id: prodotto.id || pref.prodotto_id,
-      nome: prodotto.nome,
-      prezzo: prodotto.prezzo,
-      immagine_url: prodotto.immagine_url,
-      quantita: 1,
-    })
+      id: pref.prodotto_id,
+      nome: pref.nome_prodotto,
+      prezzo_unitario: pref.prezzo,
+      foto_url: pref.immagine_url,
+      quantita_disponibile: 99,
+    }, 1)
   }
 
   if (loading) {
@@ -66,7 +65,7 @@ export default function StorePreferitiPage() {
 
   return (
     <StoreLayout>
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 0' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 0' }}>
         <Link to="/store/account" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           color: 'var(--color-text-secondary)', textDecoration: 'none',
@@ -128,64 +127,102 @@ export default function StorePreferitiPage() {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: '16px',
+            gap: '24px',
           }}>
             {preferiti.map(pref => {
-              const prodotto = pref.prodotto || pref
-              const prodottoId = pref.prodotto_id || prodotto.id
+              const prodottoId = pref.prodotto_id
               return (
                 <div key={pref.id || prodottoId} style={{
-                  background: 'var(--color-bg-elevated)',
-                  borderRadius: '12px',
+                  backgroundColor: 'var(--color-surface)',
                   border: '1px solid var(--color-border)',
+                  borderRadius: '16px',
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                }}>
-                  <Link to={`/store/product/${prodottoId}`} style={{ textDecoration: 'none' }}>
-                    {prodotto.immagine_url ? (
-                      <img
-                        src={prodotto.immagine_url}
-                        alt={prodotto.nome}
-                        style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }}
-                        onError={e => { e.target.style.display = 'none' }}
-                      />
-                    ) : (
-                      <div style={{
-                        width: '100%', height: '180px',
-                        background: 'var(--color-border)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '40px',
-                      }}>
-                        🛍️
-                      </div>
-                    )}
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'transform 280ms ease, box-shadow 280ms ease',
+                }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-4px)'
+                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'
+                  }}
+                >
+                  {/* Immagine con aspect ratio 4:5 come ProductCard */}
+                  <Link to={`/store/product/${prodottoId}`} style={{ textDecoration: 'none', display: 'block' }}>
+                    <div style={{
+                      position: 'relative',
+                      width: '100%',
+                      aspectRatio: '4/5',
+                      overflow: 'hidden',
+                      backgroundColor: 'var(--color-surface-hover)',
+                    }}>
+                      {pref.immagine_url ? (
+                        <img
+                          src={pref.immagine_url}
+                          alt={pref.nome_prodotto}
+                          style={{
+                            position: 'absolute', inset: 0,
+                            width: '100%', height: '100%',
+                            objectFit: 'cover',
+                          }}
+                          onError={e => { e.target.style.display = 'none' }}
+                        />
+                      ) : (
+                        <div style={{
+                          position: 'absolute', inset: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '40px', color: 'var(--color-text-muted)', opacity: 0.4,
+                        }}>
+                          🛍️
+                        </div>
+                      )}
+                    </div>
                   </Link>
-                  <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+                  {/* Body */}
+                  <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <Link to={`/store/product/${prodottoId}`} style={{ textDecoration: 'none', color: 'var(--color-text)' }}>
-                      <div style={{ fontWeight: '600', fontSize: '14px', lineHeight: '1.3' }}>
-                        {prodotto.nome || '—'}
+                      <div style={{
+                        fontWeight: '600', fontSize: '14px', lineHeight: '1.35',
+                        display: '-webkit-box', WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                      }}>
+                        {pref.nome_prodotto || '—'}
                       </div>
                     </Link>
-                    {prodotto.prezzo != null && (
-                      <div style={{ fontWeight: '700', fontSize: '16px', color: 'var(--color-primary)' }}>
-                        €{Number(prodotto.prezzo).toFixed(2)}
+
+                    {pref.prezzo != null && (
+                      <div style={{ fontWeight: '800', fontSize: '18px', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+                        €{Number(pref.prezzo).toFixed(2)}
                       </div>
                     )}
-                    <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+
+                    <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <button
                         onClick={() => handleAggiungiCarrello(pref)}
                         style={{
-                          padding: '8px 12px',
-                          background: 'var(--color-primary)',
+                          padding: '12px 16px',
+                          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                           color: '#fff',
                           border: 'none',
-                          borderRadius: '8px',
+                          borderRadius: '10px',
                           fontSize: '13px',
                           fontWeight: '600',
                           cursor: 'pointer',
                           width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          boxShadow: '0 4px 12px rgba(5,150,105,0.3)',
+                          transition: 'all 200ms ease',
                         }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(5,150,105,0.4)' }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(5,150,105,0.3)' }}
                       >
                         🛒 Aggiungi al carrello
                       </button>
@@ -193,7 +230,7 @@ export default function StorePreferitiPage() {
                         onClick={() => handleRimuovi(prodottoId)}
                         disabled={removingId === prodottoId}
                         style={{
-                          padding: '7px 12px',
+                          padding: '9px 12px',
                           background: 'transparent',
                           color: 'var(--color-danger, #dc2626)',
                           border: '1px solid var(--color-danger, #dc2626)',
@@ -203,9 +240,10 @@ export default function StorePreferitiPage() {
                           cursor: removingId === prodottoId ? 'wait' : 'pointer',
                           width: '100%',
                           opacity: removingId === prodottoId ? 0.6 : 1,
+                          transition: 'all 200ms ease',
                         }}
                       >
-                        🗑️ Rimuovi dai preferiti
+                        {removingId === prodottoId ? 'Rimozione…' : '🗑️ Rimuovi dai preferiti'}
                       </button>
                     </div>
                   </div>
