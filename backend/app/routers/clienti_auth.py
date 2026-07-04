@@ -1,7 +1,10 @@
 """Router per autenticazione clienti, ordini e preferiti."""
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
+import io
+import re
 import uuid
 
 from app.database import get_db
@@ -10,6 +13,7 @@ from app.models.ordine_ecommerce import OrdineEcommerce, ItemOrdine, StatoOrdine
 from app.models.preferito import Preferito
 from app.models.ordine import Ordine as OrdineGestionale, RigaOrdine
 from app.models.cliente import Cliente as ClienteGestionale
+from app.models.fattura import Fattura
 from app.schemas.cliente_auth import (
     ClienteRegistrazione, ClienteLogin, ClienteResponse, ClienteUpdate,
     TokenResponse, CreaOrdineSchema, OrdineResponse, RichiestaReso,
@@ -275,6 +279,72 @@ async def dettaglio_ordine(
     if not ordine:
         raise HTTPException(status_code=404, detail="Ordine non trovato")
     return _ordine_gestionale_to_response(ordine, cliente)
+
+
+@router.get("/ordini/{ordine_id}/fattura/download")
+async def download_fattura_cliente(
+    ordine_id: int,
+    cliente: ClienteAccount = Depends(get_current_cliente),
+    db: Session = Depends(get_db)
+):
+    """Scarica la fattura PDF per un ordine del cliente."""
+    from sqlalchemy.orm import joinedload
+    import os
+    from fastapi.responses import FileResponse
+
+    # Verifica che l'ordine appartenga al cliente
+    cliente_gestionale = (
+        db.query(ClienteGestionale)
+        .filter(ClienteGestionale.email == cliente.email)
+        .first()
+    )
+    if not cliente_gestionale:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    ordine = (
+        db.query(OrdineGestionale)
+        .filter(
+            OrdineGestionale.id == ordine_id,
+            OrdineGestionale.cliente_id == cliente_gestionale.id,
+        )
+        .first()
+    )
+    if not ordine:
+        raise HTTPException(status_code=404, detail="Ordine non trovato")
+
+    # Cerca la fattura associata all'ordine
+    fattura = (
+        db.query(Fattura)
+        .filter(Fattura.ordine_id == ordine_id)
+        .order_by(Fattura.id.desc())
+        .first()
+    )
+    if not fattura:
+        raise HTTPException(status_code=404, detail="Fattura non ancora disponibile per questo ordine")
+
+    # Se esiste un file fisico
+    if fattura.file_path and os.path.exists(fattura.file_path):
+        return FileResponse(
+            path=fattura.file_path,
+            media_type="application/pdf",
+            filename=fattura.nome_file or f"fattura_{ordine.numero_ordine}.pdf",
+        )
+
+    # Genera PDF al volo
+    try:
+        from app.routers.fatture import _genera_pdf_fattura
+        pdf_bytes = _genera_pdf_fattura(fattura)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Errore nella generazione del PDF")
+
+    numero_safe = re.sub(r"[^\w.\-]", "_", fattura.numero_fattura or "fattura")
+    filename = f"fattura_{numero_safe}.pdf"
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.patch("/ordini/{ordine_id}/stato", response_model=OrdineResponse)
