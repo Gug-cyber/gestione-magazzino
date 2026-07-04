@@ -233,35 +233,29 @@ async def lista_ordini(
     cliente: ClienteAccount = Depends(get_current_cliente),
     db: Session = Depends(get_db)
 ):
-    """Lista ordini del cliente: include ordini ecommerce + ordini gestionale per stessa email."""
-    # Ordini ecommerce (sistema clienti)
-    ordini_ecommerce = (
-        db.query(OrdineEcommerce)
-        .filter(OrdineEcommerce.cliente_id == cliente.id)
-        .order_by(OrdineEcommerce.data_ordine.desc())
-        .all()
-    )
-    risultati = [_ordine_response_with_cliente(o, cliente) for o in ordini_ecommerce]
+    """Lista ordini del cliente dalla tabella gestionale (ordini)."""
+    from sqlalchemy.orm import joinedload
 
-    # Ordini gestionale: trova il cliente_id nella tabella clienti per la stessa email
     cliente_gestionale = (
         db.query(ClienteGestionale)
         .filter(ClienteGestionale.email == cliente.email)
         .first()
     )
-    if cliente_gestionale:
-        ordini_gestionale = (
-            db.query(OrdineGestionale)
-            .filter(OrdineGestionale.cliente_id == cliente_gestionale.id)
-            .order_by(OrdineGestionale.data_ordine.desc())
-            .all()
-        )
-        for o in ordini_gestionale:
-            risultati.append(_ordine_gestionale_to_response(o, cliente))
 
-    # Ordina tutto per data discendente
-    risultati.sort(key=lambda x: x.data_ordine or datetime.min, reverse=True)
-    return risultati
+    if not cliente_gestionale:
+        return []
+
+    ordini = (
+        db.query(OrdineGestionale)
+        .options(
+            joinedload(OrdineGestionale.righe).joinedload(RigaOrdine.prodotto)
+        )
+        .filter(OrdineGestionale.cliente_id == cliente_gestionale.id)
+        .order_by(OrdineGestionale.created_at.desc())
+        .all()
+    )
+
+    return [_ordine_gestionale_to_response(ordine, cliente) for ordine in ordini]
 
 
 @router.get("/ordini/{ordine_id}", response_model=OrdineResponse)
@@ -400,10 +394,11 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
     from app.schemas.cliente_auth import ItemOrdineResponse
     items = []
     for riga in (ordine.righe or []):
+        prodotto_id = riga.prodotto_id or 0
         items.append(ItemOrdineResponse(
             id=riga.id,
-            prodotto_id=riga.prodotto_id,
-            nome_prodotto=riga.prodotto.nome if riga.prodotto else f"Prodotto #{riga.prodotto_id}",
+            prodotto_id=prodotto_id,
+            nome_prodotto=riga.prodotto.nome if riga.prodotto else f"Prodotto #{prodotto_id}",
             quantita=riga.quantita,
             prezzo_unitario=float(riga.prezzo_unitario),
             subtotale=float(riga.subtotale),
@@ -431,7 +426,7 @@ def _ordine_gestionale_to_response(ordine: OrdineGestionale, cliente: ClienteAcc
         metodo_pagamento=None,
         indirizzo_spedizione=ordine.indirizzo_spedizione,
         note=ordine.note,
-        data_ordine=ordine.data_ordine,
+        data_ordine=ordine.data_ordine or ordine.created_at,
         data_spedizione=None,
         data_consegna=None,
         data_stimata_consegna=None,
