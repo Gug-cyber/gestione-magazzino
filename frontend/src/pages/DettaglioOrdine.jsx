@@ -70,6 +70,15 @@ const XIcon = () => (
   </svg>
 )
 
+const TruckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="3" width="15" height="13"/>
+    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+    <circle cx="5.5" cy="18.5" r="2.5"/>
+    <circle cx="18.5" cy="18.5" r="2.5"/>
+  </svg>
+)
+
 export default function DettaglioOrdine() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -81,7 +90,11 @@ export default function DettaglioOrdine() {
   const [trackingForm, setTrackingForm] = useState({ corriere: '', tracking_number: '' })
   const [trackingLoading, setTrackingLoading] = useState(false)
   const [editModal, setEditModal] = useState(false)
-  const [editForm, setEditForm] = useState({ cliente_id: '', cliente_nome: '', note: '', corriere: '', tracking_number: '', righe: [{ ...emptyRiga }] })
+  const [editForm, setEditForm] = useState({
+    cliente_id: '', cliente_nome: '', note: '', corriere: '', tracking_number: '',
+    indirizzo_spedizione: '', metodo_pagamento: '', spese_spedizione: '',
+    righe: [{ ...emptyRiga }],
+  })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
   const [clienti, setClienti] = useState([])
@@ -156,6 +169,9 @@ export default function DettaglioOrdine() {
       note: ordine.note || '',
       corriere: ordine.corriere || '',
       tracking_number: ordine.tracking_number || '',
+      indirizzo_spedizione: ordine.indirizzo_spedizione || '',
+      metodo_pagamento: ordine.metodo_pagamento || '',
+      spese_spedizione: ordine.spese_spedizione != null ? String(ordine.spese_spedizione) : '',
       righe: (ordine.righe || []).length > 0
         ? ordine.righe.map(r => ({ prodotto_id: String(r.prodotto_id), quantita: r.quantita, prezzo_unitario: r.prezzo_unitario }))
         : [{ ...emptyRiga }],
@@ -180,7 +196,9 @@ export default function DettaglioOrdine() {
 
   const handleRemoveEditRiga = (index) => setEditForm(prev => ({ ...prev, righe: prev.righe.filter((_, i) => i !== index) }))
 
-  const editTotale = editForm.righe.reduce((acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)), 0)
+  const speseSpedizioneNum = parseFloat(editForm.spese_spedizione) || 0
+  const editSubtotale = editForm.righe.reduce((acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)), 0)
+  const editTotale = editSubtotale + speseSpedizioneNum
 
   const handleEditSubmit = async () => {
     setEditError('')
@@ -194,6 +212,9 @@ export default function DettaglioOrdine() {
         note: editForm.note || null,
         corriere: editForm.corriere || null,
         tracking_number: editForm.tracking_number || null,
+        indirizzo_spedizione: editForm.indirizzo_spedizione || null,
+        metodo_pagamento: editForm.metodo_pagamento || null,
+        spese_spedizione: speseSpedizioneNum || null,
         righe: righe.map(r => ({
           prodotto_id: parseInt(r.prodotto_id),
           quantita: parseInt(r.quantita),
@@ -216,6 +237,8 @@ export default function DettaglioOrdine() {
   if (error || !ordine) return <div className="error-banner">{error || 'Ordine non trovato'}</div>
 
   const nextStato = STATO_NEXT[ordine.stato]
+  const speseSpedizione = Number(ordine.spese_spedizione ?? 0)
+  const subtotaleProdotti = (ordine.righe || []).reduce((acc, r) => acc + Number(r.subtotale ?? 0), 0)
 
   return (
     <>
@@ -235,6 +258,22 @@ export default function DettaglioOrdine() {
               {ordine.data_completamento && (
                 <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>Completato il: <strong style={{ color: 'var(--text-primary)' }}>{formatDate(ordine.data_completamento)}</strong></p>
               )}
+
+              {/* Metodo pagamento */}
+              {ordine.metodo_pagamento && (
+                <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>
+                  Metodo pagamento: <strong style={{ color: 'var(--text-primary)', textTransform: 'capitalize' }}>{ordine.metodo_pagamento.replace(/_/g, ' ')}</strong>
+                </p>
+              )}
+
+              {/* Indirizzo spedizione */}
+              {ordine.indirizzo_spedizione && (
+                <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>
+                  Indirizzo spedizione: <strong style={{ color: 'var(--text-primary)' }}>{ordine.indirizzo_spedizione}</strong>
+                </p>
+              )}
+
+              {/* Tracking */}
               {(ordine.corriere || ordine.tracking_number) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0', color: 'var(--text-secondary)' }}>
                   Corriere: <strong style={{ color: 'var(--text-primary)' }}>{ordine.corriere || '-'}</strong>
@@ -260,9 +299,10 @@ export default function DettaglioOrdine() {
                   </button>
                 </div>
               )}
+
               {ordine.note && <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>Note: {ordine.note}</p>}
-              {ordine.indirizzo_spedizione && <p style={{ margin: '4px 0', color: 'var(--text-secondary)' }}>Indirizzo spedizione: <strong style={{ color: 'var(--text-primary)' }}>{ordine.indirizzo_spedizione}</strong></p>}
             </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
               <StatoBadge value={ordine.stato} colors={STATO_ORDINE_COLORS} capitalize />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -363,7 +403,7 @@ export default function DettaglioOrdine() {
                     {r.prodotto_nome || '-'}
                   </div>
                   {r.prodotto_sku && (
-                    <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px', background: 'var(--bg-tertiary)', display: 'inline-block', padding: '2px 8px', borderRadius: '4px' }}>
+                    <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px', background: 'var(--bg-tertiary)', display: 'inline-block', padding: '2px 6px', borderRadius: '4px' }}>
                       {r.prodotto_sku}
                     </div>
                   )}
@@ -412,10 +452,20 @@ export default function DettaglioOrdine() {
             </div>
           )}
 
-          <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-primary)', textAlign: 'right' }}>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>
-              Totale: {formatCurrency(ordine.totale)}
-            </span>
+          {/* Riepilogo costi */}
+          <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '260px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+              <span>Subtotale prodotti</span>
+              <span>{formatCurrency(subtotaleProdotti)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '260px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+              <span>Spedizione</span>
+              <span>{speseSpedizione > 0 ? formatCurrency(speseSpedizione) : 'Gratuita'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '260px', borderTop: '1px solid var(--border-primary)', paddingTop: '8px', marginTop: '2px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Totale</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(ordine.totale)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -513,13 +563,49 @@ export default function DettaglioOrdine() {
 
             {/* Note */}
             <div style={{ marginBottom: '12px' }}>
-              <label className="form-label">Note</label>
+              <label className="form-label">Note <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opzionale)</span></label>
               <textarea
                 value={editForm.note}
                 onChange={e => setEditForm(prev => ({ ...prev, note: e.target.value }))}
                 placeholder="Note aggiuntive..."
                 rows={2}
                 className="form-input form-textarea"
+              />
+            </div>
+
+            {/* Metodo pagamento + Spese spedizione */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label className="form-label">Metodo pagamento <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opzionale)</span></label>
+                <input
+                  value={editForm.metodo_pagamento}
+                  onChange={e => setEditForm(prev => ({ ...prev, metodo_pagamento: e.target.value }))}
+                  placeholder="es. carta, contanti, paypal..."
+                  className="form-input"
+                />
+              </div>
+              <div>
+                <label className="form-label">Spese spedizione € <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opzionale)</span></label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editForm.spese_spedizione}
+                  onChange={e => setEditForm(prev => ({ ...prev, spese_spedizione: e.target.value }))}
+                  placeholder="0.00"
+                  className="form-input"
+                />
+              </div>
+            </div>
+
+            {/* Indirizzo spedizione */}
+            <div style={{ marginBottom: '12px' }}>
+              <label className="form-label">Indirizzo spedizione <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opzionale)</span></label>
+              <input
+                value={editForm.indirizzo_spedizione}
+                onChange={e => setEditForm(prev => ({ ...prev, indirizzo_spedizione: e.target.value }))}
+                placeholder="Via, Città, CAP..."
+                className="form-input"
               />
             </div>
 
@@ -610,9 +696,17 @@ export default function DettaglioOrdine() {
                   </div>
                 </div>
               ))}
-              <div className="order-total">
-                <span className="order-total-label">Totale:</span>
-                <span className="order-total-value">{formatCurrency(editTotale)}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', marginTop: '8px' }}>
+                {speseSpedizioneNum > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '220px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    <span>Spedizione</span>
+                    <span>{formatCurrency(speseSpedizioneNum)}</span>
+                  </div>
+                )}
+                <div className="order-total">
+                  <span className="order-total-label">Totale:</span>
+                  <span className="order-total-value">{formatCurrency(editTotale)}</span>
+                </div>
               </div>
             </div>
 
