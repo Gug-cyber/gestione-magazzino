@@ -381,6 +381,12 @@ def update_ordine_full(db: Session, ordine_id: int, update: OrdineUpdateFull) ->
         ordine.corriere = update.corriere
     if update.tracking_number is not None:
         ordine.tracking_number = update.tracking_number
+    if update.indirizzo_spedizione is not None:
+        ordine.indirizzo_spedizione = update.indirizzo_spedizione
+    if update.metodo_pagamento is not None:
+        ordine.metodo_pagamento = update.metodo_pagamento
+    if update.spese_spedizione is not None:
+        ordine.spese_spedizione = update.spese_spedizione
 
     # Aggiorna righe se fornite
     if update.righe is not None:
@@ -398,25 +404,31 @@ def update_ordine_full(db: Session, ordine_id: int, update: OrdineUpdateFull) ->
             db.delete(riga)
 
         # Aggiungi nuove righe
-        totale = 0.0
+        subtotale_righe = 0.0
         for r in update.righe:
             prodotto = db.query(Prodotto).filter(Prodotto.id == r.prodotto_id).first()
             if not prodotto:
                 raise HTTPException(status_code=404, detail=f"Prodotto con id {r.prodotto_id} non trovato")
 
-            subtotale = r.quantita * r.prezzo_unitario
-            totale += subtotale
+            riga_subtotale = r.quantita * r.prezzo_unitario
+            subtotale_righe += riga_subtotale
 
             nuova_riga = RigaOrdine(
                 ordine_id=ordine_id,
                 prodotto_id=r.prodotto_id,
                 quantita=r.quantita,
                 prezzo_unitario=r.prezzo_unitario,
-                subtotale=subtotale,
+                subtotale=riga_subtotale,
             )
             db.add(nuova_riga)
 
-        ordine.totale = totale
+        # Totale = subtotale righe + spese spedizione (aggiornate o già presenti)
+        spese = update.spese_spedizione if update.spese_spedizione is not None else (ordine.spese_spedizione or 0.0)
+        ordine.totale = subtotale_righe + spese
+    elif update.spese_spedizione is not None:
+        # Righe non cambiate ma spese spedizione aggiornate: ricalcola totale
+        subtotale_righe = sum(r.subtotale for r in ordine.righe)
+        ordine.totale = subtotale_righe + update.spese_spedizione
 
     db.commit()
     db.refresh(ordine)

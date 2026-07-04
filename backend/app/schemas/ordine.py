@@ -82,6 +82,9 @@ class OrdineUpdateFull(BaseModel):
     stato: Optional[StatoOrdineSchema] = None
     corriere: Optional[str] = None
     tracking_number: Optional[str] = None
+    indirizzo_spedizione: Optional[str] = None
+    spese_spedizione: Optional[float] = None
+    metodo_pagamento: Optional[str] = None
     righe: Optional[List[RigaOrdineCreate]] = None
 
 
