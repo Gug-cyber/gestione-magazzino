@@ -2,7 +2,7 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://gestione-magazzino-0bpq.onrender.com/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://retrovaultstore.duckdns.org/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
