@@ -15,6 +15,20 @@ MANUAL_LISTING_STATUSES = (
     "da_controllare",
 )
 
+TIPOLOGIE_GIOCO = (
+    "Magic: The Gathering",
+    "Pokémon",
+    "Yu-Gi-Oh!",
+    "Dragon Ball Super Card Game",
+    "One Piece Card Game",
+    "Lorcana",
+    "Flesh and Blood",
+    "Cardfight!! Vanguard",
+    "Digimon Card Game",
+    "Star Wars Unlimited",
+    "Altro",
+)
+
 
 class ManualListingBase(BaseModel):
     platform: Literal["vinted", "wallapop"]
@@ -94,6 +108,7 @@ class ProdottoBase(BaseModel):
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
+    tipologia_gioco: Optional[str] = None
     foto_path: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
@@ -102,6 +117,15 @@ class ProdottoBase(BaseModel):
     su_wallapop: bool = False
     non_vendibile: bool = False
     manual_listings: Optional[List[ManualListingCreate]] = None
+
+    @field_validator("tipologia_gioco")
+    @classmethod
+    def validate_tipologia_gioco(cls, v):
+        if v is None or v == "" or v == "-- Nessuno --":
+            return None
+        if v not in TIPOLOGIE_GIOCO:
+            raise ValueError(f"Tipologia gioco non valida. Valori consentiti: {', '.join(TIPOLOGIE_GIOCO)}")
+        return v
 
     @field_validator("barcode")
     @classmethod
@@ -141,6 +165,7 @@ class ProdottoUpdate(BaseModel):
     ubicazione_id: Optional[int] = None
     stato_conservazione: Optional[str] = None
     lingua: Optional[str] = None
+    tipologia_gioco: Optional[str] = None
     barcode: Optional[str] = None
     cardtrader_blueprint_id: Optional[int] = None
     google_drive_folder_id: Optional[str] = None
