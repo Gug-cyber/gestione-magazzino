@@ -478,6 +478,9 @@ export default function StoreLayout({ children }) {
           <Link to="/store" style={navLinkStyle('/store')}>
             {t('nav_products')}
           </Link>
+          <Link to="/dashboard" style={navLinkStyle('/dashboard')}>
+            Dashboard
+          </Link>
           <Link to="/store/cart" style={{
             ...navLinkStyle('/store/cart'),
             display: 'flex',
@@ -621,4 +624,3 @@ export default function StoreLayout({ children }) {
     </div>
   )
 }
-
